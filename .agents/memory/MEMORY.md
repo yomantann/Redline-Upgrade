@@ -1,1 +1,1 @@
-- [WebGL preview availability](redline-webgl-preview.md) — screenshot browser may lack WebGL; keep a non-WebGL pawn preview and verify live geometry separately.
+- [Browser preview limits](redline-webgl-preview.md) — screenshot browser may lack WebGL; automated browser testing may fail independently of the app.

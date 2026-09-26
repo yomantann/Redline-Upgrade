@@ -1,0 +1,442 @@
+# REDLINE UPGRADE — PHASE 4
+
+## DICE ROLL UI + BOARD + 2d4 + CPU PLAYERS
+
+The character selection and 3D character pieces are now working.
+
+Now build the first real gameplay foundation for Redline Upgrade.
+
+Keep this phase focused. Do not build the later game systems yet.
+
+---
+
+# 1. 75-SPACE BOARD
+
+Create exactly **75 spaces**, numbered 1–75.
+
+Use a winding board-game path with a futuristic Redline visual style.
+
+Each space should support:
+
+* Space number
+* Space type
+* Occupied players
+* Visual state
+
+Initial space types:
+
+* NORMAL
+* EVENT
+* MILESTONE
+* GAMBLE
+
+Temporary distribution:
+
+* 50 NORMAL
+* 15 EVENT
+* 6 MILESTONE
+* 4 GAMBLE
+
+Spread these throughout the board.
+
+Do not implement their actual effects yet.
+
+---
+
+# 2. SINGLE PLAYER + 3 CPU PLAYERS
+
+The game should initially be designed for:
+
+**1 Human Player + 3 CPU Players**
+
+The human selects their character.
+
+The other 3 characters are automatically selected from the remaining characters.
+
+Each player needs:
+
+* Player ID
+* Name
+* Character
+* Position
+* Wealth
+* AI Skill
+* Fame
+* Lifestyle
+* Influence
+
+Use placeholder starting values for now.
+
+Do NOT build online multiplayer yet.
+
+---
+
+# 3. TURN ORDER
+
+Use:
+
+**Human → CPU 1 → CPU 2 → CPU 3 → Human**
+
+Display prominently:
+
+**YOUR TURN**
+
+or
+
+**CPU 1'S TURN**
+
+etc.
+
+Only the current player can take an action.
+
+---
+
+# 4. TWO FOUR-SIDED DICE
+
+Redline Upgrade uses:
+
+**2 × D4**
+
+Each die produces 1–4.
+
+Movement total:
+
+**Die 1 + Die 2**
+
+Therefore the player moves **2–8 spaces** per roll.
+
+Create two visually distinct physical-looking four-sided dice.
+
+---
+
+# 5. ROLL DICE BUTTON
+
+During the human player's turn, display a prominent button:
+
+**ROLL DICE**
+
+The button must:
+
+* Be clearly visible
+* Have a strong Redline visual style
+* Be disabled when it is not the human's turn
+* Be disabled while dice are rolling
+* Be disabled while the character is moving
+* Only allow one roll per turn
+
+After the turn finishes, the button becomes available again on the next human turn.
+
+---
+
+# 6. ACTUAL VISUAL DICE ROLL
+
+Do NOT simply generate two random numbers and display them.
+
+When the human clicks **ROLL DICE**:
+
+### Step 1 — Throw/Roll
+
+Visually animate both dice.
+
+Possible effects:
+
+* Tumble/rotate
+* Move forward/upward
+* Bounce
+* Land on a surface
+* Cast a shadow
+* Brief motion effects
+
+The animation should feel like physical dice being thrown onto a tabletop.
+
+Aim for approximately **1–2 seconds**.
+
+### Step 2 — Reveal
+
+When the dice settle, clearly display their actual results.
+
+Example:
+
+**D4: 3**
+
+**D4: 4**
+
+Then prominently:
+
+**TOTAL: 7**
+
+The visible dice faces must match the generated values.
+
+### Step 3 — Move
+
+After a short pause, automatically move the player's character:
+
+`Space 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19`
+
+for a roll of 7.
+
+Animate the character moving through each space.
+
+---
+
+# 7. REUSABLE DICE COMPONENT
+
+Create a reusable component such as:
+
+`DiceRoller`
+
+It should support:
+
+* Two D4 dice
+* Idle state
+* Rolling animation
+* Result state
+* Total
+* Disabled state
+* Roll completion callback
+
+The game engine should generate the actual random values.
+
+The UI should visually present those exact values.
+
+Do not hardcode results.
+
+---
+
+# 8. CPU DICE ROLLS
+
+CPU players should use the same dice system.
+
+When a CPU takes a turn:
+
+1. Show the CPU's name.
+2. Show the dice.
+3. Automatically trigger the dice animation.
+4. Reveal both results.
+5. Show the total.
+6. Move the CPU character.
+7. Show the landing space.
+8. Briefly pause.
+9. Advance to the next player.
+
+The CPU does not need a button.
+
+The human player should be able to watch the CPU's dice roll.
+
+Do not implement sophisticated CPU strategy yet.
+
+---
+
+# 9. MOVEMENT
+
+Move the character **one space at a time**.
+
+For example, a roll of 6:
+
+`12 → 13 → 14 → 15 → 16 → 17 → 18`
+
+Each step should have a short movement animation.
+
+Do not allow another action while movement is occurring.
+
+When movement finishes:
+
+* Highlight the landing space.
+* Show its type.
+* Display the landing panel.
+
+---
+
+# 10. MULTIPLE PIECES
+
+Display all four player pieces on the board.
+
+If multiple players occupy the same space, offset them so they remain visible.
+
+Use a simple formation around the space.
+
+---
+
+# 11. LANDING PANEL
+
+After movement finishes, display something like:
+
+**SPACE 24**
+
+`EVENT`
+
+"Placeholder event."
+
+For a NORMAL space:
+
+**SPACE 24**
+
+`NORMAL`
+
+No actual effects yet.
+
+---
+
+# 12. GAME HUD
+
+Display:
+
+### Current Turn
+
+Player/CPU name
+
+### Position
+
+Current space
+
+### Dice
+
+Both D4 results + total
+
+### Stats
+
+* Wealth
+* AI Skill
+* Fame
+* Lifestyle
+* Influence
+
+These stats are placeholders for now.
+
+---
+
+# 13. GAME FLOW
+
+The prototype should work like:
+
+**Character Selection**
+
+↓
+
+Human selects character
+
+↓
+
+3 CPU characters automatically selected
+
+↓
+
+**75-Space Board**
+
+↓
+
+**YOUR TURN**
+
+↓
+
+**ROLL DICE**
+
+↓
+
+Two D4s visibly roll
+
+↓
+
+Results revealed
+
+↓
+
+Total displayed
+
+↓
+
+Character moves space-by-space
+
+↓
+
+Landing space displayed
+
+↓
+
+**CPU 1'S TURN**
+
+↓
+
+CPU dice visibly roll
+
+↓
+
+CPU moves
+
+↓
+
+CPU 2
+
+↓
+
+CPU 3
+
+↓
+
+**YOUR TURN**
+
+↓
+
+Repeat
+
+---
+
+# 14. DO NOT BUILD YET
+
+Do NOT implement:
+
+* Careers
+* Salaries
+* Career abilities
+* Cards
+* Wealth cards
+* Cars
+* Property
+* Investments
+* Lifestyle purchases
+* Upgrade tokens
+* Meme upgrades
+* Complex player interaction
+* Gambling mechanics
+* End game
+* Cash Out
+* Double Down
+* Final Gamble
+* Redline Credits
+* Authentication
+* Persistent currency
+* Online multiplayer
+
+Those systems come in later phases.
+
+---
+
+# SUCCESS CRITERIA
+
+I should be able to:
+
+1. Start a new game.
+2. Select my character.
+3. Automatically receive 3 CPU opponents.
+4. Enter a 75-space board.
+5. See all four 3D character pieces.
+6. See whose turn it is.
+7. See a prominent **ROLL DICE** button during my turn.
+8. Click it.
+9. Watch two physical-looking D4 dice visibly roll/tumble.
+10. See both actual results.
+11. See the total.
+12. Watch my character move the correct number of spaces.
+13. See the landing space highlighted.
+14. See the landing space type.
+15. Watch each CPU automatically take its turn.
+16. Watch the CPU dice roll visually.
+17. Watch the CPU piece move.
+18. Return to my turn.
+19. Continue for multiple rounds without game-state issues.
+
+The result should already feel like the beginning of a **digital Redline tabletop board game**.
+
+Keep the architecture modular because this board, turn, dice, and player-state system will become the foundation for the rest of Redline Upgrade.
+
+**STOP after this phase.**

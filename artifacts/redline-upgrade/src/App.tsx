@@ -5,6 +5,7 @@ import { characters, getCharacter, type CharacterDefinition } from '@/game/chara
 import { GameProvider, useGame } from '@/game/state';
 import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
 import { CharacterPortrait } from '@/components/character-portrait';
+import { GameScreen } from '@/components/game-screen';
 
 function Artwork({
   index = 0,
@@ -28,6 +29,7 @@ function Artwork({
 
 function Header() {
   const [location, navigate] = useLocation();
+  const { match } = useGame();
   const activeRoster = location === '/characters' || location === '/setup';
 
   return (
@@ -37,10 +39,11 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">PHASE 03 // FIGURINES</span>
+        <span className="header-phase">PHASE 04 // TABLETOP</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
+        {match && <button className={`header-link ${location === '/board' ? 'active' : ''}`} type="button" onClick={() => navigate('/board')}>BOARD</button>}
         <span className="header-index"><i /> LOCAL BUILD</span>
       </div>
     </header>
@@ -51,7 +54,7 @@ function Footer() {
   return (
     <footer className="page-footer mono">
       <span>REDLINE UPGRADE // INTERNAL BUILD</span>
-      <span>21 IDENTITIES // SYSTEM STANDBY</span>
+      <span>21 IDENTITIES // 75 SPACES // 2 × D4</span>
     </footer>
   );
 }
@@ -68,7 +71,7 @@ function AppShell({ children }: { children: ReactNode }) {
 
 function Home() {
   const [, navigate] = useLocation();
-  const { startNewGame } = useGame();
+  const { startNewGame, match } = useGame();
 
   const start = () => {
     startNewGame();
@@ -90,12 +93,13 @@ function Home() {
             </h1>
             <p className="home-intro">
               Choose the identity that will take you past the limit.
-              The board is still dark. Your first decision is not.
+              A four-player race through 75 spaces begins here.
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>
                 Start New Game <span aria-hidden="true">↗</span>
               </button>
+              {match && <button className="action secondary" type="button" onClick={() => navigate('/board')}>Continue game <span aria-hidden="true">→</span></button>}
               <button className="text-link" type="button" onClick={() => navigate('/characters')}>
                 Browse identities <span aria-hidden="true">→</span>
               </button>
@@ -123,12 +127,12 @@ function Home() {
             <span><strong>Playable identities</strong><span>Every path starts somewhere</span></span>
           </div>
           <div className="strip-cell">
-            <span className="strip-number">01</span>
-            <span><strong>Local session</strong><span>Built for the first decision</span></span>
+              <span className="strip-number">04</span>
+              <span><strong>Local players</strong><span>You versus three CPU opponents</span></span>
           </div>
           <div className="strip-cell">
-            <span className="strip-number">∞</span>
-            <span><strong>Room to upgrade</strong><span>The system grows from here</span></span>
+              <span className="strip-number">75</span>
+              <span><strong>Board spaces</strong><span>Two D4s drive every turn</span></span>
           </div>
         </section>
       </main>
@@ -295,13 +299,13 @@ function Setup() {
           <div className="setup-content">
             <span className="mono lime">PLAYER RECORD // {player.playerId.slice(0, 8)}</span>
             <h1 className="display setup-title">Ready to<br /><span className="title-outline">upgrade.</span></h1>
-            <p className="setup-lede">The foundation is in place. The rest of the system is waiting for its first move.</p>
+            <p className="setup-lede">Three CPU rivals have been assigned. Your first roll is waiting on the board.</p>
             <div className="setup-record mono">
               <span className="setup-record-label">SELECTED IDENTITY</span>
               <span className="setup-record-value">{character.name}</span>
             </div>
             <div className="setup-actions">
-              <button className="action lime-action" type="button" onClick={() => navigate('/')}>Enter game <span aria-hidden="true">↗</span></button>
+              <button className="action lime-action" type="button" onClick={() => navigate('/board')}>Enter board <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
             </div>
           </div>
@@ -343,7 +347,8 @@ function Router() {
       {location === '/' && <Home />}
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
-      {!['/', '/characters', '/setup'].includes(location) && <NotFound />}
+      {location === '/board' && <AppShell><GameScreen /></AppShell>}
+      {!['/', '/characters', '/setup', '/board'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
   );
 }
