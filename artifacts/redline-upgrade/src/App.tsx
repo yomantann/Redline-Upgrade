@@ -1,9 +1,10 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Router as WouterRouter, useLocation } from 'wouter';
 import { characters, getCharacter, type CharacterDefinition } from '@/game/characters';
 import { GameProvider, useGame } from '@/game/state';
-import { CharacterPiece } from '@/components/character-piece';
+import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
+import { CharacterPortrait } from '@/components/character-portrait';
 
 function Artwork({
   index = 0,
@@ -36,7 +37,7 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">PHASE 01 // FOUNDATION</span>
+        <span className="header-phase">PHASE 03 // FIGURINES</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
@@ -137,19 +138,17 @@ function Home() {
 
 function CharacterTile({
   character,
-  index,
   selected,
   onSelect,
 }: {
   character: CharacterDefinition;
-  index: number;
   selected: boolean;
   onSelect: () => void;
 }) {
   return (
-    <button className={`character-tile ${selected ? 'selected' : ''}`} type="button" onClick={onSelect} aria-pressed={selected}>
+    <button className={`character-tile ${selected ? 'selected' : ''}`} type="button" onClick={onSelect} aria-pressed={selected} data-testid={`button-character-${character.id}`}>
       {selected && <span className="tile-selected">SELECTED</span>}
-      <CharacterPiece character={character} index={index} selected={selected} compact className="tile-piece" />
+      <CharacterPortrait character={character} className="tile-portrait" />
       <span className="tile-body">
         <span className="tile-name">{character.name}</span>
         <span className="tile-ability">{character.abilityName}</span>
@@ -161,6 +160,24 @@ function CharacterTile({
 function CharacterPreview({ character, index }: { character: CharacterDefinition; index: number }) {
   const [, navigate] = useLocation();
   const { confirmCharacter } = useGame();
+  const [motion, setMotion] = useState<PawnMotion>('idle');
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    setMotion('idle');
+    return () => {
+      timers.current.forEach(window.clearTimeout);
+      timers.current = [];
+    };
+  }, [character.id]);
+
+  const previewMove = () => {
+    timers.current.forEach(window.clearTimeout);
+    timers.current = [];
+    setMotion('moving');
+    timers.current.push(window.setTimeout(() => setMotion('landing'), 700));
+    timers.current.push(window.setTimeout(() => setMotion('idle'), 1500));
+  };
 
   const confirm = () => {
     confirmCharacter(character.id);
@@ -174,7 +191,10 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
           <span>ACTIVE IDENTITY</span>
           <span className="lime">{String(index + 1).padStart(2, '0')} / 21</span>
         </div>
-        <CharacterPiece character={character} index={index} selected className="preview-visual" />
+        <div className="preview-visual">
+          <CharacterPortrait character={character} className="preview-portrait" />
+          <CharacterPiece characterId={character.id} name={character.name} selected motion={motion} className="preview-pawn" />
+        </div>
         <div className="preview-info">
           <span className="mono preview-number signal">PROFILE // {character.id}</span>
           <h2 className="display preview-name">{character.name}</h2>
@@ -187,6 +207,9 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
           <div className="preview-actions">
             <button className="action lime-action" type="button" onClick={confirm}>
               Confirm identity <span aria-hidden="true">↗</span>
+            </button>
+            <button className="action secondary" type="button" onClick={previewMove} data-testid="button-preview-move">
+              Test move <span aria-hidden="true">↗</span>
             </button>
           </div>
           <p className="preview-note mono">CONFIRMATION CREATES A LOCAL PLAYER RECORD</p>
@@ -218,11 +241,10 @@ function Characters() {
               <span className="lime">SELECT ONE</span>
             </div>
             <div className="roster-grid">
-              {characters.map((character, index) => (
+              {characters.map((character) => (
                 <CharacterTile
                   key={character.id}
                   character={character}
-                  index={index}
                   selected={character.id === selected.id}
                   onSelect={() => setSelectedId(character.id)}
                 />
@@ -284,15 +306,13 @@ function Setup() {
             </div>
           </div>
           <div className="setup-aside">
-            <CharacterPiece
-              character={character}
-              index={characters.findIndex((item) => item.id === character.id)}
-              selected
-              className="setup-art"
-            />
+            <div className="setup-art">
+              <CharacterPortrait character={character} className="setup-portrait" />
+              <CharacterPiece characterId={character.id} name={character.name} selected className="setup-pawn" />
+            </div>
             <div className="setup-aside-caption mono">
-              <span>PORTRAIT ASSET</span>
-              <span className="empty-signal">PENDING</span>
+              <span>PORTRAIT + 3D FIGURINE</span>
+              <span className="lime">READY</span>
             </div>
           </div>
         </section>

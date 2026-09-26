@@ -1,0 +1,230 @@
+# REDLINE UPGRADE — PHASE 3: ACTUAL 3D CHARACTER PAWNS
+
+The character images are now correctly imported and mapped.
+
+The current `CharacterPiece` uses the character image itself as a 3D object.
+
+I do NOT want that anymore.
+
+I want the characters to become **rough 3D board-game figurines**, similar to chess pieces or modern tabletop game pawns.
+
+The character artwork should be used as **visual reference**, but the image itself should not be the physical 3D piece.
+
+---
+
+# GOAL
+
+Create 21 simple stylized 3D character pawns.
+
+They should feel like:
+
+* chess pieces
+* collectible board-game figurines
+* futuristic Redline game pieces
+* slightly exaggerated/meme-inspired
+
+They do NOT need to be detailed realistic 3D models.
+
+They should be recognizable from their silhouette and a few character-specific features.
+
+---
+
+# DESIGN SYSTEM
+
+Create a reusable base pawn structure:
+
+1. Bottom circular/futuristic base
+2. Narrow or shaped body
+3. Character-specific upper body/head/silhouette
+4. Small character-specific details
+5. Consistent scale across all characters
+
+The pieces should look like they belong to the same board game.
+
+Use the existing character images as reference when deciding the silhouette.
+
+---
+
+# CHARACTER DIFFERENTIATION
+
+Do NOT create 21 completely unrelated models.
+
+Instead, create a small number of reusable primitive shapes/components that can be combined differently.
+
+Examples:
+
+* spheres
+* cylinders
+* cones
+* boxes
+* rings
+* shields
+* spikes
+* wings
+* helmets
+* visors
+* horns
+* capes
+* simple geometric accessories
+
+Each character should have approximately 1–3 recognizable unique features.
+
+The goal is:
+
+**same Redline Upgrade pawn family + unique character silhouette**
+
+---
+
+# ROUGH CHARACTER DIRECTIONS
+
+These do NOT need to be exact. Use the existing artwork as the reference.
+
+### Guardian H
+
+Shield/protector silhouette.
+
+### Click Click
+
+Phone/camera/social-media style topper.
+
+### Frostbyte
+
+Ice/spike/crystalline silhouette.
+
+### Sadman
+
+Slumped/sad silhouette.
+
+### Rainbow Dash
+
+Rainbow-colored or energetic topper.
+
+### Accuser
+
+Pointing/finger or legal-themed silhouette.
+
+### Low Flame
+
+Small flame/low-energy silhouette.
+
+### Wandering Eye
+
+Large eye/visor.
+
+### The Rind
+
+Layered/peeling outer shell.
+
+### Anointed
+
+Halo/crown-like silhouette.
+
+### Executive P
+
+Suit/tie/corporate silhouette.
+
+### Alpha Prime
+
+Large heroic/alpha silhouette.
+
+### Roll Safe
+
+Headband/brain/clever expression-style silhouette.
+
+### Hotwired
+
+Wire/lightning/electrical feature.
+
+### Panic Bot
+
+Robot/head with alert/panic indicator.
+
+### Primate
+
+Monkey-like ears/head silhouette.
+
+### Pain Hider
+
+Mask/armor silhouette.
+
+### Prom King
+
+Crown.
+
+### Idol Core
+
+Star/idol microphone/stage-inspired silhouette.
+
+### Danger Zone
+
+Warning/target/fire silhouette.
+
+### The Tank
+
+Heavy armored/tank-like silhouette.
+
+These are starting concepts, not requirements for detailed modeling.
+
+---
+
+# IMPORTANT TECHNICAL REQUIREMENT
+
+Before choosing a technology, inspect the current Redline Upgrade project.
+
+If the existing application can create these pieces using lightweight 3D/CSS techniques, that is acceptable.
+
+However, if actual 3D geometry will significantly improve the result, it is okay to introduce a lightweight 3D rendering library such as Three.js / React Three Fiber.
+
+Do NOT add a large unnecessary framework.
+
+The goal is simply to make actual 3D geometry.
+
+---
+
+# CHARACTER IMAGE USAGE
+
+Keep the existing character images.
+
+They should still be used for:
+
+* Character selection
+* Character preview
+* Cards
+* Player UI
+* Reference
+
+But the board pawn should be a separate 3D representation.
+
+---
+
+# PIECE INTERACTION
+
+The 3D pawn should support:
+
+* idle animation
+* hover
+* selected state
+* movement animation
+* landing/bounce animation
+
+Keep these subtle for now.
+
+---
+
+# SUCCESS CRITERIA
+
+When finished:
+
+1. All 21 characters have actual 3D geometry.
+2. The imported character image is no longer simply being extruded into the pawn.
+3. All pieces share a consistent board-game scale/style.
+4. Each character has at least one recognizable visual distinction.
+5. The pieces can be rendered independently from the character-selection UI.
+6. The existing character selection still works.
+7. The project remains stable.
+
+Do NOT build the actual 75-space board yet.
+
+Do NOT build multiplayer, careers, cards, salaries, upgrades, or gambling.
+
+Stop after the 21-piece system is working.
