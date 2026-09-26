@@ -3,6 +3,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Router as WouterRouter, useLocation } from 'wouter';
 import { characters, getCharacter, type CharacterDefinition } from '@/game/characters';
 import { GameProvider, useGame } from '@/game/state';
+import { CharacterPiece } from '@/components/character-piece';
 
 function Artwork({
   index = 0,
@@ -148,7 +149,7 @@ function CharacterTile({
   return (
     <button className={`character-tile ${selected ? 'selected' : ''}`} type="button" onClick={onSelect} aria-pressed={selected}>
       {selected && <span className="tile-selected">SELECTED</span>}
-      <Artwork index={index} className="tile-art" label="ART / PENDING" />
+      <CharacterPiece character={character} index={index} selected={selected} compact className="tile-piece" />
       <span className="tile-body">
         <span className="tile-name">{character.name}</span>
         <span className="tile-ability">{character.abilityName}</span>
@@ -173,7 +174,7 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
           <span>ACTIVE IDENTITY</span>
           <span className="lime">{String(index + 1).padStart(2, '0')} / 21</span>
         </div>
-        <Artwork index={index} className="preview-visual" />
+        <CharacterPiece character={character} index={index} selected className="preview-visual" />
         <div className="preview-info">
           <span className="mono preview-number signal">PROFILE // {character.id}</span>
           <h2 className="display preview-name">{character.name}</h2>
@@ -283,7 +284,12 @@ function Setup() {
             </div>
           </div>
           <div className="setup-aside">
-            <Artwork index={characters.findIndex((item) => item.id === character.id)} className="setup-art" />
+            <CharacterPiece
+              character={character}
+              index={characters.findIndex((item) => item.id === character.id)}
+              selected
+              className="setup-art"
+            />
             <div className="setup-aside-caption mono">
               <span>PORTRAIT ASSET</span>
               <span className="empty-signal">PENDING</span>

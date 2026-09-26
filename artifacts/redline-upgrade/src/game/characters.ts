@@ -8,7 +8,7 @@ export interface CharacterDefinition {
 }
 
 // Ability copy is character flavor for Phase 1; no mechanical effects exist yet.
-// Put eventual portraits at public/characters/<id>.webp.
+// Character art is imported into public/characters from the supplied source archive.
 const roster = [
   ['guardian_h', 'Guardian H', 'The last line of defense when a city forgets who it left behind.', 'Hold the Line', 'Stands firm when everything else gives way.'],
   ['click_click', 'Click Click', 'A streetwise operator who hears opportunity in every locked door.', 'Quick Draw', 'Acts before the moment has a chance to disappear.'],
@@ -33,11 +33,35 @@ const roster = [
   ['the_tank', 'The Tank', 'An unstoppable force with no interest in taking the easy route.', 'Breakthrough', 'Pushes forward when the way is blocked.'],
 ] as const;
 
+const imageFileById: Record<string, string> = {
+  guardian_h: 'guardian_h.png',
+  click_click: 'click_click.png',
+  frostbyte: 'frostbyte.png',
+  sadman: 'sadman.png',
+  rainbow_dash: 'rainbow_dash.png',
+  accuser: 'accuser.png',
+  low_flame: 'low_flame.png',
+  wandering_eye: 'wandering_eye.png',
+  the_rind: 'the_rind.png',
+  anointed: 'anointed.png',
+  executive_p: 'executive_p.png',
+  alpha_prime: 'alpha_prime.png',
+  roll_safe: 'roll_safe.png',
+  hotwired: 'hotwired.png',
+  panic_bot: 'panic_bot.png',
+  primate: 'primate.png',
+  pain_hider: 'pain_hider.png',
+  prom_king: 'prom_king.png',
+  idol_core: 'idol_core.png',
+  danger_zone: 'danger_zone.png',
+  the_tank: 'the_tank.png',
+};
+
 export const characters: CharacterDefinition[] = roster.map(
   ([id, name, description, abilityName, abilityDescription]) => ({
     id,
     name,
-    imagePath: `characters/${id}.webp`,
+    imagePath: `characters/${imageFileById[id]}`,
     description,
     abilityName,
     abilityDescription,
