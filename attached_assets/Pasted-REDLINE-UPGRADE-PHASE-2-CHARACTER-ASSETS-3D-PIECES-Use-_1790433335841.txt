@@ -1,0 +1,72 @@
+REDLINE UPGRADE — PHASE 2: CHARACTER ASSETS + 3D PIECES
+
+Use the existing Redline Auction project only as the source for our character artwork. Do NOT copy its game logic or modify that project.
+
+The 21 Redline Upgrade characters are:
+
+guardian_h, click_click, frostbyte, sadman, rainbow_dash, accuser, low_flame, wandering_eye, the_rind, anointed, executive_p, alpha_prime, roll_safe, hotwired, panic_bot, primate, pain_hider, prom_king, idol_core, danger_zone, the_tank
+
+Character Images
+
+In Redline Auction:
+
+Most characters use their standard image around the existing character image mapping around line 338.
+prom_king and idol_core should use their existing Social images.
+the_tank and danger_zone should use their existing Bio images.
+
+For Redline Upgrade, those four special images are simply their NORMAL character images. There is no need for alternate-image logic.
+
+Search the existing Redline Auction code to find the actual asset paths rather than relying only on line numbers.
+
+Copy/import the required image assets into this new project and create a clean data-driven mapping:
+
+characterId → image
+
+Do not scatter asset paths throughout the UI.
+
+3D Character Pieces
+
+Create a reusable CharacterPiece component that turns the character artwork into a simple stylized 3D board-game pawn.
+
+Use a lightweight approach such as CSS 3D/layers unless a 3D library is truly necessary.
+
+The piece should have:
+
+Character artwork
+Slight 3D thickness/extrusion
+Futuristic base
+Ground shadow
+Subtle idle animation
+Selected/hover effect
+
+Do NOT create 21 separate 3D models. All characters should use the same piece system with different artwork.
+
+Update the character-selection screen so the actual artwork and new 3D pieces are displayed.
+
+Do Not Build Yet
+
+Do not build:
+
+75-space board
+Multiplayer
+Dice system
+Cards
+Careers
+Salaries
+Assets
+Upgrades
+Gambling
+End game
+Authentication
+Persistent currency
+Goal
+
+When finished:
+
+Character selection displays the real artwork.
+All 21 characters work.
+Selecting a character displays its 3D game piece.
+The selected character can be confirmed.
+The code is ready to place these pieces on the future game board.
+
+Stop after this phase.
