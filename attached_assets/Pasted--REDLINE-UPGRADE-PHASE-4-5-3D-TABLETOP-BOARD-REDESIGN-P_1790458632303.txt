@@ -1,0 +1,516 @@
+# REDLINE UPGRADE — PHASE 4.5
+
+## 3D TABLETOP BOARD REDESIGN
+
+Phase 4 is working with:
+
+* 75 spaces
+* 1 human + 3 CPU players
+* 2d4 dice
+* Animated dice rolls
+* Turn system
+* Movement system
+* 3D character pieces
+
+Before adding Careers, Salary, Wealth events, or other gameplay systems, redesign the board.
+
+The current board functions correctly, but visually it looks too much like a grid of UI cards.
+
+I want Redline Upgrade to feel like a **real futuristic tabletop board game that happens to be digital.**
+
+---
+
+# 1. KEEP THE GAME LOGIC
+
+Keep exactly:
+
+**75 sequential spaces**
+
+`1 → 2 → 3 → ... → 75`
+
+Do not change the existing movement, turn, dice, CPU, or player-state logic.
+
+This phase is primarily a visual/board presentation redesign.
+
+---
+
+# 2. THE BOARD MUST BE ACTUALLY 3D
+
+Do NOT simply rearrange the existing flat HTML/UI squares.
+
+The board should be a **3D tabletop environment** viewed from a slightly elevated 3/4/isometric camera.
+
+Think:
+
+* Premium modern board game
+* Futuristic tabletop
+* Cyberpunk racing circuit
+* Digital collectible board game
+* Redline aesthetic
+
+The board should look like something that could physically exist on a table.
+
+The existing 3D character pieces should physically sit ON TOP of the board spaces.
+
+---
+
+# 3. 3D BOARD BASE
+
+Create a large physical-looking 3D board/tabletop base underneath the spaces.
+
+It should have:
+
+* Thickness/depth
+* Beveled edges
+* Futuristic surface details
+* Subtle circuit-board patterns
+* Grounding/shadows
+* Redline visual accents
+
+The board should have actual perspective and depth.
+
+---
+
+# 4. 75 PHYSICAL BOARD SPACES
+
+Each of the 75 spaces should be a raised physical tile/platform.
+
+Do not make them look like flat cards.
+
+Each tile should have:
+
+* Actual thickness
+* Slightly raised surface
+* Beveled/rounded edges
+* Visible side walls
+* Ground/contact shadow
+* Space number
+* Space-type indicator
+
+Create a reusable 3D tile component rather than creating 75 unrelated objects.
+
+The spaces should have enough separation that the character pieces can clearly stand on them.
+
+---
+
+# 5. CREATE A UNIQUE ROUTE
+
+Do NOT arrange the spaces as a simple 5 × 15 grid.
+
+Create a continuous winding route through the board.
+
+The route should:
+
+* Curve
+* Change direction
+* Have interesting turns
+* Create distinct sections
+* Feel like a race circuit
+* Clearly communicate progression from 1 to 75
+
+Use physical connecting elements where appropriate:
+
+* Rails
+* Circuit lines
+* Bridges
+* Track markings
+* Arrows
+* Raised pathways
+* Small gaps between sections
+
+The player should immediately understand:
+
+**"I am traveling along a route."**
+
+rather than:
+
+**"I am looking at 75 boxes."**
+
+---
+
+# 6. CAMERA
+
+Use a slightly elevated 3/4 or isometric-style camera.
+
+The player should be able to see:
+
+* Top surfaces of spaces
+* Side/front edges of spaces
+* Depth of the board
+* Character pieces standing on spaces
+* Shadows
+* Major landmarks
+
+Do NOT use a completely flat top-down camera.
+
+The board should have visible physical depth.
+
+If useful, allow modest zooming/panning, but keep the board easy to understand.
+
+---
+
+# 7. BOARD ZONES
+
+Visually divide the 75-space journey into approximately five progression zones.
+
+Use these as temporary themes:
+
+### SPACES 1–15
+
+**THE GRIND**
+
+### SPACES 16–30
+
+**THE RISE**
+
+### SPACES 31–45
+
+**THE FLEX**
+
+### SPACES 46–60
+
+**THE CHAOS**
+
+### SPACES 61–75
+
+**THE ENDGAME**
+
+These are primarily visual/thematic labels for now.
+
+Do not implement special gameplay rules based on the zones yet.
+
+Each zone can have subtle changes in:
+
+* Background decoration
+* Track details
+* Lighting
+* Tile accents
+* Environmental props
+
+Keep the overall Redline visual identity consistent.
+
+---
+
+# 8. SPACE TYPES
+
+Continue supporting these four existing types:
+
+* NORMAL
+* EVENT
+* MILESTONE
+* GAMBLE
+
+But make them visually distinct through **3D design**, not just different border colors.
+
+### NORMAL
+
+Standard raised board tile.
+
+Simple and clean.
+
+### EVENT
+
+Standard raised tile with a physical event marker/icon.
+
+### GAMBLE
+
+More dramatic tile/platform.
+
+Possible features:
+
+* Hazard markings
+* Raised ring
+* Warning symbol
+* Stronger lighting
+* More aggressive geometry
+
+### MILESTONE
+
+A larger and more important physical platform.
+
+Possible features:
+
+* Larger footprint
+* Raised structure
+* Unique centerpiece
+* Special lighting
+* Large milestone marker
+
+Do not implement their gameplay effects yet.
+
+---
+
+# 9. MILESTONE LANDMARKS
+
+Make the milestone spaces feel like actual destinations.
+
+Use:
+
+**10, 20, 30, 45, 60, 75**
+
+as the initial milestone locations.
+
+They should be visually larger than normal spaces.
+
+Each should feel like a small landmark on the route.
+
+Space 75 should be the largest/most important destination.
+
+For now, Space 75 can be labeled:
+
+**FINISH / CASHOUT**
+
+Do not implement Cashout mechanics yet.
+
+---
+
+# 10. START AREA
+
+Create a dedicated physical starting area around Space 1.
+
+It should feel like a starting gate.
+
+Include:
+
+**START**
+
+or
+
+**START PAD**
+
+and enough room for the four character pieces to begin.
+
+The pieces should visibly enter the route from this area.
+
+---
+
+# 11. FINISH AREA
+
+Create a dedicated finish area around Space 75.
+
+Make it visually larger and more dramatic than normal spaces.
+
+Use:
+
+**FINISH**
+
+or
+
+**CASHOUT**
+
+as the visual placeholder.
+
+This is only a destination for now.
+
+Do not implement the end-game system.
+
+---
+
+# 12. USE THE CENTER OF THE BOARD
+
+The current design has too much unused center space.
+
+Use the center to give the board visual identity.
+
+Possible elements:
+
+* REDLINE UPGRADE logo
+* Central holographic display
+* Futuristic circuit emblem
+* Decorative machinery
+* Central track structure
+* Subtle animated technology
+
+Do not overcrowd the board.
+
+The route and player pieces should remain the focus.
+
+---
+
+# 13. CHARACTER PIECES
+
+The existing 3D character pieces must work naturally on the new board.
+
+They should:
+
+* Physically sit on top of the tiles
+* Cast/receive shadows where possible
+* Maintain consistent scale
+* Animate between spaces
+* Remain visible from the camera angle
+
+When multiple players occupy the same space, offset their pieces so they remain visible.
+
+Do not replace the existing character-piece system.
+
+---
+
+# 14. MOVEMENT PATH
+
+The existing movement system must continue to work.
+
+If a player rolls 6 from Space 12:
+
+`12 → 13 → 14 → 15 → 16 → 17 → 18`
+
+The 3D character should physically move from tile to tile along the new route.
+
+The movement should follow the actual visual path.
+
+Do not simply teleport the piece between arbitrary screen coordinates.
+
+---
+
+# 15. 3D LIGHTING AND DEPTH
+
+Use lighting/shadows to emphasize that this is a physical board.
+
+Use appropriate:
+
+* Ambient lighting
+* Directional/key lighting
+* Contact shadows
+* Tile shadows
+* Character shadows
+* Subtle emissive lighting
+
+Do not make it photorealistic.
+
+The desired look is:
+
+**stylized futuristic tabletop game**
+
+not a realistic simulator.
+
+---
+
+# 16. REUSABLE COMPONENT ARCHITECTURE
+
+Keep the board data separate from its visual presentation.
+
+The board should continue to be data-driven.
+
+For example:
+
+`spaceId`
+
+`spaceType`
+
+`position`
+
+`zone`
+
+`isMilestone`
+
+`name`
+
+Later we will add:
+
+`effects`
+
+`wealthEffect`
+
+`careerTargets`
+
+`cardType`
+
+etc.
+
+Do not hardcode individual gameplay logic into the visual board components.
+
+---
+
+# 17. RESPONSIVE DESIGN
+
+The board should work well on desktop screens.
+
+Prioritize desktop because this is currently a desktop/tabletop-style game.
+
+Make sure:
+
+* The entire route is understandable
+* The 3D pieces remain visible
+* The board does not become microscopic
+* UI overlays do not cover important spaces
+
+---
+
+# 18. DO NOT BUILD YET
+
+Do NOT add:
+
+* Careers
+* Salaries
+* Career abilities
+* Wealth events
+* Cards
+* Cars
+* Property
+* Investments
+* Upgrade tokens
+* Meme upgrades
+* Full gambling system
+* End-game system
+* Cashout mechanics
+* Double Down
+* Final Gamble
+* Redline Credits
+* Online multiplayer
+* Authentication
+
+Those come later.
+
+---
+
+# 19. MULTIPLAYER NOTE
+
+Do not attempt to reuse or copy Redline Auction's multiplayer system.
+
+Multiplayer will be built much later and primarily through GitHub.
+
+For now, keep the local game architecture clean and centralized so that the eventual multiplayer layer can synchronize:
+
+* Player state
+* Current turn
+* Position
+* Dice results
+* Career
+* Salary
+* Wealth
+* Stats
+* Cards
+* Upgrades
+
+Do not spend development time on networking during this phase.
+
+---
+
+# 20. SUCCESS CRITERIA
+
+When finished, the board should visibly feel like a **3D tabletop game**, not a grid of UI cards.
+
+I should see:
+
+* A physical 3D board base
+* 75 raised 3D spaces
+* A winding route
+* Physical-looking tile depth
+* Distinct space types
+* Larger milestone landmarks
+* A dedicated START area
+* A dedicated FINISH/CASHOUT area
+* Five visually distinct progression zones
+* The existing 3D character pieces standing on the board
+* Character movement following the physical route
+* Lighting and shadows creating depth
+* A clear futuristic Redline identity
+
+Most importantly:
+
+**The board should look like a board game first and a website/app second.**
+
+Do not sacrifice usability for visual effects.
+
+Keep the existing game logic working.
+
+**STOP after the 3D board redesign is complete.**
