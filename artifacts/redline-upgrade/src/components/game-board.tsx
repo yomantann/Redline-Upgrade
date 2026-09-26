@@ -1,8 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { BOARD_SPACES } from '../game/board-data';
 import type { MatchPlayer } from '../game/match';
-import { CharacterPiece } from './character-piece';
+import { ErrorBoundary } from './error-boundary';
+import { BoardScene, ROUTE } from './board-scene';
+import { BoardFallback } from './board-fallback';
 import './game-board.css';
+import './board-scene.css';
 
 export interface GameBoardProps {
   players: MatchPlayer[];
@@ -11,146 +15,99 @@ export interface GameBoardProps {
   movingPlayerId: string | null;
 }
 
-function BoardPawns({
-  occupants,
-  activePlayerId,
-  movingPlayerId,
-  landing,
-}: {
-  occupants: MatchPlayer[];
-  activePlayerId: string;
-  movingPlayerId: string | null;
-  landing: boolean;
-}) {
-  return (
-    <div className="ru-board__pawns" data-count={occupants.length} aria-label={occupants.map((player) => player.displayName).join(', ')}>
-      {occupants.map((player) => {
-        const active = player.playerId === activePlayerId;
-        const moving = player.playerId === movingPlayerId;
-        return (
-          <div
-            className="ru-board__pawn"
-            data-active={active}
-            data-moving={moving}
-            data-testid={`board-pawn-${player.playerId}`}
-            title={`${player.displayName} · space ${player.position}`}
-            key={player.playerId}
-          >
-            <CharacterPiece
-              characterId={player.characterId}
-              name={player.displayName}
-              compact
-              selected={active}
-              motion={moving ? 'moving' : landing && active ? 'landing' : 'idle'}
-            />
-            <span className="ru-board__pawn-index" aria-hidden="true">{String(player.slot + 1).padStart(2, '0')}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const zones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 
-/**
- * A five-pass, serpentine 75-space circuit. Space 1 begins at the lower left;
- * successive rows reverse direction so the path never teleports across a row.
- */
 export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId }: GameBoardProps) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const occupants = new Map<number, MatchPlayer[]>();
-  for (const player of players) {
-    const at = Math.max(0, Math.min(75, player.position));
-    const group = occupants.get(at) ?? [];
-    group.push(player);
-    occupants.set(at, group);
-  }
-  const activePlayer = players.find((player) => player.playerId === activePlayerId);
-  const startOccupants = occupants.get(0) ?? [];
+  const [webgl, setWebgl] = useState<boolean | null>(null);
+  const [overview, setOverview] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const active = players.find(p => p.playerId === activePlayerId);
+  const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
 
   useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport || !activePlayer) return;
-    const target = activePlayer.position === 0
-      ? viewport.querySelector<HTMLElement>('.ru-board__start')
-      : viewport.querySelector<HTMLElement>(`[data-testid="board-space-${activePlayer.position}"]`);
-    if (!target) return;
-    const left = target.offsetLeft - viewport.clientWidth / 2 + target.clientWidth / 2;
-    viewport.scrollTo({ left: Math.max(0, left), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  }, [activePlayer?.position, activePlayerId]);
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduceMotion(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    try {
+      const probe = document.createElement('canvas');
+      const gl = probe.getContext('webgl2', { failIfMajorPerformanceCaveat: true });
+      setWebgl(Boolean(gl));
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {
+      setWebgl(false);
+    }
+  }, []);
+  // A moving turn should enter the close chase camera automatically; the map remains available.
+  useEffect(() => {
+    if (movingPlayerId === activePlayerId) setOverview(false);
+  }, [movingPlayerId, activePlayerId]);
 
-  return (
-    <section className="ru-board" aria-label="Redline Upgrade 75-space game board" data-testid="game-board">
-      <header className="ru-board__masthead">
-        <div>
-          <span className="ru-board__overline">Circuit 01 / the upgrade route</span>
-          <h2 className="ru-board__title">The redline circuit</h2>
-        </div>
-        <div className="ru-board__meta">
-          <strong>75 spaces</strong><br />
-          Start low. Finish high.
-        </div>
-      </header>
-
-      <div className="ru-board__viewport" ref={viewportRef} role="region" tabIndex={0} aria-label="Scrollable game board track">
-        <div className="ru-board__surface">
-          <div className="ru-board__grid">
-            {[1, 2, 3, 4, 5].map((row) => <span key={`rail-${row}`} aria-hidden="true" className={`ru-board__row-rail ru-board__row-rail--${row}`} />)}
-            {[1, 2, 3, 4].map((turn) => <span key={`turn-${turn}`} aria-hidden="true" className={`ru-board__turn ru-board__turn--${turn}`} />)}
-            {BOARD_SPACES.map((space) => {
-              const routeRow = Math.floor((space.number - 1) / 15);
-              const routeColumn = (space.number - 1) % 15;
-              const column = routeRow % 2 === 0 ? routeColumn + 1 : 15 - routeColumn;
-              const row = 5 - routeRow;
-              const onSpace = occupants.get(space.number) ?? [];
-              const isLanding = landingPosition === space.number;
-              const isActive = activePlayer?.position === space.number;
-              const isMoving = onSpace.some((player) => player.playerId === movingPlayerId);
-              return (
-                <div
-                  key={space.number}
-                  className={[
-                    'ru-board__cell',
-                    `ru-board__cell--${space.type.toLowerCase()}`,
-                    onSpace.length && 'ru-board__cell--occupied',
-                    isLanding && 'ru-board__cell--landing',
-                    isActive && 'ru-board__cell--active',
-                    isMoving && 'ru-board__cell--moving',
-                  ].filter(Boolean).join(' ')}
-                  style={{ gridRow: row, gridColumn: column }}
-                  data-testid={`board-space-${space.number}`}
-                  aria-label={`Space ${space.number}, ${space.type.toLowerCase()}${onSpace.length ? `, occupied by ${onSpace.map((player) => player.displayName).join(' and ')}` : ''}${isLanding ? ', landing space' : ''}`}
-                >
-                  <span className="ru-board__cell-number">{String(space.number).padStart(2, '0')}</span>
-                  {space.number === 75 && <span className="ru-board__finish-label">FINISH</span>}
-                  <span className="ru-board__cell-label">{space.type}</span>
-                  {onSpace.length > 0 && <BoardPawns occupants={onSpace} activePlayerId={activePlayerId} movingPlayerId={movingPlayerId} landing={isLanding} />}
-                </div>
-              );
-            })}
-          </div>
-          <div className="ru-board__start" data-testid="board-start-pad" aria-label={`Start pad, ${startOccupants.length} players`}>
-            <span className="ru-board__start-mark" aria-hidden="true">00</span>
-            <div className="ru-board__start-copy">
-              <span className="ru-board__start-label">START PAD</span>
-              <span className="ru-board__start-sub">All runners enter here</span>
-            </div>
-            <div className="ru-board__start-pawns">
-              <BoardPawns occupants={startOccupants} activePlayerId={activePlayerId} movingPlayerId={movingPlayerId} landing={landingPosition === 0} />
-            </div>
-          </div>
-        </div>
+  return <section className="ru-board ru-tabletop" aria-label="Redline Upgrade 75-space game board" data-testid="game-board">
+    <header className="ru-board__masthead">
+      <div><span className="ru-board__overline">CIRCUIT 01 / PHYSICAL EDITION</span><h2 className="ru-board__title">The redline circuit<span className="ru-board__title-slash"> / 75</span></h2></div>
+      <div className="ru-board__controls" role="group" aria-label="Board camera">
+        <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={() => setOverview(true)} aria-pressed={overview}>01 / FULL CIRCUIT</button>
+        <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => setOverview(false)} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
       </div>
-      <footer className="ru-board__foot">
-        <div className="ru-board__legend" aria-label="Space type legend">
-          <span><i />Route</span>
-          <span className="event"><i />Event</span>
-          <span className="gamble"><i />Gamble</span>
-          <span className="milestone"><i />Milestone</span>
-        </div>
-        <span className="ru-board__scroll-cue">Scroll sideways to follow the circuit →</span>
-      </footer>
-    </section>
-  );
+    </header>
+    <div className="ru-board__stage">
+      <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
+      {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
+      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} />}
+      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} />}>
+        <Canvas
+          aria-hidden="true"
+          data-testid="board-canvas"
+          orthographic
+          camera={{ position: [2, 39, 37], zoom: 1, near: 0.1, far: 150 }}
+          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+          shadows
+          dpr={[1, 1.6]}
+          onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
+        >
+          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} />
+        </Canvas>
+      </ErrorBoundary>}
+      <div className="ru-board__telemetry" aria-live="polite">
+        <span>LIVE POSITION / {active?.displayName ?? 'RUNNER'}</span>
+        <strong>{activePosition === 0 ? 'START' : String(activePosition).padStart(2, '0')}{activePosition > 0 && <small> / 75</small>}</strong>
+        <span>{activePosition === 0 ? 'LAUNCH PAD' : zones[Math.floor((activePosition - 1) / 15)]}</span>
+      </div>
+      <div className="ru-board__minimap" aria-label="Complete circuit overview">
+        <span className="ru-board__minimap-label">ROUTE / 00—75</span>
+        <svg viewBox="-25 -18 50 36" role="img" aria-label={`Circuit map, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
+          <polyline points={ROUTE.map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke="#516b58" strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={ROUTE.slice(0, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke="#f96346" strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />
+          {[10, 20, 30, 45, 60, 75].map(n => <circle key={n} cx={ROUTE[n].x} cy={ROUTE[n].z} r=".52" fill="#f96346" />)}
+          <circle cx={ROUTE[activePosition].x} cy={ROUTE[activePosition].z} r=".92" fill="#d4e981" stroke="#14211c" strokeWidth=".3" />
+        </svg>
+        <span className="ru-board__minimap-endpoints"><span>START</span><span>FINISH</span></span>
+      </div>
+    </div>
+    <footer className="ru-board__foot">
+      <div className="ru-board__legend" aria-label="Space type legend">
+        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span>
+      </div>
+      <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>
+    </footer>
+    {/* Persistent DOM semantics: canvas is a drawing surface, not the source of game state. */}
+    <div className="ru-board__accessible" aria-label="Board spaces and occupants">
+      <div data-testid="board-start-pad" aria-label={`Start pad, ${players.filter(p => p.position === 0).length} players`}>Start pad, position zero</div>
+      {BOARD_SPACES.map(space => {
+        const occupants = players.filter(p => p.position === space.number);
+        return <div key={space.number} data-testid={`board-space-${space.number}`} aria-label={`Space ${space.number}, ${space.type.toLowerCase()}, ${zones[Math.floor((space.number - 1) / 15)]}${occupants.length ? `, occupied by ${occupants.map(p => p.displayName).join(' and ')}` : ''}${landingPosition === space.number ? ', landing space' : ''}`}>
+          Space {space.number}: {space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
+        </div>;
+      })}
+      {players.map(p => <div key={p.playerId} data-testid={`board-pawn-${p.playerId}`} aria-label={`${p.displayName}, ${p.position === 0 ? 'start pad' : `space ${p.position}`}`}>
+        {p.displayName} at {p.position === 0 ? 'start' : `space ${p.position}`}
+      </div>)}
+    </div>
+    <span hidden data-testid="board-webgl-status">{webgl === null ? 'Checking WebGL2' : webgl ? 'WebGL2 ready' : 'WebGL2 unavailable'}</span>
+  </section>;
 }
 
 export default GameBoard;

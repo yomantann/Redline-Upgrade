@@ -14,3 +14,9 @@ On September 26, 2026, the automated browser tester returned infrastructure erro
 **Why:** Turn timing and visual movement need a running browser, but automation availability is outside the app's control. Claiming an end-to-end pass after an infrastructure failure would misrepresent what was checked.
 
 **How to apply:** When browser testing fails independently of the app, attempt a distinct low-cost check, stop after repeated infrastructure failures, and report the limitation plainly.
+
+For board redesigns, keep the WebGL tabletop as the primary renderer, but give its no-WebGL path a physical-looking route projected from the same world positions—not a separate card grid.
+
+**Why:** The Replit screenshot browser displayed the fallback instead of the GPU scene. A flat fallback would make a successful 3D redesign appear unchanged there, and separate coordinates would misrepresent player movement.
+
+**How to apply:** Keep one ordered route source for both renderers, preserve visible pawns and numbered spaces in the fallback, and report that a fallback screenshot does not prove the live WebGL view.
