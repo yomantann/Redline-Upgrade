@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Redline Upgrade"
+description = "A dark futuristic game foundation with a home screen, data-driven character selection, and local-only game setup."
+version = "1.0.0"
+id = "artifacts/redline-upgrade"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24895
+
+[services.development]
+run = "pnpm --filter @workspace/redline-upgrade run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/redline-upgrade", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/redline-upgrade/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24895"
+BASE_PATH = "/"
