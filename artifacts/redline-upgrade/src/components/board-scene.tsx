@@ -117,11 +117,11 @@ const mats = {
 
 function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; landing: boolean }) {
   const { x, z } = ROUTE[space.number];
-  const landmark = space.type === 'MILESTONE';
+  const landmark = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
   const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.payday ? mats.lime : space.type === 'EVENT' ? mats.lime : mats.normal;
-  const marker = space.payday ? '$' : space.type === 'EVENT' ? '◆' : space.type === 'GAMBLE' ? '!' : landmark ? '◇' : '—';
+  const marker = space.payday ? '$' : space.type === 'EVENT' ? '◆' : space.type === 'GAMBLE' ? '!' : space.type === 'CAREER_CHANGE' ? '↗' : landmark ? '◇' : '—';
   return <group position={[x, 0, z]}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
     <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
@@ -148,7 +148,7 @@ function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; 
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={-0.55} y={topY + 0.045} z={-0.37} w={0.95} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
     <PrintedLabel lines={[marker]} x={0.65} y={topY + 0.047} z={-0.45} w={0.37} h={0.36} color={space.payday || space.type === 'EVENT' ? COLORS.lime : space.type === 'NORMAL' ? '#88a093' : COLORS.orange} />
-    {finish && <PrintedLabel lines={['FINISH', 'CASHOUT']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
+    {finish && <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
   </group>;
 }
 

@@ -123,3 +123,17 @@
 @media (prefers-reduced-motion:reduce) {
   .game-player.active,.wealth-change,.payday-flash { animation:none !important; }
 }
+.game-player-identity { display:grid; grid-template-columns:62px minmax(0,1fr); min-height:76px; border-bottom:1px solid #405045; }
+.game-player-portrait { height:76px; border-right:1px solid #405045; }
+.game-player-portrait img { object-position:center 23%; }
+.game-player-identity-copy { display:flex; flex-direction:column; justify-content:center; min-width:0; }
+.game-player-identity-copy .mono { color:#a9bba8; font-size:8px; padding:0 12px; }
+.game-player-name { padding:5px 12px 6px !important; }
+.game-player-career small { display:block; color:#c0d2b0; font:700 8px/1.4 'Space Mono',monospace; letter-spacing:.035em; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.asset-purchase-flash { position:fixed; z-index:51; right:clamp(20px,4.2vw,72px); top:100px; width:min(385px,calc(100vw - 40px)); padding:18px 20px; background:#d4e981; color:#162119; border-left:5px solid #f96346; box-shadow:12px 12px 0 rgba(0,0,0,.25); display:flex; flex-direction:column; gap:7px; pointer-events:none; }
+.asset-purchase-flash strong { font:900 45px/.9 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.career-locked-flash { position:fixed; z-index:52; left:clamp(20px,4.2vw,72px); top:100px; width:min(370px,calc(100vw - 40px)); padding:17px 20px; background:#203027; border:1px solid #d4e981; border-left:5px solid #d4e981; display:flex; flex-direction:column; gap:5px; box-shadow:12px 12px 0 rgba(0,0,0,.25); pointer-events:none; }
+.career-locked-flash strong { color:#d4e981; font:900 43px/.9 'Barlow Condensed',sans-serif; }
+.game-screen:has(.milestone-choice) .turn-roll { opacity:.45; }
+@media(max-width:600px) { .game-player-identity { grid-template-columns:84px minmax(0,1fr); min-height:94px; } .game-player-portrait { height:94px; } .game-player-name { font-size:36px !important; } .asset-purchase-flash,.career-locked-flash { top:76px; } }
+@media(prefers-reduced-motion:no-preference) { .asset-purchase-flash,.career-locked-flash { animation:payday-in .35s cubic-bezier(.2,.9,.2,1) both; } }

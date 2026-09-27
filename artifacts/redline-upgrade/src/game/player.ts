@@ -1,4 +1,5 @@
 import { getCharacter } from './characters';
+import type { AssetSlot } from './assets';
 
 export interface Player {
   playerId: string;
@@ -13,7 +14,7 @@ export interface Player {
   careerId: string | null;
   salaryTier: number;
   salaryAmount: number;
-  assets: string[];
+  equipment: Record<AssetSlot, string | null>;
   upgrades: string[];
 }
 
@@ -35,7 +36,7 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
     careerId: null,
     salaryTier: 0,
     salaryAmount: 0,
-    assets: [],
+    equipment: { car: null, lifestyle: null, companion: null, property: null },
     upgrades: [],
   };
 }

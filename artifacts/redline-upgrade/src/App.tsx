@@ -217,7 +217,7 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
               Test move <span aria-hidden="true">↗</span>
             </button>
           </div>
-          <p className="preview-note mono">CONFIRMATION CREATES A LOCAL PLAYER RECORD</p>
+           <p className="preview-note mono">CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME</p>
         </div>
       </div>
     </aside>
@@ -265,7 +265,7 @@ function Characters() {
 
 function Setup() {
   const [, navigate] = useLocation();
-  const { player, startNewGame } = useGame();
+  const { player, match, beginGame, startNewGame } = useGame();
   const character = player ? getCharacter(player.characterId) : undefined;
 
   if (!player || !character) {
@@ -300,13 +300,13 @@ function Setup() {
           <div className="setup-content">
             <span className="mono lime">PLAYER RECORD // {player.playerId.slice(0, 8)}</span>
             <h1 className="display setup-title">Ready to<br /><span className="title-outline">upgrade.</span></h1>
-            <p className="setup-lede">Three CPU rivals have been assigned. Your career and salary are ready to be revealed before the first roll.</p>
+            <p className="setup-lede">Your identity is selected. Start the game to assign a random career and salary to you and three CPU rivals.</p>
             <div className="setup-record mono">
               <span className="setup-record-label">SELECTED IDENTITY</span>
               <span className="setup-record-value">{character.name}</span>
             </div>
             <div className="setup-actions">
-              <button className="action lime-action" type="button" onClick={() => navigate('/career')} data-testid="button-enter-career">Reveal career <span aria-hidden="true">↗</span></button>
+              <button className="action lime-action" type="button" onClick={() => { beginGame(); navigate('/career'); }} data-testid="button-enter-career">{match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
             </div>
           </div>

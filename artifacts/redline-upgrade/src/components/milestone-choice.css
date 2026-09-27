@@ -1,0 +1,77 @@
+.milestone-salary-details.salary-tier-1 { box-shadow: inset 5px 0 #62796b; }
+.milestone-salary-details.salary-tier-2 { box-shadow: inset 5px 0 #94b09a; }
+.milestone-salary-details.salary-tier-3 { box-shadow: inset 5px 0 #c6df8e; }
+.milestone-salary-details.salary-tier-4 { box-shadow: inset 5px 0 #f9a66d; }
+.milestone-salary-details.salary-tier-1 > strong,.milestone-salary-details.salary-tier-1 > b { color: #95ad9d; }
+.milestone-salary-details.salary-tier-2 > strong,.milestone-salary-details.salary-tier-2 > b { color: #b6ccbb; }
+.milestone-salary-details.salary-tier-3 > strong,.milestone-salary-details.salary-tier-3 > b { color: #d4e981; }
+.milestone-salary-details.salary-tier-4 > strong,.milestone-salary-details.salary-tier-4 > b { color: #f9a66d; }
+.milestone-choice { --edge:#435346; --muted:#aab8a8; margin:0 0 23px; border:1px solid #647666; background:#142019; color:#e9e7dc; position:relative; overflow:hidden; }
+.milestone-choice::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.22; background:repeating-linear-gradient(90deg,transparent 0 63px,#435c4b 64px,transparent 65px); mask-image:linear-gradient(to bottom,#000,transparent 420px); }
+.milestone-heading { position:relative; padding:24px clamp(20px,3vw,44px) 30px; border-bottom:1px solid var(--edge); display:flex; justify-content:space-between; gap:25px; align-items:end; }
+.milestone-heading h2 { font:900 clamp(64px,9vw,138px)/.78 'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:-.04em; margin:20px 0 0; max-width:900px; }
+.milestone-heading h2 span { color:#d4e981; }
+.milestone-heading p { color:#bdcbb9; font-size:13px; line-height:1.55; max-width:265px; margin:0; }
+.milestone-heading .eyebrow { color:#f96346; }
+.milestone-meta { position:relative; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:12px clamp(20px,3vw,44px); color:#c9d6c4; border-bottom:1px solid var(--edge); background:#1a2a20; }
+.milestone-meta b { color:#d4e981; }
+.milestone-grid { position:relative; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:clamp(15px,2vw,30px); }
+.milestone-grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.milestone-card { min-width:0; border:1px solid #5a6e5d; background:#202c23; display:flex; flex-direction:column; transition:transform .2s,border-color .2s; }
+.milestone-card:hover { transform:translateY(-4px); border-color:#d4e981; }
+.milestone-card:has(button:disabled) { border-color:#405047; }
+.milestone-art { position:relative; isolation:isolate; min-height:170px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 52% 48%,#3e5844,#23372e 55%,#17261e 100%); border-bottom:1px solid #5a6e5d; }
+.milestone-art::before { content:""; position:absolute; inset:0; opacity:.33; background:repeating-linear-gradient(0deg,transparent 0 24px,#93ad8f 25px,transparent 26px),repeating-linear-gradient(90deg,transparent 0 24px,#93ad8f 25px,transparent 26px); transform:perspective(300px) rotateX(25deg) scale(1.3); }
+.milestone-art::after { content:""; position:absolute; width:125px; aspect-ratio:1; border:2px solid currentColor; border-radius:50%; box-shadow:inset 0 0 0 19px #263c30,inset 0 0 0 21px currentColor; transform:rotate(-25deg) skew(-10deg); opacity:.55; }
+.milestone-art[data-category="car"] { color:#f96346; background:radial-gradient(circle,#604433,#322b25 65%,#1a221d); }
+.milestone-art[data-category="lifestyle"] { color:#e9db9f; background:radial-gradient(circle,#505543,#29372d 65%,#1a221d); }
+.milestone-art[data-category="pet"] { color:#d4e981; }
+.milestone-art[data-category="investment"] { color:#8fbcca; background:radial-gradient(circle,#344f53,#213538 65%,#172629); }
+.milestone-art[data-category="property"] { color:#e1a67a; background:radial-gradient(circle,#574c3e,#302d2a 65%,#1a221d); }
+.milestone-art-symbol { z-index:1; color:currentColor; font:900 clamp(68px,8vw,122px)/1 'Barlow Condensed',sans-serif; letter-spacing:-.08em; text-shadow:5px 5px 0 #142019; }
+.milestone-art-index,.milestone-art-caption { position:absolute; z-index:2; color:#e2edda; font:700 8px 'Space Mono',monospace; letter-spacing:.15em; }
+.milestone-art-index { top:13px; left:14px; }
+.milestone-art-caption { bottom:12px; right:14px; text-align:right; }
+.milestone-card-body { padding:18px 18px 20px; display:flex; flex:1; flex-direction:column; }
+.milestone-card-kicker { color:#a9bda6; }
+.milestone-card h3 { font:800 clamp(31px,3vw,48px)/.88 'Barlow Condensed',sans-serif; text-transform:uppercase; margin:12px 0 13px; min-height:1.76em; letter-spacing:-.02em; }
+.milestone-card-desc { font-size:12px; line-height:1.55; color:#b8c6b6; margin:0 0 18px; min-height:3.1em; }
+.milestone-card-price { display:flex; align-items:baseline; justify-content:space-between; gap:5px; border-top:1px solid #536452; padding:12px 0; }
+.milestone-card-price strong { font:800 34px 'Barlow Condensed',sans-serif; color:#d4e981; }
+.milestone-effects { display:flex; flex-wrap:wrap; gap:5px; min-height:33px; margin:0 0 13px; }
+.milestone-effects span { display:inline-flex; padding:7px 8px; background:#344838; color:#dcebc8; font:700 9px/1.2 'Space Mono',monospace; letter-spacing:.03em; text-transform:uppercase; }
+.milestone-passive { margin:0 0 15px; padding:8px 0; color:#cbd9c4; border-top:1px dashed #536452; font-size:11px; line-height:1.45; }
+.milestone-passive b { display:block; color:#e9ad91; font:700 9px 'Space Mono',monospace; letter-spacing:.1em; margin-bottom:4px; }
+.milestone-buy { margin-top:auto; width:100%; min-height:54px; border:0; padding:10px 14px; background:#d4e981; color:#172219; display:flex; justify-content:space-between; align-items:center; text-align:left; font:700 10px 'Space Mono',monospace; letter-spacing:.08em; transition:background .2s,transform .2s; }
+.milestone-buy:not(:disabled):hover { background:#e6f5ad; transform:translateY(-2px); }
+.milestone-buy:disabled { background:#37483d; color:#aab5a6; cursor:not-allowed; }
+.milestone-footer { position:relative; border-top:1px solid var(--edge); display:flex; align-items:center; justify-content:space-between; gap:15px; flex-wrap:wrap; padding:17px clamp(20px,3vw,44px); color:#9cab9d; }
+.milestone-skip { border:1px solid #67776a; color:#e9e7dc; background:transparent; padding:14px 17px; min-height:47px; font:700 10px 'Space Mono',monospace; letter-spacing:.08em; }
+.milestone-skip:hover { background:#314438; }
+.milestone-option { text-align:left; color:#e9e7dc; cursor:pointer; }
+.milestone-option .milestone-card-body { gap:10px; }
+.milestone-option h3 { min-height:0; font-size:clamp(38px,5vw,69px); }
+.milestone-option .milestone-buy { pointer-events:none; }
+.milestone-career-current { position:relative; margin:clamp(15px,2vw,30px) clamp(15px,2vw,30px) 0; border:1px solid #526456; display:flex; align-items:center; gap:20px; padding:15px 19px; background:#1d2b22; }
+.milestone-career-current .career-glyph { flex:none; }
+.milestone-career-current div { display:flex; flex-direction:column; gap:4px; }
+.milestone-career-current strong { font:800 30px/.95 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.milestone-career-current small { color:#afc2ae; font-size:11px; }
+.milestone-salary { position:relative; display:grid; grid-template-columns:minmax(0,1.1fr) minmax(240px,.9fr); margin:clamp(15px,2vw,30px); border:1px solid #667862; }
+.milestone-salary-feature { background:#d4e981; color:#172219; padding:clamp(25px,4vw,58px); display:flex; flex-direction:column; justify-content:space-between; min-height:330px; }
+.milestone-salary-feature .career-glyph { font-size:70px; line-height:1; }
+.milestone-salary-feature h3 { font:900 clamp(65px,8vw,125px)/.82 'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:-.04em; margin:22px 0; }
+.milestone-salary-details { padding:clamp(25px,4vw,58px); background:#213228; display:flex; flex-direction:column; justify-content:center; }
+.milestone-salary-details strong { color:#d4e981; font:800 clamp(60px,8vw,115px)/.95 'Barlow Condensed',sans-serif; }
+.milestone-salary-details b { color:#e9e7dc; font:800 36px 'Barlow Condensed',sans-serif; }
+.milestone-salary-details p { color:#afc2ae; font-size:12px; line-height:1.5; }
+.milestone-salary-details .action { margin-top:25px; width:100%; }
+.milestone-cpu { min-height:350px; display:grid; place-content:center; text-align:center; padding:30px; position:relative; }
+.milestone-cpu strong { font:900 clamp(65px,10vw,140px)/.82 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.milestone-cpu p { color:#b2c2ae; }
+.milestone-cpu i { display:block; margin:20px auto; width:80px; height:3px; background:#d4e981; transform-origin:left; animation:cpu-scan 1.5s ease-in-out infinite; }
+@keyframes cpu-scan { 0%,100% { transform:scaleX(.25); } 50% { transform:scaleX(1); } }
+@media(max-width:1100px) { .milestone-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:700px) { .milestone-heading { display:block; } .milestone-heading h2 { font-size:clamp(65px,16vw,105px); } .milestone-heading p { margin-top:20px; } .milestone-salary { grid-template-columns:1fr; } .milestone-salary-feature { min-height:250px; } }
+@media(max-width:520px) { .milestone-grid,.milestone-grid.two { grid-template-columns:1fr; } .milestone-art { min-height:150px; } .milestone-card h3 { min-height:0; } .milestone-card-desc { min-height:0; } .milestone-footer .milestone-skip { width:100%; } }
+@media(prefers-reduced-motion:reduce) { .milestone-card,.milestone-buy { transition:none; } .milestone-cpu i { animation:none; } }

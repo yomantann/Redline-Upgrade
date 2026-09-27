@@ -21,6 +21,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(true);
   const [zoom, setZoom] = useState(1);
+  const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const stageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -49,6 +50,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (movingPlayerId === activePlayerId) setOverview(false);
   }, [movingPlayerId, activePlayerId]);
   useEffect(() => {
+    if (!wheelZoomEnabled) return;
     const stage = stageRef.current;
     if (!stage) return;
     const onWheel = (event: WheelEvent) => {
@@ -57,10 +59,10 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
     return () => stage.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [wheelZoomEnabled]);
   const centerCamera = () => { setOverview(true); setZoom(1); setPan({ x: 0, z: 0 }); };
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+    if (event.button !== 0 || (event.pointerType === 'touch' && !wheelZoomEnabled) || (event.target as HTMLElement).closest('button')) return;
     drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -87,10 +89,11 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
         <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => { setOverview(false); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
         <button type="button" onClick={() => setZoom(value => Math.max(0.7, +(value / 1.3).toFixed(2)))} aria-label="Zoom out">−</button>
         <button type="button" onClick={() => setZoom(value => Math.min(2.8, +(value * 1.3).toFixed(2)))} aria-label="Zoom in">+</button>
+        <button type="button" className={wheelZoomEnabled ? 'selected' : ''} aria-pressed={wheelZoomEnabled} onClick={() => setWheelZoomEnabled(value => !value)} title="Only capture the scroll wheel when enabled">{wheelZoomEnabled ? 'SCROLL ZOOM ON' : 'ENABLE SCROLL ZOOM'}</button>
         <button type="button" onClick={centerCamera} aria-label="Reset and center board camera">CENTER</button>
       </div>
     </header>
-    <div className="ru-board__stage" ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+    <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
       {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} />}
@@ -126,7 +129,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     </div>
     <footer className="ru-board__foot">
       <div className="ru-board__legend" aria-label="Space type legend">
-        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span><span className="payday"><i />PAYDAY $</span>
+        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span><span className="milestone"><i />CAREER CHANGE</span><span className="payday"><i />SALARY GATE $</span>
       </div>
       <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>
     </footer>

@@ -1,0 +1,19 @@
+.player-assets { border-top:1px solid #455745; background:#19271f; padding:12px 12px 13px; }
+.player-assets-head { display:flex; justify-content:space-between; gap:6px; color:#b1c2ac; margin:0 4px 9px; }
+.player-assets-head b { color:#d4e981; }
+.player-assets-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; }
+.player-asset { min-width:0; border:1px solid #445747; background:#23342a; }
+.player-asset.owned { border-color:#839b76; background:#344b38; }
+.player-asset-art { height:53px; display:grid; place-items:center; position:relative; overflow:hidden; color:#e5bb98; background:radial-gradient(circle at center,#4a5540,#293a2e 70%); }
+.player-asset-art::before { content:""; position:absolute; width:36px; height:36px; border:1px solid currentColor; border-radius:50%; opacity:.55; }
+.player-asset-art b { z-index:1; font:800 34px/.8 'Barlow Condensed',sans-serif; }
+.player-asset-art[data-category="car"] { color:#f96346; background:radial-gradient(circle,#554333,#2d352a); }
+.player-asset-art[data-category="lifestyle"] { color:#e9db9f; }
+.player-asset-art[data-category="pet"] { color:#d4e981; }
+.player-asset-art[data-category="investment"] { color:#8fbcca; }
+.player-asset-art[data-category="property"] { color:#e1a67a; }
+.player-asset.empty .player-asset-art { color:#657b68; background:#23342a; }
+.player-asset-label { padding:6px 5px 3px; color:#a9bca7; font:700 8px/1.2 'Space Mono',monospace; letter-spacing:.04em; text-transform:uppercase; }
+.player-asset-name { display:block; min-height:24px; padding:0 5px 7px; color:#ebebd9; font:700 13px/.95 'Barlow Condensed',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
+.player-asset.empty .player-asset-name { color:#738677; }
+@media(max-width:600px) { .player-asset-art { height:63px; } .player-asset-name { font-size:15px; } }

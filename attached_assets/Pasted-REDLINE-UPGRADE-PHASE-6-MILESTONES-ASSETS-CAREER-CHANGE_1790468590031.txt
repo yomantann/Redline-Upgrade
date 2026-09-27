@@ -1,0 +1,651 @@
+REDLINE UPGRADE — PHASE 6
+MILESTONES, ASSETS & CAREER CHANGE
+
+Phase 5 is complete.
+
+Now build the first major milestone/asset system.
+
+IMPORTANT:
+Keep this phase focused. Do not build multiplayer, endgame, gambling cards, upgrades, or authentication yet.
+
+==================================================
+1. MILESTONE STRUCTURE
+==================================================
+
+Use these milestone locations:
+
+SPACE 10 — CAR
+SPACE 30 — LIFESTYLE
+SPACE 35 — CAREER CHANGE
+SPACE 45 — PET OR INVESTMENT
+SPACE 60 — PROPERTY
+SPACE 75 — FINAL ENDGAME PLACEHOLDER
+
+Milestone spaces trigger when LANDING on them.
+
+EXCEPTION:
+Space 35 Career Change triggers when the player LANDs ON or PASSES THROUGH it.
+
+Salary Gates continue to trigger on landing OR passing.
+
+==================================================
+2. MILESTONE UI
+==================================================
+
+When a player reaches a milestone, pause their turn and display a dedicated choice screen.
+
+Choices should be presented as large, visual board-game-style cards.
+
+Every card must clearly show:
+
+- Image/visual
+- Name
+- Category
+- Cost
+- Stat effects
+- Passive/special effect if applicable
+- BUY/SELECT button
+
+Do not use tiny buttons or simple text lists.
+
+The player should immediately understand:
+
+WHAT AM I GETTING?
+WHAT DOES IT COST?
+WHAT DOES IT DO?
+
+==================================================
+3. SPACE 10 — CAR
+==================================================
+
+When the player lands on Space 10:
+
+Show:
+
+CHOOSE YOUR CAR
+
+Present 3–4 Car cards.
+
+Initial examples:
+
+BUDGET RACER
+$50K
++3 Fame
+
+FLEX CAR
+$150K
++10 Fame
++5 Influence
+
+SUPERCAR
+$300K
++20 Fame
++10 Influence
+
+ELECTRIC HYPERCAR
+$250K
++15 Fame
++10 AI Skill
+
+These are initial placeholders and should be easy to rebalance.
+
+Player may only purchase a Car they can afford.
+
+Once purchased:
+
+- Subtract cost from Wealth
+- Apply stat effects
+- Store the Car on the player
+- Update the Player Card with the Car visual
+
+Each player has one Car slot.
+
+==================================================
+4. SPACE 30 — LIFESTYLE
+==================================================
+
+When the player lands on Space 30:
+
+Show:
+
+CHOOSE YOUR LIFESTYLE
+
+Present 3–4 Lifestyle cards.
+
+Examples:
+
+LUXURY TRAVEL
+$100K
++15 Lifestyle
++5 Fame
+
+VIP LIFE
+$200K
++20 Lifestyle
++10 Influence
+
+LOW-KEY LIFE
+$50K
++10 Lifestyle
+
+CREATOR LIFESTYLE
+$125K
++10 Lifestyle
++10 Fame
+
+Once selected:
+
+- Subtract cost from Wealth
+- Apply effects
+- Store Lifestyle
+- Show Lifestyle visual on Player Card
+
+Each player has one Lifestyle slot.
+
+==================================================
+5. SPACE 35 — CAREER CHANGE
+==================================================
+
+Space 35 is NOT a normal milestone.
+
+Create a dedicated CAREER_CHANGE board-space type.
+
+It triggers when the player:
+
+- Lands on Space 35
+OR
+- Passes through Space 35
+
+It should trigger exactly once during a movement.
+
+When triggered, pause the turn.
+
+Display:
+
+CAREER OPPORTUNITY
+
+Show the player's current career.
+
+Give the player TWO choices:
+
+KEEP CAREER
+SWITCH CAREER
+
+--------------------------------
+KEEP CAREER
+--------------------------------
+
+If selected:
+
+- Keep current career
+- Keep career category
+- Keep career ability
+- Keep current salary
+- Keep current salary tier
+- Keep existing Wealth
+
+Show:
+
+CAREER LOCKED IN
+
+Then resume the game.
+
+--------------------------------
+SWITCH CAREER
+--------------------------------
+
+If selected:
+
+Reveal TWO random career cards.
+
+The current career cannot be one of the choices.
+
+The two choices must be different.
+
+Each card shows:
+
+- Career name
+- Career icon
+- Career category
+- Salary range
+- Career ability
+- Description
+
+Example:
+
+AI ENGINEER
+DIGITAL / RISK
+$70K–$200K
+MODEL UPGRADE
+
+DEGEN TRADER
+DIGITAL / RISK
+$20K–$500K
+YOLO
+
+The player chooses one.
+
+--------------------------------
+NEW SALARY
+--------------------------------
+
+After selecting the new career:
+
+Randomly assign one of that career's four salary tiers.
+
+Use the existing LOW / STANDARD / HIGH / ELITE salary system.
+
+Show a visual salary reveal.
+
+Example:
+
+NEW CAREER
+
+DEGEN TRADER
+
+SALARY TIER
+
+ELITE
+
+$500K
+
+The salary must come from the selected career's own salary table.
+
+Do NOT give the player additional starting Wealth when changing careers.
+
+Existing Wealth remains unchanged.
+
+Future Salary Gates use the new salary.
+
+--------------------------------
+PLAYER CARD UPDATE
+--------------------------------
+
+If the player switches careers, update:
+
+- Career
+- Career icon
+- Career category
+- Career ability
+- Salary
+- Salary tier
+
+The old career is replaced.
+
+==================================================
+6. SPACE 45 — PET OR INVESTMENT
+==================================================
+
+When the player lands on Space 45:
+
+Show:
+
+WHAT'S YOUR NEXT MOVE?
+
+Two large category choices:
+
+PET
+INVESTMENT
+
+If PET is selected, show 3–4 Pet cards.
+
+Examples:
+
+CYBER DOG
+$50K
++5 Lifestyle
++5 Fame
+
+GOLDEN RETRIEVER
+$40K
++10 Lifestyle
+
+ROBOT CAT
+$75K
++5 AI Skill
++5 Lifestyle
+
+CHAOS MONKEY
+$100K
++10 Lifestyle
+Future special interaction potential
+
+If INVESTMENT is selected, show 3–4 Investment cards.
+
+Examples:
+
+INDEX FUND
+$100K
+Stable future Wealth benefit
+
+TECH INVESTMENT
+$150K
+High growth potential
+
+DEGEN INVESTMENT
+$100K
+High risk / high reward
+
+For now, store the investment and its properties.
+Do not build the complete investment system yet.
+
+Each player has one PET OR INVESTMENT slot.
+
+The selected visual appears on the Player Card.
+
+==================================================
+7. SPACE 60 — PROPERTY
+==================================================
+
+When the player lands on Space 60:
+
+Show:
+
+CHOOSE YOUR PROPERTY
+
+Present 3–4 Property cards.
+
+Examples:
+
+STARTER CONDO
+$100K
++5 Lifestyle
+
+LUXURY APARTMENT
+$250K
++10 Lifestyle
++5 Influence
+
+BEACH HOUSE
+$400K
++15 Lifestyle
++10 Fame
+
+MANSION
+$500K
++20 Influence
++15 Lifestyle
+
+Once purchased:
+
+- Subtract cost from Wealth
+- Apply effects
+- Store Property
+- Show Property visual on Player Card
+
+Each player has one Property slot.
+
+==================================================
+8. PLAYER CARD
+==================================================
+
+Upgrade the Player Card so it visually shows the player's journey.
+
+Include:
+
+CHARACTER
+[Character visual]
+
+CAREER
+[Career icon]
+Career name
+Category
+Salary Tier
+Salary
+
+CAR
+[Car visual]
+
+LIFESTYLE
+[Lifestyle visual]
+
+PET / INVESTMENT
+[Pet or Investment visual]
+
+PROPERTY
+[Property visual]
+
+STATS
+
+Wealth
+AI Skill
+Fame
+Lifestyle
+Influence
+
+The Player Card should feel like a digital collectible/character sheet.
+
+Do not make these just text fields.
+
+Whenever a player makes a milestone decision, immediately update their Player Card.
+
+CPU Player Cards should also update.
+
+==================================================
+9. ASSET DATA MODEL
+==================================================
+
+Create reusable data definitions for:
+
+- Cars
+- Lifestyles
+- Pets
+- Investments
+- Properties
+
+Each asset should support:
+
+- ID
+- Name
+- Category
+- Image/visual
+- Cost
+- Description
+- AI Skill effect
+- Fame effect
+- Lifestyle effect
+- Influence effect
+- Wealth effect
+- Passive effect
+- Tier/rarity
+
+Keep all asset definitions separate from UI code.
+
+Make them easy to rebalance and expand.
+
+==================================================
+10. WEALTH PURCHASE RULE
+==================================================
+
+All assets use the existing Wealth resource.
+
+Example:
+
+Wealth = $300K
+
+Flex Car = $150K
+
+New Wealth = $150K
+
+Show:
+
+-$150K
+
+Then show the purchased asset.
+
+If the player cannot afford an asset:
+
+- Disable the purchase
+- Clearly display NOT ENOUGH WEALTH
+
+Do not create another currency/resource.
+
+==================================================
+11. CPU MILESTONE DECISIONS
+==================================================
+
+CPU players should automatically make milestone decisions.
+
+Use simple logic.
+
+Race Driver:
+Prefer Car.
+
+Real Estate Investor:
+Prefer Property/Investment.
+
+Degen Trader:
+Prefer Investment.
+
+Influencer/Content Creator/Entertainer:
+Prefer Fame/Lifestyle.
+
+AI Engineer/Cybersecurity:
+May prefer AI-related assets.
+
+At Space 35:
+
+CPU first decides:
+
+KEEP or SWITCH
+
+If SWITCH:
+
+1. Generate two random eligible careers.
+2. Choose one using simple logic plus some randomness.
+3. Assign a random salary tier from the selected career.
+4. Update the CPU Player Card.
+
+Do not build advanced AI.
+
+==================================================
+12. BOARD SPACE TYPES
+==================================================
+
+The board should now support:
+
+NORMAL
+EVENT
+GAMBLE
+SALARY_GATE
+MILESTONE
+CAREER_CHANGE
+
+Rules:
+
+SALARY_GATE
+→ LAND OR PASS
+
+CAREER_CHANGE
+→ LAND OR PASS
+
+MILESTONE
+→ LAND ONLY
+
+This distinction must exist in the underlying board data.
+
+==================================================
+13. MILESTONE SEQUENCE
+==================================================
+
+The player's journey should now be:
+
+SPACE 10
+CAR
+↓
+SPACE 30
+LIFESTYLE
+↓
+SPACE 35
+CAREER CHANGE
+KEEP OR SWITCH
+↓
+SPACE 45
+PET OR INVESTMENT
+↓
+SPACE 60
+PROPERTY
+↓
+SPACE 75
+FINAL ENDGAME PLACEHOLDER
+
+==================================================
+14. DO NOT BUILD YET
+==================================================
+
+Do NOT build:
+
+- Full event card deck
+- Wealth cards
+- Gamble cards
+- Upgrade tokens
+- Meme upgrades
+- Cashout
+- Double Down
+- Final Gamble
+- End-game titles
+- Redline Credits
+- Asset resale
+- Debt
+- Multiplayer
+- Authentication
+
+Those come in later phases.
+
+==================================================
+15. SUCCESS CRITERIA
+==================================================
+
+I should be able to:
+
+1. Land on Space 10.
+2. See 3–4 Car cards with visuals, cost and effects.
+3. Purchase a Car.
+4. See Wealth decrease.
+5. See the Car appear on my Player Card.
+
+6. Land on Space 30.
+7. See Lifestyle cards.
+8. Purchase a Lifestyle.
+9. See it appear on my Player Card.
+
+10. Land ON or PASS THROUGH Space 35.
+11. See KEEP CAREER and SWITCH CAREER.
+12. Keep my existing career OR choose SWITCH.
+13. If switching, see exactly two random career cards.
+14. Choose one.
+15. Receive a random salary tier from that specific career.
+16. See Career, Category, Ability, Salary and Salary Tier update.
+17. Keep existing Wealth.
+
+18. Land on Space 45.
+19. Choose PET or INVESTMENT.
+20. See the available cards and their effects.
+21. See the selected visual on the Player Card.
+
+22. Land on Space 60.
+23. Choose from Property cards.
+24. See cost/effects before purchasing.
+25. See Property visual on the Player Card.
+
+26. CPU players make all milestone decisions automatically.
+
+27. Salary Gates continue paying the player's current salary when landed on OR passed.
+
+The final Player Card should visually tell the story:
+
+CHARACTER
++
+CAREER
++
+CAR
++
+LIFESTYLE
++
+PET/INVESTMENT
++
+PROPERTY
+
+Keep everything modular and data-driven.
+
+STOP after Phase 6 is complete.

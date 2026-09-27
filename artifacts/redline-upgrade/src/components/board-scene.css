@@ -34,7 +34,8 @@
 .ru-board__controls button.selected { background: #f96346; color: #111a17; }
 .ru-board__controls button[aria-label^="Zoom"] { min-width: 38px; font-size: 20px; }
 .ru-board__controls button[aria-label^="Reset"] { min-width: 68px; }
-.ru-board__stage canvas, .ru-board__static-svg { touch-action: none; cursor: grab; }
+.ru-board__stage canvas, .ru-board__static-svg { touch-action: pan-y; cursor: grab; }
+.ru-board__stage.zoom-armed canvas, .ru-board__stage.zoom-armed .ru-board__static-svg { touch-action: none; }
 .ru-board__stage canvas:active, .ru-board__static-svg:active { cursor: grabbing; }
 .ru-board__legend .payday i { background: #d4e981; box-shadow: 0 0 7px #d4e981; }
 .ru-board__stage {

@@ -59,11 +59,11 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
       {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
       {BOARD_SPACES.map(space => {
         const { x, z } = ROUTE[space.number];
-        const milestone = space.type === 'MILESTONE';
+        const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
         const y = milestone ? .86 : .7;
         const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
-        const color = space.type === 'MILESTONE' ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' ? '#566b48' : '#345147';
-        const accent = space.type === 'MILESTONE' ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' ? '#d4e981' : '#90aea0';
+        const color = milestone ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' ? '#566b48' : '#345147';
+        const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' ? '#d4e981' : '#90aea0';
         const center = project(x,z,y+.02);
         return <g key={space.number}>
           <title>{`Space ${space.number}, ${space.payday ? 'Payday, ' : ''}${space.type.toLowerCase()}`}</title>
@@ -74,7 +74,7 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
           {space.payday ? <text x={center.x+14} y={center.y-6} textAnchor="middle" fill="#d4e981" fontSize="15" fontWeight="900">$</text> : space.type !== 'NORMAL' && <circle cx={center.x+14} cy={center.y-8} r="2.8" fill={accent} />}
         </g>;
       })}
-      {(() => { const p = project(finish.x,finish.z,1.6); return <g><path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" /><rect x={p.x-19} y={p.y-42} width="101" height="24" fill="#f96346" /><text x={p.x+31} y={p.y-25} textAnchor="middle" fill="#18241d" fontFamily="Barlow Condensed, sans-serif" fontSize="18" fontWeight="900">FINISH / CASHOUT</text></g>; })()}
+      {(() => { const p = project(finish.x,finish.z,1.6); return <g><path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" /><rect x={p.x-19} y={p.y-42} width="116" height="24" fill="#f96346" /><text x={p.x+39} y={p.y-25} textAnchor="middle" fill="#18241d" fontFamily="Barlow Condensed, sans-serif" fontSize="18" fontWeight="900">FINISH / ENDGAME SOON</text></g>; })()}
       {players.map((player) => {
         const colocated = players.filter(p => p.position === player.position).sort((a,b) => a.slot-b.slot);
         const index = colocated.findIndex(p => p.playerId === player.playerId);
@@ -89,6 +89,6 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
         </g>;
       })}
     </svg>
-    <div className="ru-board__static-key"><span><i /> NORMAL</span><span><i /> EVENT</span><span><i /> GAMBLE</span><span><i /> MILESTONE</span><span><i /> PAYDAY $</span></div>
+    <div className="ru-board__static-key"><span><i /> NORMAL</span><span><i /> EVENT</span><span><i /> GAMBLE</span><span><i /> MILESTONE</span><span><i /> CAREER CHANGE</span><span><i /> SALARY GATE $</span></div>
   </div>;
 }

@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { getCharacter } from '@/game/characters';
-import type { WealthEvent } from '@/game/match';
+import { getAsset, type AssetSlot } from '@/game/assets';
+import type { PendingDecision, WealthEvent } from '@/game/match';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { useGame } from '@/game/state';
 import { CareerGlyph } from './career-reveal';
+import { CharacterPortrait } from './character-portrait';
 import { GameBoard } from './game-board';
 import { DiceRoller } from './dice-roller';
+import { MilestoneChoice } from './milestone-choice';
+import { PlayerAssets } from './player-assets';
 import './game-screen.css';
 
 function WealthCounter({ amount, compact = false }: { amount: number; compact?: boolean }) {
@@ -40,10 +44,49 @@ export function GameScreen() {
   const turnIndex = match?.turnIndex;
   const remaining = match?.stepsRemaining;
   const isCPU = match?.players[match.turnIndex].isCPU;
+  const pending = match?.pending;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
-  const latestEvent: WealthEvent | undefined = match?.wealthEvents.at(-1);
+  const latestEvent: WealthEvent | undefined = match?.wealthEvents.filter(event => event.kind === 'PAYDAY').at(-1);
   const lastSeenEvent = useRef(latestEvent?.id);
   const [visibleEvent, setVisibleEvent] = useState<WealthEvent | null>(null);
+  const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
+  const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; amount: number; player: string } | null>(null);
+  const previousDecision = useRef<PendingDecision | null>(pending ?? null);
+  const [careerLocked, setCareerLocked] = useState(false);
+
+  useEffect(() => {
+    if (previousDecision.current?.kind === 'CAREER' && previousDecision.current.stage === 'choice' && !pending && phase !== 'decision') setCareerLocked(true);
+    previousDecision.current = pending ?? null;
+  }, [pending, phase]);
+
+  useEffect(() => {
+    if (!careerLocked) return;
+    const timer = window.setTimeout(() => setCareerLocked(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [careerLocked]);
+
+  useEffect(() => {
+    if (!match) return;
+    const slots: AssetSlot[] = ['car', 'lifestyle', 'companion', 'property'];
+    let notice: typeof purchaseNotice = null;
+    match.players.forEach((player, index) => {
+      for (const slot of slots) {
+        const id = player.equipment[slot];
+        if (id && id !== previousEquipment.current[index]?.[slot]) {
+          const asset = getAsset(id);
+          if (asset) notice = { id: `${player.playerId}-${id}`, name: asset.name, amount: asset.cost, player: player.isCPU ? `CPU ${player.slot}` : 'YOU' };
+        }
+      }
+    });
+    previousEquipment.current = match.players.map(player => ({ ...player.equipment }));
+    if (notice) setPurchaseNotice(notice);
+  }, [match?.players]);
+
+  useEffect(() => {
+    if (!purchaseNotice) return;
+    const timer = window.setTimeout(() => setPurchaseNotice(current => current?.id === purchaseNotice.id ? null : current), 4000);
+    return () => window.clearTimeout(timer);
+  }, [purchaseNotice?.id]);
 
   useEffect(() => {
     if (!latestEvent || latestEvent.id === lastSeenEvent.current) return;
@@ -66,13 +109,16 @@ export function GameScreen() {
     } else if (phase === 'moving') {
       delay = 360;
       callback = () => dispatchMatch({ type: 'STEP' });
+    } else if (phase === 'decision' && isCPU && pending) {
+      delay = 1050;
+      callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
     } else if (phase === 'landed') {
       delay = turnIndex === 0 ? 2300 : 1700;
       callback = () => dispatchMatch({ type: 'NEXT_TURN' });
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-  }, [match === null, phase, isCPU, turnIndex, remaining, rollDice, dispatchMatch]);
+  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CAREER' ? pending.stage : pending?.category, rollDice, dispatchMatch]);
 
   if (!match) return (
     <main className="game-gate">
@@ -87,7 +133,7 @@ export function GameScreen() {
   const currentCareer = active.careerId ? getCareer(active.careerId) : undefined;
   const landing = match.lastLanding;
   const roll = match.roll;
-  const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
+  const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
 
   return (
     <main className="game-screen">
@@ -99,7 +145,7 @@ export function GameScreen() {
         <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
           <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
           <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
-          <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : 'Space reached'}</small>
+           <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Milestone decision in progress' : 'Space reached'}</small>
           <button className="action turn-roll" type="button" onClick={rollDice} disabled={active.isCPU || match.phase !== 'ready'} data-testid="button-roll-top">ROLL DICE <span aria-hidden="true">↗</span></button>
         </div>
       </section>
@@ -111,6 +157,10 @@ export function GameScreen() {
           <span className="mono">WEALTH {visibleEvent.amount >= 0 ? 'INCREASED' : 'DECREASED'}</span>
         </div>
       )}
+      {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong><span className="mono">−{formatMoney(purchaseNotice.amount)} WEALTH // ADDED TO PLAYER SHEET</span></div>}
+      {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
+
+      {match.phase === 'decision' && pending && <MilestoneChoice pending={pending} player={active} onAction={dispatchMatch} />}
 
       <section className="game-players" aria-label="Players, careers and finances">
         {match.players.map((contestant, index) => {
@@ -122,10 +172,13 @@ export function GameScreen() {
           return (
             <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${index === 0 ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-testid={`card-player-${index}`}>
               <div className="game-player-top"><span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span><span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}</span></div>
-              <strong className="game-player-name">{character?.name ?? contestant.displayName}</strong>
+               <div className="game-player-identity">
+                 {character && <CharacterPortrait character={character} className="game-player-portrait" />}
+                 <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name">{character?.name ?? contestant.displayName}</strong></div>
+               </div>
               <div className="game-player-career">
                 <CareerGlyph icon={career?.icon || career?.name || 'career'} />
-                <div><span className="mono">{category?.name ?? 'CAREER'}</span><b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b></div>
+                 <div><span className="mono">{category?.name ?? 'CAREER'}</span><b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b><small title={career?.abilityDescription}>{career?.abilityName ?? 'NO ABILITY ASSIGNED'}</small></div>
               </div>
               <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}</b></div>
               <div className="game-player-wealth">
@@ -138,19 +191,20 @@ export function GameScreen() {
                   <div key={label}><span className="mono">{label}</span><b>{value.toLocaleString()}</b></div>
                 ))}
               </div>
+               <PlayerAssets equipment={contestant.equipment} playerIndex={index} />
             </article>
           );
         })}
       </section>
 
-      <GameBoard
+      {match.phase !== 'decision' && <GameBoard
         players={match.players}
         activePlayerId={active.playerId}
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
-      />
+      />}
 
-      <section className="game-console">
+      {match.phase !== 'decision' && <section className="game-console">
         <DiceRoller
           roll={roll}
           phase={match.phase}
@@ -178,14 +232,24 @@ export function GameScreen() {
               <>
                 <span className="mono">LAST LANDING / {match.players[landing.playerIndex].displayName}</span>
                 <div><strong>SPACE {String(landing.space.number).padStart(2, '0')}</strong><b>{landing.space.payday ? 'PAYDAY' : landing.space.type}</b></div>
-                <p>{landingEvent ? `Payday: ${landingEvent.amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(landingEvent.amount))} Wealth for ${match.players[landing.playerIndex].displayName}.` : landing.space.number === 75 ? 'Finish boundary reached. End-game rules arrive in a later phase.' : landing.space.type === 'NORMAL' ? 'No effect on this space.' : `Placeholder ${landing.space.type.toLowerCase()} space. Effects unlock in a later phase.`}</p>
+                <p>{landingEvent
+                  ? `Salary Gate: +${formatMoney(landingEvent.amount)} Wealth for ${match.players[landing.playerIndex].displayName}.`
+                  : landing.space.number === 75 ? 'Finish boundary reached. End-game rules arrive in a later phase.'
+                  : landing.space.type === 'CAREER_CHANGE' ? `Career opportunity resolved. Current salary: ${formatMoney(match.players[landing.playerIndex].salaryAmount)}.`
+                  : landing.space.type === 'MILESTONE' ? (() => {
+                    const slot = ({ 10: 'car', 30: 'lifestyle', 45: 'companion', 60: 'property' } as const)[landing.space.number as 10 | 30 | 45 | 60];
+                    const item = slot ? match.players[landing.playerIndex].equipment[slot] : null;
+                    return item ? `${getAsset(item)?.name ?? 'Asset'} acquired and added to the player card.` : 'Milestone passed without a purchase.';
+                  })()
+                  : landing.space.type === 'NORMAL' ? 'No effect on this space.'
+                  : `Placeholder ${landing.space.type.toLowerCase()} space. Effects unlock in a later phase.`}</p>
               </>
             ) : (
               <><span className="mono">LANDING REPORT</span><p>Roll the dice to reveal your first destination.</p></>
             )}
           </div>
         </div>
-      </section>
+      </section>}
     </main>
   );
 }
