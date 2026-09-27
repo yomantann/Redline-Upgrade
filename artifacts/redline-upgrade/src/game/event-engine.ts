@@ -599,7 +599,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       } as EventDraft);
       return match;
     case 'DRAW_CARD':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+      return resolveTargets(match, actor, event, effect.target).filter((index) => index === match.turnIndex).reduce((state, index) => {
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: index,
@@ -610,7 +610,6 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           deck: effect.deck,
           spaceNumber: state.players[index].position,
         });
-        if (index !== state.turnIndex) return state;
         const landingSpace = getSpace(state.players[index].position);
         return {
           ...state,

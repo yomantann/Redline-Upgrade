@@ -378,7 +378,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY', space: position }]
           : match.wealthEvents,
       };
-      const drafts = createStepEvents(match, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, salaryGate.drafts.length > 0);
+      const drafts = createStepEvents(moved, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, salaryGate.drafts.length > 0);
       drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
       moved = emit(moved, [...salaryGate.drafts, ...drafts]);
       if (moved.phase !== 'moving') return moved;
@@ -435,14 +435,16 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (match.phase !== 'landed') return match;
       const nextTurnCounter = match.turnCounter + 1;
       const endedTurn = emit(resetTurnScopedState(match), [{ type: 'TURN_END', playerIndex: match.turnIndex }]);
+      const nextTurnIndex = (endedTurn.turnIndex + 1) % 4;
+      const nextRound = endedTurn.turnIndex === 3 ? endedTurn.round + 1 : endedTurn.round;
       return emit({
         ...endedTurn,
-        turnIndex: (match.turnIndex + 1) % 4,
-        round: match.turnIndex === 3 ? match.round + 1 : match.round,
+        turnIndex: nextTurnIndex,
+        round: nextRound,
         phase: 'ready',
         roll: null,
         stepsRemaining: 0,
         turnCounter: nextTurnCounter,
-      }, [{ type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 }]);
+      }, [{ type: 'TURN_START', playerIndex: nextTurnIndex }]);
   }
 }
