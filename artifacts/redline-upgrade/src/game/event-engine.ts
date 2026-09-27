@@ -502,22 +502,25 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
   }
   const finalPosition = state.players[targetIndex].position;
   const finalSpace = getSpace(finalPosition);
-  if (targetIndex === state.turnIndex && finalSpace) {
+  if (finalSpace) {
     const landing = { playerIndex: targetIndex, space: finalSpace };
     const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
     if (finalSpace.type === 'CAREER_CHANGE') {
-      state = { ...state, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: finalSpace.number }, lastLanding: landing };
+      state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: finalSpace.number }, lastLanding: landing };
     } else if (slot && !state.players[targetIndex].equipment[slot]) {
       state = {
         ...state,
+        turnIndex: targetIndex,
         phase: 'decision',
         pending: { kind: 'ASSET', slot, space: finalSpace.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) },
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      state = { ...state, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number }, lastLanding: landing };
-    } else {
+      state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number }, lastLanding: landing };
+    } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
+    } else {
+      state = { ...state, lastLanding: landing };
     }
   }
   return state;
@@ -599,7 +602,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       } as EventDraft);
       return match;
     case 'DRAW_CARD':
-      return resolveTargets(match, actor, event, effect.target).filter((index) => index === match.turnIndex).reduce((state, index) => {
+      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: index,
@@ -613,13 +616,14 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         const landingSpace = getSpace(state.players[index].position);
         return {
           ...state,
+          turnIndex: index,
           phase: 'decision',
           pending: { kind: 'CARD', deck: effect.deck, space: state.players[index].position },
           lastLanding: landingSpace ? { playerIndex: index, space: landingSpace } : state.lastLanding,
         };
       }, match);
     case 'MOVE_PLAYER': {
-      return resolveTargets(match, actor, event, effect.target).filter((index) => index === match.turnIndex).reduce(
+      return resolveTargets(match, actor, event, effect.target).reduce(
         (state, index) => applyMovePlayerEffect(state, queue, actor, index, event, effect.amount),
         match,
       );

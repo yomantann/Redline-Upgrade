@@ -415,7 +415,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         [{
           type: 'CAREER_CHANGE',
           playerIndex: updated.turnIndex,
-          spaceNumber: 35,
+          spaceNumber: pending.space,
           stage: 'RESOLVED',
           previousCareerId: previous.careerId,
           newCareerId: next.careerId,
