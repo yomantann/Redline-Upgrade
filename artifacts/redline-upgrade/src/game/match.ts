@@ -430,7 +430,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (match.phase !== 'landed') return match;
       const nextTurnCounter = match.turnCounter + 1;
       return emit({
-        ...emit(resetTurnScopedState({ ...match, turnCounter: nextTurnCounter }), [{ type: 'TURN_END', playerIndex: match.turnIndex }]),
+        ...emit(resetTurnScopedState(match), [{ type: 'TURN_END', playerIndex: match.turnIndex }]),
         turnIndex: (match.turnIndex + 1) % 4,
         round: match.turnIndex === 3 ? match.round + 1 : match.round,
         phase: 'ready',

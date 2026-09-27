@@ -141,6 +141,13 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     effects: [{ type: 'ADD_LIFESTYLE', amount: 5, reason: 'Jump Start' }],
     mode: 'PASSIVE',
   },
+  [characterAbilityId('alpha_prime')]: {
+    trigger: 'DICE_ROLL',
+    conditions: [{ kind: 'ANY' }],
+    effects: [{ type: 'MODIFY_SALARY', amount: 5000, reason: 'Prime Directive' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
   [careerAbilityId('degen-trader')]: {
     trigger: 'ROLL_OF_8',
     conditions: [{ kind: 'ANY' }, { kind: 'PLAYER_CAREER_TAG', tag: 'risk' }],

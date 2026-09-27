@@ -586,16 +586,26 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       } as EventDraft);
       return match;
     case 'DRAW_CARD':
-      queue.push({
-        type: 'CARD_DRAW',
-        playerIndex: actor.slot,
-        source: 'ABILITY',
-        abilityId: event.abilityId,
-        sourceEventId: event.id,
-        depth: event.depth + 1,
-        deck: effect.deck,
-      });
-      return match;
+      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+        queue.push({
+          type: 'CARD_DRAW',
+          playerIndex: index,
+          source: 'ABILITY',
+          abilityId: event.abilityId,
+          sourceEventId: event.id,
+          depth: event.depth + 1,
+          deck: effect.deck,
+          spaceNumber: state.players[index].position,
+        });
+        if (index !== state.turnIndex) return state;
+        const landingSpace = getSpace(state.players[index].position);
+        return {
+          ...state,
+          phase: 'decision',
+          pending: { kind: 'CARD', deck: effect.deck, space: state.players[index].position },
+          lastLanding: landingSpace ? { playerIndex: index, space: landingSpace } : state.lastLanding,
+        };
+      }, match);
     case 'MOVE_PLAYER': {
       return resolveTargets(match, actor, event, effect.target).reduce(
         (state, index) => applyMovePlayerEffect(state, queue, actor, index, event, effect.amount),

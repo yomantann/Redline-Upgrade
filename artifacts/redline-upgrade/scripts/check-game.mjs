@@ -57,6 +57,14 @@ try {
   match = move(start(4), 2);
   assert.equal(match.players[0].wealth, 900000 + match.players[0].salaryAmount);
   assert.equal(match.wealthEvents.length, 1);
+  const salaryDebug = start(4);
+  const originalSalary = salaryDebug.players[0].salaryAmount;
+  match = move({
+    ...salaryDebug,
+    players: salaryDebug.players.map((player, index) => index === 0 ? { ...player, characterId: 'alpha_prime' } : player),
+  }, 2);
+  assert.equal(match.players[0].salaryAmount, originalSalary + 5000);
+  assert.equal(match.players[0].wealth, 900000 + originalSalary + 5000);
   match = move(start(4, 1), 2);
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
   match = advanceMatch(match, { type: 'NEXT_TURN' });
