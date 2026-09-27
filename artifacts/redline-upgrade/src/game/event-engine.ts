@@ -374,19 +374,19 @@ function applyStatDelta(
   return updated;
 }
 
-function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, event: AnyGameEvent, amount: number): Match {
+function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, targetIndex: number, event: AnyGameEvent, amount: number): Match {
   if (!amount) return match;
   let state = match;
   const direction = amount > 0 ? 1 : -1;
   const steps = Math.abs(amount);
   for (let step = 0; step < steps; step += 1) {
-    const current = state.players[actor.slot];
+    const current = state.players[targetIndex];
     const nextPosition = Math.min(75, Math.max(0, current.position + direction));
     if (nextPosition === current.position) break;
-    state = updatePlayer(state, actor.slot, (player) => ({ ...player, position: nextPosition }));
+    state = updatePlayer(state, targetIndex, (player) => ({ ...player, position: nextPosition }));
     queue.push({
       type: 'PLAYER_MOVED',
-      playerIndex: actor.slot,
+      playerIndex: targetIndex,
       source: 'EFFECT',
       sourceEventId: event.id,
       abilityId: event.abilityId,
@@ -399,7 +399,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     if (!space) continue;
     queue.push({
       type: 'PASS_SPACE',
-      playerIndex: actor.slot,
+      playerIndex: targetIndex,
       source: 'EFFECT',
       sourceEventId: event.id,
       abilityId: event.abilityId,
@@ -410,12 +410,12 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     });
     const isFinalStep = step === steps - 1;
     if (space.payday) {
-      const beforeWealth = state.players[actor.slot].wealth;
-      const salaryAmount = state.players[actor.slot].salaryAmount;
-      state = updatePlayer(state, actor.slot, (player) => ({ ...player, wealth: player.wealth + salaryAmount }));
+      const beforeWealth = state.players[targetIndex].wealth;
+      const salaryAmount = state.players[targetIndex].salaryAmount;
+      state = updatePlayer(state, targetIndex, (player) => ({ ...player, wealth: player.wealth + salaryAmount }));
       queue.push({
         type: 'SALARY_GATE',
-        playerIndex: actor.slot,
+        playerIndex: targetIndex,
         source: 'EFFECT',
         sourceEventId: event.id,
         abilityId: event.abilityId,
@@ -427,13 +427,13 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         previousWealth: beforeWealth,
         newWealth: beforeWealth + salaryAmount,
       });
-      addNativeStatChange(state, queue, actor.slot, 'wealth', beforeWealth, beforeWealth + salaryAmount, 'Salary Gate');
+      addNativeStatChange(state, queue, targetIndex, 'wealth', beforeWealth, beforeWealth + salaryAmount, 'Salary Gate');
     }
-    const occupants = state.players.filter((player, index) => index !== actor.slot && player.position === nextPosition);
+    const occupants = state.players.filter((player, index) => index !== targetIndex && player.position === nextPosition);
     for (const occupant of occupants) {
       queue.push({
         type: isFinalStep ? 'LAND_ON_PLAYER' : 'PASS_PLAYER',
-        playerIndex: actor.slot,
+        playerIndex: targetIndex,
         source: 'EFFECT',
         sourceEventId: event.id,
         abilityId: event.abilityId,
@@ -449,23 +449,23 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     if (space.type === 'CAREER_CHANGE') {
       queue.push({
         type: 'CAREER_CHANGE',
-        playerIndex: actor.slot,
+        playerIndex: targetIndex,
         source: 'EFFECT',
         sourceEventId: event.id,
         abilityId: event.abilityId,
         depth: event.depth + 1,
         spaceNumber: nextPosition,
         stage: 'TRIGGERED',
-        previousCareerId: state.players[actor.slot].careerId,
-        newCareerId: state.players[actor.slot].careerId,
-        previousSalary: state.players[actor.slot].salaryAmount,
-        newSalary: state.players[actor.slot].salaryAmount,
+        previousCareerId: state.players[targetIndex].careerId,
+        newCareerId: state.players[targetIndex].careerId,
+        previousSalary: state.players[targetIndex].salaryAmount,
+        newSalary: state.players[targetIndex].salaryAmount,
       });
     }
     if (isFinalStep) {
       queue.push({
         type: 'LAND_ON_SPACE',
-        playerIndex: actor.slot,
+        playerIndex: targetIndex,
         source: 'EFFECT',
         sourceEventId: event.id,
         abilityId: event.abilityId,
@@ -478,7 +478,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       if (space.type === 'MILESTONE' && milestone && space.trigger === 'LAND') {
         queue.push({
           type: 'MILESTONE',
-          playerIndex: actor.slot,
+          playerIndex: targetIndex,
           source: 'EFFECT',
           sourceEventId: event.id,
           abilityId: event.abilityId,
@@ -490,7 +490,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       if (space.deck) {
         queue.push({
           type: 'CARD_DRAW',
-          playerIndex: actor.slot,
+          playerIndex: targetIndex,
           source: 'EFFECT',
           sourceEventId: event.id,
           abilityId: event.abilityId,
@@ -501,14 +501,14 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       }
     }
   }
-  const finalPosition = state.players[actor.slot].position;
+  const finalPosition = state.players[targetIndex].position;
   const finalSpace = getSpace(finalPosition);
-  if (actor.slot === state.turnIndex && finalSpace) {
-    const landing = { playerIndex: actor.slot, space: finalSpace };
+  if (targetIndex === state.turnIndex && finalSpace) {
+    const landing = { playerIndex: targetIndex, space: finalSpace };
     const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
     if (finalSpace.type === 'CAREER_CHANGE') {
       state = { ...state, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: landing };
-    } else if (slot && !state.players[actor.slot].equipment[slot]) {
+    } else if (slot && !state.players[targetIndex].equipment[slot]) {
       state = {
         ...state,
         phase: 'decision',
@@ -548,29 +548,32 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
     case 'REMOVE_INFLUENCE':
       return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'influence', -effect.amount, effect.type, index, reason), match);
     case 'PROTECT_FROM_EFFECT':
-      return {
-        ...match,
+      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => ({
+        ...state,
         effectProtections: {
-          ...match.effectProtections,
-          [actor.playerId]: [
-            ...(match.effectProtections[actor.playerId] ?? []),
+          ...state.effectProtections,
+          [state.players[index].playerId]: [
+            ...(state.effectProtections[state.players[index].playerId] ?? []),
             { remaining: effect.amount ?? 1, blockedEffectTypes: effect.blockedEffectTypes },
           ],
         },
-      };
+      }), match);
     case 'MODIFY_REWARD':
-      return {
-        ...match,
+      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => ({
+        ...state,
         rewardModifiers: {
-          ...match.rewardModifiers,
-          [`${actor.playerId}:${effect.stat}`]: {
+          ...state.rewardModifiers,
+          [`${state.players[index].playerId}:${effect.stat}`]: {
             stat: effect.stat,
-            amount: (match.rewardModifiers[`${actor.playerId}:${effect.stat}`]?.amount ?? 0) + effect.amount,
+            amount: (state.rewardModifiers[`${state.players[index].playerId}:${effect.stat}`]?.amount ?? 0) + effect.amount,
           },
         },
-      };
+      }), match);
     case 'MODIFY_SALARY':
-      return updatePlayer(match, actor.slot, (player) => ({ ...player, salaryAmount: Math.max(0, player.salaryAmount + effect.amount) }));
+      return resolveTargets(match, actor, event, effect.target).reduce(
+        (state, index) => updatePlayer(state, index, (player) => ({ ...player, salaryAmount: Math.max(0, player.salaryAmount + effect.amount) })),
+        match,
+      );
     case 'TRIGGER_EVENT':
       queue.push({
         ...effect.payload,
@@ -594,7 +597,10 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       });
       return match;
     case 'MOVE_PLAYER': {
-      return applyMovePlayerEffect(match, queue, actor, event, effect.amount);
+      return resolveTargets(match, actor, event, effect.target).reduce(
+        (state, index) => applyMovePlayerEffect(state, queue, actor, index, event, effect.amount),
+        match,
+      );
     }
     case 'AFFECT_OTHER_PLAYER':
       return resolveTargets(match, actor, event, effect.target ?? 'LANDED_ON_PLAYER').reduce(
@@ -617,23 +623,24 @@ function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] 
 }
 
 function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): Match {
-  const player = match.players[event.playerIndex];
   let next = match;
-  for (const abilityId of getPlayerAbilityIds(player)) {
-    const ability = getAbility(abilityId);
-    if (!ability || ability.trigger !== event.type || !abilityAvailable(next, player, abilityId)) continue;
-    if (!ability.conditions.every((condition) => meetsCondition(next, player, event, condition))) continue;
-    let abilityState = markAbilityUsed(next, player, abilityId);
-    for (const effect of ability.effects) {
-      abilityState = applyEffect(abilityState, queue, player, { ...event, abilityId, source: 'ABILITY' }, effect);
+  for (const player of next.players) {
+    for (const abilityId of getPlayerAbilityIds(player)) {
+      const ability = getAbility(abilityId);
+      if (!ability || ability.trigger !== event.type || !abilityAvailable(next, player, abilityId)) continue;
+      if (!ability.conditions.every((condition) => meetsCondition(next, player, event, condition))) continue;
+      let abilityState = markAbilityUsed(next, player, abilityId);
+      for (const effect of ability.effects) {
+        abilityState = applyEffect(abilityState, queue, player, { ...event, abilityId, source: 'ABILITY' }, effect);
+      }
+      next = pushLog(
+        abilityState,
+        { ...event, id: `${event.id}:ability:${abilityId}:${player.playerId}`, abilityId, source: 'ABILITY', description: ability.description, playerId: player.playerId, playerIndex: player.slot },
+        ability.name,
+        ability.description,
+        ability.effects[0]?.amount,
+      );
     }
-    next = pushLog(
-      abilityState,
-      { ...event, id: `${event.id}:ability:${abilityId}`, abilityId, source: 'ABILITY', description: ability.description },
-      ability.name,
-      ability.description,
-      ability.effects[0]?.amount,
-    );
   }
   return next;
 }
