@@ -1,0 +1,109 @@
+REDLINE UPGRADE — CHARACTER PIECE REDESIGN V2
+
+VISUAL-ONLY TASK.
+
+Do not modify game logic, character IDs, player state, board, movement, dice, careers, cards, events, or UI behavior.
+
+The previous character-piece redesign improved some pieces, but many still look like generic 3D humanoids with character colors/accessories applied.
+
+Current pieces that are good enough:
+- CLICK CLICK
+- ALPHA PRIME
+- PANIC BOT
+- IDOL CORE
+
+DO NOT MODIFY THOSE FOUR.
+
+For the remaining characters, redesign the 3D miniature using the ACTUAL EXISTING CHARACTER ARTWORK as the source of truth.
+
+IMPORTANT:
+Do not invent character traits.
+
+Before modifying a character:
+
+1. Locate its existing character artwork in the project assets.
+2. Inspect the actual image.
+3. Identify the character's recognizable:
+   - body shape
+   - pose
+   - head/face
+   - clothing
+   - props
+   - weapons
+   - accessories
+   - colors
+   - distinctive visual features
+4. Use those actual features to design the 3D miniature.
+
+For example, if a character is shown holding a sniper rifle, the sniper should be incorporated into the physical miniature rather than replacing it with a generic interpretation of the character.
+
+The objective is NOT to turn the artwork into a 3D human.
+
+Instead:
+
+EXISTING CHARACTER ART
+        ↓
+identify recognizable visual features
+        ↓
+stylized 3D miniature
+        ↓
+distinctive silhouette
+
+The miniature should look like a physical collectible version of THAT character.
+
+Do not simply:
+- Apply the portrait as a texture
+- Put the character on a generic humanoid body
+- Add random accessories
+- Add features that aren't in the artwork
+- Change the character's recognizable equipment
+- Make every character use the same body
+
+Use the existing artwork to determine the geometry.
+
+Keep a unified Redline Upgrade miniature style:
+- Shared base/platform family
+- Similar overall scale
+- Clean geometry
+- Dark/futuristic presentation
+- Stylized collectible-game-piece appearance
+
+But the character geometry should vary substantially based on the actual artwork.
+
+QUALITY TEST:
+
+When looking at the miniature beside its original artwork, it should immediately be clear that they represent the same character.
+
+Also check the miniature from the normal board camera.
+
+The character should remain recognizable without relying on the portrait texture.
+
+Prioritize:
+1. Character recognition
+2. Accurate representation of the existing artwork
+3. Distinctive silhouette
+4. Clean geometry
+5. Board readability
+
+Do not prioritize adding complexity.
+
+If a simple shape accurately captures the character, keep it simple.
+
+Review all 17 weaker pieces and improve only the ones that need it.
+
+Do not modify:
+CLICK CLICK
+ALPHA PRIME
+PANIC BOT
+IDOL CORE
+
+Before finishing, verify all 21 pieces still:
+- Render correctly
+- Fit on board spaces
+- Work with existing player positioning
+- Work for CPU players
+- Work with the existing character IDs
+
+Do not change any gameplay functionality.
+
+STOP after the visual redesign.
