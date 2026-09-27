@@ -1,11 +1,11 @@
 import type { AssetCategory } from './assets';
+import type { CareerCategoryTag } from './careers';
 import type { DeckId } from './decks';
 import type { GameEventType } from './events/types';
-import type { CareerCategoryTag } from './careers';
 import type { PlayerStat } from './player';
 
 export type AbilityMode = 'PASSIVE' | 'ACTIVE';
-export type AbilityTarget = 'SELF' | 'LANDED_ON_PLAYER' | 'AFFECTED_PLAYER' | 'ALL_OTHER_PLAYERS';
+export type AbilityTarget = 'SELF' | 'EVENT_PLAYER' | 'LANDED_ON_PLAYER' | 'AFFECTED_PLAYER' | 'ALL_OTHER_PLAYERS' | 'ALL_PLAYERS';
 
 export type EffectType =
   | 'ADD_WEALTH'
@@ -40,13 +40,20 @@ export type AbilityCondition =
   | { kind: 'EVENT_SPACE_IS'; spaceNumber: number }
   | { kind: 'EVENT_STAT_IS'; stat: PlayerStat }
   | { kind: 'PLAYER_CAREER_TAG'; tag: CareerCategoryTag }
-  | { kind: 'TARGET_IS_OTHER_PLAYER' };
+  | { kind: 'TARGET_IS_OTHER_PLAYER' }
+  | { kind: 'EVENT_PLAYER_IS_SELF' }
+  | { kind: 'EVENT_PLAYER_IS_OTHER_PLAYER' }
+  | { kind: 'EVENT_TARGET_IS_SELF' }
+  | { kind: 'PLAYER_WEALTH_AT_OR_BELOW'; amount: number }
+  | { kind: 'EVENT_DELTA_AT_LEAST'; amount: number }
+  | { kind: 'EVENT_DELTA_AT_MOST'; amount: number };
 
 interface EffectBase {
   type: EffectType;
   target?: AbilityTarget;
   amount?: number;
   reason?: string;
+  careerTag?: CareerCategoryTag;
 }
 
 export type EffectDefinition =
@@ -74,90 +81,300 @@ export const characterAbilityId = (characterId: string) => `character:${characte
 export const careerAbilityId = (careerId: string) => `career:${careerId}`;
 
 const characterText = [
-  ['guardian_h', 'Hold the Line', 'Stands firm when everything else gives way.'],
-  ['click_click', 'Quick Draw', 'Acts before the moment has a chance to disappear.'],
-  ['frostbyte', 'Deep Freeze', 'Keeps calm when the system starts to burn.'],
-  ['sadman', 'Last Laugh', 'Finds an opening when the odds look hopeless.'],
-  ['rainbow_dash', 'Prismatic Rush', 'Turns momentum into a signature move.'],
-  ['accuser', 'Call It Out', 'Exposes what others would rather keep hidden.'],
-  ['low_flame', 'Slow Burn', 'Builds pressure without drawing attention.'],
-  ['wandering_eye', 'Peripheral Vision', 'Spots possibilities just outside the obvious route.'],
-  ['the_rind', 'Hard Exterior', 'Endures the hits that would stop someone else.'],
-  ['anointed', 'Chosen Path', 'Turns conviction into an unmistakable presence.'],
-  ['executive_p', 'Power Move', 'Knows when to make an offer nobody can ignore.'],
-  ['alpha_prime', 'Prime Directive', 'Cuts through uncertainty with decisive focus.'],
-  ['roll_safe', 'Calculated Risk', 'Finds the safest angle in a dangerous situation.'],
-  ['hotwired', 'Jump Start', 'Gets moving when the whole system stalls.'],
-  ['panic_bot', 'Red Alert', 'Senses trouble before it reaches the rest of the crew.'],
-  ['primate', 'Wild Instinct', 'Trusts a gut feeling when logic runs out.'],
-  ['pain_hider', 'Poker Face', 'Reveals nothing, even under pressure.'],
-  ['prom_king', 'Spotlight', 'Commands the room before saying a word.'],
-  ['idol_core', 'Main Character', 'Captures attention wherever the signal reaches.'],
-  ['danger_zone', 'Full Throttle', 'Leans in when everyone else backs away.'],
-  ['the_tank', 'Breakthrough', 'Pushes forward when the way is blocked.'],
+  ['guardian_h', 'Protector', 'Once per round, landing on another player protects them from the next penalty.'],
+  ['click_click', 'Media Machine', 'The first Fame gain each round gives Click Click a little more Fame.'],
+  ['frostbyte', 'Freeze Frame', 'Once per round, another player rolling doubles costs them a little Wealth.'],
+  ['sadman', 'Misery Loves Company', 'When another player lands a big Wealth gain, Sadman pockets a smaller cut.'],
+  ['rainbow_dash', 'Hype Train', 'Passing another player creates a small Fame boost.'],
+  ['accuser', 'Point The Finger', 'Landing on another player drains their Influence while boosting Accuser.'],
+  ['low_flame', 'Low Heat', 'Starting a turn low on Wealth creates a small cash comeback.'],
+  ['wandering_eye', 'Watching', 'Once per round, another player drawing a card teaches Wandering Eye something.'],
+  ['the_rind', 'Hard Exterior', 'Rolling a 2 sets up a single-use defensive shell.'],
+  ['anointed', 'Chosen Path', 'Milestones add a little extra Fame and Influence.'],
+  ['executive_p', 'Power Move', 'Every salary gate also raises Executive P\'s Influence.'],
+  ['alpha_prime', 'Prime Directive', 'The first roll each turn permanently raises salary.'],
+  ['roll_safe', 'Calculated Risk', 'A roll of 2 still pays something back.'],
+  ['hotwired', 'Jump Start', 'Car purchases also improve Lifestyle and Influence.'],
+  ['panic_bot', 'Red Alert', 'Once per round, another player rolling an 8 gives Panic Bot a failsafe.'],
+  ['primate', 'Wild Instinct', 'Doubles turn into a burst of Lifestyle.'],
+  ['pain_hider', 'Poker Face', 'Big Wealth hits still translate into Influence.'],
+  ['prom_king', 'Spotlight', 'Passing another player adds Fame and a little Influence.'],
+  ['idol_core', 'Main Character', 'Doubles always create more Fame.'],
+  ['danger_zone', 'Full Throttle', 'Rolling an 8 pays off immediately.'],
+  ['the_tank', 'Breakthrough', 'Once per round, landing on another player knocks them back a space.'],
 ] as const;
 
 const careerText = [
-  ['ai-engineer', 'MODEL UPGRADE', 'Gain extra AI Skill from future AI-related events.'],
-  ['race-driver', 'NEED FOR SPEED', 'Future car ownership can unlock special benefits.'],
-  ['content-creator', 'GO VIRAL', 'Gain extra Fame from future Fame events.'],
-  ['gig-worker', 'SIDE HUSTLE', 'Future Event spaces can award extra Wealth.'],
-  ['lawyer', 'OBJECTION', 'A future ability can cancel one negative penalty.'],
-  ['pro-gamer', 'SWEAT THE ODDS', 'Future successful Gamble spaces can pay more.'],
-  ['doctor', 'HEALTH INSURANCE', 'A future ability can ignore one health-related penalty.'],
-  ['personal-trainer', 'LOCKED IN', 'Gain Lifestyle more efficiently in future systems.'],
-  ['degen-trader', 'YOLO', 'Future Gamble wins can deliver stronger rewards.'],
-  ['startup-founder', 'EQUITY', 'Future risky events can award extra Wealth.'],
-  ['influencer', 'ENGAGEMENT', 'Some future Fame gains can create extra Wealth.'],
-  ['corporate-executive', 'GOLDEN HANDCUFFS', 'Stable salary with less flexibility in future decisions.'],
-  ['cybersecurity-specialist', 'ZERO DAY', 'A future ability can avoid one negative Event.'],
-  ['entertainer', 'MAIN CHARACTER', 'Future player interactions can award Fame.'],
-  ['real-estate-investor', 'PROPERTY LADDER', 'Future property purchases can grant extra benefits.'],
+  ['ai-engineer', 'MODEL UPGRADE', 'The first AI gain each turn gets one more AI Skill.'],
+  ['race-driver', 'NEED FOR SPEED', 'Car purchases pay back extra Wealth.'],
+  ['content-creator', 'GO VIRAL', 'The first Fame gain each turn gets amplified.'],
+  ['gig-worker', 'SIDE HUSTLE', 'Resolved cards add a small Wealth bump.'],
+  ['lawyer', 'OBJECTION', 'A roll of 2 sets up a Wealth/Influence protection.'],
+  ['pro-gamer', 'CLUTCH INPUT', 'Doubles add a little Fame.'],
+  ['doctor', 'HEALTH INSURANCE', 'Big Wealth setbacks still restore some Lifestyle.'],
+  ['personal-trainer', 'LOCKED IN', 'Lifestyle purchases add more Lifestyle.'],
+  ['degen-trader', 'YOLO', 'Rolling an 8 pays extra Wealth.'],
+  ['startup-founder', 'EQUITY', 'Gamble cards cash out a little harder.'],
+  ['influencer', 'ENGAGEMENT', 'The first Fame gain each turn also pays Wealth.'],
+  ['corporate-executive', 'GOLDEN HANDCUFFS', 'Salary gates also raise Influence.'],
+  ['cybersecurity-specialist', 'ZERO DAY', 'A roll of 2 sets up an AI/Wealth failsafe.'],
+  ['entertainer', 'ENCORE', 'Landing on another player adds Fame.'],
+  ['real-estate-investor', 'PROPERTY LADDER', 'Property purchases add Wealth and Influence.'],
 ] as const;
 
 const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 'description'>>> = {
   [characterAbilityId('guardian_h')]: {
-    trigger: 'TURN_START',
-    conditions: [{ kind: 'ANY' }],
-    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, reason: 'Guardian H protection charge' }],
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_HAS_TARGET_PLAYER' }],
+    effects: [{ type: 'PROTECT_FROM_EFFECT', target: 'LANDED_ON_PLAYER', amount: 1, reason: 'Protector' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerTurn: true },
+    usageLimits: { oncePerRound: true },
   },
   [characterAbilityId('click_click')]: {
-    trigger: 'LAND_ON_PLAYER',
-    conditions: [{ kind: 'EVENT_HAS_TARGET_PLAYER' }, { kind: 'TARGET_IS_OTHER_PLAYER' }],
-    effects: [{ type: 'ADD_INFLUENCE', amount: 5, reason: 'Quick Draw' }],
+    trigger: 'FAME_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_LEAST', amount: 1 }],
+    effects: [{ type: 'ADD_FAME', amount: 2, reason: 'Media Machine' }],
     mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
   },
-  [characterAbilityId('idol_core')]: {
+  [characterAbilityId('frostbyte')]: {
     trigger: 'DOUBLES_ROLLED',
-    conditions: [{ kind: 'ANY' }],
-    effects: [{ type: 'ADD_FAME', amount: 5, reason: 'Main Character' }],
+    conditions: [{ kind: 'EVENT_PLAYER_IS_OTHER_PLAYER' }],
+    effects: [{ type: 'REMOVE_WEALTH', target: 'EVENT_PLAYER', amount: 5000, reason: 'Freeze Frame' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('sadman')]: {
+    trigger: 'WEALTH_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_OTHER_PLAYER' }, { kind: 'EVENT_DELTA_AT_LEAST', amount: 20000 }],
+    effects: [{ type: 'ADD_WEALTH', amount: 5000, reason: 'Misery Loves Company' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('rainbow_dash')]: {
+    trigger: 'PASS_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_FAME', amount: 2, reason: 'Hype Train' }],
     mode: 'PASSIVE',
   },
-  [characterAbilityId('hotwired')]: {
-    trigger: 'ASSET_PURCHASED',
-    conditions: [{ kind: 'ANY' }],
-    effects: [{ type: 'ADD_LIFESTYLE', amount: 5, reason: 'Jump Start' }],
+  [characterAbilityId('accuser')]: {
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_HAS_TARGET_PLAYER' }],
+    effects: [
+      { type: 'REMOVE_INFLUENCE', target: 'LANDED_ON_PLAYER', amount: 2, reason: 'Point The Finger' },
+      { type: 'ADD_INFLUENCE', amount: 2, reason: 'Point The Finger' },
+    ],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('low_flame')]: {
+    trigger: 'TURN_START',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'PLAYER_WEALTH_AT_OR_BELOW', amount: 120000 }],
+    effects: [{ type: 'ADD_WEALTH', amount: 10000, reason: 'Low Heat' }],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('wandering_eye')]: {
+    trigger: 'CARD_DRAW',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_OTHER_PLAYER' }],
+    effects: [{ type: 'ADD_AI_SKILL', amount: 1, reason: 'Watching' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('the_rind')]: {
+    trigger: 'ROLL_OF_2',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, blockedEffectTypes: ['REMOVE_WEALTH', 'REMOVE_FAME', 'REMOVE_LIFESTYLE', 'REMOVE_INFLUENCE', 'REMOVE_AI_SKILL'], reason: 'Hard Exterior' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('anointed')]: {
+    trigger: 'MILESTONE',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [
+      { type: 'ADD_FAME', amount: 3, reason: 'Chosen Path' },
+      { type: 'ADD_INFLUENCE', amount: 2, reason: 'Chosen Path' },
+    ],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('executive_p')]: {
+    trigger: 'SALARY_GATE',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_INFLUENCE', amount: 2, reason: 'Power Move' }],
     mode: 'PASSIVE',
   },
   [characterAbilityId('alpha_prime')]: {
     trigger: 'DICE_ROLL',
-    conditions: [{ kind: 'ANY' }],
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
     effects: [{ type: 'MODIFY_SALARY', amount: 5000, reason: 'Prime Directive' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerTurn: true },
   },
+  [characterAbilityId('roll_safe')]: {
+    trigger: 'ROLL_OF_2',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 15000, reason: 'Calculated Risk' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('hotwired')]: {
+    trigger: 'CAR_PURCHASED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [
+      { type: 'ADD_LIFESTYLE', amount: 5, reason: 'Jump Start' },
+      { type: 'ADD_INFLUENCE', amount: 1, reason: 'Jump Start' },
+    ],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('panic_bot')]: {
+    trigger: 'ROLL_OF_8',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_OTHER_PLAYER' }],
+    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, blockedEffectTypes: ['REMOVE_WEALTH', 'REMOVE_INFLUENCE'], reason: 'Red Alert' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('primate')]: {
+    trigger: 'DOUBLES_ROLLED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_LIFESTYLE', amount: 2, reason: 'Wild Instinct' }],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('pain_hider')]: {
+    trigger: 'WEALTH_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_MOST', amount: -10000 }],
+    effects: [{ type: 'ADD_INFLUENCE', amount: 2, reason: 'Poker Face' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [characterAbilityId('prom_king')]: {
+    trigger: 'PASS_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [
+      { type: 'ADD_FAME', amount: 2, reason: 'Spotlight' },
+      { type: 'ADD_INFLUENCE', amount: 1, reason: 'Spotlight' },
+    ],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [characterAbilityId('idol_core')]: {
+    trigger: 'DOUBLES_ROLLED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_FAME', amount: 5, reason: 'Main Character' }],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('danger_zone')]: {
+    trigger: 'ROLL_OF_8',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [
+      { type: 'ADD_WEALTH', amount: 10000, reason: 'Full Throttle' },
+      { type: 'ADD_FAME', amount: 2, reason: 'Full Throttle' },
+    ],
+    mode: 'PASSIVE',
+  },
+  [characterAbilityId('the_tank')]: {
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_HAS_TARGET_PLAYER' }],
+    effects: [{ type: 'MOVE_PLAYER', target: 'LANDED_ON_PLAYER', amount: -1, reason: 'Breakthrough' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [careerAbilityId('ai-engineer')]: {
+    trigger: 'AI_SKILL_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_LEAST', amount: 1 }],
+    effects: [{ type: 'ADD_AI_SKILL', amount: 1, reason: 'MODEL UPGRADE' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [careerAbilityId('race-driver')]: {
+    trigger: 'CAR_PURCHASED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 10000, reason: 'NEED FOR SPEED' }],
+    mode: 'PASSIVE',
+  },
+  [careerAbilityId('content-creator')]: {
+    trigger: 'FAME_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_LEAST', amount: 1 }],
+    effects: [{ type: 'ADD_FAME', amount: 2, reason: 'GO VIRAL' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [careerAbilityId('gig-worker')]: {
+    trigger: 'CARD_RESOLVED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 5000, reason: 'SIDE HUSTLE' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [careerAbilityId('lawyer')]: {
+    trigger: 'ROLL_OF_2',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, blockedEffectTypes: ['REMOVE_WEALTH', 'REMOVE_INFLUENCE'], reason: 'OBJECTION' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [careerAbilityId('pro-gamer')]: {
+    trigger: 'DOUBLES_ROLLED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_FAME', amount: 2, reason: 'CLUTCH INPUT' }],
+    mode: 'PASSIVE',
+  },
+  [careerAbilityId('doctor')]: {
+    trigger: 'WEALTH_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_MOST', amount: -10000 }],
+    effects: [{ type: 'ADD_LIFESTYLE', amount: 2, reason: 'HEALTH INSURANCE' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [careerAbilityId('personal-trainer')]: {
+    trigger: 'LIFESTYLE_PURCHASED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_LIFESTYLE', amount: 3, reason: 'LOCKED IN' }],
+    mode: 'PASSIVE',
+  },
   [careerAbilityId('degen-trader')]: {
     trigger: 'ROLL_OF_8',
-    conditions: [{ kind: 'ANY' }, { kind: 'PLAYER_CAREER_TAG', tag: 'risk' }],
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
     effects: [{ type: 'ADD_WEALTH', amount: 10000, reason: 'YOLO' }],
     mode: 'PASSIVE',
   },
+  [careerAbilityId('startup-founder')]: {
+    trigger: 'CARD_RESOLVED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DECK_IS', deck: 'gamble' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 10000, reason: 'EQUITY' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [careerAbilityId('influencer')]: {
+    trigger: 'FAME_CHANGED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_DELTA_AT_LEAST', amount: 1 }],
+    effects: [{ type: 'ADD_WEALTH', amount: 5000, reason: 'ENGAGEMENT' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerTurn: true },
+  },
+  [careerAbilityId('corporate-executive')]: {
+    trigger: 'SALARY_GATE',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'ADD_INFLUENCE', amount: 2, reason: 'GOLDEN HANDCUFFS' }],
+    mode: 'PASSIVE',
+  },
+  [careerAbilityId('cybersecurity-specialist')]: {
+    trigger: 'ROLL_OF_2',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, blockedEffectTypes: ['REMOVE_AI_SKILL', 'REMOVE_WEALTH'], reason: 'ZERO DAY' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [careerAbilityId('entertainer')]: {
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }, { kind: 'EVENT_HAS_TARGET_PLAYER' }],
+    effects: [{ type: 'ADD_FAME', amount: 3, reason: 'ENCORE' }],
+    mode: 'PASSIVE',
+  },
   [careerAbilityId('real-estate-investor')]: {
-    trigger: 'ASSET_PURCHASED',
-    conditions: [{ kind: 'ANY' }, { kind: 'EVENT_CATEGORY_IS', category: 'property' }],
-    effects: [{ type: 'ADD_LIFESTYLE', amount: 5, reason: 'Property Ladder' }],
+    trigger: 'PROPERTY_PURCHASED',
+    conditions: [{ kind: 'EVENT_PLAYER_IS_SELF' }],
+    effects: [
+      { type: 'ADD_WEALTH', amount: 10000, reason: 'PROPERTY LADDER' },
+      { type: 'ADD_INFLUENCE', amount: 3, reason: 'PROPERTY LADDER' },
+    ],
     mode: 'PASSIVE',
   },
 };

@@ -1,6 +1,7 @@
 import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
 import { getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
+import { drawCard, getCard } from './cards';
 import { getCareer } from './careers';
 import { getCharacter } from './characters';
 import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './events/types';
@@ -108,8 +109,8 @@ function eventLabel(event: AnyGameEvent): string {
     case 'SALARY_GATE': return 'SALARY GATE';
     case 'CAREER_CHANGE': return event.stage === 'RESOLVED' ? 'CAREER RESOLVED' : 'CAREER CHANGE';
     case 'MILESTONE': return 'MILESTONE';
-    case 'CARD_DRAW': return 'CARD DRAW';
-    case 'CARD_RESOLVED': return 'CARD RESOLVED';
+    case 'CARD_DRAW': return getCard(event.cardId ?? '')?.title?.toUpperCase() ?? 'CARD DRAW';
+    case 'CARD_RESOLVED': return getCard(event.cardId ?? '')?.title?.toUpperCase() ?? 'CARD RESOLVED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
     case 'CAR_PURCHASED': return 'CAR PURCHASED';
     case 'LIFESTYLE_PURCHASED': return 'LIFESTYLE PURCHASED';
@@ -150,9 +151,9 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
     case 'MILESTONE':
       return `${player.displayName} reached the ${event.milestoneType} milestone.`;
     case 'CARD_DRAW':
-      return `${player.displayName} drew a ${event.deck} card.`;
+      return `${player.displayName} drew ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'CARD_RESOLVED':
-      return `${player.displayName} resolved a ${event.deck} card.`;
+      return `${player.displayName} resolved ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'ASSET_PURCHASED':
       return `${player.displayName} purchased ${event.assetName}.`;
     case 'CAR_PURCHASED':
@@ -255,16 +256,45 @@ function meetsCondition(match: Match, player: MatchPlayer, event: AnyGameEvent, 
     }
     case 'TARGET_IS_OTHER_PLAYER':
       return Boolean(event.targetPlayerId && event.targetPlayerId !== player.playerId);
+    case 'EVENT_PLAYER_IS_SELF':
+      return event.playerId === player.playerId;
+    case 'EVENT_PLAYER_IS_OTHER_PLAYER':
+      return event.playerId !== player.playerId;
+    case 'EVENT_TARGET_IS_SELF':
+      return event.targetPlayerId === player.playerId;
+    case 'PLAYER_WEALTH_AT_OR_BELOW':
+      return player.wealth <= condition.amount;
+    case 'EVENT_DELTA_AT_LEAST':
+      return (event.delta ?? 0) >= condition.amount;
+    case 'EVENT_DELTA_AT_MOST':
+      return (event.delta ?? 0) <= condition.amount;
   }
+}
+
+function filterTargetsByCareerTag(match: Match, targets: number[], careerTag?: EffectDefinition['careerTag']): number[] {
+  if (!careerTag) return targets;
+  return targets.filter((index) => {
+    const careerId = match.players[index].careerId;
+    const career = careerId ? getCareer(careerId) : undefined;
+    return Boolean(career?.tags.includes(careerTag));
+  });
+}
+
+function resolveEffectTargets(match: Match, actor: MatchPlayer, event: AnyGameEvent, effect: EffectDefinition): number[] {
+  return filterTargetsByCareerTag(match, resolveTargets(match, actor, event, effect.target), effect.careerTag);
 }
 
 function resolveTargets(match: Match, actor: MatchPlayer, event: AnyGameEvent, target: EffectDefinition['target'] = 'SELF'): number[] {
   switch (target) {
+    case 'EVENT_PLAYER':
+      return [event.playerIndex];
     case 'LANDED_ON_PLAYER':
     case 'AFFECTED_PLAYER':
       return event.targetPlayerId
         ? match.players.flatMap((player, index) => player.playerId === event.targetPlayerId ? [index] : [])
         : [];
+    case 'ALL_PLAYERS':
+      return match.players.map((_, index) => index);
     case 'ALL_OTHER_PLAYERS':
       return match.players.flatMap((player, index) => index === actor.slot ? [] : [index]);
     case 'SELF':
@@ -487,6 +517,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         });
       }
       if (space.deck) {
+        const card = drawCard(space.deck);
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: targetIndex,
@@ -496,6 +527,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
           depth: event.depth + 1,
           spaceNumber: nextPosition,
           deck: space.deck,
+          cardId: card.id,
         });
       }
     }
@@ -516,7 +548,9 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number }, lastLanding: landing };
+      const queuedCardId = [...queue].reverse().find((draft) => draft.type === 'CARD_DRAW' && draft.playerIndex === targetIndex && draft.spaceNumber === finalSpace.number)?.cardId;
+      const card = (queuedCardId ? getCard(queuedCardId) : undefined) ?? drawCard(finalSpace.deck);
+      state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, cardId: card.id, space: finalSpace.number }, lastLanding: landing };
     } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
     } else {
@@ -530,27 +564,27 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
   const reason = effect.reason ?? getAbility(event.abilityId ?? '')?.name ?? event.type;
   switch (effect.type) {
     case 'ADD_WEALTH':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'wealth', effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'wealth', effect.amount, effect.type, index, reason), match);
     case 'REMOVE_WEALTH':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'wealth', -effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'wealth', -effect.amount, effect.type, index, reason), match);
     case 'ADD_AI_SKILL':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'aiSkill', effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'aiSkill', effect.amount, effect.type, index, reason), match);
     case 'REMOVE_AI_SKILL':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'aiSkill', -effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'aiSkill', -effect.amount, effect.type, index, reason), match);
     case 'ADD_FAME':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'fame', effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'fame', effect.amount, effect.type, index, reason), match);
     case 'REMOVE_FAME':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'fame', -effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'fame', -effect.amount, effect.type, index, reason), match);
     case 'ADD_LIFESTYLE':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'lifestyle', effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'lifestyle', effect.amount, effect.type, index, reason), match);
     case 'REMOVE_LIFESTYLE':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'lifestyle', -effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'lifestyle', -effect.amount, effect.type, index, reason), match);
     case 'ADD_INFLUENCE':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'influence', effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'influence', effect.amount, effect.type, index, reason), match);
     case 'REMOVE_INFLUENCE':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'influence', -effect.amount, effect.type, index, reason), match);
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => applyStatDelta(state, queue, event, actor, 'influence', -effect.amount, effect.type, index, reason), match);
     case 'PROTECT_FROM_EFFECT':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => ({
+    return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => ({
         ...state,
         effectProtections: {
           ...state.effectProtections,
@@ -561,7 +595,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         },
       }), match);
     case 'MODIFY_REWARD':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => ({
+      return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => ({
         ...state,
         rewardModifiers: {
           ...state.rewardModifiers,
@@ -572,7 +606,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         },
       }), match);
     case 'MODIFY_SALARY':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+      return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => {
         const previousSalary = state.players[index].salaryAmount;
         const newSalary = Math.max(0, previousSalary + effect.amount);
         if (newSalary === previousSalary) return state;
@@ -602,7 +636,8 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       } as EventDraft);
       return match;
     case 'DRAW_CARD':
-      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+      return resolveEffectTargets(match, actor, event, effect).reduce((state, index) => {
+        const card = drawCard(effect.deck);
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: index,
@@ -611,6 +646,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           sourceEventId: event.id,
           depth: event.depth + 1,
           deck: effect.deck,
+          cardId: card.id,
           spaceNumber: state.players[index].position,
         });
         const landingSpace = getSpace(state.players[index].position);
@@ -618,18 +654,18 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           ...state,
           turnIndex: index,
           phase: 'decision',
-          pending: { kind: 'CARD', deck: effect.deck, space: state.players[index].position },
+          pending: { kind: 'CARD', deck: effect.deck, cardId: card.id, space: state.players[index].position },
           lastLanding: landingSpace ? { playerIndex: index, space: landingSpace } : state.lastLanding,
         };
       }, match);
     case 'MOVE_PLAYER': {
-      return resolveTargets(match, actor, event, effect.target).reduce(
+      return resolveEffectTargets(match, actor, event, effect).reduce(
         (state, index) => applyMovePlayerEffect(state, queue, actor, index, event, effect.amount),
         match,
       );
     }
     case 'AFFECT_OTHER_PLAYER':
-      return resolveTargets(match, actor, event, effect.target ?? 'LANDED_ON_PLAYER').reduce(
+      return resolveEffectTargets(match, actor, event, { ...effect, target: effect.target ?? 'LANDED_ON_PLAYER' }).reduce(
         (state, index) => effect.effects.reduce(
           (nestedState, nestedEffect) => applyEffect(nestedState, queue, actor, { ...event, targetPlayerId: nestedState.players[index].playerId, targetPlayerIndex: index }, nestedEffect),
           state,
@@ -637,6 +673,17 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         match,
       );
   }
+}
+
+function runCardEffects(match: Match, queue: EventDraft[], event: AnyGameEvent): Match {
+  if (event.type !== 'CARD_RESOLVED' || !event.cardId) return match;
+  const card = getCard(event.cardId);
+  if (!card) return match;
+  const player = match.players[event.playerIndex];
+  return card.effects.reduce(
+    (state, effect) => applyEffect(state, queue, player, { ...event, description: card.description }, effect),
+    match,
+  );
 }
 
 function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] {
@@ -681,6 +728,7 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     const [nextState, event] = createEvent(state, draft);
     state = pushLog(nextState, event);
     queue.push(...nativeSecondaryEvents(state, event));
+    state = runCardEffects(state, queue, event);
     state = runAbilities(state, queue, event);
     processed += 1;
   }

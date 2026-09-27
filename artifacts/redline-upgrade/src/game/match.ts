@@ -1,4 +1,5 @@
 import { characters } from './characters';
+import { drawCard } from './cards';
 import { createPlayer, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, startingWealth, type SalaryTier } from './careers';
@@ -16,7 +17,7 @@ export interface WealthEvent { id: number; playerIndex: number; amount: number; 
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type PendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
-  | { kind: 'CARD'; deck: DeckId; space: number }
+  | { kind: 'CARD'; deck: DeckId; cardId: string; space: number }
   | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
 export interface Match {
   players: MatchPlayer[];
@@ -169,8 +170,9 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
     return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }
   if (space.deck) {
-    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck });
-    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, space: space.number } }, drafts);
+    const card = drawCard(space.deck);
+    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: card.id });
+    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, cardId: card.id, space: space.number } }, drafts);
   }
   return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
 }
@@ -244,8 +246,8 @@ function purchase(match: Match, assetId: string): Match {
 
 function resolveCardDecision(match: Match): Match {
   if (match.phase !== 'decision' || match.pending?.kind !== 'CARD') return match;
-  const { deck, space } = match.pending;
-  return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck, spaceNumber: space, cardId: `example-${deck}` }]);
+  const { deck, cardId, space } = match.pending;
+  return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck, spaceNumber: space, cardId }]);
 }
 
 function autoDecide(match: Match): Match {

@@ -27,7 +27,7 @@ export function RedlineCard({ deck, face = 'back', card, artwork, action, classN
         <>
           <div className="redline-card-art">{artwork ?? <SpaceIcon name={config.icon} size={48} />}</div>
           <div className="redline-card-content">
-            <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card?.rarity ?? 'EXAMPLE'} / NON-ACTIVE</span>
+            <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card?.rarity ?? 'STANDARD'}</span>
             <h3>{card?.title ?? config.name}</h3>
             <p>{card?.description ?? config.description}</p>
             <div className="redline-card-effect"><span>{card?.effect ?? 'Example card'}</span><b>{card?.value ?? '—'}</b></div>

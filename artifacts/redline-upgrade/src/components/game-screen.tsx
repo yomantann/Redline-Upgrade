@@ -207,7 +207,7 @@ export function GameScreen() {
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
        /></div>
-       <CardTabletop activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined} isCPU={active.isCPU} onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })} />
+       <CardTabletop activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined} activeCardId={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.cardId : undefined} isCPU={active.isCPU} onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })} />
        </div>}
 
       {match.phase !== 'decision' && <section className="game-console">
