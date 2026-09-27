@@ -37,14 +37,14 @@ export function CareerReveal() {
         <div className="career-reveal-progress" aria-label="Step 2 of 3"><i /><i /><i /></div>
       </div>
       <div className="career-reveal-heading">
-        <div>
+        <div data-career={career.id}>
           <span className="mono lime">PLAYER 01 / CLASSIFIED DOSSIER</span>
           <h1 className="display">Your next<br /><span>move.</span></h1>
         </div>
         <p>The identity was your choice. The career is the luck of the draw. This is where your run begins.</p>
       </div>
       <section className="career-dossier" aria-label="Your assigned career">
-        <div className="career-feature">
+        <div className={`career-feature career-${career.id}`} data-career={career.id}>
           <div className="career-feature-top mono"><span>REDLINE / CAREER FILE</span><span>ASSIGNED TO YOU</span></div>
           <div className="career-feature-center">
             <CareerGlyph icon={icon} />

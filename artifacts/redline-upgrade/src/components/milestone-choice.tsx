@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { assetOptions, type AssetCategory, type AssetDefinition } from '@/game/assets';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
+import { getAssetArtworkUrl, getCategoryArtworkUrl } from '@/game/asset-artwork';
 import { CareerGlyph } from './career-reveal';
 import { SpaceIcon } from './space-icon';
 import './milestone-choice.css';
@@ -20,13 +21,12 @@ function Header({ space, eyebrow, title, highlighted, description }: { space: nu
 }
 
 function AssetArtwork({ asset, index }: { asset: AssetDefinition; index: number }) {
-  const visual = asset.visual;
-  const image = typeof visual === 'string' && (/^(https?:\/\/|\/|data:image\/)/.test(visual) || /\.(png|jpe?g|webp|svg)(\?|$)/i.test(visual));
+  const image = getAssetArtworkUrl(asset.id);
   return (
-    <div className="milestone-art" data-category={asset.category} aria-label={`${asset.name} visual`}>
+    <div className={`milestone-art ${image ? 'has-artwork' : ''}`} data-category={asset.category} aria-label={`${asset.name} visual`}>
       <span className="milestone-art-index">{String(index + 1).padStart(2, '0')} / {asset.rarity.toUpperCase()}</span>
       <span className="milestone-art-symbol" aria-hidden="true"><SpaceIcon name={asset.category} size={58} /></span>
-      {image && <img src={visual} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }} />}
+      {image && <img className="milestone-art-image" src={image} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
       <span className="milestone-art-caption">{asset.category.toUpperCase()} / REDLINE</span>
     </div>
   );
@@ -58,14 +58,14 @@ function AssetCard({ asset, index, wealth, selected, onSelect, onBuy }: { asset:
 function CareerCard({ career, index, onSelect }: { career: Career; index: number; onSelect: () => void }) {
   const category = getCategory(career.categoryId);
   return (
-    <article className="milestone-card milestone-career-card" data-testid={`card-career-offer-${career.id}`}>
-      <div className="milestone-art" data-category={index === 0 ? 'investment' : 'car'}>
+    <article className={`milestone-card milestone-career-card career-${career.id}`} data-testid={`card-career-offer-${career.id}`}>
+      <div className="milestone-art career-art" data-category={career.categoryId}>
         <span className="milestone-art-index">OFFER / 0{index + 1}</span>
         <span className="milestone-art-symbol"><CareerGlyph icon={career.icon || career.name} /></span>
-        <span className="milestone-art-caption">{category?.name ?? career.categoryId}</span>
+        <span className="milestone-art-caption">{category?.name ?? career.categoryId} / {career.icon}</span>
       </div>
       <div className="milestone-card-body">
-        <span className="milestone-card-kicker mono">{category?.name ?? career.categoryId}</span>
+        <span className="milestone-card-kicker mono"><CareerGlyph icon={category?.icon ?? career.categoryId} className="career-kicker-glyph" /> {category?.name ?? career.categoryId}</span>
         <h3>{career.name}</h3>
         <p className="milestone-card-desc">{career.description}</p>
         <div className="milestone-card-price"><span className="mono">SALARY RANGE</span><strong>{formatMoney(career.salaryTiers[0])}–{formatMoney(career.salaryTiers[3])}</strong></div>
@@ -102,12 +102,20 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
         <Header space={45} eyebrow="FORK IN THE ROAD" title="What's your" highlighted="next move?" description="One slot. Two directions. Choose a companion or put your wealth to work." />
         <div className="milestone-meta mono"><span>AVAILABLE WEALTH / <b>{formatMoney(player.wealth)}</b></span><span>PET OR INVESTMENT // CHOOSE ONE PATH</span></div>
         <div className="milestone-grid two">
-          {(['pet', 'investment'] as const).map((choice, index) => (
-            <button className="milestone-card milestone-option" key={choice} type="button" onClick={() => onAction({ type: 'CHOOSE_ASSET_CATEGORY', category: choice })} data-testid={`button-choose-category-${choice}`}>
-              <div className="milestone-art" data-category={choice}><span className="milestone-art-index">PATH / 0{index + 1}</span><span className="milestone-art-symbol">{choice === 'pet' ? 'P' : 'I'}</span><span className="milestone-art-caption">SPACE 45 / CHOICE</span></div>
-              <div className="milestone-card-body"><span className="mono milestone-card-kicker">COMPANION SLOT</span><h3>{choice === 'pet' ? 'PET' : 'INVESTMENT'}</h3><span className="milestone-card-desc">{choice === 'pet' ? 'Bring someone along. Build your Lifestyle, Fame or AI Skill.' : 'Put capital in play. Choose an asset with future potential.'}</span><span className="milestone-buy">VIEW {choice.toUpperCase()} CARDS <span aria-hidden="true">↗</span></span></div>
-            </button>
-          ))}
+          {(['pet', 'investment'] as const).map((choice, index) => {
+            const artwork = getCategoryArtworkUrl(choice);
+            return (
+              <button className="milestone-card milestone-option" key={choice} type="button" onClick={() => onAction({ type: 'CHOOSE_ASSET_CATEGORY', category: choice })} data-testid={`button-choose-category-${choice}`}>
+                <div className={`milestone-art ${artwork ? 'has-artwork' : ''}`} data-category={choice}>
+                  <span className="milestone-art-index">PATH / 0{index + 1}</span>
+                  <span className="milestone-art-symbol">{choice === 'pet' ? 'P' : 'I'}</span>
+                  {artwork && <img className="milestone-art-image" src={artwork} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
+                  <span className="milestone-art-caption">SPACE 45 / CHOICE</span>
+                </div>
+                <div className="milestone-card-body"><span className="mono milestone-card-kicker">COMPANION SLOT</span><h3>{choice === 'pet' ? 'PET' : 'INVESTMENT'}</h3><span className="milestone-card-desc">{choice === 'pet' ? 'Bring someone along. Build your Lifestyle, Fame or AI Skill.' : 'Put capital in play. Choose an asset with future potential.'}</span><span className="milestone-buy">VIEW {choice.toUpperCase()} CARDS <span aria-hidden="true">↗</span></span></div>
+              </button>
+            );
+          })}
         </div>
         <div className="milestone-footer"><span className="mono">NO PURCHASE REQUIRED // YOU CAN PASS</span><button type="button" className="milestone-skip" onClick={() => onAction({ type: 'SKIP_ASSET' })} data-testid="button-skip-asset">SKIP MILESTONE ↗</button></div>
       </section>
@@ -127,7 +135,7 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
   if (pending.stage === 'choice') return (
     <section className="milestone-choice" aria-label="Career opportunity">
       <Header space={35} eyebrow="CAREER OPPORTUNITY" title="Stay the course." highlighted="Or switch." description="Your career is on the line. Keep your current role, or draw two new offers and rewrite your next payday." />
-      <div className="milestone-career-current"><CareerGlyph icon={currentCareer?.icon ?? '◇'} /><div><span className="mono">CURRENT CAREER / {currentCareer ? getCategory(currentCareer.categoryId)?.name : 'UNASSIGNED'}</span><strong>{currentCareer?.name ?? 'Unassigned'}</strong><small>{currentCareer?.abilityName} · {SALARY_TIERS[player.salaryTier - 1]} · {formatMoney(player.salaryAmount)} salary</small></div></div>
+      <div className={`milestone-career-current ${currentCareer ? `career-${currentCareer.id}` : ''}`} data-category={currentCareer?.categoryId}><CareerGlyph icon={currentCareer?.icon ?? '◇'} /><div><span className="mono">CURRENT CAREER / {currentCareer ? getCategory(currentCareer.categoryId)?.name : 'UNASSIGNED'}</span><strong>{currentCareer?.name ?? 'Unassigned'}</strong><small>{currentCareer?.abilityName} · {SALARY_TIERS[player.salaryTier - 1]} · {formatMoney(player.salaryAmount)} salary</small></div></div>
       <div className="milestone-grid two">
         <button className="milestone-card milestone-option" type="button" onClick={() => onAction({ type: 'KEEP_CAREER' })} data-testid="button-keep-career"><div className="milestone-art" data-category="lifestyle"><span className="milestone-art-index">OPTION / 01</span><span className="milestone-art-symbol">=</span><span className="milestone-art-caption">STABILITY / LOCK IN</span></div><div className="milestone-card-body"><span className="mono">NO CHANGE TO SALARY OR WEALTH</span><h3>KEEP CAREER</h3><span className="milestone-card-desc">Stay with {currentCareer?.name ?? 'your current career'}. Your category, ability, salary and wealth remain intact.</span><span className="milestone-buy">LOCK IN CAREER <span aria-hidden="true">↗</span></span></div></button>
         <button className="milestone-card milestone-option" type="button" onClick={() => onAction({ type: 'SWITCH_CAREER' })} data-testid="button-switch-career"><div className="milestone-art" data-category="car"><span className="milestone-art-index">OPTION / 02</span><span className="milestone-art-symbol">↗</span><span className="milestone-art-caption">NEW PATH / TWO OFFERS</span></div><div className="milestone-card-body"><span className="mono">REPLACE YOUR CAREER</span><h3>SWITCH CAREER</h3><span className="milestone-card-desc">Reveal two new career offers. Your new salary tier will be drawn after you choose; existing wealth stays yours.</span><span className="milestone-buy">REVEAL OFFERS <span aria-hidden="true">↗</span></span></div></button>

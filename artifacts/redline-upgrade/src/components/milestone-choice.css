@@ -25,6 +25,16 @@
 .asset-offer-card:has(button:disabled) { opacity:.8; }
 .milestone-card-kicker { display:inline-flex; align-items:center; gap:6px; }
 .milestone-art-symbol svg { filter:drop-shadow(5px 5px 0 #142019); }
+.milestone-art-image { position:absolute; z-index:2; inset:5px; width:calc(100% - 10px); height:calc(100% - 10px); object-fit:contain; object-position:center; filter:drop-shadow(6px 8px 0 rgba(10,17,14,.42)); }
+.milestone-art-image + .milestone-art-caption { z-index:4; }
+.milestone-art.has-artwork .milestone-art-symbol { visibility:hidden; }
+.milestone-art[data-category="car"] .milestone-art-image,
+.milestone-art[data-category="property"] .milestone-art-image { inset:2px; width:calc(100% - 4px); height:calc(100% - 4px); }
+.milestone-art-symbol { position:relative; z-index:1; }
+.career-art .milestone-art-symbol { z-index:2; }
+.career-art .career-glyph { width:clamp(78px,10vw,132px); height:clamp(78px,10vw,132px); background:#d4e981; color:#172219; border:0; transform:rotate(-7deg); box-shadow:10px 10px 0 rgba(8,15,12,.45); font-size:clamp(47px,7vw,90px); }
+.career-art .career-glyph svg { width:52%; height:52%; }
+.career-kicker-glyph { width:20px; height:20px; font-size:12px; border-width:1px; }
 .milestone-career-card { box-shadow:4px 6px 0 #101915,12px 17px 27px rgba(0,0,0,.23); border-radius:8px 8px 12px 12px; overflow:hidden; }
 .career-tier-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; margin:-2px 0 14px; }
 .career-tier-strip span { min-width:0; padding:8px 4px; background:#314137; border-top:3px solid #62796b; }
@@ -43,6 +53,50 @@
 .milestone-art[data-category="pet"] { color:#d4e981; }
 .milestone-art[data-category="investment"] { color:#8fbcca; background:radial-gradient(circle,#344f53,#213538 65%,#172629); }
 .milestone-art[data-category="property"] { color:#e1a67a; background:radial-gradient(circle,#574c3e,#302d2a 65%,#1a221d); }
+.career-art[data-category="digital-risk"] { color:#8fcbd2; background:radial-gradient(circle at 60% 35%,#294e55,#1b3034 58%,#132124); }
+.career-art[data-category="performance"] { color:#f99a74; background:radial-gradient(circle at 55% 45%,#61392f,#352523 58%,#211918); }
+.career-art[data-category="media-fame"] { color:#f0cf78; background:radial-gradient(circle at 50% 35%,#5c4b2b,#393021 58%,#211d17); }
+.career-art[data-category="professional"] { color:#c5d6c0; background:radial-gradient(circle at 55% 40%,#3b5148,#263730 58%,#18231e); }
+.career-art[data-category="business-entrepreneur"] { color:#dba77f; background:radial-gradient(circle at 55% 42%,#5b4030,#382b24 58%,#211b18); }
+.career-art[data-category="flex-gig"] { color:#d4e981; background:radial-gradient(circle at 48% 42%,#405332,#293a27 58%,#182219); }
+.career-ai-engineer .career-art,
+.career-ai-engineer .career-feature { --career-accent:#8fcbd2; }
+.career-race-driver .career-art,
+.career-race-driver .career-feature { --career-accent:#f99a74; }
+.career-content-creator .career-art,
+.career-content-creator .career-feature { --career-accent:#f0cf78; }
+.career-gig-worker .career-art,
+.career-gig-worker .career-feature { --career-accent:#d4e981; }
+.career-lawyer .career-art,
+.career-lawyer .career-feature { --career-accent:#c5d6c0; }
+.career-pro-gamer .career-art,
+.career-pro-gamer .career-feature { --career-accent:#8fcbd2; }
+.career-doctor .career-art,
+.career-doctor .career-feature { --career-accent:#c5d6c0; }
+.career-personal-trainer .career-art,
+.career-personal-trainer .career-feature { --career-accent:#f99a74; }
+.career-degen-trader .career-art,
+.career-degen-trader .career-feature { --career-accent:#d4e981; }
+.career-startup-founder .career-art,
+.career-startup-founder .career-feature { --career-accent:#dba77f; }
+.career-influencer .career-art,
+.career-influencer .career-feature { --career-accent:#f0cf78; }
+.career-corporate-executive .career-art,
+.career-corporate-executive .career-feature { --career-accent:#dba77f; }
+.career-cybersecurity-specialist .career-art,
+.career-cybersecurity-specialist .career-feature { --career-accent:#8fcbd2; }
+.career-entertainer .career-art,
+.career-entertainer .career-feature { --career-accent:#f0cf78; }
+.career-real-estate-investor .career-art,
+.career-real-estate-investor .career-feature { --career-accent:#dba77f; }
+.milestone-career-current { border-left:4px solid var(--current-career-accent,#526456); }
+.milestone-career-current .career-glyph { color:var(--current-career-accent,#d4e981); border-color:var(--current-career-accent,#73896c); }
+.milestone-career-current[data-category="digital-risk"] { --current-career-accent:#8fcbd2; }
+.milestone-career-current[data-category="performance"] { --current-career-accent:#f99a74; }
+.milestone-career-current[data-category="media-fame"] { --current-career-accent:#f0cf78; }
+.milestone-career-current[data-category="professional"] { --current-career-accent:#c5d6c0; }
+.milestone-career-current[data-category="business-entrepreneur"] { --current-career-accent:#dba77f; }
+.milestone-career-current[data-category="flex-gig"] { --current-career-accent:#d4e981; }
 .milestone-art-symbol { z-index:1; color:currentColor; font:900 clamp(68px,8vw,122px)/1 'Barlow Condensed',sans-serif; letter-spacing:-.08em; text-shadow:5px 5px 0 #142019; }
 .milestone-art-index,.milestone-art-caption { position:absolute; z-index:2; color:#e2edda; font:700 8px 'Space Mono',monospace; letter-spacing:.15em; }
 .milestone-art-index { top:13px; left:14px; }

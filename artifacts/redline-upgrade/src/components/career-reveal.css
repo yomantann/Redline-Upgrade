@@ -20,6 +20,19 @@
 .career-feature-center .career-glyph { width:clamp(104px,16vw,205px); height:clamp(104px,16vw,205px); background:#d4e981; color:#18211b; border:0; transform:rotate(-7deg); box-shadow:15px 15px 0 #43503b; font-size:clamp(70px,11vw,145px); }
 .career-feature-center .career-glyph svg { width:55%; height:55%; stroke-width:1.1; }
 .career-feature-center .mono { align-self:end; color:#b7c8a8; writing-mode:vertical-rl; }
+.career-feature[data-career] { --career-accent:#d4e981; }
+.career-feature[data-career]::after { border-color:color-mix(in srgb, var(--career-accent), transparent 45%); }
+.career-feature[data-career] .career-feature-top span:last-child,
+.career-feature[data-career] .career-feature-bottom .mono { color:var(--career-accent); }
+.career-feature[data-career] .career-feature-center .career-glyph { background:var(--career-accent); }
+.career-feature.career-ai-engineer { background:radial-gradient(circle at 58% 38%,#294d53 0%,#1b302f 40%,#101a19 77%); }
+.career-feature.career-race-driver,.career-feature.career-personal-trainer { background:radial-gradient(circle at 58% 42%,#5a382f 0%,#2f2522 42%,#151a18 77%); }
+.career-feature.career-content-creator,.career-feature.career-influencer,.career-feature.career-entertainer { background:radial-gradient(circle at 58% 38%,#5a4a2d 0%,#332e23 42%,#171a17 77%); }
+.career-feature.career-lawyer,.career-feature.career-doctor { background:radial-gradient(circle at 58% 42%,#3a5046 0%,#26372e 42%,#141c18 77%); }
+.career-feature.career-degen-trader,.career-feature.career-gig-worker { background:radial-gradient(circle at 58% 42%,#40512f 0%,#293827 42%,#141d17 77%); }
+.career-feature.career-startup-founder,.career-feature.career-corporate-executive,.career-feature.career-real-estate-investor { background:radial-gradient(circle at 58% 42%,#583f30 0%,#352a23 42%,#171a17 77%); }
+.career-feature.career-pro-gamer { --career-accent:#be98f3; background:radial-gradient(circle at 58% 38%,#43365d 0%,#292438 42%,#14171c 77%); }
+.career-feature.career-cybersecurity-specialist { --career-accent:#8fcbd2; background:radial-gradient(circle at 58% 38%,#294d53 0%,#1b302f 42%,#101a19 77%); }
 .career-feature-bottom .mono { color:#d4e981; }
 .career-feature-bottom h2 { font:800 clamp(60px,7.8vw,125px)/.85 'Barlow Condensed',sans-serif; letter-spacing:-.035em; text-transform:uppercase; margin:15px 0 16px; overflow-wrap:anywhere; }
 .career-feature-bottom p { max-width:510px; line-height:1.6; color:#c3cfc0; margin:0; font-size:14px; }

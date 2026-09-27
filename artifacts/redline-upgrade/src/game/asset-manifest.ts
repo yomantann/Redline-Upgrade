@@ -3,6 +3,7 @@ import { assets } from './assets';
 import { cards } from './cards';
 import { decks } from './decks';
 import { ICON_PATHS } from './icon-paths';
+import { getAssetArtworkFilePath } from './asset-artwork';
 
 /** Paths are relative to the redline-upgrade artifact root, not deployment URLs.
  * Image-backed entries are actual files; fallback entries are deliberately code-drawn.
@@ -27,12 +28,16 @@ export const visualAssets: readonly VisualAsset[] = [
     filePath: `public/${character.imagePath}`, assetType: 'image' as const,
     description: character.description, status: 'available' as const,
   })),
-  ...assets.map(asset => ({
-    id: `asset_${asset.id}`, name: asset.name, category: assetCategories[asset.category],
-    filePath: 'src/components/milestone-choice.tsx', assetType: 'symbol' as const,
-    description: `${asset.description} Shared category artwork fallback; no individual file exists yet.`,
-    status: 'fallback' as const,
-  })),
+  ...assets.map(asset => {
+    const artworkPath = getAssetArtworkFilePath(asset.id);
+    return {
+      id: `asset_${asset.id}`, name: asset.name, category: assetCategories[asset.category],
+      filePath: artworkPath ? `public/${artworkPath}` : 'src/components/milestone-choice.tsx',
+      assetType: artworkPath ? 'image' as const : 'symbol' as const,
+      description: artworkPath ? `${asset.description} Individual milestone artwork.` : `${asset.description} Shared category artwork fallback.`,
+      status: artworkPath ? 'available' as const : 'fallback' as const,
+    };
+  }),
   ...decks.map(deck => ({
     id: `deck_${deck.id}`, name: `${deck.name} deck back`, category: 'cards' as const,
     filePath: 'src/components/card-tabletop.css', assetType: 'css-art' as const,

@@ -10,6 +10,8 @@
 .player-asset-art { height:53px; display:grid; place-items:center; position:relative; overflow:hidden; color:#e5bb98; background:radial-gradient(circle at center,#4a5540,#293a2e 70%); }
 .player-asset-art::before { content:""; position:absolute; width:36px; height:36px; border:1px solid currentColor; border-radius:50%; opacity:.55; }
 .player-asset-art b { z-index:1; font:800 34px/.8 'Barlow Condensed',sans-serif; }
+.player-asset-image { position:absolute; z-index:2; inset:2px; width:calc(100% - 4px); height:calc(100% - 4px); object-fit:contain; object-position:center; filter:drop-shadow(3px 4px 0 rgba(10,17,14,.4)); }
+.player-asset-art.has-artwork b { visibility:hidden; }
 .player-asset-art[data-category="car"] { color:#f96346; background:radial-gradient(circle,#554333,#2d352a); }
 .player-asset-art[data-category="lifestyle"] { color:#e9db9f; }
 .player-asset-art[data-category="pet"] { color:#d4e981; }
