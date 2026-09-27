@@ -312,17 +312,19 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
     });
   }
   const occupants = match.players.filter((player, index) => index !== match.turnIndex && player.position === position);
-  for (const occupant of occupants) {
-    drafts.push({
-      type: isFinalStep ? 'LAND_ON_PLAYER' : 'PASS_PLAYER',
-      playerIndex: match.turnIndex,
-      previousPosition,
-      newPosition: position,
-      spaceNumber: position,
-      targetPlayerId: occupant.playerId,
-      targetPlayerIndex: occupant.slot,
-      targetPosition: occupant.position,
-    });
+  if (!isFinalStep) {
+    for (const occupant of occupants) {
+      drafts.push({
+        type: 'PASS_PLAYER',
+        playerIndex: match.turnIndex,
+        previousPosition,
+        newPosition: position,
+        spaceNumber: position,
+        targetPlayerId: occupant.playerId,
+        targetPlayerIndex: occupant.slot,
+        targetPosition: occupant.position,
+      });
+    }
   }
   return drafts;
 }
@@ -424,7 +426,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (match.phase !== 'landed') return match;
       return emit(
         resetTurnScopedState({
-          ...match,
+          ...emit(match, [{ type: 'TURN_END', playerIndex: match.turnIndex }]),
           turnIndex: (match.turnIndex + 1) % 4,
           round: match.turnIndex === 3 ? match.round + 1 : match.round,
           phase: 'ready',
@@ -432,10 +434,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           stepsRemaining: 0,
           turnCounter: match.turnCounter + 1,
         }),
-        [
-          { type: 'TURN_END', playerIndex: match.turnIndex },
-          { type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 },
-        ],
+        [{ type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 }],
       );
   }
 }
