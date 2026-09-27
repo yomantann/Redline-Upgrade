@@ -307,7 +307,7 @@ export const cards: readonly CardDefinition[] = [
     careerTags: ['risk'],
     effects: [
       { type: 'ADD_WEALTH', amount: 15000, reason: 'Lucky Break' },
-      { type: 'ADD_WEALTH', careerTag: 'risk', amount: 10000, reason: 'Lucky Break' },
+      { type: 'ADD_WEALTH', target: 'ALL_PLAYERS', careerTag: 'risk', amount: 10000, reason: 'Lucky Break' },
     ],
   },
 ];

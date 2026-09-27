@@ -556,7 +556,21 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      const card = (drawnCard?.spaceNumber === finalSpace.number ? getCard(drawnCard.id) : undefined) ?? drawCard(finalSpace.deck);
+      let card = drawnCard?.spaceNumber === finalSpace.number ? getCard(drawnCard.id) : undefined;
+      if (!card) {
+        card = drawCard(finalSpace.deck);
+        queue.push({
+          type: 'CARD_DRAW',
+          playerIndex: targetIndex,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          spaceNumber: finalSpace.number,
+          deck: finalSpace.deck,
+          cardId: card.id,
+        });
+      }
       state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, cardId: card.id, space: finalSpace.number }, lastLanding: landing };
     } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
