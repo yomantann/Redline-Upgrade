@@ -17,7 +17,7 @@ export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type PendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
   | { kind: 'CARD'; deck: DeckId; space: number }
-  | { kind: 'CAREER'; space: 35; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
+  | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
 export interface Match {
   players: MatchPlayer[];
   turnIndex: number;
@@ -386,7 +386,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const resolvedSpace = getSpace(currentAfterMove.position);
       if (!resolvedSpace) throw new Error(`Invalid movement position: ${currentAfterMove.position}`);
       if (resolvedSpace.type === 'CAREER_CHANGE') {
-        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space: resolvedSpace } : moved.lastLanding };
+        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: resolvedSpace.number }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space: resolvedSpace } : moved.lastLanding };
       }
       if (moved.stepsRemaining > 0 && currentAfterMove.position < 75) return moved;
       return land(moved, resolvedSpace, previousPosition);

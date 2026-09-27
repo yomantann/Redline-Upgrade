@@ -506,7 +506,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     const landing = { playerIndex: targetIndex, space: finalSpace };
     const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
     if (finalSpace.type === 'CAREER_CHANGE') {
-      state = { ...state, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: landing };
+      state = { ...state, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: finalSpace.number }, lastLanding: landing };
     } else if (slot && !state.players[targetIndex].equipment[slot]) {
       state = {
         ...state,
@@ -619,7 +619,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         };
       }, match);
     case 'MOVE_PLAYER': {
-      return resolveTargets(match, actor, event, effect.target).reduce(
+      return resolveTargets(match, actor, event, effect.target).filter((index) => index === match.turnIndex).reduce(
         (state, index) => applyMovePlayerEffect(state, queue, actor, index, event, effect.amount),
         match,
       );
@@ -638,9 +638,9 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
 function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] {
   if (event.type !== 'DICE_ROLL') return [];
   const drafts: EventDraft[] = [];
-  if (event.doubles) drafts.push({ type: 'DOUBLES_ROLLED', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2 });
-  if (event.total === 2) drafts.push({ type: 'ROLL_OF_2', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2 });
-  if (event.total === 8) drafts.push({ type: 'ROLL_OF_8', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2 });
+  if (event.doubles) drafts.push({ type: 'DOUBLES_ROLLED', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+  if (event.total === 2) drafts.push({ type: 'ROLL_OF_2', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+  if (event.total === 8) drafts.push({ type: 'ROLL_OF_8', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
   return drafts;
 }
 
