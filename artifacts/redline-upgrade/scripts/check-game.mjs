@@ -65,6 +65,7 @@ try {
   }, 2);
   assert.equal(match.players[0].salaryAmount, originalSalary + 5000);
   assert.equal(match.players[0].wealth, 900000 + originalSalary + 5000);
+  assert(eventTypes(match).includes('PLAYER_AFFECTED'));
   match = move(start(4, 1), 2);
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
   match = advanceMatch(match, { type: 'NEXT_TURN' });

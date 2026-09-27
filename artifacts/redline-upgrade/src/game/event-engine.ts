@@ -123,7 +123,7 @@ function eventLabel(event: AnyGameEvent): string {
     case 'TURN_START': return 'TURN START';
     case 'TURN_END': return 'TURN END';
     case 'PLAYER_MOVED': return 'PLAYER MOVED';
-    case 'PLAYER_AFFECTED': return 'PLAYER AFFECTED';
+    case 'PLAYER_AFFECTED': return event.effectType === 'MODIFY_SALARY' ? 'SALARY UPDATED' : 'PLAYER AFFECTED';
   }
 }
 
@@ -154,6 +154,16 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
       return `${player.displayName} resolved a ${event.deck} card.`;
     case 'ASSET_PURCHASED':
       return `${player.displayName} purchased ${event.assetName}.`;
+    case 'CAR_PURCHASED':
+      return `${player.displayName} purchased car ${event.assetName}.`;
+    case 'LIFESTYLE_PURCHASED':
+      return `${player.displayName} purchased lifestyle ${event.assetName}.`;
+    case 'PET_PURCHASED':
+      return `${player.displayName} purchased pet ${event.assetName}.`;
+    case 'INVESTMENT_PURCHASED':
+      return `${player.displayName} purchased investment ${event.assetName}.`;
+    case 'PROPERTY_PURCHASED':
+      return `${player.displayName} purchased property ${event.assetName}.`;
     case 'WEALTH_CHANGED':
     case 'AI_SKILL_CHANGED':
     case 'FAME_CHANGED':
@@ -570,10 +580,24 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         },
       }), match);
     case 'MODIFY_SALARY':
-      return resolveTargets(match, actor, event, effect.target).reduce(
-        (state, index) => updatePlayer(state, index, (player) => ({ ...player, salaryAmount: Math.max(0, player.salaryAmount + effect.amount) })),
-        match,
-      );
+      return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+        const previousSalary = state.players[index].salaryAmount;
+        const newSalary = Math.max(0, previousSalary + effect.amount);
+        if (newSalary === previousSalary) return state;
+        queue.push({
+          type: 'PLAYER_AFFECTED',
+          playerIndex: index,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          effectType: 'MODIFY_SALARY',
+          previousSalary,
+          newSalary,
+          description: `${state.players[index].displayName} salary changed from ${previousSalary} to ${newSalary}.`,
+        });
+        return updatePlayer(state, index, (player) => ({ ...player, salaryAmount: newSalary }));
+      }, match);
     case 'TRIGGER_EVENT':
       queue.push({
         ...effect.payload,
