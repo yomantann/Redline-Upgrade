@@ -1,0 +1,428 @@
+REDLINE UPGRADE — COMPLETE 90-CARD DECK BUILD
+
+We need to expand the current card system into the intended full game card set.
+
+IMPORTANT:
+The current code only contains a small number of example/placeholder cards.
+
+The final game needs:
+
+6 decks
+15 UNIQUE cards per deck
+90 UNIQUE cards TOTAL
+
+The six decks are:
+
+1. WEALTH
+2. AI SKILL
+3. FAME
+4. LIFESTYLE
+5. INFLUENCE
+6. GAMBLE
+
+==================================================
+1. INSPECT EXISTING CARDS FIRST
+==================================================
+
+Before making changes:
+
+- Inspect the current card definitions.
+- Preserve useful existing cards.
+- Preserve existing card IDs where possible.
+- Do not delete existing working cards.
+- Do not duplicate existing cards.
+
+Expand the existing system until there are exactly:
+
+15 cards in each deck
+90 cards total
+
+Every card must be independently defined and playable.
+
+==================================================
+2. EVERY CARD NEEDS
+==================================================
+
+Each card must have:
+
+- unique ID
+- unique name
+- deck assignment
+- unique artwork
+- description
+- actual gameplay effect
+- appropriate target
+- appropriate event/effect type
+- appropriate value where applicable
+
+The card should actually DO something when drawn.
+
+Do not create cards that are only cosmetic.
+
+==================================================
+3. WEALTH — 15 CARDS
+==================================================
+
+Focus on:
+
+- gaining Wealth
+- losing Wealth
+- unexpected expenses
+- investments
+- windfalls
+- taxes
+- purchases
+- financial opportunities
+- risk/reward decisions
+- interactions with careers or other players
+
+Cards should have different outcomes rather than simply being variations of "+10 Wealth."
+
+==================================================
+4. AI SKILL — 15 CARDS
+==================================================
+
+Focus on:
+
+- gaining AI Skill
+- AI breakthroughs
+- automation
+- AI disruption
+- technology opportunities
+- AI-related career advantages
+- effects on other career categories
+- temporary advantages
+- risk from AI disruption
+
+Some cards should specifically interact with DIGITAL/SCIENCE/TECH-oriented careers.
+
+==================================================
+5. FAME — 15 CARDS
+==================================================
+
+Focus on:
+
+- gaining Fame
+- losing Fame
+- viral moments
+- media attention
+- sponsorships
+- scandals
+- public reputation
+- fame affecting Wealth or Influence
+- player interaction
+
+Some cards should allow the player to affect another player's Fame or reputation.
+
+==================================================
+6. LIFESTYLE — 15 CARDS
+==================================================
+
+Focus on:
+
+- Lifestyle gains/losses
+- luxury experiences
+- health/wellness
+- ridiculous purchases
+- vacations
+- status
+- lifestyle consequences
+- career/lifestyle interactions
+- choices between immediate benefit and future consequences
+
+Lifestyle should feel different from Wealth.
+
+==================================================
+7. INFLUENCE — 15 CARDS
+==================================================
+
+Focus on:
+
+- networking
+- connections
+- reputation
+- favors
+- corporate power
+- protection
+- manipulating other players
+- helping another player
+- interfering with another player
+- career/category advantages
+
+This should be one of the strongest decks for player interaction.
+
+==================================================
+8. GAMBLE — 15 CARDS
+==================================================
+
+This should be the highest-risk/highest-chaos deck.
+
+Include different mechanics such as:
+
+- Wealth risk/reward
+- stat risk/reward
+- player targeting
+- multipliers
+- reversals
+- random outcomes
+- high-risk choices
+- double-or-nothing situations
+
+Do NOT make every Gamble card simply "roll a die."
+
+Use different types of risk and outcomes.
+
+==================================================
+9. CAREER INTERACTIONS
+==================================================
+
+Use the existing career categories.
+
+Cards can provide special effects to players in matching categories.
+
+Examples:
+
+DIGITAL
+RISK
+CREATIVE
+BUSINESS
+PERFORMANCE
+MEDICAL
+LEGAL
+SERVICE
+HUSTLE
+SCIENCE
+
+Some cards should:
+
+- benefit a matching category
+- penalize a matching category
+- allow a matching career to gain an additional benefit
+- allow another player to be targeted based on career
+- create interesting career-specific interactions
+
+Use the existing career category system.
+
+Do not create a new career-category system.
+
+==================================================
+10. CHARACTER INTERACTIONS
+==================================================
+
+Where appropriate, cards may interact with existing character abilities.
+
+Use the existing event/ability architecture.
+
+Do not hard-code individual characters into large numbers of cards unless there is a strong reason.
+
+Prefer reusable mechanics.
+
+==================================================
+11. PLAYER INTERACTION
+==================================================
+
+At least some cards in every deck should create interaction.
+
+Examples:
+
+- choose another player
+- highest/lowest Wealth player
+- player with a certain career category
+- player you passed
+- player you landed on
+- all players
+- all players in a category
+
+Avoid making every card interactive.
+
+The game should still have safe/simple cards.
+
+==================================================
+12. CARD POWER VARIETY
+==================================================
+
+Cards should have different power levels.
+
+Include:
+
+- small effects
+- medium effects
+- strong effects
+- risky effects
+- situational effects
+- player-interaction effects
+
+Do not make every card equally powerful.
+
+Avoid runaway effects that could completely decide a game by themselves.
+
+==================================================
+13. UNIQUE VISUALS
+==================================================
+
+Create UNIQUE artwork for all 90 cards.
+
+Every card should have artwork that reflects:
+
+- its name
+- its theme
+- its outcome
+- its deck
+
+Do NOT reuse the same artwork with a different color.
+
+Do NOT generate generic deck artwork for individual cards.
+
+The six decks should each have a recognizable visual identity while every card remains individually identifiable.
+
+Keep artwork consistent with the existing Redline Upgrade aesthetic:
+
+- dark futuristic
+- edgy
+- AI influenced
+- premium tabletop game
+- humorous/meme-friendly
+- slightly chaotic
+
+Do not put gameplay text inside the generated artwork.
+
+The UI should display the card name and effect separately.
+
+==================================================
+14. CARD UI
+==================================================
+
+Integrate all 90 cards into the existing card UI.
+
+When a player draws a card:
+
+1. Correct card appears.
+2. Correct artwork appears.
+3. Correct card name appears.
+4. Correct description appears.
+5. Correct effect resolves.
+6. Event log records the result.
+7. Player stats/state update correctly.
+8. Existing CPU behavior continues to work.
+
+Do not create a second card system.
+
+Use the existing card/event architecture.
+
+==================================================
+15. DECK DRAW SYSTEM
+==================================================
+
+Preserve the existing six-deck system.
+
+Each deck should contain exactly 15 cards initially.
+
+Cards should be drawn from the appropriate deck when the player lands on that deck's board space.
+
+Do not change the existing board-space mechanics.
+
+If the existing system supports discard/reshuffle, preserve it.
+
+If it does not yet support a finite draw pile/discard/reshuffle system, implement the simplest reliable version needed to support the 15-card decks.
+
+Do not add unnecessary complexity.
+
+==================================================
+16. BALANCE
+==================================================
+
+Use the existing Wealth and stat scales.
+
+Do not create a new resource.
+
+Do not create a new currency.
+
+Do not introduce Redline Credits during the normal game.
+
+Keep card effects understandable.
+
+Prefer effects that can be represented by the existing event/effect engine.
+
+If an effect would require a completely new gameplay subsystem, use a simpler compatible effect instead.
+
+==================================================
+17. IMPORTANT — DO NOT BREAK EXISTING SYSTEMS
+==================================================
+
+Do NOT change:
+
+- 75-space board
+- 2d4 movement
+- salary system
+- career system
+- Career Change at space 35
+- milestone system
+- player pieces
+- CPU movement
+- event architecture
+- character ability architecture
+- career ability architecture
+- board zoom/pan
+- existing card UI structure
+
+Extend the existing systems rather than replacing them.
+
+==================================================
+18. VALIDATION
+==================================================
+
+Create validation that confirms:
+
+- exactly 15 cards exist in WEALTH
+- exactly 15 cards exist in AI SKILL
+- exactly 15 cards exist in FAME
+- exactly 15 cards exist in LIFESTYLE
+- exactly 15 cards exist in INFLUENCE
+- exactly 15 cards exist in GAMBLE
+- exactly 90 cards total
+- every card has a unique ID
+- every card has a unique name
+- every card has an artwork mapping
+- every card has a valid effect
+- every card can resolve through the existing event/effect system
+- no existing card IDs were accidentally duplicated
+- no broken artwork paths exist
+
+Run:
+
+- TypeScript typecheck
+- game/reducer tests
+- production build
+
+==================================================
+19. FINAL REPORT
+==================================================
+
+When finished, report:
+
+1. Total cards created
+2. Cards per deck
+3. Existing cards preserved
+4. New cards created
+5. Artwork assets created
+6. Career-category interactions added
+7. Player interactions added
+8. Any new event/effect types required
+9. Files modified
+10. Test/build results
+11. Any cards/effects that could not be implemented cleanly
+
+The final target is:
+
+WEALTH: 15
+AI SKILL: 15
+FAME: 15
+LIFESTYLE: 15
+INFLUENCE: 15
+GAMBLE: 15
+
+TOTAL: 90 UNIQUE PLAYABLE CARDS
+
+Do not stop after creating artwork.
+
+The cards must have actual unique gameplay outcomes when drawn.
