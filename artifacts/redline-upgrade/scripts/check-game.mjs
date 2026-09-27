@@ -6,8 +6,13 @@ import { createServer } from 'vite';
 const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true }, appType: 'custom' });
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
+  const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
+  const { getCardArtworkFilePath } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
+  const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
+  const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
-  const { getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { careers, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
   const { getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getAsset, assets } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
@@ -19,6 +24,7 @@ try {
     assert.equal(match.players.length, 4);
     assert.equal(new Set(match.players.map(player => player.careerId)).size, 4);
     assert(match.players.every(player => player.salaryAmount === getCareer(player.careerId).salaryTiers[player.salaryTier - 1]));
+    assertCompleteCardPiles(match.cardPiles);
   }
   function start(position, slot = 0, wealth = 900000) {
     const match = createMatch(id);
@@ -36,6 +42,53 @@ try {
   }
   const eventTypes = (match) => match.eventLog.map((entry) => entry.eventType);
   const countEvent = (match, type) => match.eventLog.filter((entry) => entry.eventType === type).length;
+
+  assert.equal(cards.length, 90, 'the full card set has 90 cards');
+  assert.equal(new Set(cards.map(card => card.id)).size, 90, 'card IDs are unique');
+  assert.equal(new Set(cards.map(card => card.title)).size, 90, 'card names are unique');
+  assert.equal(new Set(cards.map(card => JSON.stringify(card.effects))).size, 90, 'card gameplay outcomes are unique');
+  assert.equal(new Set(cards.map(card => card.artCue)).size, 90, 'card art concepts are unique');
+  for (const deck of decks) {
+    assert.equal(cardsForDeck(deck.id).length, 15, `${deck.name} contains 15 cards`);
+    assert.equal(deck.count, 15, `${deck.name} reports 15 cards`);
+  }
+  const careerTags = new Set(careers.flatMap(career => career.tags));
+  const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
+  const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE']);
+  function validateCardEffects(effects, cardId) {
+    assert(effects.length > 0, `${cardId} has a gameplay effect`);
+    for (const effect of effects) {
+      if (effect.kind === 'RISK') {
+        assert(effect.chance >= 0 && effect.chance <= 1, `${cardId} has a valid risk probability`);
+        validateCardEffects(effect.win, cardId);
+        validateCardEffects(effect.loss, cardId);
+      } else if (effect.kind === 'STAT') {
+        assert(validStats.has(effect.stat) && Number.isFinite(effect.amount) && effect.amount !== 0, `${cardId} has a valid stat effect`);
+        if (effect.careerTag) assert(careerTags.has(effect.careerTag), `${cardId} uses an existing career tag`);
+      } else if (effect.kind === 'TRANSFER_WEALTH') {
+        assert(effect.amount > 0 && ['RANDOM_OPPONENT', 'WEALTH_LEADER', 'WEALTH_TRAILER'].includes(effect.target), `${cardId} has a valid wealth transfer`);
+      } else if (effect.kind === 'MODIFY_SALARY') {
+        assert(Number.isFinite(effect.amount) && effect.amount !== 0, `${cardId} has a valid salary effect`);
+        if (effect.careerTag) assert(careerTags.has(effect.careerTag), `${cardId} uses an existing salary career tag`);
+      } else if (effect.kind === 'PROTECT') {
+        assert((effect.amount ?? 1) > 0, `${cardId} has a valid protection effect`);
+        for (const type of effect.blockedEffectTypes ?? []) assert(validEffectTypes.has(type), `${cardId} blocks a valid effect`);
+      } else if (effect.kind === 'REWARD_MODIFIER') {
+        assert(validStats.has(effect.stat) && Number.isFinite(effect.amount) && effect.amount !== 0, `${cardId} has a valid reward modifier`);
+      } else {
+        assert.fail(`${cardId} uses an unsupported effect kind`);
+      }
+    }
+  }
+  for (const card of cards) {
+    validateCardEffects(card.effects, card.id);
+    const artPath = getCardArtworkFilePath(card.id);
+    assert(artPath, `${card.id} has an artwork mapping`);
+    assert(existsSync(new URL(`../public/${artPath}`, import.meta.url)), `${card.id} artwork exists at ${artPath}`);
+    const probe = createMatch(id);
+    const resolved = resolveEventQueue(probe, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: card.deck, cardId: card.id, spaceNumber: 1 }]);
+    assert(resolved.eventLog.some(entry => entry.eventType === 'CARD_RESOLVED' && entry.detail.includes(card.title)), `${card.id} resolves through the event engine`);
+  }
 
   let seeded = createMatch(id);
   assert.equal(seeded.eventLog.at(-1).eventType, 'TURN_START');
@@ -148,16 +201,53 @@ try {
   const petId = match.pending.offeredAssetIds[0];
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: petId });
   assert.equal(match.players[0].equipment.companion, petId);
-  match = move(start(1), 2);
+  let wealthStart = start(1);
+  const wealthDrawPile = wealthStart.cardPiles.wealth.drawPile.filter(cardId => cardId !== 'wealth-seed');
+  wealthStart = {
+    ...wealthStart,
+    cardPiles: {
+      ...wealthStart.cardPiles,
+      wealth: { ...wealthStart.cardPiles.wealth, drawPile: ['wealth-seed', ...wealthDrawPile] },
+    },
+  };
+  const seedWealthBefore = wealthStart.players[0].wealth;
+  match = move(wealthStart, 2);
   assert.equal(match.pending.kind, 'CARD');
   assert.equal(match.pending.deck, 'wealth');
+  assert.equal(match.pending.cardId, 'wealth-seed');
   assert(eventTypes(match).includes('CARD_DRAW'));
+  assertCompleteCardPiles(match.cardPiles);
+  match = advanceMatch(match, { type: 'RESOLVE_CARD' });
+  assert.equal(match.pending.stage, 'resolved');
+  assert.equal(match.players[0].wealth, seedWealthBefore + 12500);
+  assert(match.cardPiles.wealth.discardPile.includes('wealth-seed'));
+  assert.equal(match.cardPiles.wealth.inFlight.length, 0);
+  assertCompleteCardPiles(match.cardPiles);
   match = advanceMatch(match, { type: 'ACKNOWLEDGE_CARD' });
   assert.equal(match.phase, 'landed');
   assert(eventTypes(match).includes('CARD_RESOLVED'));
+  const reshuffleTestPile = {
+    ...match.cardPiles,
+    wealth: {
+      drawPile: [],
+      discardPile: cardsForDeck('wealth').map(card => card.id),
+      inFlight: [],
+    },
+  };
+  const reshuffled = drawCardFromPiles(reshuffleTestPile, 'wealth');
+  assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 14);
+  assert.equal(reshuffled.cardPiles.wealth.discardPile.length, 0);
+  assert.equal(reshuffled.cardPiles.wealth.inFlight.length, 1);
+  assertCompleteCardPiles(reshuffled.cardPiles);
   match = move(start(13, 1), 2);
   assert.equal(match.pending.deck, 'gamble');
-  assert.equal(advanceMatch(match, { type: 'AUTO_DECIDE' }).phase, 'landed');
+  const cpuCardId = match.pending.cardId;
+  match = advanceMatch(match, { type: 'AUTO_DECIDE' });
+  assert.equal(match.phase, 'landed');
+  assert(eventTypes(match).includes('CARD_RESOLVED'));
+  assert(match.cardPiles.gamble.discardPile.includes(cpuCardId));
+  assert.equal(match.cardPiles.gamble.inFlight.length, 0);
+  assertCompleteCardPiles(match.cardPiles);
   match = move(start(58, 1), 2);
   assert.equal(match.pending.slot, 'property');
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });
@@ -195,7 +285,7 @@ try {
   const carId = match.pending.offeredAssetIds[0];
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: carId });
   assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 5);
-  console.log('PASS: career assignment, exact salary gates, guarded payouts, assets, career switch, CPU choices and finish');
+  console.log('PASS: 90 unique cards, effects and artwork; finite piles and reshuffle; existing careers, assets and CPU turns');
 } finally {
   await vite.close();
 }

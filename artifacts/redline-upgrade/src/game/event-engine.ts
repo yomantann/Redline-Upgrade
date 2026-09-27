@@ -3,10 +3,12 @@ import { getAbility, type EffectDefinition, type EffectType } from './abilities'
 import { getSpace } from './board-data';
 import { getCareer } from './careers';
 import { getCharacter } from './characters';
+import { getCard, type CardEffect, type CardTarget } from './cards';
 import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './events/types';
 import type { Match, MatchPlayer, RewardModifierState } from './match';
 import { applySalaryGate } from './movement-events';
 import type { PlayerStat } from './player';
+import { drawCardFromPiles } from './card-piles';
 
 const MAX_EVENT_DEPTH = 6;
 const MAX_EVENT_CHAIN = 48;
@@ -108,8 +110,8 @@ function eventLabel(event: AnyGameEvent): string {
     case 'SALARY_GATE': return 'SALARY GATE';
     case 'CAREER_CHANGE': return event.stage === 'RESOLVED' ? 'CAREER RESOLVED' : 'CAREER CHANGE';
     case 'MILESTONE': return 'MILESTONE';
-    case 'CARD_DRAW': return 'CARD DRAW';
-    case 'CARD_RESOLVED': return 'CARD RESOLVED';
+    case 'CARD_DRAW': return event.cardId ? `DREW ${getCard(event.cardId)?.title ?? 'CARD'}` : 'CARD DRAW';
+    case 'CARD_RESOLVED': return event.cardId ? getCard(event.cardId)?.title ?? 'CARD RESOLVED' : 'CARD RESOLVED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
     case 'CAR_PURCHASED': return 'CAR PURCHASED';
     case 'LIFESTYLE_PURCHASED': return 'LIFESTYLE PURCHASED';
@@ -150,9 +152,9 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
     case 'MILESTONE':
       return `${player.displayName} reached the ${event.milestoneType} milestone.`;
     case 'CARD_DRAW':
-      return `${player.displayName} drew a ${event.deck} card.`;
+      return `${player.displayName} drew ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'CARD_RESOLVED':
-      return `${player.displayName} resolved a ${event.deck} card.`;
+      return event.description ?? `${player.displayName} resolved ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'ASSET_PURCHASED':
       return `${player.displayName} purchased ${event.assetName}.`;
     case 'CAR_PURCHASED':
@@ -486,18 +488,6 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
           milestoneType: milestone,
         });
       }
-      if (space.deck) {
-        queue.push({
-          type: 'CARD_DRAW',
-          playerIndex: targetIndex,
-          source: 'EFFECT',
-          sourceEventId: event.id,
-          abilityId: event.abilityId,
-          depth: event.depth + 1,
-          spaceNumber: nextPosition,
-          deck: space.deck,
-        });
-      }
     }
   }
   const finalPosition = state.players[targetIndex].position;
@@ -516,7 +506,26 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number }, lastLanding: landing };
+      const draw = drawCardFromPiles(state.cardPiles, finalSpace.deck);
+      queue.push({
+        type: 'CARD_DRAW',
+        playerIndex: targetIndex,
+        source: 'EFFECT',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        spaceNumber: finalSpace.number,
+        deck: finalSpace.deck,
+        cardId: draw.cardId,
+      });
+      state = {
+        ...state,
+        cardPiles: draw.cardPiles,
+        turnIndex: targetIndex,
+        phase: 'decision',
+        pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number, cardId: draw.cardId, stage: 'draw' },
+        lastLanding: landing,
+      };
     } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
     } else {
@@ -603,6 +612,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       return match;
     case 'DRAW_CARD':
       return resolveTargets(match, actor, event, effect.target).reduce((state, index) => {
+        const draw = drawCardFromPiles(state.cardPiles, effect.deck);
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: index,
@@ -612,13 +622,15 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           depth: event.depth + 1,
           deck: effect.deck,
           spaceNumber: state.players[index].position,
+          cardId: draw.cardId,
         });
         const landingSpace = getSpace(state.players[index].position);
         return {
           ...state,
+          cardPiles: draw.cardPiles,
           turnIndex: index,
           phase: 'decision',
-          pending: { kind: 'CARD', deck: effect.deck, space: state.players[index].position },
+          pending: { kind: 'CARD', deck: effect.deck, space: state.players[index].position, cardId: draw.cardId, stage: 'draw' },
           lastLanding: landingSpace ? { playerIndex: index, space: landingSpace } : state.lastLanding,
         };
       }, match);
@@ -637,6 +649,153 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         match,
       );
   }
+}
+
+function stableUnitValue(key: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0x100000000;
+}
+
+function cardTargetIndices(
+  match: Match,
+  actor: MatchPlayer,
+  event: AnyGameEvent,
+  target: CardTarget = 'SELF',
+  careerTag?: import('./careers').CareerCategoryTag,
+  salt = '',
+): number[] {
+  let indices: number[];
+  switch (target) {
+    case 'SELF':
+      indices = [actor.slot];
+      break;
+    case 'ALL_OPPONENTS':
+      indices = match.players.flatMap((player, index) => player.slot === actor.slot ? [] : [index]);
+      break;
+    case 'RANDOM_OPPONENT': {
+      const opponents = match.players.flatMap((player, index) => player.slot === actor.slot ? [] : [index]);
+      indices = opponents.length ? [opponents[Math.floor(stableUnitValue(`${event.id}:${salt}:target`) * opponents.length)]] : [];
+      break;
+    }
+    case 'WEALTH_LEADER':
+    case 'WEALTH_TRAILER': {
+      const opponents = match.players
+        .map((player, index) => ({ player, index }))
+        .filter(({ player }) => player.slot !== actor.slot)
+        .sort((left, right) => {
+          const difference = target === 'WEALTH_LEADER'
+            ? right.player.wealth - left.player.wealth
+            : left.player.wealth - right.player.wealth;
+          return difference || left.player.slot - right.player.slot;
+        });
+      indices = opponents.length ? [opponents[0].index] : [];
+      break;
+    }
+  }
+  return careerTag
+    ? indices.filter(index => getCareer(match.players[index].careerId ?? '')?.tags.includes(careerTag))
+    : indices;
+}
+
+function cardStatEffectType(stat: PlayerStat, amount: number): EffectType {
+  const suffix: Record<PlayerStat, string> = {
+    wealth: 'WEALTH',
+    aiSkill: 'AI_SKILL',
+    fame: 'FAME',
+    lifestyle: 'LIFESTYLE',
+    influence: 'INFLUENCE',
+  };
+  return `${amount < 0 ? 'REMOVE' : 'ADD'}_${suffix[stat]}` as EffectType;
+}
+
+function applyCardEffects(
+  match: Match,
+  queue: EventDraft[],
+  event: AnyGameEvent,
+  cardId: string,
+  effects: readonly CardEffect[],
+  salt = 'root',
+): Match {
+  const card = getCard(cardId);
+  if (!card) throw new Error(`Cannot resolve unknown card ${cardId}`);
+  let state = match;
+  effects.forEach((effect, effectIndex) => {
+    const effectSalt = `${salt}:${effectIndex}`;
+    if (effect.kind === 'RISK') {
+      if (effect.chance < 0 || effect.chance > 1) throw new Error(`Invalid risk chance on ${cardId}`);
+      const outcome = stableUnitValue(`${event.id}:${cardId}:${effectSalt}`) < effect.chance ? effect.win : effect.loss;
+      state = applyCardEffects(state, queue, event, cardId, outcome, effectSalt);
+      return;
+    }
+
+    const target = effect.kind === 'TRANSFER_WEALTH' ? effect.target : effect.target ?? 'SELF';
+    const careerTag = effect.kind === 'TRANSFER_WEALTH' ? undefined : effect.careerTag;
+    const targets = cardTargetIndices(state, state.players[event.playerIndex], event, target, careerTag, effectSalt);
+    for (const targetIndex of targets) {
+      const targetEvent: AnyGameEvent = {
+        ...event,
+        targetPlayerId: state.players[targetIndex].playerId,
+        targetPlayerIndex: targetIndex,
+      };
+      const actor = state.players[event.playerIndex];
+      switch (effect.kind) {
+        case 'STAT':
+          state = applyStatDelta(
+            state,
+            queue,
+            targetEvent,
+            actor,
+            effect.stat,
+            effect.amount,
+            cardStatEffectType(effect.stat, effect.amount),
+            targetIndex,
+            effect.reason ?? card.title,
+          );
+          break;
+        case 'TRANSFER_WEALTH': {
+          const amount = Math.max(0, effect.amount);
+          const previousWealth = state.players[targetIndex].wealth;
+          state = applyStatDelta(state, queue, targetEvent, actor, 'wealth', -amount, 'REMOVE_WEALTH', targetIndex, effect.reason ?? card.title);
+          const transferred = previousWealth - state.players[targetIndex].wealth;
+          if (transferred > 0) {
+            state = applyStatDelta(state, queue, targetEvent, actor, 'wealth', transferred, 'ADD_WEALTH', event.playerIndex, effect.reason ?? card.title);
+          }
+          break;
+        }
+        case 'MODIFY_SALARY':
+          state = applyEffect(state, queue, actor, targetEvent, {
+            type: 'MODIFY_SALARY',
+            amount: effect.amount,
+            target: 'AFFECTED_PLAYER',
+            reason: effect.reason ?? card.title,
+          });
+          break;
+        case 'PROTECT':
+          state = applyEffect(state, queue, actor, targetEvent, {
+            type: 'PROTECT_FROM_EFFECT',
+            amount: effect.amount ?? 1,
+            blockedEffectTypes: effect.blockedEffectTypes,
+            target: 'AFFECTED_PLAYER',
+            reason: effect.reason ?? card.title,
+          });
+          break;
+        case 'REWARD_MODIFIER':
+          state = applyEffect(state, queue, actor, targetEvent, {
+            type: 'MODIFY_REWARD',
+            amount: effect.amount,
+            stat: effect.stat,
+            target: 'AFFECTED_PLAYER',
+            reason: effect.reason ?? card.title,
+          });
+          break;
+      }
+    }
+  });
+  return state;
 }
 
 function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] {
@@ -680,6 +839,11 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     if ((draft.depth ?? 0) > MAX_EVENT_DEPTH) continue;
     const [nextState, event] = createEvent(state, draft);
     state = pushLog(nextState, event);
+    if (event.type === 'CARD_RESOLVED' && event.cardId) {
+      const card = getCard(event.cardId);
+      if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);
+      state = applyCardEffects(state, queue, event, card.id, card.effects);
+    }
     queue.push(...nativeSecondaryEvents(state, event));
     state = runAbilities(state, queue, event);
     processed += 1;

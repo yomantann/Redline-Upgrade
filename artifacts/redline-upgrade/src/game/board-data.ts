@@ -18,7 +18,7 @@ export interface BoardSpace {
 const events = new Set([3, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72]);
 const milestones = new Set([10, 30, 45, 60, 75]);
 const gambles = new Set([15, 50, 70]);
-// Card effects are intentionally not active in Phase 7A. These spaces only reveal examples.
+// Deck assignments preserve the existing board route; landing triggers the live deck draw.
 const cardSpaces: Partial<Record<number, DeckId>> = {
   3: 'wealth', 7: 'ai', 12: 'fame', 17: 'lifestyle', 22: 'influence',
   32: 'wealth', 42: 'ai', 52: 'fame', 62: 'influence',
@@ -35,8 +35,8 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
   const details: Record<SpaceType, [string, string, string, SpaceTrigger]> = {
     NORMAL: ['normal', 'Open Road', 'A regular space. No effect is active here.', 'NONE'],
     EVENT: ['event', 'Event', 'A future event space. No effect is active yet.', 'NONE'],
-    CARD: [deck ?? 'wealth', `${deck?.toUpperCase()} Card`, `Land here to reveal a ${deck} card example. Card effects are not active yet.`, 'LAND'],
-    GAMBLE: ['gamble', 'Gamble Card', 'Land here to reveal a Gamble card example. Gambling rules are not active yet.', 'LAND'],
+    CARD: [deck ?? 'wealth', `${deck?.toUpperCase()} Card`, `Land here to draw and resolve a card from the ${deck} deck.`, 'LAND'],
+    GAMBLE: ['gamble', 'Gamble Card', 'Land here to draw and resolve a high-risk Gamble card.', 'LAND'],
     SALARY_GATE: ['salary', 'Salary Gate', 'Pass through or land here to receive your exact current salary once.', 'LAND_OR_PASS'],
     CAREER_CHANGE: ['career', 'Career Change', 'Pass through or land here to keep your career or choose between two new opportunities.', 'LAND_OR_PASS'],
     MILESTONE: ['milestone', 'Milestone', 'A special destination on the circuit.', 'LAND'],

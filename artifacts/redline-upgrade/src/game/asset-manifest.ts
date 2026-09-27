@@ -42,7 +42,7 @@ export const visualAssets: readonly VisualAsset[] = [
   ...decks.map(deck => ({
     id: `deck_${deck.id}`, name: `${deck.name} deck back`, category: 'cards' as const,
     filePath: 'src/components/card-tabletop.css', assetType: 'css-art' as const,
-    description: `Reusable ${deck.name} card back; illustrative count only.`,
+    description: `Reusable ${deck.name} card back for the active ${deck.count}-card draw pile.`,
     status: 'available' as const,
   })),
   ...cards.map(card => {
@@ -51,8 +51,8 @@ export const visualAssets: readonly VisualAsset[] = [
       id: `card_${card.id}`, name: card.title, category: 'cards' as const,
       filePath: artworkPath ? `public/${artworkPath}` : 'src/components/redline-card.tsx',
       assetType: artworkPath ? 'image' as const : 'css-art' as const,
-      description: artworkPath ? `${card.deck} example card illustration. Gameplay text remains in the card UI.` : `${card.deck} example front; no dedicated artwork mapped.`,
-      status: artworkPath ? 'available' as const : 'example' as const,
+      description: artworkPath ? `${card.deck} card illustration. Gameplay text remains in the card UI.` : `${card.deck} card front fallback; dedicated artwork is not mapped.`,
+      status: artworkPath ? 'available' as const : 'fallback' as const,
     };
   }),
   ...Object.keys(ICON_PATHS).map(icon => ({

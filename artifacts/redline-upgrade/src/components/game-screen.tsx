@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { getCharacter } from '@/game/characters';
+import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import type { PendingDecision, WealthEvent } from '@/game/match';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
@@ -207,7 +208,15 @@ export function GameScreen() {
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
        /></div>
-       <CardTabletop activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined} isCPU={active.isCPU} onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })} />
+       <CardTabletop
+         activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
+         activeCard={match.phase === 'decision' && pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined}
+         cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
+         cardPiles={match.cardPiles}
+         isCPU={active.isCPU}
+         onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
+         onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
+       />
        </div>}
 
       {match.phase !== 'decision' && <section className="game-console">

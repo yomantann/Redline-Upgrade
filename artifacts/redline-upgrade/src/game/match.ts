@@ -7,6 +7,8 @@ import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
 import type { EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
+import { createCardPiles, discardCardToPiles, drawCardFromPiles, type CardPileMap } from './card-piles';
+import { getCard } from './cards';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & { isCPU: boolean; slot: number };
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed';
@@ -16,7 +18,7 @@ export interface WealthEvent { id: number; playerIndex: number; amount: number; 
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type PendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
-  | { kind: 'CARD'; deck: DeckId; space: number }
+  | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'draw' | 'resolved' }
   | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
 export interface Match {
   players: MatchPlayer[];
@@ -34,6 +36,7 @@ export interface Match {
   abilityUsage: Record<string, AbilityUsageState>;
   effectProtections: Record<string, ProtectionState[]>;
   rewardModifiers: Record<string, RewardModifierState>;
+  cardPiles: CardPileMap;
 }
 
 function pickUnique<T>(items: readonly T[], count: number): T[] {
@@ -96,6 +99,7 @@ export function createMatch(characterId: string): Match {
     abilityUsage: {},
     effectProtections: {},
     rewardModifiers: {},
+    cardPiles: createCardPiles(),
   };
   return emit(match, [{ type: 'TURN_START', playerIndex: 0 }]);
 }
@@ -116,6 +120,7 @@ export type MatchAction =
   | { type: 'SWITCH_CAREER' }
   | { type: 'SELECT_CAREER'; careerId: string }
   | { type: 'ACKNOWLEDGE_CAREER' }
+  | { type: 'RESOLVE_CARD' }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'AUTO_DECIDE' }
   | { type: 'NEXT_TURN' };
@@ -169,8 +174,16 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
     return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }
   if (space.deck) {
-    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck });
-    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, space: space.number } }, drafts);
+    const draw = drawCardFromPiles(match.cardPiles, space.deck);
+    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: draw.cardId });
+    return emit({
+      ...match,
+      cardPiles: draw.cardPiles,
+      phase: 'decision',
+      stepsRemaining: 0,
+      lastLanding: landing,
+      pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: draw.cardId, stage: 'draw' },
+    }, drafts);
   }
   return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
 }
@@ -243,16 +256,35 @@ function purchase(match: Match, assetId: string): Match {
 }
 
 function resolveCardDecision(match: Match): Match {
-  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD') return match;
-  const { deck, space } = match.pending;
-  return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck, spaceNumber: space, cardId: `example-${deck}` }]);
+  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'draw') return match;
+  const { deck, space, cardId } = match.pending;
+  const card = getCard(cardId);
+  if (!card || card.deck !== deck) throw new Error(`Invalid pending card ${cardId} for ${deck}`);
+  const resolved = {
+    ...match,
+    cardPiles: discardCardToPiles(match.cardPiles, deck, cardId),
+    pending: { ...match.pending, stage: 'resolved' as const },
+  };
+  return emit(resolved, [{
+    type: 'CARD_RESOLVED',
+    playerIndex: match.turnIndex,
+    deck,
+    spaceNumber: space,
+    cardId,
+    description: `${card.title}: ${card.effect}`,
+  }]);
+}
+
+function acknowledgeCardDecision(match: Match): Match {
+  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return match;
+  return resume(match);
 }
 
 function autoDecide(match: Match): Match {
   const pending = match.pending;
   if (match.phase !== 'decision' || !match.players[match.turnIndex].isCPU || !pending) return match;
   const player = match.players[match.turnIndex];
-  if (pending.kind === 'CARD') return resolveCardDecision(match);
+  if (pending.kind === 'CARD') return acknowledgeCardDecision(resolveCardDecision(match));
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
@@ -426,9 +458,12 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     }
     case 'ACKNOWLEDGE_CAREER':
       return match.phase === 'decision' && match.pending?.kind === 'CAREER' && match.pending.stage === 'salary' ? resume(match) : match;
-    case 'ACKNOWLEDGE_CARD':
+    case 'RESOLVE_CARD':
       if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.players[match.turnIndex].isCPU) return match;
       return resolveCardDecision(match);
+    case 'ACKNOWLEDGE_CARD':
+      if (match.players[match.turnIndex]?.isCPU) return match;
+      return acknowledgeCardDecision(match);
     case 'AUTO_DECIDE':
       return autoDecide(match);
     case 'NEXT_TURN':
