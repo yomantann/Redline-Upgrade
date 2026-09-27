@@ -67,7 +67,7 @@
 .sculpted3d__sheet {
   --3d-cell-height: min(217px, max(150px, calc((100dvh - 160px) / 3)));
   position: relative;
-  min-width: 1120px;
+  min-width: 1040px;
   height: calc(3 * var(--3d-cell-height));
   isolation: isolate;
 }
@@ -141,6 +141,91 @@
   filter: blur(7px);
 }
 
+.sculpted3d__portrait-stage {
+  background:
+    radial-gradient(ellipse at 50% 77%, color-mix(in srgb, var(--piece-rim) 15%, transparent), transparent 64%),
+    linear-gradient(180deg, rgba(14, 27, 39, .03), rgba(7, 16, 26, .19));
+}
+
+.sculpted3d__portrait-stage::before {
+  inset: 22px 19% 32px;
+  border-color: color-mix(in srgb, var(--piece-rim) 24%, transparent);
+  border-radius: 48% 48% 30% 30%;
+  opacity: .7;
+  transform: none;
+}
+
+.sculpted3d__portrait-stage::after {
+  bottom: 3px;
+  height: 31px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--piece-rim) 34%, transparent), transparent 72%);
+}
+
+.sculpted3d__portrait {
+  position: absolute;
+  z-index: 1;
+  top: 20px;
+  left: 50%;
+  width: min(72%, calc(var(--3d-cell-height) * .68));
+  height: min(68%, calc(var(--3d-cell-height) * .68));
+  border: 1px solid color-mix(in srgb, var(--piece-rim) 76%, #d6e7ee);
+  border-radius: 46% 46% 27% 27% / 38% 38% 23% 23%;
+  background: #12212c;
+  box-shadow:
+    0 11px 20px rgba(0, 0, 0, .48),
+    0 0 18px color-mix(in srgb, var(--piece-rim) 31%, transparent);
+  object-fit: cover;
+  object-position: center;
+  transform: translateX(-50%);
+  transition: transform 180ms ease;
+}
+
+.sculpted3d__pedestal {
+  position: absolute;
+  z-index: 2;
+  right: 17%;
+  bottom: 10px;
+  left: 17%;
+  height: 26px;
+  border: 2px solid color-mix(in srgb, var(--piece-rim) 84%, #a8c4d0);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #1a3542 0%, #0a1722 62%);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, .6),
+    0 0 13px color-mix(in srgb, var(--piece-rim) 35%, transparent);
+}
+
+.sculpted3d__pedestal::before {
+  position: absolute;
+  top: 3px;
+  right: 8%;
+  left: 8%;
+  height: 7px;
+  border-top: 1px solid rgba(224, 248, 255, .58);
+  border-radius: 50%;
+  content: '';
+}
+
+.sculpted3d__pedestal > span {
+  position: absolute;
+  top: 12px;
+  right: 19%;
+  left: 19%;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--piece-rim);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--piece-rim) 65%, transparent);
+}
+
+.sculpted3d__tile:hover .sculpted3d__portrait,
+.sculpted3d__tile:focus-visible .sculpted3d__portrait {
+  transform: translateX(-50%) translateY(-3px) scale(1.025);
+}
+
+.sculpted3d__tile[aria-pressed='true'] .sculpted3d__portrait {
+  transform: translateX(-50%) translateY(-3px) scale(1.035);
+}
+
 .sculpted3d__index {
   position: absolute;
   top: 9px;
@@ -210,7 +295,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sculpted3d__name {
+  .sculpted3d__name,
+  .sculpted3d__portrait {
     transition: none;
   }
 }
