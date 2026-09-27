@@ -282,7 +282,7 @@ function filterTargetsByCareerTag(
   return targets.filter((index) => {
     const careerId = match.players[index].careerId;
     const career = careerId ? getCareer(careerId) : undefined;
-    return Boolean(career && requiredTags.some((tag) => career.tags.includes(tag)));
+    return Boolean(career && requiredTags.every((tag) => career.tags.includes(tag)));
   });
 }
 
@@ -722,6 +722,7 @@ function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): M
     for (const abilityId of getPlayerAbilityIds(player)) {
       const ability = getAbility(abilityId);
       if (!ability || ability.trigger !== event.type || !abilityAvailable(next, player, abilityId)) continue;
+      if (event.abilityId === abilityId) continue;
       if (!ability.conditions.every((condition) => meetsCondition(next, player, event, condition))) continue;
       let abilityState = markAbilityUsed(next, player, abilityId);
       for (const effect of ability.effects) {

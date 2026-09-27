@@ -321,5 +321,8 @@ export function getCard(id: string): CardDefinition | undefined {
 
 export function drawCard(deck: DeckId): CardDefinition {
   const available = cardsForDeck(deck);
-  return available[Math.floor(Math.random() * available.length)] ?? available[0];
+  if (!available.length) {
+    throw new Error(`No cards registered for deck: ${deck}`);
+  }
+  return available[Math.floor(Math.random() * available.length)];
 }

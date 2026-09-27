@@ -317,6 +317,13 @@ try {
   clickClick = resolveEventQueue(clickClick, [{ type: 'FAME_CHANGED', playerIndex: 0, stat: 'fame', previousValue: 5, newValue: 8, delta: 3, reason: 'Test fame' }]);
   assert.equal(clickClick.players[0].fame, 7);
 
+  let influencer = createStableMatch();
+  influencer = setPlayers(influencer, {
+    0: { careerId: 'influencer', wealth: 100000, fame: 4 },
+  });
+  influencer = resolveEventQueue(influencer, [{ type: 'FAME_CHANGED', playerIndex: 0, stat: 'fame', previousValue: 4, newValue: 7, delta: 3, reason: 'Test fame payout' }]);
+  assert.equal(influencer.players[0].wealth, 105000);
+
   console.log('PASS: phase 9 abilities, cards, category targeting, player interaction, CPU parity, movement, salary, milestones, careers, and purchases');
 } finally {
   await vite.close();
