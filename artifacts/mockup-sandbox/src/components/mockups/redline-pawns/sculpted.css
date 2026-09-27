@@ -1,0 +1,195 @@
+.sculpted-gallery {
+  --sheet-ink: #d9e6ed;
+  --sheet-subdued: #7898aa;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 18px 22px 12px;
+  overflow: hidden;
+  color: var(--sheet-ink);
+  background:
+    radial-gradient(ellipse at 50% 49%, rgba(28, 62, 78, .3), transparent 67%),
+    linear-gradient(rgba(76, 117, 141, .085) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(76, 117, 141, .085) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% 110%, #0c1c28 0, #07131d 65%);
+  background-size: auto, 28px 28px, 28px 28px, auto;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.sculpted-gallery__filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.sculpted-gallery__header {
+  height: 25px;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  color: #9bb5c5;
+  font: 700 10px 'Space Mono', monospace;
+  letter-spacing: .105em;
+  text-transform: uppercase;
+}
+
+.sculpted-gallery__title span {
+  color: #4d8ca6;
+  padding: 0 5px;
+}
+
+.sculpted-gallery__count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #83a2b4;
+}
+
+.sculpted-gallery__count i {
+  width: 5px;
+  height: 5px;
+  display: inline-block;
+  border-radius: 50%;
+  background: #f16bcf;
+  box-shadow: 0 0 9px rgba(241, 107, 207, .8);
+}
+
+.sculpted-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  column-gap: 8px;
+  row-gap: 4px;
+}
+
+.sculpted-gallery__tile {
+  min-width: 0;
+  text-align: center;
+  animation: sculpted-arrive .65s cubic-bezier(.2, .75, .25, 1) both;
+  animation-delay: calc(var(--piece-order) * 18ms);
+}
+
+.sculpted-gallery__stage {
+  position: relative;
+  height: 245px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sculpted-gallery__stage::before {
+  position: absolute;
+  z-index: -1;
+  right: 4%;
+  bottom: 6px;
+  left: 4%;
+  height: 72px;
+  content: '';
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--piece-rim) 15%, transparent), transparent 71%);
+  filter: blur(9px);
+}
+
+.sculpted-gallery__stage::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    linear-gradient(112deg, transparent 22%, rgba(177, 225, 247, .035) 39%, transparent 53%),
+    linear-gradient(0deg, rgba(5, 13, 21, .28), transparent 25%);
+  opacity: .7;
+}
+
+.sculpted-gallery__halo {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  width: 56%;
+  height: 57%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--piece-rim) 11%, transparent), transparent 69%);
+  filter: blur(13px);
+  pointer-events: none;
+}
+
+.sculpted-gallery__stage .pawn-fallback {
+  position: relative;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: translateY(2px) scale(1.08);
+  filter:
+    url(#sculpted-resin-finish)
+    drop-shadow(-3px 0 4px color-mix(in srgb, var(--piece-rim) 47%, transparent))
+    drop-shadow(3px 1px 4px color-mix(in srgb, var(--piece-rim) 34%, transparent))
+    drop-shadow(0 9px 7px rgba(0, 0, 0, .4));
+}
+
+.sculpted-gallery__stage .pawn-fallback > g:first-of-type {
+  filter:
+    drop-shadow(0 0 3px color-mix(in srgb, var(--piece-rim) 72%, transparent))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--piece-rim) 32%, transparent));
+}
+
+.sculpted-gallery__index {
+  position: absolute;
+  top: 8px;
+  left: 9px;
+  z-index: 2;
+  color: rgba(142, 177, 197, .48);
+  font: 400 8px 'Space Mono', monospace;
+  letter-spacing: .06em;
+}
+
+.sculpted-gallery__name {
+  position: relative;
+  margin-top: -1px;
+  color: #b5cbd9;
+  font: 700 10px 'Barlow Condensed', sans-serif;
+  letter-spacing: .13em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(113, 177, 207, .2);
+}
+
+.sculpted-gallery__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(105, 145, 164, .16);
+  color: #68899b;
+  font: 400 8px 'Space Mono', monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sculpted-gallery__footer b {
+  padding: 0 5px;
+  color: #d367cb;
+  font-weight: 400;
+}
+
+@keyframes sculpted-arrive {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .sculpted-gallery {
+    padding: 14px;
+    overflow: auto;
+  }
+  .sculpted-gallery__grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .sculpted-gallery__stage { height: 220px; }
+}
+
+@media (max-width: 600px) {
+  .sculpted-gallery__header { font-size: 8px; }
+  .sculpted-gallery__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .sculpted-gallery__stage { height: 210px; }
+}
