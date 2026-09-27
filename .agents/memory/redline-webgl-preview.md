@@ -20,3 +20,11 @@ For board redesigns, keep the WebGL tabletop as the primary renderer, but give i
 **Why:** The Replit screenshot browser displayed the fallback instead of the GPU scene. A flat fallback would make a successful 3D redesign appear unchanged there, and separate coordinates would misrepresent player movement.
 
 **How to apply:** Keep one ordered route source for both renderers, preserve visible pawns and numbered spaces in the fallback, and report that a fallback screenshot does not prove the live WebGL view.
+
+## R3F preview sizing
+
+Give the React Three Fiber canvas host an explicit responsive height on its first layout, and use the default continuous frame loop unless demand rendering has a reliable invalidation path. Keep a visible no-WebGL fallback; a fallback screenshot does not verify that the 3D scene itself rendered.
+
+**Why:** A 3D mockup route can load and typecheck while its first screenshot is blank or falls back, so route success alone does not establish that the canvas has usable dimensions or WebGL.
+
+**How to apply:** Verify the fallback in the screenshot browser, then separately verify the scene in a WebGL-capable browser before claiming the 3D view is visually confirmed.

@@ -4,5 +4,6 @@ export const modules: ModuleMap = {
   "./components/mockups/redline-pawns/Current.tsx": () => import("../components/mockups/redline-pawns/Current.tsx"),
   "./components/mockups/redline-pawns/Gallery.tsx": () => import("../components/mockups/redline-pawns/Gallery.tsx"),
   "./components/mockups/redline-pawns/Sculpted.tsx": () => import("../components/mockups/redline-pawns/Sculpted.tsx"),
+  "./components/mockups/redline-pawns/Sculpted3D.tsx": () => import("../components/mockups/redline-pawns/Sculpted3D.tsx"),
   "./components/mockups/redline-pawns/SculptedPawn.tsx": () => import("../components/mockups/redline-pawns/SculptedPawn.tsx")
 };
