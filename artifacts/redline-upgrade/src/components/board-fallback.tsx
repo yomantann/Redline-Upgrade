@@ -1,7 +1,7 @@
 import { BOARD_SPACES } from '../game/board-data';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
-import { ROUTE, ZONE_ANCHORS } from './board-scene';
+import { ROUTE, TABLETOP_DRESSING, ZONE_ANCHORS } from './board-scene';
 import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
@@ -52,11 +52,27 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
         </g>;
       })}
       {(() => { const p = project(0, 0, .2); return <g>
-        <circle cx={p.x} cy={p.y} r="31" fill="#14261f" stroke="#f96346" strokeWidth="2" />
-        <circle cx={p.x} cy={p.y} r="25" fill="none" stroke="#d4e981" strokeOpacity=".5" />
+        <circle cx={p.x} cy={p.y} r="49" fill="#14261f" stroke="#536557" strokeWidth="2" />
+        <circle cx={p.x} cy={p.y} r="42" fill="none" stroke="#395248" strokeWidth="2" />
+        <circle cx={p.x} cy={p.y} r="28" fill="none" stroke="#d4e981" strokeOpacity=".42" />
+        <path d={`M${p.x-42} ${p.y+18}h12v-7h9M${p.x+42} ${p.y-18}h-12v7h-9`} fill="none" stroke="#536557" strokeWidth="2" />
         <text x={p.x} y={p.y-1} textAnchor="middle" fill="#f96346" fontFamily="Barlow Condensed, sans-serif" fontSize="14" fontWeight="900">REDLINE</text>
         <text x={p.x} y={p.y+11} textAnchor="middle" fill="#e9e7dc" fontFamily="Space Mono, monospace" fontSize="6">UPGRADE / 01</text>
       </g>; })()}
+      {TABLETOP_DRESSING.map((panel) => {
+        const base = platform(panel.x, panel.z, .78, .5, .35);
+        const foot = project(panel.x, panel.z, .36);
+        const screen = project(panel.x, panel.z, 1.42);
+        return <g key={panel.id} data-board-dressing={panel.id}>
+          <polygon points={base.front} fill="#0c1713" stroke={panel.accent} strokeOpacity=".42" strokeWidth="1" />
+          <polygon points={base.right} fill="#101e19" stroke={panel.accent} strokeOpacity=".42" strokeWidth="1" />
+          <polygon points={base.top} fill="#192721" stroke={panel.accent} strokeWidth="1.5" />
+          <path d={`M${foot.x} ${foot.y}L${screen.x} ${screen.y+18}`} stroke="#52665a" strokeWidth="5" />
+          <rect x={screen.x-31} y={screen.y-7} width="62" height="28" rx="2" fill="#0b1512" stroke={panel.accent} strokeWidth="1.5" />
+          <text x={screen.x} y={screen.y+3} textAnchor="middle" fill={panel.accent} fontFamily="Barlow Condensed, sans-serif" fontSize="7" fontWeight="900">{panel.title}</text>
+          <text x={screen.x} y={screen.y+12} textAnchor="middle" fill="#c3d3bc" fontFamily="Space Mono, monospace" fontSize="4">{panel.subtitle}</text>
+        </g>;
+      })}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
       {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><path d={ICON_PATHS.start} transform={`translate(${p.x-7} ${p.y-32}) scale(.6)`} fill="none" stroke="#d4e981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
       {BOARD_SPACES.map(space => {
@@ -75,6 +91,7 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
           <polygon points={block.top} fill={color} stroke={accent} strokeWidth={milestone ? 2.5 : 1.2} />
            <rect x={center.x-30} y={center.y+21} width="16" height="3" rx="1" fill={accent} opacity={visual.className === 'safe' ? '.52' : '.9'} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
+           {visual.className !== 'safe' && <circle cx={center.x+16} cy={center.y-12} r="11" fill="#14211c" stroke={accent} strokeOpacity=".72" strokeWidth="1.4" />}
            {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+7} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </g>;
@@ -97,6 +114,7 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
      <div className="ru-board__static-key" aria-label="Board visual key">
        <span className="ru-key-safe"><i /> SAFE / NO EFFECT</span>
        <span className="ru-key-deck"><i /> DECK / DRAW</span>
+       <span className="ru-key-effect"><i /> EFFECT / LAND ONLY</span>
        <span className="ru-key-salary"><i /> SALARY / PAYDAY</span>
        <span className="ru-key-major"><i /> MAJOR / CAREER + MILESTONE</span>
        <span className="ru-key-gamble"><i /> GAMBLE / RISK</span>

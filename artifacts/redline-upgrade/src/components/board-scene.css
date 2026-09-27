@@ -156,6 +156,7 @@
 .ru-board__static-key .ru-key-salary i { background: #d4e981; }
 .ru-board__static-key .ru-key-major i, .ru-board__static-key .ru-key-finish i { background: #f96346; }
 .ru-board__static-key .ru-key-gamble i { background: #e8a367; }
+.ru-board__static-key .ru-key-effect i { background: #9fc6ae; }
 @media (max-width: 700px) {
   .ru-tabletop .ru-board__masthead { flex-wrap: wrap; align-items: start; gap: 14px; padding: 15px; }
   .ru-board__controls { width: 100%; }

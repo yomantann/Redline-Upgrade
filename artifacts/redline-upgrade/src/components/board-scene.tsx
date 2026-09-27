@@ -15,6 +15,11 @@ const COLORS = {
   orange: '#f96346', lime: '#d4e981', cream: '#e9e7dc', teal: '#7fbdb1',
 };
 const ZONE_COLORS = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'];
+export const TABLETOP_DRESSING = [
+  { id: 'redline-sign', x: -18, z: -12, title: 'REDLINE', subtitle: 'UPGRADE SYSTEMS', accent: '#f96346' },
+  { id: 'market-display', x: 18, z: -12, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
+  { id: 'ai-terminal', x: -18, z: 12, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
+] as const;
 
 /**
  * A nearly three-turn inward race spiral, not rows. Catmull-Rom bends pass through
@@ -76,6 +81,33 @@ function PrintedLabel({ lines, x, y, z, w, h, color }: {
     <planeGeometry args={[w, h]} />
     <meshBasicMaterial map={texture} transparent depthWrite={false} />
   </mesh>;
+}
+
+function DressingPanel({ panel }: { panel: typeof TABLETOP_DRESSING[number] }) {
+  const texture = useMemo(() => graphic([panel.title, panel.subtitle], panel.accent), [panel.title, panel.subtitle, panel.accent]);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return <group position={[panel.x, 0.12, panel.z]}>
+    <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
+      <boxGeometry args={[1.9, 0.2, 1.18]} />
+      <meshStandardMaterial color="#18241f" metalness={0.76} roughness={0.42} />
+    </mesh>
+    <mesh position={[0, 0.73, -0.02]} castShadow>
+      <boxGeometry args={[0.76, 1.02, 0.16]} />
+      <meshStandardMaterial color="#26382f" metalness={0.68} roughness={0.4} />
+    </mesh>
+    <mesh position={[0, 1.4, 0]} castShadow>
+      <boxGeometry args={[1.64, 0.88, 0.2]} />
+      <meshStandardMaterial color="#17231e" metalness={0.72} roughness={0.36} />
+    </mesh>
+    <mesh position={[0, 1.4, 0.105]}>
+      <planeGeometry args={[1.46, 0.68]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} />
+    </mesh>
+    <mesh position={[0, 0.25, 0.09]}>
+      <boxGeometry args={[1.48, 0.035, 0.05]} />
+      <meshStandardMaterial color={panel.accent} metalness={0.7} roughness={0.38} />
+    </mesh>
+  </group>;
 }
 
 function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { icon: string; y: number; color: string; x?: number; z?: number; size?: number }) {
@@ -164,11 +196,21 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
       <boxGeometry args={[0.34, 0.035, 0.08]} />
       <meshStandardMaterial color={visual.accent} metalness={0.38} roughness={0.48} emissive={visual.accent} emissiveIntensity={visual.className === 'safe' ? 0.02 : 0.08} />
     </mesh>
+    {visual.className !== 'safe' && <group position={[0.59, topY + 0.005, -0.26]}>
+      <mesh position={[0, 0.016, 0]}>
+        <cylinderGeometry args={[0.43, 0.43, 0.035, 24]} /><primitive object={mats.dark} attach="material" />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.34, 0.022, 6, 24]} />
+        <meshStandardMaterial color={visual.accent} metalness={0.68} roughness={0.36} />
+      </mesh>
+    </group>}
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.63, 0.71, 8]} /><primitive object={mats.accent} attach="material" />
     </mesh>}
-    {space.type === 'EVENT' && <mesh position={[0.72, topY + 0.075, -0.68]} rotation={[-Math.PI / 2, 0, 0]} castShadow={false}>
-      <boxGeometry args={[0.16, 0.025, 0.16]} /><primitive object={mats.safeMarker} attach="material" />
+    {space.effectId && <mesh position={[0.72, topY + 0.075, -0.68]} rotation={[-Math.PI / 2, 0, 0]} castShadow={false}>
+      <boxGeometry args={[0.16, 0.025, 0.16]} />
+      <meshStandardMaterial color={visual.accent} metalness={0.62} roughness={0.4} />
     </mesh>}
     {space.payday && <group position={[0.72, topY + 0.15, -0.66]}>
       <mesh castShadow><cylinderGeometry args={[0.19, 0.19, 0.1, 16]} /><primitive object={mats.lime} attach="material" /></mesh>
@@ -189,7 +231,7 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
   </group>;
 }
 
-function Connector({ a, b, hot = false }: { a: Point; b: Point; hot?: boolean }) {
+function Connector({ a, b, hot = false, zoneColor = COLORS.lime }: { a: Point; b: Point; hot?: boolean; zoneColor?: string }) {
   const dx = b.x - a.x;
   const dz = b.z - a.z;
   const length = Math.hypot(dx, dz);
@@ -199,10 +241,16 @@ function Connector({ a, b, hot = false }: { a: Point; b: Point; hot?: boolean })
       <boxGeometry args={[length, 0.16, 0.91]} /><primitive object={mats.base} attach="material" />
     </mesh>
     <mesh position={[0, 0.405, 0]}>
-      <boxGeometry args={[length, 0.026, 0.12]} /><primitive object={hot ? mats.accent : mats.lime} attach="material" />
+      <boxGeometry args={[length, 0.026, 0.12]} />
+      {hot
+        ? <meshStandardMaterial color={zoneColor} emissive={zoneColor} emissiveIntensity={0.08} metalness={0.62} roughness={0.38} />
+        : <primitive object={mats.lime} attach="material" />}
     </mesh>
     {[-1, 1].map(side => <mesh key={side} position={[0, 0.44, side * 0.47]}>
-      <boxGeometry args={[length, 0.045, 0.045]} /><primitive object={hot ? mats.accent : mats.normal} attach="material" />
+      <boxGeometry args={[length, 0.045, 0.045]} />
+      {hot
+        ? <meshStandardMaterial color={zoneColor} metalness={0.68} roughness={0.36} />
+        : <primitive object={mats.normal} attach="material" />}
     </mesh>)}
   </group>;
 }
@@ -247,6 +295,28 @@ function CircuitBoard() {
     {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`${x}-${z}`} position={[x * 20.7, -0.93, z * 13.2]} castShadow>
       <boxGeometry args={[2.2, 0.25, 1.5]} /><meshStandardMaterial color="#0a100f" metalness={0.5} />
     </mesh>))}
+  </group>;
+}
+
+function CenterEmblem() {
+  return <group position={[0, 0.12, 0]}>
+    <mesh position={[0, 0.02, 0]} receiveShadow>
+      <cylinderGeometry args={[3.02, 3.2, 0.14, 64]} />
+      <meshStandardMaterial color="#172620" metalness={0.72} roughness={0.46} />
+    </mesh>
+    <mesh position={[0, 0.096, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[2.82, 2.88, 64]} />
+      <meshStandardMaterial color="#536557" metalness={0.72} roughness={0.34} />
+    </mesh>
+    <mesh position={[0, 0.098, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[2.5, 2.53, 64]} />
+      <meshStandardMaterial color="#395248" metalness={0.62} roughness={0.48} />
+    </mesh>
+    {[-1, 1].map((side) => <mesh key={side} position={[side * 1.9, 0.096, 0]}>
+      <boxGeometry args={[0.5, 0.014, 0.045]} />
+      <meshStandardMaterial color="#395248" metalness={0.6} roughness={0.5} />
+    </mesh>)}
+    <PrintedLabel lines={['REDLINE', 'UPGRADE / CIRCUIT 01']} x={0} y={0.16} z={0} w={3.9} h={1.24} color={COLORS.orange} />
   </group>;
 }
 
@@ -361,17 +431,13 @@ export function BoardScene({ players, activePlayerId, landingPosition, overview,
     <directionalLight position={[14, 9, -12]} intensity={1.1} color="#a8d7bf" />
     <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
-    {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i > 0 && i % 15 === 0} />)}
+    <CenterEmblem />
+    {TABLETOP_DRESSING.map((panel) => <DressingPanel key={panel.id} panel={panel} />)}
+    {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i % 15 === 14} zoneColor={ZONE_COLORS[Math.floor(i / 15)]} />)}
     {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     <StartGate />
     <FinishGate />
     {ZONES.map((name, i) => <StandingLabel key={name} name={name} index={i} x={ZONE_ANCHORS[i].x} z={ZONE_ANCHORS[i].z} color={ZONE_COLORS[i]} />)}
-    <group position={[0, 0.15, 0]}>
-      <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.28, 1.36, 48]} /><primitive object={mats.accent} attach="material" />
-      </mesh>
-      <PrintedLabel lines={['REDLINE', 'UPGRADE / CIRCUIT 01']} x={0} y={0.08} z={0} w={4.2} h={1.35} color={COLORS.orange} />
-    </group>
     {players.map(player => {
       const colocated = players.filter(p => p.position === player.position).sort((a, b) => a.slot - b.slot);
       return <Miniature key={player.playerId} player={player} index={colocated.findIndex(p => p.playerId === player.playerId)} count={colocated.length} active={player.playerId === activePlayerId} reduceMotion={reduceMotion} />;

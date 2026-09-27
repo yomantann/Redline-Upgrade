@@ -1,6 +1,7 @@
 import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
 import { getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
+import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
 import { getCareer } from './careers';
 import { getCharacter } from './characters';
 import { getCard, type CardEffect, type CardTarget } from './cards';
@@ -52,6 +53,7 @@ export interface EventDraft {
   newSalary?: number;
   stage?: 'TRIGGERED' | 'RESOLVED';
   milestoneType?: 'car' | 'lifestyle' | 'companion' | 'property';
+  effectId?: string;
   deck?: 'wealth' | 'ai' | 'fame' | 'lifestyle' | 'influence' | 'gamble';
   cardId?: string;
   assetId?: string;
@@ -110,6 +112,7 @@ function eventLabel(event: AnyGameEvent): string {
     case 'SALARY_GATE': return 'SALARY GATE';
     case 'CAREER_CHANGE': return event.stage === 'RESOLVED' ? 'CAREER RESOLVED' : 'CAREER CHANGE';
     case 'MILESTONE': return 'MILESTONE';
+    case 'BOARD_EFFECT_RESOLVED': return getBoardEffect(event.effectId)?.label ?? 'BOARD EFFECT';
     case 'CARD_DRAW': return event.cardId ? `DREW ${getCard(event.cardId)?.title ?? 'CARD'}` : 'CARD DRAW';
     case 'CARD_RESOLVED': return event.cardId ? getCard(event.cardId)?.title ?? 'CARD RESOLVED' : 'CARD RESOLVED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
@@ -151,6 +154,10 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
         : `${player.displayName} triggered a career change.`;
     case 'MILESTONE':
       return `${player.displayName} reached the ${event.milestoneType} milestone.`;
+    case 'BOARD_EFFECT_RESOLVED': {
+      const effect = getBoardEffect(event.effectId);
+      return `${player.displayName} landed on ${effect?.label ?? 'a board effect'}: ${effect?.description ?? 'the effect was resolved.'}`;
+    }
     case 'CARD_DRAW':
       return `${player.displayName} drew ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'CARD_RESOLVED':
@@ -488,6 +495,19 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
           milestoneType: milestone,
         });
       }
+      if (space.effectId && space.trigger === 'LAND') {
+        queue.push({
+          type: 'BOARD_EFFECT_RESOLVED',
+          playerIndex: targetIndex,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          total: state.roll?.total,
+          spaceNumber: nextPosition,
+          effectId: space.effectId,
+        });
+      }
     }
   }
   const finalPosition = state.players[targetIndex].position;
@@ -712,6 +732,119 @@ function cardStatEffectType(stat: PlayerStat, amount: number): EffectType {
   return `${amount < 0 ? 'REMOVE' : 'ADD'}_${suffix[stat]}` as EffectType;
 }
 
+function boardEffectTargets(
+  match: Match,
+  actor: MatchPlayer,
+  event: AnyGameEvent,
+  target: BoardEffectTarget,
+  salt: string,
+): number[] {
+  const opponents = match.players.flatMap((player, index) => player.slot === actor.slot ? [] : [index]);
+  switch (target) {
+    case 'SELF':
+      return [actor.slot];
+    case 'ALL_PLAYERS':
+      return match.players.map((_, index) => index);
+    case 'ALL_OTHER_PLAYERS':
+      return opponents;
+    case 'LANDED_ON_PLAYER': {
+      const spaceNumber = event.spaceNumber ?? actor.position;
+      return match.players.flatMap((player, index) => index !== actor.slot && player.position === spaceNumber ? [index] : []);
+    }
+    case 'PLAYER_AHEAD': {
+      const ahead = opponents
+        .filter((index) => match.players[index].position > actor.position)
+        .sort((left, right) => match.players[left].position - match.players[right].position || match.players[left].slot - match.players[right].slot);
+      return ahead.slice(0, 1);
+    }
+    case 'PLAYER_BEHIND': {
+      const behind = opponents
+        .filter((index) => match.players[index].position < actor.position)
+        .sort((left, right) => match.players[right].position - match.players[left].position || match.players[left].slot - match.players[right].slot);
+      return behind.slice(0, 1);
+    }
+    case 'WEALTH_LEADER':
+      return match.players
+        .map((player, index) => ({ player, index }))
+        .sort((left, right) => right.player.wealth - left.player.wealth || left.player.slot - right.player.slot)
+        .slice(0, 1)
+        .map(({ index }) => index);
+    case 'WEALTH_TRAILER':
+      return match.players
+        .map((player, index) => ({ player, index }))
+        .sort((left, right) => left.player.wealth - right.player.wealth || left.player.slot - right.player.slot)
+        .slice(0, 1)
+        .map(({ index }) => index);
+    case 'RANDOM_OPPONENT':
+      return opponents.length
+        ? [opponents[Math.floor(stableUnitValue(`${event.id}:${salt}:board-target`) * opponents.length)]]
+        : [];
+  }
+}
+
+function applyBoardEffect(match: Match, queue: EventDraft[], event: AnyGameEvent, effect: BoardEffectDefinition): Match {
+  let state = match;
+  const rollTotal = event.total ?? state.roll?.total ?? 0;
+
+  for (const [actionIndex, action] of effect.effects.entries()) {
+    const actor = state.players[event.playerIndex];
+    const targets = boardEffectTargets(state, actor, event, action.target, `${effect.id}:${actionIndex}`);
+    if (action.kind === 'STAT') {
+      const amount = action.amount + (action.perRoll ?? 0) * rollTotal;
+      if (amount === 0) continue;
+      for (const target of targets) {
+        if (action.careerTags?.length) {
+          const career = getCareer(state.players[target].careerId ?? '');
+          if (!career || !action.careerTags.some((tag) => career.tags.includes(tag))) continue;
+        }
+        state = applyStatDelta(
+          state,
+          queue,
+          event,
+          state.players[event.playerIndex],
+          action.stat,
+          amount,
+          cardStatEffectType(action.stat, amount),
+          target,
+          `${effect.label}: ${effect.description}`,
+        );
+      }
+      continue;
+    }
+
+    for (const target of targets) {
+      if (target === event.playerIndex) continue;
+      const wealthBefore = state.players[target].wealth;
+      state = applyStatDelta(
+        state,
+        queue,
+        event,
+        state.players[event.playerIndex],
+        'wealth',
+        -action.amount,
+        cardStatEffectType('wealth', -action.amount),
+        target,
+        `${effect.label}: rival transfer`,
+      );
+      const transferred = wealthBefore - state.players[target].wealth;
+      if (transferred > 0) {
+        state = applyStatDelta(
+          state,
+          queue,
+          event,
+          state.players[event.playerIndex],
+          'wealth',
+          transferred,
+          cardStatEffectType('wealth', transferred),
+          event.playerIndex,
+          `${effect.label}: rival transfer`,
+        );
+      }
+    }
+  }
+  return state;
+}
+
 function applyCardEffects(
   match: Match,
   queue: EventDraft[],
@@ -843,6 +976,11 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);
       state = applyCardEffects(state, queue, event, card.id, card.effects);
+    }
+    if (event.type === 'BOARD_EFFECT_RESOLVED') {
+      const effect = getBoardEffect(event.effectId);
+      if (!effect) throw new Error(`Board effect event references unknown effect ${event.effectId ?? '(missing)'}.`);
+      state = applyBoardEffect(state, queue, event, effect);
     }
     queue.push(...nativeSecondaryEvents(state, event));
     state = runAbilities(state, queue, event);

@@ -141,7 +141,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
         <div>{[
           ['salary', 'Salary Gate'], ['career', 'Career Change'], ['car', 'Car'], ['lifestyle', 'Lifestyle'],
           ['pet', 'Pet'], ['investment', 'Investment'], ['property', 'Property'], ['wealth', 'Card Space'],
-          ['gamble', 'Gamble'], ['event', 'Event'], ['start', 'Start'], ['finish', 'Finish'],
+          ['gamble', 'Gamble'], ['event', 'Effect Space'], ['start', 'Start'], ['finish', 'Finish'],
         ].map(([icon, label]) => <span key={label}><SpaceIcon name={icon} size={20} />{label}</span>)}</div>
       </details>
       <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>

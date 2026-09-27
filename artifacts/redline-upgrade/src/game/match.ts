@@ -170,6 +170,15 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
   if (space.type === 'MILESTONE' && milestone && space.trigger === 'LAND') {
     drafts.push({ type: 'MILESTONE', playerIndex: match.turnIndex, spaceNumber: space.number, milestoneType: milestone });
   }
+  if (space.effectId && space.trigger === 'LAND') {
+    drafts.push({
+      type: 'BOARD_EFFECT_RESOLVED',
+      playerIndex: match.turnIndex,
+      total: match.roll?.total,
+      spaceNumber: space.number,
+      effectId: space.effectId,
+    });
+  }
   if (slot && !match.players[match.turnIndex].equipment[slot]) {
     return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }

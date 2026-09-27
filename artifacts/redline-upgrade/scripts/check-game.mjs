@@ -13,7 +13,8 @@ try {
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { careers, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
-  const { getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
+  const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
+  const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
@@ -33,6 +34,9 @@ try {
       players: match.players.map((player, index) => index === slot ? { ...player, position, wealth } : player),
     };
   }
+  function startWithoutProtection(position, slot = 0, wealth = 900000) {
+    return { ...start(position, slot, wealth), effectProtections: {} };
+  }
   function move(match, total) {
     match = advanceMatch(match, { type: 'ROLL', result: { die1: 1, die2: total - 1, total, doubles: total === 2 } });
     match = advanceMatch(match, { type: 'REVEAL' });
@@ -42,6 +46,15 @@ try {
   }
   const eventTypes = (match) => match.eventLog.map((entry) => entry.eventType);
   const countEvent = (match, type) => match.eventLog.filter((entry) => entry.eventType === type).length;
+
+  assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number), [3, 7, 12, 17, 22, 32, 42, 52, 62]);
+  assert.deepEqual([...PAYDAY_SPACES], [6, 18, 29, 41, 54, 66, 73]);
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE').map(space => space.number), [10, 30, 35, 45, 60, 75]);
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'GAMBLE').map(space => space.number), [15, 50, 70]);
+  assert.equal(BOARD_EFFECTS.length, 15, 'the board has 15 active predictable effects');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1, 5, 13, 20, 24, 27, 33, 37, 39, 47, 49, 57, 64, 67, 72]);
+  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 35, '35 spaces remain effect-free');
 
   assert.equal(cards.length, 90, 'the full card set has 90 cards');
   assert.equal(new Set(cards.map(card => card.id)).size, 90, 'card IDs are unique');
@@ -285,6 +298,81 @@ try {
   const carId = match.pending.offeredAssetIds[0];
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: carId });
   assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 5);
+
+  const penaltyLanding = move(startWithoutProtection(2), 3);
+  assert.equal(penaltyLanding.players[0].position, 5);
+  assert.equal(penaltyLanding.players[0].wealth, 897000);
+  assert.equal(countEvent(penaltyLanding, 'BOARD_EFFECT_RESOLVED'), 1);
+  const passedEffect = move(startWithoutProtection(3), 4);
+  assert.equal(passedEffect.players[0].position, 7);
+  assert.equal(countEvent(passedEffect, 'BOARD_EFFECT_RESOLVED'), 0, 'passing an effect space does not trigger it');
+
+  const cpuStart = startWithoutProtection(2);
+  const cpuMatch = {
+    ...cpuStart,
+    players: cpuStart.players.map((player, index) => index === 0 ? { ...player, isCPU: true } : player),
+  };
+  const cpuLanding = move(cpuMatch, 3);
+  assert.equal(cpuLanding.players[0].wealth, 897000, 'CPU landings resolve the same board effect');
+
+  const protectedStart = startWithoutProtection(2);
+  const protectedPlayerId = protectedStart.players[0].playerId;
+  const protectedMatch = move({
+    ...protectedStart,
+    effectProtections: {
+      ...protectedStart.effectProtections,
+      [protectedPlayerId]: [{ remaining: 1, blockedEffectTypes: ['REMOVE_WEALTH'] }],
+    },
+  }, 3);
+  assert.equal(protectedMatch.players[0].wealth, 900000, 'existing protection blocks a matching board penalty');
+  assert.equal(protectedMatch.effectProtections[protectedPlayerId].length, 0, 'blocked effect consumes its protection');
+
+  const digitalCareer = careers.find(career => career.tags.includes('digital'));
+  const digitalStart = startWithoutProtection(10);
+  const digitalMatch = {
+    ...digitalStart,
+    players: digitalStart.players.map((player, index) => index === 0 ? { ...player, careerId: digitalCareer.id } : player),
+  };
+  const aiBefore = digitalMatch.players[0].aiSkill;
+  const digitalLanding = move(digitalMatch, 3);
+  assert.equal(digitalLanding.players[0].aiSkill, aiBefore + 2, 'career-tagged effects grant the digital-career bonus');
+
+  const rivalStart = startWithoutProtection(36);
+  const rivalMatch = {
+    ...rivalStart,
+    players: rivalStart.players.map((player, index) => {
+      if (index === 0) return { ...player, position: 36, wealth: 40000 };
+      if (index === 1) return { ...player, position: 42, wealth: 50000 };
+      return { ...player, wealth: 900000 };
+    }),
+  };
+  const rivalLanding = move(rivalMatch, 3);
+  assert.equal(rivalLanding.players[0].influence, rivalMatch.players[0].influence + 1);
+  assert.equal(rivalLanding.players[0].wealth, 42000, 'the rival-contract effect transfers wealth to the landing player');
+  assert.equal(rivalLanding.players[1].wealth, 48000, 'the rival-contract effect targets the nearest player ahead');
+
+  const spotlightStart = startWithoutProtection(44);
+  const spotlightMatch = {
+    ...spotlightStart,
+    players: spotlightStart.players.map((player, index) => {
+      if (index === 0) return { ...player, position: 44 };
+      if (index === 1) return { ...player, position: 42 };
+      if (index === 2) return { ...player, position: 50 };
+      return player;
+    }),
+  };
+  const actorFameBefore = spotlightMatch.players[0].fame;
+  const trailingFameBefore = spotlightMatch.players[1].fame;
+  const leadingFameBefore = spotlightMatch.players[2].fame;
+  const spotlightLanding = move(spotlightMatch, 3);
+  assert.equal(spotlightLanding.players[0].fame, actorFameBefore + 1);
+  assert.equal(spotlightLanding.players[1].fame, trailingFameBefore - 1, 'rival spotlight targets the nearest player behind');
+  assert.equal(spotlightLanding.players[2].fame, leadingFameBefore, 'rival spotlight does not target players ahead');
+
+  const rollStart = startWithoutProtection(46);
+  const rollBefore = rollStart.players[0].wealth;
+  const rollLanding = move(rollStart, 3);
+  assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');
   console.log('PASS: 90 unique cards, effects and artwork; finite piles and reshuffle; existing careers, assets and CPU turns');
 } finally {
   await vite.close();

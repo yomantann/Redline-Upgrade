@@ -1,4 +1,5 @@
 import type { BoardSpace } from '../game/board-data';
+import { getBoardEffect } from '../game/board-effects';
 import type { DeckId } from '../game/decks';
 
 export type BoardVisualClass = 'safe' | 'deck' | 'salary' | 'major' | 'gamble' | 'effect';
@@ -18,9 +19,20 @@ const DECK_VISUALS: Record<DeckId, Pick<BoardSpaceVisual, 'accent' | 'tile'>> = 
   gamble: { accent: '#f57970', tile: '#4a3936' },
 };
 
+const EFFECT_ACCENTS = {
+  wealth: '#d8e78b',
+  ai: '#88c6c2',
+  fame: '#f5a67e',
+  lifestyle: '#dbbbdc',
+  influence: '#e9c477',
+  career: '#a6c1a0',
+  interaction: '#9fc6ae',
+  risk: '#e8a367',
+} as const;
+
 /**
- * Presentation-only classification. NORMAL and inactive EVENT spaces deliberately
- * share the safe treatment because neither has a gameplay effect in this phase.
+ * Presentation-only classification. Ordinary spaces remain neutral; active EVENT
+ * spaces carry the category accent for their predictable board effect.
  */
 export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
   switch (space.type) {
@@ -35,10 +47,12 @@ export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
     case 'CAREER_CHANGE':
     case 'MILESTONE':
       return { className: 'major', accent: '#f96346', tile: '#603b32' };
-    case 'EVENT':
-      return space.trigger === 'NONE'
-        ? { className: 'safe', accent: '#8ea69a', tile: '#30423b' }
-        : { className: 'effect', accent: '#9fc6ae', tile: '#35483e' };
+    case 'EVENT': {
+      if (!space.effectId) return { className: 'safe', accent: '#8ea69a', tile: '#30423b' };
+      const effect = getBoardEffect(space.effectId);
+      if (!effect) throw new Error(`Board space ${space.number} references unknown effect ${space.effectId}.`);
+      return { className: 'effect', accent: EFFECT_ACCENTS[effect.tone], tile: '#35483e' };
+    }
     case 'NORMAL':
       return { className: 'safe', accent: '#8ea69a', tile: '#30423b' };
     default: {

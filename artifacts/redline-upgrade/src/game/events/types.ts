@@ -17,6 +17,7 @@ export type GameEventType =
   | 'SALARY_GATE'
   | 'CAREER_CHANGE'
   | 'MILESTONE'
+  | 'BOARD_EFFECT_RESOLVED'
   | 'CARD_DRAW'
   | 'CARD_RESOLVED'
   | 'ASSET_PURCHASED'
@@ -68,6 +69,7 @@ export interface GameEvent {
   newSalary?: number;
   stage?: CareerEventStage;
   milestoneType?: MilestoneType;
+  effectId?: string;
   deck?: DeckId;
   cardId?: string;
   assetId?: string;
