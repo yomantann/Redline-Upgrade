@@ -1,0 +1,221 @@
+==================================================
+16. EXISTING CARD ARTWORK — ALL 6 DECKS
+==================================================
+
+Also create visual artwork for EVERY EXISTING CARD that can currently be drawn from the six decks.
+
+IMPORTANT:
+
+Do NOT invent new cards.
+
+Do NOT change card names.
+
+Do NOT change card effects.
+
+Do NOT change card probabilities.
+
+Do NOT change deck behavior.
+
+First inspect the existing card definitions in the codebase and use those definitions as the complete source of truth.
+
+The six decks are:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Create artwork for every currently defined card in each deck.
+
+==================================================
+17. CARD ART DIRECTION
+==================================================
+
+Each deck should have a recognizable visual identity while still feeling like part of the same Redline Upgrade universe.
+
+Cards should feel like premium futuristic board-game cards.
+
+Overall style:
+
+- dark futuristic
+- edgy
+- AI/technology influenced
+- slightly chaotic
+- meme-friendly where appropriate
+- premium tabletop game
+- strong visual silhouettes
+- readable at card size
+
+The six decks should NOT all look identical.
+
+Each deck should have its own visual language.
+
+WEALTH:
+Money, luxury, markets, deals, assets, financial chaos.
+
+AI SKILL:
+AI, robots, neural networks, coding, automation, futuristic technology.
+
+FAME:
+Spotlights, media, influencers, viral moments, celebrity culture.
+
+LIFESTYLE:
+Luxury, health, experiences, status, leisure, ridiculous lifestyle choices.
+
+INFLUENCE:
+Power, networking, politics/corporate influence, social control, reputation.
+
+GAMBLE:
+Risk, dice, casino energy, speculation, jackpots, catastrophic losses.
+
+==================================================
+18. CARD DESIGN
+==================================================
+
+Keep the existing card UI structure.
+
+Artwork should work as the main visual area of the card.
+
+The existing card should still clearly display:
+
+- Card name
+- Deck
+- Description/effect
+- Any existing value
+- Existing buttons/actions
+
+Do not bury important card text inside generated artwork.
+
+Do not generate artwork containing the card's gameplay text.
+
+The UI should render the text separately.
+
+==================================================
+19. INDIVIDUAL CARD ART
+==================================================
+
+Every existing card should have its own distinct artwork.
+
+Avoid producing:
+
+"same image with a different color."
+
+The artwork should reflect the actual card's NAME and EFFECT.
+
+For example, if an existing card involves:
+
+- market crash → visually communicate a market collapse
+- viral fame → visually communicate going viral
+- AI breakthrough → visually communicate a major AI event
+- luxury purchase → visually communicate wealth/status
+- gambling win → visually communicate a high-risk jackpot
+
+Use the existing card definition to determine the appropriate visual concept.
+
+Do not change the card's meaning.
+
+==================================================
+20. MEME / EDGY CONTENT
+==================================================
+
+Where the existing card name/effect is humorous, edgy, absurd, or meme-oriented, let the artwork reflect that personality.
+
+However:
+
+Do not add new gameplay text.
+
+Do not add offensive or unrelated imagery simply for shock value.
+
+The artwork should support the existing card concept.
+
+==================================================
+21. ASSET ORGANIZATION
+==================================================
+
+Organize the artwork by deck.
+
+For example:
+
+cards/
+  wealth/
+  ai-skill/
+  fame/
+  lifestyle/
+  influence/
+  gamble/
+
+Use stable filenames based on the existing card IDs.
+
+Do NOT rename the actual card IDs.
+
+The code should map:
+
+existing card ID
+→ corresponding artwork
+
+Do not hard-code artwork based on array position.
+
+==================================================
+22. CARD ARTWORK INTEGRATION
+==================================================
+
+Update the existing card UI so each existing card displays its corresponding artwork.
+
+Preserve:
+
+- card draw behavior
+- card resolution
+- discard behavior
+- deck behavior
+- CPU behavior
+- event system
+
+This is a visual/content enhancement.
+
+Do not rewrite the card engine.
+
+==================================================
+23. CARD READABILITY
+==================================================
+
+Artwork should not overpower the gameplay information.
+
+The player should immediately understand:
+
+WHAT CARD IS THIS?
+WHAT DECK IS IT FROM?
+WHAT DOES IT DO?
+
+The artwork should enhance the card rather than make it harder to read.
+
+==================================================
+24. VALIDATION
+==================================================
+
+After creating the artwork:
+
+- Verify every existing card has an artwork mapping.
+- Verify there are no missing images.
+- Verify there are no broken asset paths.
+- Verify all six decks still function.
+- Verify cards still resolve exactly as before.
+- Verify CPU card interactions still work.
+- Verify card text/effects were not changed.
+- Run typecheck.
+- Run production build.
+
+Report:
+
+1. Number of existing cards found
+2. Number of artwork assets created
+3. Number of cards per deck
+4. Asset locations
+5. Files modified
+6. Validation results
+7. Any cards that could not receive artwork
+
+Do not create additional cards during this task.
+
+STOP after the visual card-art pass.

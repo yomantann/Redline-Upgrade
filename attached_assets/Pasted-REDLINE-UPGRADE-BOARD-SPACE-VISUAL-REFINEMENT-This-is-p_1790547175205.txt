@@ -1,0 +1,375 @@
+REDLINE UPGRADE — BOARD SPACE VISUAL REFINEMENT
+
+This is primarily a VISUAL/UI task.
+
+Use the CURRENT 75-space board as the foundation.
+
+The existing board already has:
+- 75 spaces
+- serpentine/looping route
+- raised 3D-looking tiles
+- dark futuristic Redline aesthetic
+- existing special/deck spaces
+- existing player pieces
+- board zoom/pan
+- chapter/section labels
+
+The board should feel like a polished physical board game while remaining clean and uncluttered.
+
+==================================================
+1. IMPORTANT — EXISTING DECK SPACES
+==================================================
+
+The game ALREADY has spaces that require the player to draw from the corresponding deck.
+
+Preserve those spaces and their current behavior.
+
+Existing deck spaces include:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Do NOT replace these with new space types.
+
+Do NOT change their card-draw behavior.
+
+Make their existing deck identity visually clear and polished.
+
+==================================================
+2. WHAT WE NEED TO SOLVE
+==================================================
+
+There are also many ordinary spaces that currently look too similar.
+
+We want to use some of these spaces for simple predetermined landing effects while keeping some spaces completely safe.
+
+The goal is NOT to make every space special.
+
+Instead, create a visual hierarchy between:
+
+A. DECK SPACE
+Draw a card.
+
+B. MAJOR SPECIAL SPACE
+Payday, Career Change, Milestone, etc.
+
+C. EFFECT SPACE
+Landing produces a predetermined benefit/consequence.
+
+D. SAFE SPACE
+Nothing happens.
+
+This should make the board feel more like a real board game without cluttering every tile.
+
+==================================================
+3. EFFECT SPACES
+==================================================
+
+Create a clean visual language for simple predetermined effects.
+
+Potential effect types include:
+
+WEALTH
++ or - Wealth
+
+AI SKILL
++ or - AI Skill
+
+FAME
++ or - Fame
+
+LIFESTYLE
++ or - Lifestyle
+
+INFLUENCE
++ or - Influence
+
+CAREER
+Career/category-specific effect
+
+PLAYER INTERACTION
+An effect involving another player
+
+These effects should NOT draw cards.
+
+They should be represented as simple landing effects.
+
+Do not invent complicated new mechanics.
+
+The actual numerical effects can be finalized later in the game logic.
+
+==================================================
+4. SAFE SPACES
+==================================================
+
+Some ordinary spaces should intentionally be SAFE.
+
+Landing on a safe space means:
+
+NOTHING HAPPENS.
+
+This is intentional.
+
+Safe spaces should provide breathing room between more interesting spaces.
+
+They should have:
+
+- clean neutral appearance
+- subtle visual treatment
+- no oversized icon
+- no unnecessary text
+
+They should still look like finished board spaces rather than unfinished placeholders.
+
+==================================================
+5. DO NOT OVER-ICONIZE THE BOARD
+==================================================
+
+This is extremely important.
+
+Do NOT put a large icon on every space.
+
+The current board has a strong physical 3D foundation and should remain visually clean.
+
+Use a hierarchy such as:
+
+SPACE NUMBER
++
+small category marker/icon where appropriate
+
+The exact effect should appear in the existing landing/event UI.
+
+For example, a space might visually communicate:
+
+WEALTH
++/- marker
+
+rather than displaying:
+
+"LAND HERE TO RECEIVE +10,000 WEALTH"
+
+Do not put paragraphs on the board.
+
+==================================================
+6. VISUAL DISTINCTION
+==================================================
+
+Use subtle visual differences between space types.
+
+For example:
+
+SAFE
+Neutral dark treatment
+
+DECK
+Distinct deck accent
+
+EFFECT
+Small category marker/accent
+
+MAJOR SPECIAL
+Stronger border/accent
+
+GAMBLE
+Existing risk/orange treatment
+
+Do not turn the board into a rainbow.
+
+The overall board should remain dark, premium, futuristic, and cohesive.
+
+==================================================
+7. EXISTING SPECIAL SPACES
+==================================================
+
+Preserve and visually emphasize the existing:
+
+- Payday
+- Career Change
+- Car milestone
+- Lifestyle/Career milestone
+- Investment/Pet milestone
+- Property milestone
+- Gamble spaces
+- Existing deck spaces
+
+Do not change what they do.
+
+Do not create duplicate versions.
+
+==================================================
+8. BOARD DISTRIBUTION
+==================================================
+
+Do not randomly redesign the 75 spaces.
+
+Inspect the existing space definitions first.
+
+Where ordinary spaces currently exist, establish whether they are visually:
+
+- SAFE
+- EFFECT
+- existing DECK
+- existing SPECIAL
+
+Do not change existing gameplay effects unless absolutely necessary.
+
+If an ordinary space currently has no gameplay effect, it may be visually represented as SAFE for now.
+
+If an existing ordinary space already has an effect, preserve it and give it an appropriate visual identity.
+
+==================================================
+9. LANDING RESULT UI
+==================================================
+
+Use the existing event/result UI for the detailed outcome.
+
+For example:
+
+PLAYER LANDS ON:
+
+MARKET SURGE
+
++10K WEALTH
+
+or:
+
+PLAYER LANDS ON:
+
+BURNOUT
+
+-2 LIFESTYLE
+
+The board should identify the TYPE of space.
+
+The landing UI should explain the exact result.
+
+==================================================
+10. PHYSICAL BOARD FEEL
+==================================================
+
+Preserve the current raised/3D board tile appearance.
+
+Improve only where helpful with:
+
+- subtle bevels
+- shadows
+- edge lighting
+- material differences
+- small inset symbols
+- restrained glow
+
+Do not make the tiles look like floating digital cards.
+
+They should feel like physical pieces on a futuristic tabletop.
+
+==================================================
+11. READABILITY AT DIFFERENT ZOOMS
+==================================================
+
+Preserve board zoom/pan.
+
+Check the board at:
+
+- zoomed out
+- normal gameplay view
+- close zoom
+
+At zoomed out, the player should be able to identify:
+
+- special spaces
+- deck spaces
+- major effect spaces
+
+At normal zoom, smaller category markers can become readable.
+
+Do not make icons so large that they compete with player pieces.
+
+==================================================
+12. PLAYER PIECES
+==================================================
+
+Do not modify the character pieces.
+
+Make sure the revised space visuals do not obscure them.
+
+The player pieces should remain the primary object when occupying a space.
+
+==================================================
+13. DO NOT CHANGE
+==================================================
+
+Do NOT change:
+
+- 75-space board route
+- 2d4 movement
+- dice system
+- salary system
+- career system
+- Career Change at space 35
+- milestone mechanics
+- card decks
+- card effects
+- character abilities
+- career abilities
+- CPU behavior
+- multiplayer architecture
+- player pieces
+
+Do not create a new resource.
+
+Do not create a new currency.
+
+Do not create a new event engine.
+
+==================================================
+14. GOAL
+==================================================
+
+The final board should feel like:
+
+"Most spaces are part of a purposeful board-game journey."
+
+rather than:
+
+"Every space is a different UI card."
+
+There should be moments of:
+
+SAFE → anticipation → effect → deck draw → safe → special event
+
+without making the board visually busy.
+
+Keep the existing Redline Upgrade aesthetic and physical-board feel.
+
+==================================================
+15. VALIDATION
+==================================================
+
+Verify:
+
+- All 75 spaces remain present.
+- Existing deck spaces still draw their correct decks.
+- Existing special spaces remain unchanged.
+- Safe spaces are visually clear.
+- Effect spaces are visually distinguishable.
+- No large icons clutter ordinary spaces.
+- Player pieces remain visible.
+- Board zoom/pan still works.
+- No gameplay systems are broken.
+- Typecheck/build pass.
+
+At completion report:
+
+1. Existing deck spaces preserved
+2. Safe/effect visual treatment added
+3. Special spaces preserved
+4. Assets/icons created
+5. Files modified
+6. Validation results
+7. Any spaces that remain visually generic
+
+STOP after this visual pass.
