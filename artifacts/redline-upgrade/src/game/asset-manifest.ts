@@ -4,6 +4,7 @@ import { cards } from './cards';
 import { decks } from './decks';
 import { ICON_PATHS } from './icon-paths';
 import { getAssetArtworkFilePath } from './asset-artwork';
+import { getCardArtworkFilePath } from './card-artwork';
 
 /** Paths are relative to the redline-upgrade artifact root, not deployment URLs.
  * Image-backed entries are actual files; fallback entries are deliberately code-drawn.
@@ -44,12 +45,16 @@ export const visualAssets: readonly VisualAsset[] = [
     description: `Reusable ${deck.name} card back; illustrative count only.`,
     status: 'available' as const,
   })),
-  ...cards.map(card => ({
-    id: `card_${card.id}`, name: card.title, category: 'cards' as const,
-    filePath: 'src/components/redline-card.tsx', assetType: 'css-art' as const,
-    description: `${card.deck} representative front. Effect is not active.`,
-    status: 'example' as const,
-  })),
+  ...cards.map(card => {
+    const artworkPath = getCardArtworkFilePath(card.id);
+    return {
+      id: `card_${card.id}`, name: card.title, category: 'cards' as const,
+      filePath: artworkPath ? `public/${artworkPath}` : 'src/components/redline-card.tsx',
+      assetType: artworkPath ? 'image' as const : 'css-art' as const,
+      description: artworkPath ? `${card.deck} example card illustration. Gameplay text remains in the card UI.` : `${card.deck} example front; no dedicated artwork mapped.`,
+      status: artworkPath ? 'available' as const : 'example' as const,
+    };
+  }),
   ...Object.keys(ICON_PATHS).map(icon => ({
     id: `icon_${icon}`, name: icon.replaceAll('-', ' '), category: 'icons' as const,
     filePath: 'src/game/icon-paths.ts', assetType: 'vector' as const,

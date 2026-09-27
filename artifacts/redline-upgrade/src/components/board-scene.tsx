@@ -6,6 +6,7 @@ import type { BoardSpace } from '../game/board-data';
 import type { MatchPlayer } from '../game/match';
 import { ICON_PATHS } from '../game/icon-paths';
 import { PawnModel } from './pawns/PawnModel';
+import { getSpaceVisual } from './board-space-visuals';
 
 type Point = { x: number; z: number };
 const ZONES = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
@@ -132,6 +133,8 @@ const mats = {
   normal: new THREE.MeshStandardMaterial({ color: '#30423b', metalness: 0.38, roughness: 0.56 }),
   payday: new THREE.MeshStandardMaterial({ color: '#496752', metalness: 0.56, roughness: 0.34 }),
   event: new THREE.MeshStandardMaterial({ color: '#45523b', metalness: 0.45, roughness: 0.43 }),
+  effect: new THREE.MeshStandardMaterial({ color: '#35483e', metalness: 0.42, roughness: 0.48 }),
+  safeMarker: new THREE.MeshStandardMaterial({ color: '#8ea69a', metalness: 0.35, roughness: 0.58 }),
   gamble: new THREE.MeshStandardMaterial({ color: '#533b32', metalness: 0.5, roughness: 0.43 }),
   milestone: new THREE.MeshStandardMaterial({ color: '#603b32', metalness: 0.58, roughness: 0.38 }),
   accent: new THREE.MeshStandardMaterial({ color: COLORS.orange, emissive: COLORS.orange, emissiveIntensity: 0.24, metalness: 0.45 }),
@@ -141,21 +144,31 @@ const mats = {
 
 function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace; active: boolean; landing: boolean; onSelect: (n: number) => void; onHover: (n: number | null) => void }) {
   const { x, z } = ROUTE[space.number];
+  const visual = getSpaceVisual(space);
+  const deckMaterial = useMemo(() => visual.className === 'deck'
+    ? new THREE.MeshStandardMaterial({ color: visual.tile, metalness: 0.46, roughness: 0.48 })
+    : null, [visual.className, visual.tile]);
+  useEffect(() => () => deckMaterial?.dispose(), [deckMaterial]);
   const landmark = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
-  const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.payday ? mats.lime : space.type === 'EVENT' || space.type === 'CARD' ? mats.lime : mats.normal;
+  const sideMaterial = visual.className === 'gamble' || visual.className === 'major' ? mats.accent : space.payday ? mats.lime : visual.className === 'deck' ? mats.event : visual.className === 'effect' ? mats.effect : mats.normal;
+  const topMaterial = finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : visual.className === 'gamble' ? mats.gamble : visual.className === 'effect' ? mats.effect : deckMaterial ?? mats.normal;
   return <group position={[x, 0, z]} onPointerDown={(event) => { event.stopPropagation(); onSelect(space.number); }} onPointerOver={(event) => { event.stopPropagation(); onHover(space.number); }} onPointerOut={() => onHover(null)}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
     <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
     <mesh position={[0, landmark ? 0.79 : 0.63, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={tileTop}
-      material={finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : space.type === 'GAMBLE' ? mats.gamble : space.type === 'EVENT' || space.type === 'CARD' ? mats.event : mats.normal} castShadow receiveShadow />
+      material={topMaterial} castShadow receiveShadow />
     <mesh position={[0, topY + 0.015, 0.82]} geometry={stripShape} material={landing || active ? mats.lime : sideMaterial} />
+    <mesh position={[-0.67, topY + 0.045, 0.49]} castShadow={false}>
+      <boxGeometry args={[0.34, 0.035, 0.08]} />
+      <meshStandardMaterial color={visual.accent} metalness={0.38} roughness={0.48} emissive={visual.accent} emissiveIntensity={visual.className === 'safe' ? 0.02 : 0.08} />
+    </mesh>
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.63, 0.71, 8]} /><primitive object={mats.accent} attach="material" />
     </mesh>}
-    {space.type === 'EVENT' && <mesh position={[0.72, topY + 0.08, -0.68]} rotation={[0, Math.PI / 4, 0]} castShadow>
-      <octahedronGeometry args={[0.12]} /><primitive object={mats.lime} attach="material" />
+    {space.type === 'EVENT' && <mesh position={[0.72, topY + 0.075, -0.68]} rotation={[-Math.PI / 2, 0, 0]} castShadow={false}>
+      <boxGeometry args={[0.16, 0.025, 0.16]} /><primitive object={mats.safeMarker} attach="material" />
     </mesh>}
     {space.payday && <group position={[0.72, topY + 0.15, -0.66]}>
       <mesh castShadow><cylinderGeometry args={[0.19, 0.19, 0.1, 16]} /><primitive object={mats.lime} attach="material" /></mesh>
@@ -169,8 +182,8 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
         <ringGeometry args={[0.72, 0.79, 32]} /><primitive object={mats.accent} attach="material" />
       </mesh>
     </group>}
-    <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={space.type === 'NORMAL' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    {space.type !== 'NORMAL' && <PrintedIcon icon={space.icon} y={topY} color={space.payday || space.type === 'CARD' ? COLORS.lime : COLORS.orange} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.74} />}
+    <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={visual.className === 'safe' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
+    {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
     {finish && <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
   </group>;

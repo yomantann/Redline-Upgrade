@@ -10,7 +10,11 @@
 .redline-card-back-core small { font:700 7px 'Space Mono',monospace; color:var(--deck-color); letter-spacing:.15em; }
 .redline-card-footer { margin-top:auto; padding:11px 13px; border-top:1px solid color-mix(in srgb,var(--deck-color) 30%,transparent); display:flex; justify-content:space-between; gap:5px; color:var(--deck-color); font:700 7px 'Space Mono',monospace; letter-spacing:.06em; }
 .redline-card-art { min-height:34%; display:grid; place-items:center; position:relative; overflow:hidden; border-block:1px solid color-mix(in srgb,var(--deck-color) 40%,transparent); background:radial-gradient(circle,color-mix(in srgb,var(--deck-color) 38%,#17211f),#17211f 68%); color:var(--deck-color); }
-.redline-card-art::before { content:''; position:absolute; width:52%; aspect-ratio:1; border:2px solid currentColor; border-radius:50%; box-shadow:0 0 0 18px color-mix(in srgb,var(--deck-color) 12%,transparent),0 0 0 19px color-mix(in srgb,var(--deck-color) 30%,transparent); }
+.redline-card-art::before { content:''; position:absolute; z-index:2; top:50%; left:50%; width:52%; aspect-ratio:1; border:2px solid currentColor; border-radius:50%; box-shadow:0 0 0 18px color-mix(in srgb,var(--deck-color) 12%,transparent),0 0 0 19px color-mix(in srgb,var(--deck-color) 30%,transparent); transform:translate(-50%,-50%); pointer-events:none; opacity:.72; }
+.redline-card-art.has-artwork::after { content:''; position:absolute; z-index:1; inset:0; background:linear-gradient(180deg,rgba(10,15,13,.04),rgba(10,15,13,.27)); pointer-events:none; }
+.redline-card-art.has-artwork::before { opacity:.32; }
+.redline-card-art.has-artwork > svg { visibility:hidden; }
+.redline-card-art-image { position:absolute; z-index:0; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
 .redline-card-art svg { z-index:1; width:25%; height:25%; }
 .redline-card-content { display:flex; flex-direction:column; flex:1; min-height:0; padding:13px; }
 .redline-card-content h3 { margin:2px 0 8px; font:800 clamp(23px,2.5vw,37px)/.89 'Barlow Condensed',sans-serif; text-transform:uppercase; }

@@ -151,10 +151,11 @@
 .ru-board__static-svg { display: block; width: 100%; height: min(100%, 740px); flex: 1 1 auto; min-height: 0; overflow: visible; }
 .ru-board__static-key { z-index: 1; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 5px 12px 22px; color: #c3d3bc; font: 700 8px 'Space Mono', monospace; }
 .ru-board__static-key span { display: inline-flex; align-items: center; gap: 5px; }
-.ru-board__static-key i { width: 7px; height: 7px; background: #90aea0; }
-.ru-board__static-key span:nth-child(2) i { background: #d4e981; }
-.ru-board__static-key span:nth-child(3) i { background: #e8a367; }
-.ru-board__static-key span:nth-child(4) i { background: #f96346; }
+.ru-board__static-key i { width: 7px; height: 7px; background: #8ea69a; box-shadow: 1px 1px 0 #0c1712; }
+.ru-board__static-key .ru-key-deck i { background: #88c6c2; }
+.ru-board__static-key .ru-key-salary i { background: #d4e981; }
+.ru-board__static-key .ru-key-major i, .ru-board__static-key .ru-key-finish i { background: #f96346; }
+.ru-board__static-key .ru-key-gamble i { background: #e8a367; }
 @media (max-width: 700px) {
   .ru-tabletop .ru-board__masthead { flex-wrap: wrap; align-items: start; gap: 14px; padding: 15px; }
   .ru-board__controls { width: 100%; }

@@ -2,6 +2,7 @@ import { BOARD_SPACES } from '../game/board-data';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
 import { ROUTE, ZONE_ANCHORS } from './board-scene';
+import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
 function project(x: number, z: number, height = 0): P {
@@ -61,18 +62,20 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
       {BOARD_SPACES.map(space => {
         const { x, z } = ROUTE[space.number];
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
+         const visual = getSpaceVisual(space);
         const y = milestone ? .86 : .7;
         const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
-        const color = milestone ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' || space.type === 'CARD' ? '#566b48' : '#345147';
-        const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' || space.type === 'CARD' ? '#d4e981' : '#90aea0';
+         const color = milestone ? '#794337' : space.payday ? '#577455' : visual.tile;
+         const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : visual.accent;
         const center = project(x,z,y+.02);
         return <g key={space.number} data-board-space={space.number} style={{ cursor: 'pointer' }} onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)}>
           <title>{`Space ${space.number}, ${space.label}. ${space.description}`}</title>
           <polygon points={block.right} fill="#101e19" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.front} fill="#13241e" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.top} fill={color} stroke={accent} strokeWidth={milestone ? 2.5 : 1.2} />
+           <rect x={center.x-30} y={center.y+21} width="16" height="3" rx="1" fill={accent} opacity={visual.className === 'safe' ? '.52' : '.9'} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
-          {space.type !== 'NORMAL' && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+7} ${center.y-19}) scale(.55)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+           {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+7} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </g>;
       })}
@@ -91,6 +94,13 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
         </g>;
       })}
     </svg>
-    <div className="ru-board__static-key"><span><i /> NORMAL</span><span><i /> EVENT</span><span><i /> GAMBLE</span><span><i /> MILESTONE</span><span><i /> CAREER CHANGE</span><span><i /> SALARY GATE $</span></div>
+     <div className="ru-board__static-key" aria-label="Board visual key">
+       <span className="ru-key-safe"><i /> SAFE / NO EFFECT</span>
+       <span className="ru-key-deck"><i /> DECK / DRAW</span>
+       <span className="ru-key-salary"><i /> SALARY / PAYDAY</span>
+       <span className="ru-key-major"><i /> MAJOR / CAREER + MILESTONE</span>
+       <span className="ru-key-gamble"><i /> GAMBLE / RISK</span>
+       <span className="ru-key-finish"><i /> FINISH</span>
+     </div>
   </div>;
 }

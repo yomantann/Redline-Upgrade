@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { getDeck, type DeckId } from '@/game/decks';
 import type { CardDefinition } from '@/game/cards';
+import { getCardArtworkUrl } from '@/game/card-artwork';
 import { SpaceIcon } from './space-icon';
 import './card-tabletop.css';
 
@@ -15,6 +16,7 @@ type Props = {
 
 export function RedlineCard({ deck, face = 'back', card, artwork, action, className = '' }: Props) {
   const config = getDeck(deck);
+  const artworkUrl = card ? getCardArtworkUrl(card.id) : undefined;
   return (
     <article className={`redline-card ${face} ${className}`} style={{ '--deck-color': config.color } as CSSProperties} aria-label={face === 'back' ? `${config.name} deck card back` : `${card?.title ?? config.name} card`}>
       <div className="redline-card-rail"><span>REDLINE / UPGRADE</span><span>{config.serial}</span></div>
@@ -25,7 +27,10 @@ export function RedlineCard({ deck, face = 'back', card, artwork, action, classN
         </>
       ) : (
         <>
-          <div className="redline-card-art">{artwork ?? <SpaceIcon name={config.icon} size={48} />}</div>
+          <div className={`redline-card-art ${!artwork && artworkUrl ? 'has-artwork' : ''}`} aria-hidden="true">
+            {artwork ?? <SpaceIcon name={config.icon} size={48} />}
+            {!artwork && artworkUrl && <img className="redline-card-art-image" src={artworkUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
+          </div>
           <div className="redline-card-content">
             <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card?.rarity ?? 'EXAMPLE'} / NON-ACTIVE</span>
             <h3>{card?.title ?? config.name}</h3>
