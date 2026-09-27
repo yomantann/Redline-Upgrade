@@ -1,0 +1,714 @@
+REDLINE UPGRADE — COMPLETE BOARD PASS
+BOARD ATMOSPHERE + SPACE VISUALS + EFFECT SPACES
+
+This is a combined VISUAL + LIGHT GAMEPLAY-INTEGRATION pass.
+
+Use the CURRENT Redline Upgrade project as the source of truth.
+
+The goal is to make the existing 75-space board feel like a polished, physical, premium board game while also making the ordinary spaces more purposeful.
+
+Do NOT rebuild the board from scratch.
+
+==================================================
+1. EXISTING BOARD — PRESERVE
+==================================================
+
+The board currently has:
+
+- 75 spaces
+- existing serpentine/looping route
+- existing raised/3D board tiles
+- board zoom/pan
+- existing player pieces
+- six existing deck areas beside the board
+- existing deck spaces
+- existing Payday spaces
+- existing milestones
+- Career Change at space 35
+- existing Gamble spaces
+- existing section labels
+
+The existing milestone positions are:
+
+10 — Car
+30 — Lifestyle/Career
+35 — Career Change
+45 — Investment/Pet
+60 — Property
+75 — Finish
+
+Preserve these locations.
+
+Do NOT redesign the route.
+
+Do NOT move existing special spaces.
+
+==================================================
+2. EXISTING DECK SPACES
+==================================================
+
+The six decks already exist:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+The board already contains spaces that cause the player to draw from the appropriate deck.
+
+Preserve these spaces and their behavior.
+
+Do NOT create duplicate deck spaces.
+
+Do NOT change the card-draw system.
+
+Do NOT change card effects.
+
+The completed card system should contain:
+
+15 Wealth cards
+15 AI Skill cards
+15 Fame cards
+15 Lifestyle cards
+15 Influence cards
+15 Gamble cards
+
+90 total cards.
+
+The board should visually make these spaces recognizable without making them oversized.
+
+==================================================
+3. BOARD VISUAL GOAL
+==================================================
+
+The current board should feel less like:
+
+"a grid of digital squares"
+
+and more like:
+
+"a premium futuristic physical board game."
+
+Keep the existing 3D/raised tile foundation.
+
+Improve the presentation using:
+
+- bevels
+- recessed symbols
+- physical material textures
+- subtle shadows
+- edge lighting
+- inset details
+- restrained accent lighting
+- physical-looking borders
+
+Do NOT turn every space into a giant graphic.
+
+Do NOT clutter the board.
+
+==================================================
+4. BOARD ATMOSPHERE
+==================================================
+
+There is currently unused space surrounding the track.
+
+Use SOME of this space for sparse environmental set dressing.
+
+Possible elements:
+
+- futuristic Redline signage
+- small holographic displays
+- AI terminals
+- market displays
+- warning panels
+- subtle futuristic advertisements
+- cables
+- small industrial objects
+- luxury/status objects
+- casino/risk references
+- subtle Redline branding
+
+Use these sparingly.
+
+The board should still have significant negative space.
+
+Think:
+
+PREMIUM FUTURISTIC TABLETOP BOARD GAME
+
+not:
+
+VIDEO GAME HUD.
+
+==================================================
+5. FIVE BOARD SECTIONS
+==================================================
+
+The existing sections are:
+
+THE GRIND
+THE RISE
+THE CHAOS
+THE FLEX
+THE ENDGAME
+
+Keep these names and positions.
+
+Give each section a subtle visual identity.
+
+Do NOT make five completely different boards.
+
+Instead use restrained differences in:
+
+- background texture
+- lighting
+- signage
+- environmental objects
+- accent details
+- atmosphere
+
+The progression should feel like:
+
+START
+→ THE GRIND
+→ THE RISE
+→ THE CHAOS
+→ THE FLEX
+→ THE ENDGAME
+→ FINISH
+
+==================================================
+6. CENTER OF BOARD
+==================================================
+
+Use the central board area to add a strong Redline Upgrade identity.
+
+Possible treatment:
+
+- recessed Redline Upgrade emblem
+- futuristic circuit pattern
+- subtle holographic platform
+- physical logo
+- restrained animated centerpiece
+
+Do NOT create a large gameplay panel.
+
+Do NOT obstruct player pieces or movement.
+
+The center should feel like part of the physical board.
+
+==================================================
+7. SPACE VISUAL HIERARCHY
+==================================================
+
+The board should have four primary visual classes:
+
+SAFE
+DECK
+EFFECT
+MAJOR SPECIAL
+
+There are also:
+
+SALARY
+GAMBLE
+
+Each should have a distinct but restrained visual treatment.
+
+SAFE:
+Neutral, clean, minimal.
+
+DECK:
+Distinct deck-specific visual identity.
+
+EFFECT:
+Small category icon/accent.
+
+MAJOR:
+Strongest visual treatment.
+
+SALARY:
+Clearly recognizable salary/payday treatment.
+
+GAMBLE:
+Distinct risk/casino treatment.
+
+Do not make every space visually loud.
+
+==================================================
+8. SAFE SPACES
+==================================================
+
+Safe spaces are intentional.
+
+Landing on a safe space means:
+
+NOTHING HAPPENS.
+
+Do not remove all safe spaces.
+
+They provide pacing and make special spaces more meaningful.
+
+They should look polished rather than unfinished.
+
+Use:
+
+- clean surface
+- subtle numbering
+- minimal accent
+- no oversized icon
+
+==================================================
+9. EFFECT SPACES
+==================================================
+
+The board currently has many ordinary spaces.
+
+Some ordinary spaces should become predetermined EFFECT spaces.
+
+Do NOT convert every ordinary space.
+
+Target approximately:
+
+30–35 Safe spaces
+15–20 Effect/Interaction spaces
+9 Deck spaces
+7 Salary spaces
+6 Major spaces
+3 Gamble spaces
+
+These are target ranges, not absolute requirements.
+
+Do not alter existing special spaces just to meet the numbers.
+
+==================================================
+10. EFFECT SPACE TYPES
+==================================================
+
+Use the existing event/effect architecture.
+
+Possible effect types:
+
+WEALTH
++ or - Wealth
+
+AI SKILL
++ or - AI Skill
+
+FAME
++ or - Fame
+
+LIFESTYLE
++ or - Lifestyle
+
+INFLUENCE
++ or - Influence
+
+CAREER
+Career/category-specific effect
+
+INTERACTION
+Effect involving another player
+
+ROLL
+Effect based on the player's roll
+
+ALL PLAYERS
+Effect involving everyone
+
+Do NOT create a new resource.
+
+Do NOT create a new currency.
+
+Do NOT create a second event engine.
+
+Use the existing event/effect system.
+
+==================================================
+11. IMPORTANT — EFFECT DESIGN
+==================================================
+
+Do not simply turn every effect space into:
+
+"+5 stat"
+
+Create a mixture of simple outcomes.
+
+Examples of the TYPE of space we may use:
+
+WEALTH OPPORTUNITY
+Gain Wealth.
+
+UNEXPECTED EXPENSE
+Lose Wealth.
+
+AI BOOM
+Gain AI Skill.
+
+PUBLIC MOMENT
+Gain or lose Fame.
+
+LIFESTYLE UPGRADE
+Gain Lifestyle.
+
+NETWORKING OPPORTUNITY
+Gain Influence.
+
+CAREER OPPORTUNITY
+A specific career category receives a benefit.
+
+PLAYER INTERACTION
+Choose or affect another player.
+
+These are examples of design direction.
+
+Use the existing event architecture and existing stats.
+
+Keep individual effects simple enough to understand immediately.
+
+==================================================
+12. CAREER CATEGORY SPACES
+==================================================
+
+Some effect spaces may interact with the existing career categories:
+
+DIGITAL
+RISK
+CREATIVE
+BUSINESS
+PERFORMANCE
+MEDICAL
+LEGAL
+SERVICE
+HUSTLE
+SCIENCE
+
+Examples:
+
+TECH BOOM
+DIGITAL/SCIENCE careers receive a benefit.
+
+RISK MARKET
+RISK careers receive a different outcome.
+
+CORPORATE CONNECTION
+BUSINESS/LEGAL careers receive a benefit.
+
+These should be occasional, not everywhere.
+
+Do not create a new career-category system.
+
+==================================================
+13. PLAYER INTERACTION SPACES
+==================================================
+
+Add a limited number of spaces that encourage player interaction.
+
+Possible targets:
+
+- player you land on
+- player immediately ahead
+- player immediately behind
+- highest Wealth player
+- lowest Wealth player
+- player with a matching career category
+- another player of the current player's choice
+- all players
+
+Keep interaction occasional.
+
+The board should not feel constantly hostile.
+
+==================================================
+14. SPACE PLACEMENT
+==================================================
+
+Do NOT randomly distribute effect spaces.
+
+Create a deliberate rhythm.
+
+For example:
+
+THE GRIND
+Mostly safe/simple effects.
+
+THE RISE
+More opportunities and career interactions.
+
+THE CHAOS
+More risk and player interaction.
+
+THE FLEX
+More Wealth/Lifestyle/Fame effects.
+
+THE ENDGAME
+Higher-stakes and more consequential effects.
+
+These are thematic guidelines only.
+
+Do not create new mechanics specifically for these sections.
+
+Avoid:
+
+- too many effect spaces in a row
+- repeated identical effects
+- clustering all interaction spaces together
+- putting major effects immediately beside every milestone
+
+The player should have periods of anticipation and breathing room.
+
+==================================================
+15. RELATIONSHIP TO THE CARD DECKS
+==================================================
+
+The distinction should be:
+
+BOARD SPACE
+Predictable outcome.
+
+CARD
+Unexpected event.
+
+CHARACTER
+Unique personal ability.
+
+CAREER
+Persistent career advantage/consequence.
+
+MILESTONE
+Major player decision.
+
+GAMBLE
+High-risk/high-variance decision.
+
+Do not make ordinary board spaces duplicate the card decks.
+
+For example:
+
+A Wealth space can provide a predictable Wealth change.
+
+A Wealth card can create a much more unusual financial event.
+
+==================================================
+16. MAJOR SPECIAL SPACES
+==================================================
+
+Preserve and visually emphasize:
+
+PAYDAY
+Career Change
+Car
+Lifestyle/Career
+Investment/Pet
+Property
+Gamble
+Deck spaces
+
+Use:
+
+- stronger borders
+- distinctive materials
+- recessed icons
+- subtle lighting
+- physical markers
+
+Do not put large paragraphs on the board.
+
+Detailed results should continue to appear in the existing UI.
+
+==================================================
+17. MILESTONE VISUALS
+==================================================
+
+Preserve the existing milestone choice system.
+
+The player should see the appropriate visual choices when reaching:
+
+Car
+Lifestyle/Career
+Investment/Pet
+Property
+
+The existing milestone artwork should continue to be used.
+
+Do not replace the existing milestone image system.
+
+==================================================
+18. CAREER CHANGE
+==================================================
+
+Preserve the existing Career Change at space 35.
+
+The current flow is:
+
+STAY WITH CAREER
+
+or
+
+SWITCH CAREER
+
+If switching:
+
+- show 2 random career choices
+- player chooses one
+- receive a random salary associated with the new career
+
+Do not change this mechanic.
+
+Only improve its board-space visual presentation if appropriate.
+
+==================================================
+19. PAYDAY
+==================================================
+
+Preserve the existing salary system.
+
+Salary gates occur at:
+
+6
+18
+29
+41
+54
+66
+73
+
+Payday occurs when the player:
+
+- lands on the salary space
+OR
+- passes through it
+
+The player receives their salary value as Wealth.
+
+Do not change this mechanic.
+
+==================================================
+20. PLAYER PIECES
+==================================================
+
+Do not redesign the player pieces in this task.
+
+Do not replace the current pawn models.
+
+Make sure the board enhancements do not obscure them.
+
+Player pieces should remain visually prominent.
+
+==================================================
+21. BOARD ZOOM/PAN
+==================================================
+
+Preserve the existing zoom and pan functionality.
+
+Check:
+
+ZOOMED OUT
+The overall route and special spaces are readable.
+
+NORMAL
+Space types and player pieces are clear.
+
+ZOOMED IN
+Physical details and icons look polished.
+
+Do not make small icons unreadable when zoomed out.
+
+==================================================
+22. VISUAL RESTRAINT
+==================================================
+
+This is extremely important.
+
+Do NOT:
+
+- put giant icons on every space
+- put paragraphs on spaces
+- make every space glow
+- use too many colors
+- fill all empty space
+- turn the board into a UI dashboard
+- make every landing event visually identical
+
+The board needs visual hierarchy.
+
+Players should immediately notice:
+
+1. Where they are.
+2. Where they are going.
+3. Important spaces.
+4. Deck spaces.
+5. Major milestones.
+6. Other player pieces.
+
+==================================================
+23. DO NOT CHANGE
+==================================================
+
+Do NOT change:
+
+- character definitions
+- character abilities
+- careers
+- salary tiers
+- 90-card deck content
+- card effects
+- event engine architecture
+- CPU behavior
+- 2d4 movement
+- multiplayer architecture
+- authentication
+- persistent currency
+- Redline Credits
+- endgame scoring
+
+This pass should build on the systems that already exist.
+
+==================================================
+24. VALIDATION
+==================================================
+
+Verify:
+
+- exactly 75 spaces remain
+- route is unchanged
+- existing deck spaces remain
+- salary spaces remain
+- milestones remain
+- Career Change remains at 35
+- Gamble spaces remain
+- safe spaces remain
+- new effect spaces resolve through the existing event system
+- CPU and human players use the same effects
+- player interactions resolve correctly
+- board zoom/pan works
+- player pieces remain visible
+- milestone visuals remain functional
+- TypeScript typecheck passes
+- game tests pass
+- production build passes
+
+==================================================
+25. FINAL REPORT
+==================================================
+
+Report:
+
+1. Final number of Safe spaces
+2. Final number of Deck spaces
+3. Final number of Salary spaces
+4. Final number of Major spaces
+5. Final number of Gamble spaces
+6. Final number of Effect/Interaction spaces
+7. Exact spaces assigned each new effect
+8. Career-category effects added
+9. Player-interaction spaces added
+10. Board visual changes
+11. Environmental assets created
+12. Files modified
+13. Test/build results
+14. Any remaining visual or gameplay opportunities
+
+STOP after this board pass.
