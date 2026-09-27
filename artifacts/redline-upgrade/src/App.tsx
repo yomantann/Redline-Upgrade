@@ -6,6 +6,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
 import { CharacterPortrait } from '@/components/character-portrait';
 import { GameScreen } from '@/components/game-screen';
+import { CareerReveal } from '@/components/career-reveal';
 
 function Artwork({
   index = 0,
@@ -39,7 +40,7 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">PHASE 04 // TABLETOP</span>
+        <span className="header-phase">PHASE 05 // TABLETOP</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
@@ -299,13 +300,13 @@ function Setup() {
           <div className="setup-content">
             <span className="mono lime">PLAYER RECORD // {player.playerId.slice(0, 8)}</span>
             <h1 className="display setup-title">Ready to<br /><span className="title-outline">upgrade.</span></h1>
-            <p className="setup-lede">Three CPU rivals have been assigned. Your first roll is waiting on the board.</p>
+            <p className="setup-lede">Three CPU rivals have been assigned. Your career and salary are ready to be revealed before the first roll.</p>
             <div className="setup-record mono">
               <span className="setup-record-label">SELECTED IDENTITY</span>
               <span className="setup-record-value">{character.name}</span>
             </div>
             <div className="setup-actions">
-              <button className="action lime-action" type="button" onClick={() => navigate('/board')}>Enter board <span aria-hidden="true">↗</span></button>
+              <button className="action lime-action" type="button" onClick={() => navigate('/career')} data-testid="button-enter-career">Reveal career <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
             </div>
           </div>
@@ -342,13 +343,15 @@ function NotFound() {
 
 function Router() {
   const [location] = useLocation();
+  const { match, careerRevealed } = useGame();
   return (
     <RoutedErrorBoundary>
       {location === '/' && <Home />}
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
-      {location === '/board' && <AppShell><GameScreen /></AppShell>}
-      {!['/', '/characters', '/setup', '/board'].includes(location) && <NotFound />}
+      {location === '/career' && <AppShell><CareerReveal /></AppShell>}
+      {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
+      {!['/', '/characters', '/setup', '/career', '/board'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
   );
 }

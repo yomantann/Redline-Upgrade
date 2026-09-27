@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { BOARD_SPACES } from '../game/board-data';
 import type { MatchPlayer } from '../game/match';
@@ -20,6 +20,10 @@ const zones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId }: GameBoardProps) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, z: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null);
   const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const active = players.find(p => p.playerId === activePlayerId);
   const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
@@ -44,20 +48,53 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   useEffect(() => {
     if (movingPlayerId === activePlayerId) setOverview(false);
   }, [movingPlayerId, activePlayerId]);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setZoom(value => Math.min(2.8, Math.max(0.7, value * (event.deltaY < 0 ? 1.12 : 1 / 1.12))));
+    };
+    stage.addEventListener('wheel', onWheel, { passive: false });
+    return () => stage.removeEventListener('wheel', onWheel);
+  }, []);
+  const centerCamera = () => { setOverview(true); setZoom(1); setPan({ x: 0, z: 0 }); };
+  const startDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (!drag.current || drag.current.id !== event.pointerId) return;
+    const dx = event.clientX - drag.current.x;
+    const dy = event.clientY - drag.current.y;
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    const units = (overview ? 53 : 20) / (Math.max(stageRef.current?.clientWidth ?? 1, 1) * zoom);
+    setPan(value => ({
+      x: Math.max(-25, Math.min(25, value.x - dx * units)),
+      z: Math.max(-18, Math.min(18, value.z - dy * units * 1.4)),
+    }));
+  };
+  const stopDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.id === event.pointerId) drag.current = null;
+  };
 
   return <section className="ru-board ru-tabletop" aria-label="Redline Upgrade 75-space game board" data-testid="game-board">
     <header className="ru-board__masthead">
       <div><span className="ru-board__overline">CIRCUIT 01 / PHYSICAL EDITION</span><h2 className="ru-board__title">The redline circuit<span className="ru-board__title-slash"> / 75</span></h2></div>
       <div className="ru-board__controls" role="group" aria-label="Board camera">
-        <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={() => setOverview(true)} aria-pressed={overview}>01 / FULL CIRCUIT</button>
-        <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => setOverview(false)} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
+        <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={() => { setOverview(true); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={overview}>01 / FULL CIRCUIT</button>
+        <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => { setOverview(false); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
+        <button type="button" onClick={() => setZoom(value => Math.max(0.7, +(value / 1.3).toFixed(2)))} aria-label="Zoom out">−</button>
+        <button type="button" onClick={() => setZoom(value => Math.min(2.8, +(value * 1.3).toFixed(2)))} aria-label="Zoom in">+</button>
+        <button type="button" onClick={centerCamera} aria-label="Reset and center board camera">CENTER</button>
       </div>
     </header>
-    <div className="ru-board__stage">
+    <div className="ru-board__stage" ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
-      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} />}
-      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} />}>
+      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} />}
+      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} />}>
         <Canvas
           aria-hidden="true"
           data-testid="board-canvas"
@@ -68,7 +105,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           dpr={[1, 1.6]}
           onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
         >
-          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} />
+          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
         </Canvas>
       </ErrorBoundary>}
       <div className="ru-board__telemetry" aria-live="polite">
@@ -89,7 +126,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     </div>
     <footer className="ru-board__foot">
       <div className="ru-board__legend" aria-label="Space type legend">
-        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span>
+        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span><span className="payday"><i />PAYDAY $</span>
       </div>
       <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>
     </footer>
@@ -98,8 +135,8 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       <div data-testid="board-start-pad" aria-label={`Start pad, ${players.filter(p => p.position === 0).length} players`}>Start pad, position zero</div>
       {BOARD_SPACES.map(space => {
         const occupants = players.filter(p => p.position === space.number);
-        return <div key={space.number} data-testid={`board-space-${space.number}`} aria-label={`Space ${space.number}, ${space.type.toLowerCase()}, ${zones[Math.floor((space.number - 1) / 15)]}${occupants.length ? `, occupied by ${occupants.map(p => p.displayName).join(' and ')}` : ''}${landingPosition === space.number ? ', landing space' : ''}`}>
-          Space {space.number}: {space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
+        return <div key={space.number} data-testid={`board-space-${space.number}`} aria-label={`Space ${space.number}, ${space.payday ? 'Payday, ' : ''}${space.type.toLowerCase()}, ${zones[Math.floor((space.number - 1) / 15)]}${occupants.length ? `, occupied by ${occupants.map(p => p.displayName).join(' and ')}` : ''}${landingPosition === space.number ? ', landing space' : ''}`}>
+          Space {space.number}: {space.payday ? 'PAYDAY + ' : ''}{space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
         </div>;
       })}
       {players.map(p => <div key={p.playerId} data-testid={`board-pawn-${p.playerId}`} aria-label={`${p.displayName}, ${p.position === 0 ? 'start pad' : `space ${p.position}`}`}>

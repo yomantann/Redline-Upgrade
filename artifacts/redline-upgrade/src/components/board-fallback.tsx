@@ -22,7 +22,7 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ players, activePlayerId }: { players: MatchPlayer[]; activePlayerId: string }) {
+export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0, z: 0 } }: { players: MatchPlayer[]; activePlayerId: string; zoom?: number; pan?: { x: number; z: number } }) {
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
@@ -30,7 +30,7 @@ export function BoardFallback({ players, activePlayerId }: { players: MatchPlaye
   const finish = ROUTE[75];
   return <div className="ru-board__static" data-testid="board-static-fallback">
     <div className="ru-board__static-heading"><span>WEBGL2 UNAVAILABLE / CIRCUIT MAP ACTIVE</span><strong>The circuit remains live.</strong><p>This device cannot draw the 3D tabletop. The physical route, turns, and every runner are shown below.</p></div>
-    <svg className="ru-board__static-svg" viewBox="0 0 1200 760" role="img" aria-label="Isometric Redline circuit with all 75 raised spaces and live player positions">
+    <svg className="ru-board__static-svg" viewBox={`${600 - 600 / zoom + pan.x * 19 + pan.z * 6} ${380 - 380 / zoom + pan.z * 15 - pan.x * 4} ${1200 / zoom} ${760 / zoom}`} role="img" aria-label="Isometric Redline circuit with all 75 raised spaces and live player positions">
       <defs>
         <pattern id="ru-circuit-grain" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0 0h12M0 0v12" fill="none" stroke="#a8c69a" strokeOpacity=".07" /></pattern>
         <filter id="ru-board-shadow" x="-30%" y="-30%" width="160%" height="180%"><feGaussianBlur stdDeviation="13" /></filter>
@@ -62,16 +62,16 @@ export function BoardFallback({ players, activePlayerId }: { players: MatchPlaye
         const milestone = space.type === 'MILESTONE';
         const y = milestone ? .86 : .7;
         const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
-        const color = space.type === 'MILESTONE' ? '#794337' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' ? '#566b48' : '#345147';
-        const accent = space.type === 'MILESTONE' ? '#f96346' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' ? '#d4e981' : '#90aea0';
+        const color = space.type === 'MILESTONE' ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' ? '#566b48' : '#345147';
+        const accent = space.type === 'MILESTONE' ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' ? '#d4e981' : '#90aea0';
         const center = project(x,z,y+.02);
         return <g key={space.number}>
-          <title>{`Space ${space.number}, ${space.type.toLowerCase()}`}</title>
+          <title>{`Space ${space.number}, ${space.payday ? 'Payday, ' : ''}${space.type.toLowerCase()}`}</title>
           <polygon points={block.right} fill="#101e19" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.front} fill="#13241e" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.top} fill={color} stroke={accent} strokeWidth={milestone ? 2.5 : 1.2} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
-          {space.type !== 'NORMAL' && <circle cx={center.x+14} cy={center.y-8} r="2.8" fill={accent} />}
+          {space.payday ? <text x={center.x+14} y={center.y-6} textAnchor="middle" fill="#d4e981" fontSize="15" fontWeight="900">$</text> : space.type !== 'NORMAL' && <circle cx={center.x+14} cy={center.y-8} r="2.8" fill={accent} />}
         </g>;
       })}
       {(() => { const p = project(finish.x,finish.z,1.6); return <g><path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" /><rect x={p.x-19} y={p.y-42} width="101" height="24" fill="#f96346" /><text x={p.x+31} y={p.y-25} textAnchor="middle" fill="#18241d" fontFamily="Barlow Condensed, sans-serif" fontSize="18" fontWeight="900">FINISH / CASHOUT</text></g>; })()}
@@ -89,6 +89,6 @@ export function BoardFallback({ players, activePlayerId }: { players: MatchPlaye
         </g>;
       })}
     </svg>
-    <div className="ru-board__static-key"><span><i /> NORMAL</span><span><i /> EVENT</span><span><i /> GAMBLE</span><span><i /> MILESTONE</span></div>
+    <div className="ru-board__static-key"><span><i /> NORMAL</span><span><i /> EVENT</span><span><i /> GAMBLE</span><span><i /> MILESTONE</span><span><i /> PAYDAY $</span></div>
   </div>;
 }

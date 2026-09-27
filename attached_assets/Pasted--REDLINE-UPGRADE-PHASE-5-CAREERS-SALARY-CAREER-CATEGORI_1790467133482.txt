@@ -1,0 +1,871 @@
+# REDLINE UPGRADE — PHASE 5
+
+## CAREERS + SALARY + CAREER CATEGORIES + WEALTH
+
+Phase 4.5 is complete.
+
+We now have:
+
+* 75-space 3D tabletop board
+* Zoomable/pannable board
+* 1 Human + 3 CPU players
+* 3D character pieces
+* 2d4 dice
+* Animated dice rolls
+* Turn system
+* Movement system
+* Landing-space system
+
+Now build the player's career, salary, career-category, and Wealth foundation.
+
+Keep this phase data-driven and modular.
+
+---
+
+# 1. BOARD CAMERA
+
+Before beginning the career system, confirm the board supports:
+
+* Zoom IN
+* Zoom OUT
+* Pan around the board
+* Reset/center camera
+
+Use smooth camera movement.
+
+The player should be able to zoom in enough to see their 3D character pieces and individual spaces clearly.
+
+They should also be able to zoom out enough to understand the entire 75-space route.
+
+Do not allow zooming so far in/out that the board becomes unusable.
+
+---
+
+# 2. CAREER ASSIGNMENT
+
+At the beginning of the game, after character selection:
+
+* Human receives a random career.
+* Each CPU receives a random career.
+* Initially, do not allow duplicate careers.
+
+Every career should contain:
+
+* Career ID
+* Career name
+* Description
+* Career icon
+* Career category
+* Career ability
+* Four salary tiers
+* Salary values
+* Starting Wealth modifier
+* Starting stat modifiers
+
+Keep careers in a dedicated data file.
+
+---
+
+# 3. CAREERS
+
+Start with these 15 careers:
+
+1. AI Engineer
+2. Race Driver
+3. Content Creator
+4. Gig Worker
+5. Lawyer
+6. Pro Gamer
+7. Doctor
+8. Personal Trainer
+9. Degen Trader
+10. Startup Founder
+11. Influencer
+12. Corporate Executive
+13. Cybersecurity Specialist
+14. Entertainer
+15. Real Estate Investor
+
+Make it easy to add more careers later.
+
+---
+
+# 4. CAREER CATEGORIES
+
+Every career should belong to a broader category.
+
+The category should have:
+
+* Category ID
+* Category name
+* Category icon
+* Category description
+
+Initial categories:
+
+### DIGITAL / RISK
+
+Icon: digital/circuit/risk
+
+Examples:
+
+* AI Engineer
+* Cybersecurity Specialist
+* Degen Trader
+* Pro Gamer
+
+### PERFORMANCE
+
+Icon: speed/trophy
+
+Examples:
+
+* Race Driver
+* Personal Trainer
+
+### MEDIA / FAME
+
+Icon: camera/star
+
+Examples:
+
+* Content Creator
+* Influencer
+* Entertainer
+
+### PROFESSIONAL
+
+Icon: briefcase/professional
+
+Examples:
+
+* Lawyer
+* Doctor
+
+### BUSINESS / ENTREPRENEUR
+
+Icon: graph/rocket
+
+Examples:
+
+* Startup Founder
+* Corporate Executive
+* Real Estate Investor
+
+### FLEX / GIG
+
+Icon: lightning/multi-tool
+
+Example:
+
+* Gig Worker
+
+The exact categorization can be changed later.
+
+The important requirement is that the game supports BOTH:
+
+**Specific Career Target**
+
+and
+
+**Career Category Target**
+
+For example:
+
+`AI Engineer`
+
+or:
+
+`DIGITAL / RISK`
+
+---
+
+# 5. CAREER EVENTS MUST SUPPORT BOTH TARGET TYPES
+
+Build the event system so a future event can say:
+
+### Specific Career
+
+`Target: AI Engineer`
+
+OR:
+
+### Career Category
+
+`Target: DIGITAL / RISK`
+
+OR:
+
+### Multiple Categories
+
+`Target: DIGITAL / RISK + MEDIA / FAME`
+
+This will allow future cards and spaces to affect groups of players.
+
+Example:
+
+**AI BOOM**
+
+`All DIGITAL / RISK careers gain +$30K`
+
+Another:
+
+**LAWYER SCANDAL**
+
+`All Lawyers lose $20K`
+
+Another:
+
+**MARKET MELTDOWN**
+
+`All DIGITAL / RISK careers lose $25K`
+
+The actual card/event system does not need to be fully built yet.
+
+Build the underlying targeting architecture now.
+
+---
+
+# 6. CAREER ABILITIES
+
+Use these initial concepts:
+
+### AI Engineer
+
+**MODEL UPGRADE**
+
+Gain additional AI Skill from certain AI-related events.
+
+### Race Driver
+
+**NEED FOR SPEED**
+
+Must eventually purchase an expensive car, but receives benefits from owning it.
+
+### Content Creator
+
+**GO VIRAL**
+
+Gain additional Fame from Fame events.
+
+### Gig Worker
+
+**SIDE HUSTLE**
+
+Can receive additional Wealth from certain Event spaces.
+
+### Lawyer
+
+**OBJECTION**
+
+Once per game, cancel or reduce a negative penalty.
+
+### Pro Gamer
+
+**SWEAT THE ODDS**
+
+Gain additional rewards from successful Gamble spaces.
+
+### Doctor
+
+**HEALTH INSURANCE**
+
+Ignore one negative Lifestyle/health-related penalty.
+
+### Personal Trainer
+
+**LOCKED IN**
+
+Gain Lifestyle more efficiently.
+
+### Degen Trader
+
+**YOLO**
+
+Has a very wide salary range and stronger rewards from certain Gamble spaces.
+
+### Startup Founder
+
+**EQUITY**
+
+Gain additional Wealth from certain risky events.
+
+### Influencer
+
+**ENGAGEMENT**
+
+Convert certain Fame gains into additional Wealth.
+
+### Corporate Executive
+
+**GOLDEN HANDCUFFS**
+
+Higher stable salary but reduced flexibility on certain decisions.
+
+### Cybersecurity Specialist
+
+**ZERO DAY**
+
+Avoid one random negative Event.
+
+### Entertainer
+
+**MAIN CHARACTER**
+
+Gain Fame from certain player interactions.
+
+### Real Estate Investor
+
+**PROPERTY LADDER**
+
+Receive additional benefits from Property purchases.
+
+Keep abilities simple.
+
+Do not build their complicated effects yet unless needed for the current system.
+
+---
+
+# 7. FOUR SALARY TIERS
+
+Every career has exactly four salary tiers:
+
+**Tier 1 — LOW**
+
+**Tier 2 — STANDARD**
+
+**Tier 3 — HIGH**
+
+**Tier 4 — ELITE**
+
+Stable careers should have relatively narrow salary spreads.
+
+Riskier careers should have much wider spreads.
+
+Example:
+
+### AI Engineer
+
+Tier 1: $70K
+Tier 2: $100K
+Tier 3: $140K
+Tier 4: $200K
+
+### Doctor
+
+Tier 1: $100K
+Tier 2: $140K
+Tier 3: $180K
+Tier 4: $240K
+
+### Degen Trader
+
+Tier 1: $20K
+Tier 2: $75K
+Tier 3: $200K
+Tier 4: $500K
+
+Use placeholder values for the other careers.
+
+Make all values easy to rebalance from the career data.
+
+---
+
+# 8. SALARY COLOR CODING
+
+The assigned salary tier should be immediately understandable visually.
+
+Use progressively stronger shading for:
+
+**Tier 1 — LOW**
+
+**Tier 2 — STANDARD**
+
+**Tier 3 — HIGH**
+
+**Tier 4 — ELITE**
+
+The exact colors can follow the existing Redline visual language.
+
+The important requirement is that the four tiers have clearly different visual intensity/shading.
+
+For example:
+
+Tier 1 = subdued
+
+Tier 2 = normal
+
+Tier 3 = brighter
+
+Tier 4 = strongest/most prestigious
+
+Do NOT rely solely on text.
+
+The salary card should communicate:
+
+**"I got a bad/average/good/great salary roll"**
+
+at a glance.
+
+---
+
+# 9. RANDOM SALARY ASSIGNMENT
+
+After assigning a career, randomly assign one of that career's four salary tiers.
+
+Display:
+
+**YOUR CAREER**
+
+[Career Icon]
+
+**AI ENGINEER**
+
+**SALARY**
+
+[HIGH TIER VISUAL]
+
+`$140K`
+
+`HIGH`
+
+The player should immediately understand both:
+
+* Their salary amount
+* Their salary tier
+
+---
+
+# 10. STARTING WEALTH
+
+Do not create another money resource.
+
+The only financial resource is:
+
+**WEALTH**
+
+Starting Wealth should be determined by the player's salary.
+
+Use a configurable formula.
+
+Example:
+
+`Starting Wealth = Salary × Starting Wealth Multiplier`
+
+The multiplier should be easy to rebalance.
+
+Career-specific modifiers can be supported.
+
+---
+
+# 11. PAYDAY SYSTEM
+
+This is an important core mechanic.
+
+Certain board spaces should be designated:
+
+**PAYDAY**
+
+A Payday space pays the player's **current salary** into their Wealth.
+
+### IMPORTANT:
+
+Payday triggers when the player:
+
+**LANDS ON**
+
+OR
+
+**PASSES THROUGH**
+
+a Payday space.
+
+Example:
+
+Player has:
+
+`$140K Salary`
+
+They move from Space 8 to Space 15.
+
+Space 12 is a Payday.
+
+The player receives:
+
+`+$140K Wealth`
+
+Even though they did not land on Space 12.
+
+If they land directly on Space 12:
+
+They ALSO receive:
+
+`+$140K Wealth`
+
+Do not accidentally pay twice for the same Payday space during a single movement.
+
+Each Payday space crossed during a single move should trigger once.
+
+---
+
+# 12. PAYDAY SPACES
+
+Add Payday as a supported board-space property.
+
+A space can have:
+
+* NORMAL
+* EVENT
+* MILESTONE
+* GAMBLE
+* PAYDAY
+
+Payday can eventually coexist with another space type if useful.
+
+For example:
+
+`PAYDAY + EVENT`
+
+But keep the initial implementation simple.
+
+Spread several Payday spaces throughout the 75-space board.
+
+Do not manually hardcode the logic into movement.
+
+The movement system should detect:
+
+**Did the player cross a Payday space?**
+
+If yes:
+
+`player.wealth += player.salary`
+
+---
+
+# 13. PAYDAY VISUAL EFFECT
+
+When a Payday triggers:
+
+Display a satisfying animation.
+
+Example:
+
+**PAYDAY**
+
+`+$140K`
+
+The Wealth counter should animate upward.
+
+The player should clearly understand:
+
+**"I just collected my salary."**
+
+This should work for:
+
+* Human
+* CPU
+
+CPU players should receive their salary automatically.
+
+---
+
+# 14. PASSING VS LANDING
+
+The movement system must distinguish:
+
+### PASSING
+
+The player moves through each intermediate space.
+
+Any PASS effects trigger.
+
+### LANDING
+
+After movement finishes, process the final space's LAND effects.
+
+Example:
+
+Player rolls 6:
+
+`10 → 11 → 12 → 13 → 14 → 15 → 16`
+
+If Space 12 is Payday:
+
+Pay salary.
+
+If Space 16 is an Event:
+
+Process Space 16 after movement ends.
+
+This distinction will become extremely important later.
+
+---
+
+# 15. WEALTH CHANGES
+
+Wealth should be highly visible.
+
+Display:
+
+**WEALTH**
+
+`$325K`
+
+Whenever Wealth changes:
+
+Show a temporary floating notification:
+
+`+$140K`
+
+or
+
+`-$50K`
+
+Animate the Wealth number.
+
+Use different visual treatment for gains and losses while staying within the Redline aesthetic.
+
+---
+
+# 16. FUTURE CAREER EVENTS
+
+Create the data architecture for future events that can modify Wealth.
+
+Examples:
+
+### TECH BOOM
+
+Target:
+
+`DIGITAL / RISK`
+
+Effect:
+
+`+$30K`
+
+### MARKET CRASH
+
+Target:
+
+`DIGITAL / RISK`
+
+Effect:
+
+`-$25K`
+
+### VIRAL MOMENT
+
+Target:
+
+`MEDIA / FAME`
+
+Effect:
+
+`+$20K`
+
+### LEGAL SCANDAL
+
+Target:
+
+`LAWYER`
+
+Effect:
+
+`-$40K`
+
+These are examples only.
+
+Do not build the full Event deck yet.
+
+---
+
+# 17. CAREER ASSIGNMENT SCREEN
+
+After character selection, show:
+
+**YOUR CAREER**
+
+[Career Icon]
+
+`AI ENGINEER`
+
+**CATEGORY**
+
+`DIGITAL / RISK`
+
+**SALARY**
+
+[Colored/shaded Tier 3 card]
+
+`$140K`
+
+**STARTING WEALTH**
+
+`$100K`
+
+**ABILITY**
+
+`MODEL UPGRADE`
+
+Then continue to the board.
+
+---
+
+# 18. PLAYER HUD
+
+Update the player HUD to show:
+
+**Character**
+
+**Career Icon + Career**
+
+**Career Category**
+
+**Salary Tier**
+
+**Salary**
+
+**Wealth**
+
+**AI Skill**
+
+**Fame**
+
+**Lifestyle**
+
+**Influence**
+
+Salary tier should be visually apparent.
+
+---
+
+# 19. CPU PLAYERS
+
+Each CPU receives:
+
+* Random career
+* Random salary tier
+* Salary
+* Starting Wealth
+* Career category
+* Career ability
+* Starting stats
+
+CPU players should:
+
+* Receive Payday when passing/landing on Payday
+* Be affected by future career-category events
+* Be affected by future career-specific events
+
+No advanced CPU strategy is needed yet.
+
+---
+
+# 20. IMPORTANT ECONOMY RULE
+
+Do NOT automatically give players their salary every turn.
+
+Salary is only collected when a player:
+
+**LANDS ON or PASSES THROUGH a Payday space.**
+
+This makes salary an important part of the board progression.
+
+A high-salary career is valuable because every Payday becomes more valuable.
+
+A low-salary career may have other advantages through abilities, risk, gambling, or future upgrades.
+
+---
+
+# 21. DO NOT BUILD YET
+
+Do NOT build:
+
+* Cars
+* Property
+* Investments
+* Lifestyle purchases
+* Upgrade tokens
+* Meme upgrades
+* Full card decks
+* Full gambling system
+* Cashout
+* Double Down
+* Final Gamble
+* End-game scoring
+* Redline Credits
+* Authentication
+* Online multiplayer
+* Redline Auction multiplayer architecture
+
+Those will come later.
+
+---
+
+# 22. MULTIPLAYER ARCHITECTURE
+
+Do not implement multiplayer.
+
+Do not copy the Redline Auction multiplayer code.
+
+Eventually multiplayer will be designed separately in GitHub.
+
+Keep the local game state centralized and modular so the future multiplayer layer can synchronize:
+
+* Player position
+* Turn
+* Dice results
+* Character
+* Career
+* Career category
+* Salary tier
+* Salary
+* Wealth
+* AI Skill
+* Fame
+* Lifestyle
+* Influence
+* Cards
+* Assets
+* Upgrades
+
+---
+
+# SUCCESS CRITERIA
+
+I should be able to:
+
+1. Start a game.
+2. Select my character.
+3. Receive a random career.
+4. See the career category and icon.
+5. Receive one of four salary tiers.
+6. Clearly see whether I received LOW, STANDARD, HIGH, or ELITE salary.
+7. Receive starting Wealth.
+8. See all of this on my player HUD.
+9. See the same information for the 3 CPU players.
+10. Roll the existing 2d4.
+11. Move across the board.
+12. Pass through a Payday space.
+13. Automatically receive my full current salary as Wealth.
+14. Land directly on a Payday space and receive my salary.
+15. Never receive the same Payday reward twice during one movement.
+16. See an animated `+$Salary` Wealth notification.
+17. Continue playing normally.
+18. Have the underlying system ready for future career-specific and career-category events.
+
+The fundamental economic loop should now be:
+
+**CAREER**
+↓
+**SALARY**
+↓
+**PAYDAY**
+↓
+**WEALTH**
+↓
+**FUTURE ASSETS / GAMBLING / UPGRADES / ENDGAME**
+
+Keep the implementation modular and easy to rebalance.
+
+**STOP after this phase.**

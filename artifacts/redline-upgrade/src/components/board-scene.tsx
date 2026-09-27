@@ -106,6 +106,7 @@ const edgeGeometry = new THREE.BoxGeometry(2.34, 0.035, 2.24);
 const mats = {
   base: new THREE.MeshStandardMaterial({ color: '#101a19', metalness: 0.55, roughness: 0.52 }),
   normal: new THREE.MeshStandardMaterial({ color: '#30423b', metalness: 0.38, roughness: 0.56 }),
+  payday: new THREE.MeshStandardMaterial({ color: '#496752', metalness: 0.56, roughness: 0.34 }),
   event: new THREE.MeshStandardMaterial({ color: '#45523b', metalness: 0.45, roughness: 0.43 }),
   gamble: new THREE.MeshStandardMaterial({ color: '#533b32', metalness: 0.5, roughness: 0.43 }),
   milestone: new THREE.MeshStandardMaterial({ color: '#603b32', metalness: 0.58, roughness: 0.38 }),
@@ -119,13 +120,13 @@ function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; 
   const landmark = space.type === 'MILESTONE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
-  const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.type === 'EVENT' ? mats.lime : mats.normal;
-  const marker = space.type === 'EVENT' ? '◆' : space.type === 'GAMBLE' ? '!' : landmark ? '◇' : '—';
+  const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.payday ? mats.lime : space.type === 'EVENT' ? mats.lime : mats.normal;
+  const marker = space.payday ? '$' : space.type === 'EVENT' ? '◆' : space.type === 'GAMBLE' ? '!' : landmark ? '◇' : '—';
   return <group position={[x, 0, z]}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
     <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
     <mesh position={[0, landmark ? 0.79 : 0.63, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={tileTop}
-      material={finish ? mats.milestone : landmark ? mats.milestone : space.type === 'GAMBLE' ? mats.gamble : space.type === 'EVENT' ? mats.event : mats.normal} castShadow receiveShadow />
+      material={finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : space.type === 'GAMBLE' ? mats.gamble : space.type === 'EVENT' ? mats.event : mats.normal} castShadow receiveShadow />
     <mesh position={[0, topY + 0.015, 0.82]} geometry={stripShape} material={landing || active ? mats.lime : sideMaterial} />
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.63, 0.71, 8]} /><primitive object={mats.accent} attach="material" />
@@ -133,6 +134,10 @@ function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; 
     {space.type === 'EVENT' && <mesh position={[0.72, topY + 0.08, -0.68]} rotation={[0, Math.PI / 4, 0]} castShadow>
       <octahedronGeometry args={[0.12]} /><primitive object={mats.lime} attach="material" />
     </mesh>}
+    {space.payday && <group position={[0.72, topY + 0.15, -0.66]}>
+      <mesh castShadow><cylinderGeometry args={[0.19, 0.19, 0.1, 16]} /><primitive object={mats.lime} attach="material" /></mesh>
+      <mesh position={[0, 0.07, 0]} castShadow><cylinderGeometry args={[0.14, 0.14, 0.04, 16]} /><primitive object={mats.payday} attach="material" /></mesh>
+    </group>}
     {landmark && <group>
       {[-1, 1].map(side => <mesh key={side} position={[side * 1.03, topY + 0.26, 0]} castShadow>
         <boxGeometry args={[0.1, 0.48, 1.85]} /><primitive object={mats.accent} attach="material" />
@@ -142,7 +147,7 @@ function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; 
       </mesh>
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={-0.55} y={topY + 0.045} z={-0.37} w={0.95} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    <PrintedLabel lines={[marker]} x={0.65} y={topY + 0.047} z={-0.45} w={0.37} h={0.36} color={space.type === 'EVENT' ? COLORS.lime : space.type === 'NORMAL' ? '#88a093' : COLORS.orange} />
+    <PrintedLabel lines={[marker]} x={0.65} y={topY + 0.047} z={-0.45} w={0.37} h={0.36} color={space.payday || space.type === 'EVENT' ? COLORS.lime : space.type === 'NORMAL' ? '#88a093' : COLORS.orange} />
     {finish && <PrintedLabel lines={['FINISH', 'CASHOUT']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
   </group>;
 }
@@ -282,15 +287,15 @@ function Miniature({ player, index, count, active, reduceMotion }: {
   </group>;
 }
 
-function CameraRig({ focus, overview, reduceMotion }: { focus: number; overview: boolean; reduceMotion: boolean }) {
+function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point }) {
   const { camera, size } = useThree();
   const aim = useRef(new THREE.Vector3());
   const initialized = useRef(false);
   useFrame((_, delta) => {
     const p = ROUTE[Math.max(0, Math.min(75, focus))];
-    const target = overview ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(p.x, 0, p.z);
+    const target = overview ? new THREE.Vector3(pan.x, 0, pan.z) : new THREE.Vector3(p.x + pan.x, 0, p.z + pan.z);
     const width = size.width / Math.max(size.height, 1);
-    const height = overview ? Math.max(37, 53 / width) : Math.max(14.7, 20 / width);
+    const height = (overview ? Math.max(37, 53 / width) : Math.max(14.7, 20 / width)) / zoom;
     const c = camera as THREE.OrthographicCamera;
     const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
     c.left += (-height * width / 2 - c.left) * factor;
@@ -306,8 +311,8 @@ function CameraRig({ focus, overview, reduceMotion }: { focus: number; overview:
   return null;
 }
 
-export function BoardScene({ players, activePlayerId, landingPosition, overview, reduceMotion }: {
-  players: MatchPlayer[]; activePlayerId: string; landingPosition: number | null; overview: boolean; reduceMotion: boolean;
+export function BoardScene({ players, activePlayerId, landingPosition, overview, reduceMotion, zoom, pan }: {
+  players: MatchPlayer[]; activePlayerId: string; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point;
 }) {
   const activePosition = players.find(p => p.playerId === activePlayerId)?.position ?? 0;
   return <>
@@ -316,7 +321,7 @@ export function BoardScene({ players, activePlayerId, landingPosition, overview,
     <hemisphereLight args={['#bcd2c2', '#16201d', 1.8]} />
     <directionalLight position={[-12, 25, 17]} intensity={2.6} color="#ffe4cb" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-29} shadow-camera-right={29} shadow-camera-top={23} shadow-camera-bottom={-23} shadow-bias={-0.0005} />
     <directionalLight position={[14, 9, -12]} intensity={1.1} color="#a8d7bf" />
-    <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} />
+    <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i > 0 && i % 15 === 0} />)}
     {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} />)}

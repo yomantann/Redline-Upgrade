@@ -5,6 +5,8 @@ import { advanceMatch, createMatch, rollD4, type Match, type MatchAction } from 
 interface GameStateValue {
   player: Player | null;
   match: Match | null;
+  careerRevealed: boolean;
+  acknowledgeCareer: () => void;
   startNewGame: () => void;
   confirmCharacter: (characterId: string) => void;
   dispatchMatch: (action: MatchAction) => void;
@@ -16,14 +18,18 @@ const GameContext = createContext<GameStateValue | null>(null);
 export function GameProvider({ children }: { children: ReactNode }) {
   const [player, setPlayer] = useState<Player | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
+  const [careerRevealed, setCareerRevealed] = useState(false);
+  const acknowledgeCareer = useCallback(() => setCareerRevealed(true), []);
   const startNewGame = useCallback(() => {
     setPlayer(null);
     setMatch(null);
+    setCareerRevealed(false);
   }, []);
   const confirmCharacter = useCallback((characterId: string) => {
     const nextMatch = createMatch(characterId);
     setPlayer(nextMatch.players[0]);
     setMatch(nextMatch);
+    setCareerRevealed(false);
   }, []);
   const dispatchMatch = useCallback((action: MatchAction) => {
     setMatch((current) => current ? advanceMatch(current, action) : null);
@@ -34,8 +40,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatchMatch({ type: 'ROLL', result: { die1, die2, total: die1 + die2 } });
   }, [dispatchMatch]);
   const value = useMemo(
-    () => ({ player, match, startNewGame, confirmCharacter, dispatchMatch, rollDice }),
-    [player, match, startNewGame, confirmCharacter, dispatchMatch, rollDice],
+    () => ({ player, match, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, dispatchMatch, rollDice }),
+    [player, match, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, dispatchMatch, rollDice],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
