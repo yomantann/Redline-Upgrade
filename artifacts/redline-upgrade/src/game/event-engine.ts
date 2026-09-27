@@ -424,7 +424,7 @@ function applyStatDelta(
 function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, targetIndex: number, event: AnyGameEvent, amount: number): Match {
   if (!amount) return match;
   let state = match;
-  let drawnCardId: string | undefined;
+  let drawnCard: { id: string; spaceNumber: number } | undefined;
   const direction = amount > 0 ? 1 : -1;
   const steps = Math.abs(amount);
   for (let step = 0; step < steps; step += 1) {
@@ -525,7 +525,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       }
       if (space.deck) {
         const card = drawCard(space.deck);
-        drawnCardId = card.id;
+        drawnCard = { id: card.id, spaceNumber: nextPosition };
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: targetIndex,
@@ -556,7 +556,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      const card = (drawnCardId ? getCard(drawnCardId) : undefined) ?? drawCard(finalSpace.deck);
+      const card = (drawnCard?.spaceNumber === finalSpace.number ? getCard(drawnCard.id) : undefined) ?? drawCard(finalSpace.deck);
       state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, cardId: card.id, space: finalSpace.number }, lastLanding: landing };
     } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
