@@ -59,7 +59,7 @@ export function CardTabletop({ activeDeck, activeCardId, onAcknowledge, isCPU = 
             <p>{displayed.description}</p>
             <div className="tabletop-preview-content">
               <RedlineCard deck={displayed.id} />
-              <div><p className="tabletop-preview-count">{displayed.count} CARDS / ACTIVE SET</p><p>Previewing here does not change the current match.</p><button className="action secondary" type="button" onClick={() => draw(displayed.id)} data-testid={`button-preview-draw-${displayed.id}`}>DRAW PREVIEW <span aria-hidden="true">↗</span></button></div>
+              <div><p className="tabletop-preview-count">{displayed.count} CARDS / VISUAL COUNT</p><p>Previewing here does not change the current match.</p><button className="action secondary" type="button" onClick={() => draw(displayed.id)} data-testid={`button-preview-draw-${displayed.id}`}>DRAW PREVIEW <span aria-hidden="true">↗</span></button></div>
             </div>
             {drawn?.deck === displayed.id && <div className="tabletop-preview-content"><RedlineCard deck={displayed.id} face="front" card={drawn} /><p>PREVIEW ONLY<br />{drawn.title}: {drawn.value}<br />Deck preview does not change gameplay.</p></div>}
           </div>

@@ -735,8 +735,8 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     const [nextState, event] = createEvent(state, draft);
     state = pushLog(nextState, event);
     queue.push(...nativeSecondaryEvents(state, event));
-    state = runCardEffects(state, queue, event);
     state = runAbilities(state, queue, event);
+    state = runCardEffects(state, queue, event);
     processed += 1;
   }
   return state;
