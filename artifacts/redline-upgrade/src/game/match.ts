@@ -6,6 +6,7 @@ import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './as
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
 import type { EventLogEntry } from './events/types';
+import { applySalaryGate } from './movement-events';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & { isCPU: boolean; slot: number };
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed';
@@ -241,14 +242,17 @@ function purchase(match: Match, assetId: string): Match {
   return emit(resume({ ...updated, wealthEvents: [...match.wealthEvents, wealthEvent] }), drafts);
 }
 
+function resolveCardDecision(match: Match): Match {
+  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD') return match;
+  const { deck, space } = match.pending;
+  return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck, spaceNumber: space, cardId: `example-${deck}` }]);
+}
+
 function autoDecide(match: Match): Match {
   const pending = match.pending;
   if (match.phase !== 'decision' || !match.players[match.turnIndex].isCPU || !pending) return match;
   const player = match.players[match.turnIndex];
-  if (pending.kind === 'CARD') {
-    const result = resume(match);
-    return emit(result, [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck: pending.deck, spaceNumber: pending.space, cardId: `example-${pending.deck}` }]);
-  }
+  if (pending.kind === 'CARD') return resolveCardDecision(match);
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
@@ -359,23 +363,24 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const position = Math.min(75, current.position + 1);
       const space = getSpace(position);
       if (!space) throw new Error(`Invalid movement position: ${position}`);
-      const payday = space.payday && position !== current.position;
-      const previousWealth = current.wealth;
-      const nextWealth = previousWealth + (payday ? current.salaryAmount : 0);
       let moved: Match = {
         ...match,
         players: match.players.map((player, index) => index === match.turnIndex
-          ? { ...player, position, wealth: nextWealth }
+          ? { ...player, position }
           : player),
-        wealthEvents: payday
-          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY', space: position }]
-          : match.wealthEvents,
+        wealthEvents: match.wealthEvents,
         stepsRemaining: match.stepsRemaining - 1,
       };
-      const drafts = createStepEvents(match, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, payday);
+      const salaryGate = applySalaryGate(moved, match.turnIndex, previousPosition, position);
+      moved = {
+        ...salaryGate.match,
+        wealthEvents: salaryGate.drafts.length
+          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY', space: position }]
+          : match.wealthEvents,
+      };
+      const drafts = createStepEvents(match, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, salaryGate.drafts.length > 0);
       drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
-      addNativeStatChange(match, drafts, match.turnIndex, 'wealth', previousWealth, nextWealth, payday ? 'Salary Gate' : 'Movement');
-      moved = emit(moved, drafts.filter((draft) => !(draft.type === 'WEALTH_CHANGED' && previousWealth === nextWealth)));
+      moved = emit(moved, [...salaryGate.drafts, ...drafts]);
       if (moved.phase !== 'moving') return moved;
       const currentAfterMove = moved.players[moved.turnIndex];
       const resolvedSpace = getSpace(currentAfterMove.position);
@@ -423,7 +428,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return match.phase === 'decision' && match.pending?.kind === 'CAREER' && match.pending.stage === 'salary' ? resume(match) : match;
     case 'ACKNOWLEDGE_CARD':
       if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.players[match.turnIndex].isCPU) return match;
-      return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck: match.pending.deck, spaceNumber: match.pending.space, cardId: `example-${match.pending.deck}` }]);
+      return resolveCardDecision(match);
     case 'AUTO_DECIDE':
       return autoDecide(match);
     case 'NEXT_TURN':

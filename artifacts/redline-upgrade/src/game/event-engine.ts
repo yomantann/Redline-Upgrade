@@ -5,6 +5,7 @@ import { getCareer } from './careers';
 import { getCharacter } from './characters';
 import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './events/types';
 import type { Match, MatchPlayer, RewardModifierState } from './match';
+import { applySalaryGate } from './movement-events';
 import type { PlayerStat } from './player';
 
 const MAX_EVENT_DEPTH = 6;
@@ -419,26 +420,14 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       spaceNumber: nextPosition,
     });
     const isFinalStep = step === steps - 1;
-    if (space.payday) {
-      const beforeWealth = state.players[targetIndex].wealth;
-      const salaryAmount = state.players[targetIndex].salaryAmount;
-      state = updatePlayer(state, targetIndex, (player) => ({ ...player, wealth: player.wealth + salaryAmount }));
-      queue.push({
-        type: 'SALARY_GATE',
-        playerIndex: targetIndex,
-        source: 'EFFECT',
-        sourceEventId: event.id,
-        abilityId: event.abilityId,
-        depth: event.depth + 1,
-        previousPosition: current.position,
-        newPosition: nextPosition,
-        spaceNumber: nextPosition,
-        salaryAmount,
-        previousWealth: beforeWealth,
-        newWealth: beforeWealth + salaryAmount,
-      });
-      addNativeStatChange(state, queue, targetIndex, 'wealth', beforeWealth, beforeWealth + salaryAmount, 'Salary Gate');
-    }
+    const salaryGate = applySalaryGate(state, targetIndex, current.position, nextPosition, {
+      source: 'EFFECT',
+      sourceEventId: event.id,
+      abilityId: event.abilityId,
+      depth: event.depth + 1,
+    });
+    state = salaryGate.match;
+    queue.push(...salaryGate.drafts);
     const occupants = state.players.filter((player, index) => index !== targetIndex && player.position === nextPosition);
     for (const occupant of occupants) {
       queue.push({
@@ -639,7 +628,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
     case 'AFFECT_OTHER_PLAYER':
       return resolveTargets(match, actor, event, effect.target ?? 'LANDED_ON_PLAYER').reduce(
         (state, index) => effect.effects.reduce(
-          (nestedState, nestedEffect) => applyEffect(nestedState, queue, actor, { ...event, targetPlayerId: state.players[index].playerId, targetPlayerIndex: index }, nestedEffect),
+          (nestedState, nestedEffect) => applyEffect(nestedState, queue, actor, { ...event, targetPlayerId: nestedState.players[index].playerId, targetPlayerIndex: index }, nestedEffect),
           state,
         ),
         match,
