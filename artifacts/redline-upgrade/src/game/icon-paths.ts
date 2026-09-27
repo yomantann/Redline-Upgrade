@@ -1,0 +1,20 @@
+// A shared 24×24 stroke vocabulary for DOM, SVG fallback and 3D board textures.
+export const ICON_PATHS: Record<string, string> = {
+  normal: 'M7 12h10',
+  wealth: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1',
+  salary: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1 M3 3h18v18H3z',
+  ai: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2 M8 8h8v8H8z M10 10h4v4h-4z',
+  fame: 'm12 2 2.8 6.4 6.9.6-5.2 4.6 1.5 7-6-3.5-6 3.5 1.5-7L2.3 9l6.9-.6z',
+  lifestyle: 'M12 2 21 11 12 22 3 11z M3 11h18 M12 2l4 9-4 11-4-11z',
+  influence: 'M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4 M4 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4 M20 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4 M11 7 5 17 M13 7l6 10 M7 19h10',
+  car: 'M3 14 5 8h14l2 6v5h-3v-2H6v2H3z M3 14h18 M7 11h2 M15 11h2',
+  career: 'M3 9h18v11H3z M9 9V6h6v3 M3 13h18 M11 13v3h2v-3',
+  pet: 'M9 12c-3 0-5 4-3 6 2 2 4-1 6-1s4 3 6 1c2-2 0-6-3-6-1-1-4-1-6 0 M5 7v2 M10 4v3 M15 4v3 M20 7v2',
+  investment: 'M3 20h18 M5 17l5-5 3 3 6-8 M15 7h4v4',
+  property: 'M2 11 12 3l10 8 M5 9v12h14V9 M10 21v-7h4v7',
+  gamble: 'M4 4h16v16H4z M8 8h.01 M16 8h.01 M12 12h.01 M8 16h.01 M16 16h.01',
+  event: 'M12 3v12 M12 20h.01 M3 21 12 3l9 18z',
+  start: 'M5 22V3 M5 4h14l-3 5 3 5H5',
+  finish: 'M4 22V3h16v13H4 M4 7h16 M4 11h16 M8 3v4 M16 3v4 M8 11v5 M16 11v5',
+  milestone: 'M12 2 22 12 12 22 2 12z M12 6v12 M6 12h12',
+};

@@ -1,3 +1,15 @@
+.ru-board__information { display:flex; align-items:center; gap:15px; min-height:87px; padding:14px 23px; background:#1b2b22; border-top:1px solid #425b49; color:#d4e981; }
+.ru-board__information > svg { flex:none; }
+.ru-board__information div { flex:1; min-width:0; }
+.ru-board__information span { color:#b2c4a9; font:700 9px 'Space Mono',monospace; letter-spacing:.09em; }
+.ru-board__information strong { display:block; margin-top:3px; color:#e9e7dc; font:800 23px 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.ru-board__information p { margin:4px 0 0; color:#bac9b7; font-size:12px; line-height:1.4; }
+.ru-board__information button { flex:none; border:1px solid #566d59; background:transparent; color:#e9e7dc; min-width:34px; min-height:34px; cursor:pointer; }
+.ru-board__space-legend { width:100%; }
+.ru-board__space-legend summary { cursor:pointer; width:max-content; padding:10px 0; color:#d4e981; font:700 10px 'Space Mono',monospace; letter-spacing:.12em; }
+.ru-board__space-legend > div { display:flex; flex-wrap:wrap; gap:8px 20px; padding:8px 0 13px; }
+.ru-board__space-legend span { display:inline-flex; align-items:center; gap:7px; color:#d3dfd0; font:700 9px 'Space Mono',monospace; text-transform:uppercase; }
+.ru-board__space-legend svg { color:#f96346; flex:none; }
 /* The board is a long, screen-printed circuit board, not a data grid. */
 .ru-board {
   --board-ink: #e9e7dc;

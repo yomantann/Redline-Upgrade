@@ -3,6 +3,7 @@ import { createPlayer, type Player } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, startingWealth, type SalaryTier } from './careers';
 import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
+import type { DeckId } from './decks';
 
 export type MatchPlayer = Player & { isCPU: boolean; slot: number };
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed';
@@ -10,7 +11,8 @@ export interface DiceResult { die1: number; die2: number; total: number }
 export interface Landing { playerIndex: number; space: BoardSpace }
 export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE'; space: number }
 export type PendingDecision =
-  | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment' }
+  | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
+  | { kind: 'CARD'; deck: DeckId; space: number }
   | { kind: 'CAREER'; space: 35; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
 export interface Match {
   players: MatchPlayer[];
@@ -83,6 +85,7 @@ export type MatchAction =
   | { type: 'SWITCH_CAREER' }
   | { type: 'SELECT_CAREER'; careerId: string }
   | { type: 'ACKNOWLEDGE_CAREER' }
+  | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'AUTO_DECIDE' }
   | { type: 'NEXT_TURN' };
 
@@ -96,12 +99,17 @@ function milestoneSlot(space: number): AssetSlot | null {
   }
 }
 
+function drawAssets(category: AssetCategory): string[] {
+  return pickUnique(assetOptions(category), 3).map(asset => asset.id);
+}
+
 function land(match: Match, space: BoardSpace): Match {
   const slot = space.type === 'MILESTONE' ? milestoneSlot(space.number) : null;
   const landing = { playerIndex: match.turnIndex, space };
   if (slot && !match.players[match.turnIndex].equipment[slot]) {
-    return { ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number } };
+    return { ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } };
   }
+  if (space.deck) return { ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, space: space.number } };
   return { ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null };
 }
 
@@ -137,7 +145,7 @@ function purchase(match: Match, assetId: string): Match {
   const asset = getAsset(assetId);
   const player = match.players[match.turnIndex];
   const category: AssetCategory | null = pending.slot === 'companion' ? pending.category ?? null : pending.slot;
-  if (!asset || asset.category !== category || player.equipment[pending.slot] || asset.cost > player.wealth) return match;
+  if (!asset || asset.category !== category || !pending.offeredAssetIds?.includes(assetId) || player.equipment[pending.slot] || asset.cost > player.wealth) return match;
   const players = match.players.map((item, index) => index === match.turnIndex ? {
     ...item,
     equipment: { ...item.equipment, [pending.slot]: assetId },
@@ -155,11 +163,13 @@ function autoDecide(match: Match): Match {
   const pending = match.pending;
   if (match.phase !== 'decision' || !match.players[match.turnIndex].isCPU || !pending) return match;
   const player = match.players[match.turnIndex];
+  if (pending.kind === 'CARD') return resume(match);
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
       : [pending.slot];
-    const available = categories.flatMap(category => assetOptions(category))
+    const offers = pending.offeredAssetIds ?? drawAssets(categories[0]);
+    const available = offers.map(id => getAsset(id)).filter((asset): asset is NonNullable<typeof asset> => !!asset)
       .filter(asset => asset.cost <= player.wealth);
     if (!available.length) return resume(match);
     const score = (asset: (typeof available)[number]) =>
@@ -173,7 +183,7 @@ function autoDecide(match: Match): Match {
       + Math.random() * 8;
     const chosen = available.map(asset => ({ asset, weight: score(asset) }))
       .sort((a, b) => b.weight - a.weight)[0].asset;
-    return purchase({ ...match, pending: { ...pending, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } }, chosen.id);
+    return purchase({ ...match, pending: { ...pending, offeredAssetIds: offers, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } }, chosen.id);
   }
   if (Math.random() > 0.42) return resume(match);
   const options = careerOffers(player.careerId ?? '');
@@ -227,7 +237,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
-        ? { ...match, pending: { ...match.pending, category: action.category } } : match;
+        ? { ...match, pending: { ...match.pending, category: action.category, offeredAssetIds: drawAssets(action.category) } } : match;
     case 'BUY_ASSET':
       return purchase(match, action.assetId);
     case 'SKIP_ASSET':
@@ -246,6 +256,8 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     }
     case 'ACKNOWLEDGE_CAREER':
       return match.phase === 'decision' && match.pending?.kind === 'CAREER' && match.pending.stage === 'salary' ? resume(match) : match;
+    case 'ACKNOWLEDGE_CARD':
+      return match.phase === 'decision' && match.pending?.kind === 'CARD' && !match.players[match.turnIndex].isCPU ? resume(match) : match;
     case 'AUTO_DECIDE':
       return autoDecide(match);
     case 'NEXT_TURN':

@@ -11,6 +11,8 @@ import { GameBoard } from './game-board';
 import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
+import { CardTabletop } from './card-tabletop';
+import { SpaceIcon } from './space-icon';
 import './game-screen.css';
 
 function WealthCounter({ amount, compact = false }: { amount: number; compact?: boolean }) {
@@ -118,7 +120,7 @@ export function GameScreen() {
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CAREER' ? pending.stage : pending?.category, rollDice, dispatchMatch]);
+  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : undefined, rollDice, dispatchMatch]);
 
   if (!match) return (
     <main className="game-gate">
@@ -145,7 +147,7 @@ export function GameScreen() {
         <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
           <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
           <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
-           <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Milestone decision in progress' : 'Space reached'}</small>
+           <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? pending?.kind === 'CARD' ? 'Card draw in progress' : 'Milestone decision in progress' : 'Space reached'}</small>
           <button className="action turn-roll" type="button" onClick={rollDice} disabled={active.isCPU || match.phase !== 'ready'} data-testid="button-roll-top">ROLL DICE <span aria-hidden="true">↗</span></button>
         </div>
       </section>
@@ -160,7 +162,7 @@ export function GameScreen() {
       {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong><span className="mono">−{formatMoney(purchaseNotice.amount)} WEALTH // ADDED TO PLAYER SHEET</span></div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 
-      {match.phase === 'decision' && pending && <MilestoneChoice pending={pending} player={active} onAction={dispatchMatch} />}
+       {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={active} onAction={dispatchMatch} />}
 
       <section className="game-players" aria-label="Players, careers and finances">
         {match.players.map((contestant, index) => {
@@ -182,13 +184,13 @@ export function GameScreen() {
               </div>
               <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}</b></div>
               <div className="game-player-wealth">
-                <span className="mono">WEALTH</span>
+                 <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH</span>
                 <WealthCounter amount={contestant.wealth} />
                 {change && <span className={`wealth-change ${change.amount < 0 ? 'negative' : ''}`} key={change.id}>{change.amount >= 0 ? '+' : '−'}{formatMoney(Math.abs(change.amount))}</span>}
               </div>
               <div className="game-player-stats">
                 {([['AI SKILL', contestant.aiSkill], ['FAME', contestant.fame], ['LIFESTYLE', contestant.lifestyle], ['INFLUENCE', contestant.influence]] as const).map(([label, value]) => (
-                  <div key={label}><span className="mono">{label}</span><b>{value.toLocaleString()}</b></div>
+                   <div key={label}><span className="mono"><SpaceIcon name={label === 'AI SKILL' ? 'ai' : label.toLowerCase()} size={11} /> {label}</span><b>{value.toLocaleString()}</b></div>
                 ))}
               </div>
                <PlayerAssets equipment={contestant.equipment} playerIndex={index} />
@@ -197,12 +199,15 @@ export function GameScreen() {
         })}
       </section>
 
-      {match.phase !== 'decision' && <GameBoard
+       {(match.phase !== 'decision' || pending?.kind === 'CARD') && <div className="game-tabletop">
+       <div className="game-tabletop-board"><GameBoard
         players={match.players}
         activePlayerId={active.playerId}
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
-      />}
+       /></div>
+       <CardTabletop activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined} isCPU={active.isCPU} onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })} />
+       </div>}
 
       {match.phase !== 'decision' && <section className="game-console">
         <DiceRoller

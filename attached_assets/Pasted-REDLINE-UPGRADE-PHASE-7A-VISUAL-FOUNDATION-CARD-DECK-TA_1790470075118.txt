@@ -1,0 +1,586 @@
+REDLINE UPGRADE — PHASE 7A
+VISUAL FOUNDATION + CARD DECK TABLETOP UI + GITHUB HANDOFF
+
+I am running low on Replit credits, so prioritize reusable UI, organization, and visual foundations.
+
+DO NOT spend significant resources generating hundreds of individual card images.
+
+The goal is to make the project visually complete enough that I can move development to GitHub/Copilot for game logic.
+
+==================================================
+1. ASSET MANIFEST
+==================================================
+
+Create a centralized asset manifest for every visual asset currently in the project.
+
+Include:
+
+- Asset ID
+- Name
+- Category
+- File path
+- Asset type
+- Description
+- Status
+
+Categories:
+
+characters
+cars
+lifestyles
+pets
+investments
+properties
+cards
+icons
+ui
+
+Make this easy for future GitHub/Copilot development to reference.
+
+Example:
+
+car_flex
+Flex Car
+CAR
+/assets/cars/car_flex.png
+
+Do not duplicate assets unnecessarily.
+
+==================================================
+2. MILESTONE ASSET POOLS
+==================================================
+
+Keep the existing 10-item pools for:
+
+- Cars
+- Lifestyles
+- Pets
+- Investments
+- Properties
+
+The game should support:
+
+10 possible assets
+↓
+randomly select 3
+↓
+display those 3 cards
+
+Do not generate additional artwork unless an existing asset is actually missing.
+
+Focus on making the existing assets work cleanly with the reusable card UI.
+
+==================================================
+3. REUSABLE MILESTONE CARD
+==================================================
+
+Create one polished reusable card component.
+
+It should support:
+
+- Artwork
+- Name
+- Category
+- Cost
+- Description
+- Stat effects
+- Passive effect
+- Select/Buy button
+- Disabled state
+- Hover state
+- Selected state
+
+The same component must work for:
+
+CAR
+LIFESTYLE
+PET
+INVESTMENT
+PROPERTY
+
+Make it look like a physical futuristic tabletop card.
+
+Use:
+
+- Depth
+- Shadows
+- Slight 3D perspective
+- Rounded/beveled edges
+- Hover lift
+- Selection glow
+
+Do not create separate implementations for each asset type.
+
+==================================================
+4. DECKS BESIDE THE BOARD
+==================================================
+
+Add visible card decks next to the 3D board.
+
+These should feel like physical decks sitting on the tabletop.
+
+Initial decks:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+GAMBLE
+
+Arrange them in a clean area beside the board without covering the board route.
+
+They should look like:
+
+[WEALTH DECK]
+[AI DECK]
+[FAME DECK]
+
+[LIFESTYLE DECK]
+[INFLUENCE DECK]
+[GAMBLE DECK]
+
+Use a compact tabletop arrangement.
+
+Do NOT make them giant.
+
+They should clearly communicate:
+
+"These are physical decks sitting next to the board."
+
+==================================================
+5. DECK VISUAL IDENTITY
+==================================================
+
+Each deck needs:
+
+- Unique card back
+- Deck name
+- Icon
+- Small visual identity
+- Card count placeholder
+
+Use a consistent Redline Upgrade design language.
+
+Example:
+
+WEALTH
+money/wealth visual
+
+AI SKILL
+circuit/AI visual
+
+FAME
+star/media visual
+
+LIFESTYLE
+luxury/lifestyle visual
+
+INFLUENCE
+power/network visual
+
+GAMBLE
+casino/risk visual
+
+Do not use real-world company logos.
+
+==================================================
+6. CARD BACKS
+==================================================
+
+Create reusable card-back designs for all six decks.
+
+These are more important than generating lots of card fronts.
+
+Each card back should clearly communicate which deck it belongs to.
+
+Make sure the backs work at small size.
+
+==================================================
+7. CARD DRAW UI
+==================================================
+
+Create a reusable card-draw presentation.
+
+Flow:
+
+PLAYER LANDS ON CARD SPACE
+
+↓
+
+Board remains visible
+
+↓
+
+Relevant deck is highlighted
+
+↓
+
+DRAW CARD button
+
+↓
+
+Card is drawn from deck
+
+↓
+
+Card flips/reveals
+
+↓
+
+Card front displays
+
+↓
+
+Effect/value area displays
+
+↓
+
+CONTINUE
+
+The actual game effect does NOT need to be implemented yet.
+
+Use placeholder effect data where necessary.
+
+The important thing is that the UI architecture exists.
+
+==================================================
+8. DECK INTERACTION
+==================================================
+
+For now, clicking a deck can open a simple preview:
+
+DECK NAME
+
+Card back
+
+Number of cards
+
+DRAW CARD
+
+This is primarily a visual/UI foundation.
+
+Do not build complicated deck management.
+
+==================================================
+9. PLAYER CARD
+==================================================
+
+Finalize the visual Player Card.
+
+It should display:
+
+CHARACTER
+CAREER
+SALARY
+SALARY TIER
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+
+And visual slots for:
+
+CAR
+LIFESTYLE
+PET/INVESTMENT
+PROPERTY
+
+Make the asset slots visually obvious.
+
+The Player Card should feel like a collectible character board.
+
+==================================================
+10. ICON SYSTEM
+==================================================
+
+Create reusable icons for:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+
+CAR
+CAREER
+PET
+INVESTMENT
+PROPERTY
+
+SALARY
+SALARY GATE
+CAREER CHANGE
+MILESTONE
+EVENT
+GAMBLE
+
+Use these consistently across:
+
+HUD
+Player Cards
+Milestone Cards
+Decks
+Board spaces
+Card UI
+
+==================================================
+11. CAREER CHANGE UI
+==================================================
+
+Finalize the visual Career Change experience.
+
+Space 35:
+
+CAREER OPPORTUNITY
+
+Show:
+
+KEEP CAREER
+SWITCH CAREER
+
+If SWITCH:
+
+Show two large career cards.
+
+Each card displays:
+
+- Career
+- Icon
+- Category
+- Salary range
+- Ability
+- Description
+
+After selection, show the salary-tier reveal using the existing salary-tier visual system.
+
+Do not change the underlying career logic.
+
+==================================================
+12. SALARY TIER VISUALS
+==================================================
+
+Make sure the four salary tiers have clearly different visual intensity.
+
+LOW
+STANDARD
+HIGH
+ELITE
+
+Use progressive shading/visual treatment.
+
+This must work consistently on:
+
+- Player Card
+- Career cards
+- Career Change
+- Salary reveal
+
+==================================================
+13. REPRESENTATIVE CARD FRONTS
+==================================================
+
+DO NOT generate a massive number of card images.
+
+Instead, create only a small representative set to prove the visual system.
+
+For example:
+
+2 Wealth cards
+2 AI Skill cards
+2 Fame cards
+2 Lifestyle cards
+2 Influence cards
+2 Gamble cards
+
+Use these primarily as visual examples/templates.
+
+The final card effects and larger card library will be created later in GitHub/Copilot.
+
+==================================================
+14. CARD COMPONENT ARCHITECTURE
+==================================================
+
+Create one reusable Card component that supports:
+
+- Deck type
+- Card back
+- Artwork
+- Title
+- Description
+- Effect
+- Value
+- Rarity/type
+- Action button
+
+Do not create six separate card components.
+
+Deck-specific styling should come from data/configuration.
+
+==================================================
+15. BOARD + DECK PRESENTATION
+==================================================
+
+The overall screen should now look like a digital tabletop.
+
+Main area:
+
+3D BOARD
+
+Side area:
+
+CARD DECKS
+
+Player information should remain accessible without covering the board.
+
+The deck area should visually feel like the decks are sitting beside the physical board.
+
+Keep the existing:
+
+- Board zoom
+- Board pan
+- 3D pieces
+- Dice UI
+- Turn UI
+
+working.
+
+==================================================
+16. VISUAL PERFORMANCE
+==================================================
+
+Because this is a browser game:
+
+- Do not unnecessarily load every large image at once.
+- Use appropriate image sizing.
+- Lazy-load large assets when possible.
+- Avoid unnecessary animation loops.
+- Keep the board responsive.
+
+The board should remain smooth when the decks are visible.
+
+==================================================
+17. ASSET ORGANIZATION
+==================================================
+
+Organize assets into:
+
+assets/
+  characters/
+  cars/
+  lifestyles/
+  pets/
+  investments/
+  properties/
+  cards/
+    backs/
+    wealth/
+    ai/
+    fame/
+    lifestyle/
+    influence/
+    gamble/
+  icons/
+  ui/
+
+Use stable filenames.
+
+==================================================
+18. FALLBACKS
+==================================================
+
+Every visual asset should have a clean fallback.
+
+If an image is missing:
+
+Do not show a broken image.
+
+Show an appropriate placeholder using the correct category/icon.
+
+==================================================
+19. DO NOT BUILD
+
+Do NOT spend time on:
+
+- Multiplayer
+- Authentication
+- Final card effects
+- Advanced CPU strategy
+- Final gambling rules
+- Upgrade mechanics
+- Meme upgrade mechanics
+- End-game scoring
+- Cashout
+- Double Down
+- Redline Credits
+- Complex investment mechanics
+- Asset resale
+- Debt
+
+Those will be handled later through GitHub/Copilot.
+
+==================================================
+20. GITHUB HANDOFF
+
+Before completing this phase, make the project easy to continue from GitHub.
+
+Centralize:
+
+- Character definitions
+- Career definitions
+- Board definitions
+- Asset definitions
+- Card definitions
+- Deck definitions
+- Icon definitions
+
+Do not bury data inside React components.
+
+Make the visual components reusable.
+
+Do not create dependencies on the Redline Auction repository.
+
+Redline Upgrade remains a completely separate project/repository.
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+When complete:
+
+1. The 3D board still works.
+2. Board zoom works.
+3. Board pan works.
+4. Character pieces work.
+5. Dice system works.
+6. Player Cards are visually polished.
+7. Milestone cards are polished.
+8. Existing milestone assets are organized.
+9. Three random milestone options can be displayed from a 10-item pool.
+10. Six distinct card decks are visibly positioned beside the board.
+11. Each deck has a unique card back.
+12. Card draw/reveal UI exists.
+13. Career Change UI is polished.
+14. Salary tiers have clear visual differences.
+15. Stat/category icons are reusable.
+16. Asset manifest exists.
+17. Representative card fronts exist.
+18. Missing assets have fallbacks.
+19. The project remains independent from Redline Auction.
+20. The project is organized for GitHub/Copilot development.
+
+PRIORITY:
+
+1. Reusable UI
+2. Asset organization
+3. Deck presentation
+4. Card backs
+5. Milestone cards
+6. Player Card
+7. Career Change UI
+8. Representative card examples
+
+Do not spend remaining Replit credits generating unnecessary artwork.
+
+STOP after this phase.

@@ -1,0 +1,251 @@
+==================================================
+21. BOARD SPACE ICONS
+==================================================
+
+Improve the board spaces so every special space has a clear, highly visible icon that communicates what happens there.
+
+The icon should be visible even when the board is zoomed out.
+
+Do not rely only on text labels.
+
+Use a consistent 3D/futuristic tabletop icon style that matches the rest of Redline Upgrade.
+
+Create/reuse icons for:
+
+NORMAL
+→ subtle/default board treatment
+
+SALARY GATE
+→ paycheck / money / salary icon
+
+CAREER CHANGE
+→ briefcase / career swap / arrows icon
+
+CAR MILESTONE
+→ car icon
+
+LIFESTYLE MILESTONE
+→ lifestyle / luxury icon
+
+PET
+→ pet paw/icon
+
+INVESTMENT
+→ graph / money / investment icon
+
+PROPERTY
+→ house/building icon
+
+WEALTH CARD
+→ money/card icon
+
+AI SKILL CARD
+→ AI/circuit icon
+
+FAME CARD
+→ star/media icon
+
+LIFESTYLE CARD
+→ lifestyle icon
+
+INFLUENCE CARD
+→ network/power icon
+
+GAMBLE
+→ casino/chips/dice icon
+
+EVENT
+→ exclamation/event icon
+
+START
+→ starting flag/icon
+
+FINISH
+→ checkered flag / finish icon
+
+==================================================
+22. BOARD SPACE VISIBILITY
+==================================================
+
+Special spaces should visually stand out from normal spaces.
+
+Use:
+
+- Large centered icon
+- Strong silhouette
+- Slight 3D elevation
+- Subtle glow or border
+- Consistent icon placement
+- Short optional label
+
+The icon should remain readable when the board is zoomed out.
+
+When the player zooms in, the icon and label should become more detailed.
+
+Do not make every space overly flashy.
+
+Normal spaces should remain visually quieter so special spaces naturally stand out.
+
+==================================================
+23. SPACE COLOR/THEME SYSTEM
+==================================================
+
+Create a consistent visual theme for each special space type.
+
+Do not use excessive colors.
+
+Use subtle differences in:
+
+- Icon treatment
+- Border
+- Background
+- Glow
+- Symbol
+
+Example:
+
+SALARY GATE
+💰
+
+CAREER CHANGE
+💼
+
+CAR
+🏎️
+
+LIFESTYLE
+✨
+
+PET
+🐾
+
+INVESTMENT
+📈
+
+PROPERTY
+🏠
+
+GAMBLE
+🎲
+
+CARD SPACE
+🃏
+
+The final icons should be custom Redline Upgrade-style graphics rather than relying on emoji.
+
+==================================================
+24. BOARD LEGEND
+==================================================
+
+Add a small collapsible BOARD LEGEND near the board controls.
+
+It should show:
+
+ICON → SPACE TYPE
+
+Examples:
+
+💰 Salary
+💼 Career Change
+🏎️ Car
+✨ Lifestyle
+🐾 Pet
+📈 Investment
+🏠 Property
+🃏 Card
+🎲 Gamble
+
+Use the actual custom icons rather than emoji.
+
+The legend should not cover the board.
+
+Allow the player to collapse it.
+
+==================================================
+25. PLAYER HOVER / SPACE INFORMATION
+==================================================
+
+When hovering over or selecting a special space:
+
+Show a small tooltip:
+
+SPACE 35
+CAREER CHANGE
+
+"Land on or pass through to choose whether to keep your career or switch."
+
+For milestone spaces, show the appropriate description.
+
+Examples:
+
+SPACE 10
+CAR
+
+"Choose 1 of 3 randomly offered cars."
+
+SPACE 30
+LIFESTYLE
+
+"Choose 1 of 3 randomly offered lifestyles."
+
+SPACE 35
+CAREER CHANGE
+
+"Keep your career or choose between 2 new career opportunities."
+
+SPACE 45
+PET / INVESTMENT
+
+"Choose a Pet or Investment."
+
+SPACE 60
+PROPERTY
+
+"Choose 1 of 3 randomly offered properties."
+
+Do not require players to open a separate screen just to understand what a space does.
+
+==================================================
+26. BOARD SPACE DATA
+==================================================
+
+Make sure every board space has a clear data type.
+
+Example:
+
+{
+  id: 35,
+  type: "CAREER_CHANGE",
+  icon: "career_change",
+  label: "Career Change",
+  trigger: "LAND_OR_PASS"
+}
+
+Use the same data to determine:
+
+- Icon
+- Visual styling
+- Tooltip
+- Trigger behavior
+- Milestone behavior
+
+Do not hardcode the visual separately from the board-space data.
+
+==================================================
+27. SPECIAL SPACE TEST
+==================================================
+
+Verify that these spaces are immediately recognizable on the board:
+
+START
+SALARY GATES
+CAR
+LIFESTYLE
+CAREER CHANGE
+PET / INVESTMENT
+PROPERTY
+CARD SPACES
+GAMBLE
+FINISH
+
+A player should be able to look at the board and understand the major decision points without reading every square.

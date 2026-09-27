@@ -1,4 +1,5 @@
 import type { CareerStat } from './careers';
+import { additionalAssets } from './assets-extra';
 
 export type AssetCategory = 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
 export type AssetSlot = 'car' | 'lifestyle' | 'companion' | 'property';
@@ -38,6 +39,7 @@ export const assets: readonly AssetDefinition[] = [
   { id: 'luxury-apartment', name: 'Luxury Apartment', category: 'property', visual: '▥', cost: 250000, description: 'A view worth coming home to.', effects: { lifestyle: 10, influence: 5 }, rarity: 'RARE' },
   { id: 'beach-house', name: 'Beach House', category: 'property', visual: '◒', cost: 400000, description: 'A permanent escape route.', effects: { lifestyle: 15, fame: 10 }, rarity: 'ELITE' },
   { id: 'mansion', name: 'Mansion', category: 'property', visual: '◇', cost: 500000, description: 'An address everyone knows.', effects: { influence: 20, lifestyle: 15 }, rarity: 'ELITE' },
+  ...additionalAssets,
 ];
 
 export const getAsset = (id: string): AssetDefinition | undefined => assets.find(asset => asset.id === id);

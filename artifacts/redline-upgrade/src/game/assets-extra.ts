@@ -1,0 +1,37 @@
+import type { AssetDefinition } from './assets';
+
+// Text-first expansions of the initial pools. All artwork uses the shared category
+// fallback until commissioned assets are available; no empty image URLs are shipped.
+export const additionalAssets: readonly AssetDefinition[] = [
+  { id: 'street-tuner', name: 'Street Tuner', category: 'car', visual: '↗', cost: 65000, description: 'A scrappy ride tuned for every shortcut.', effects: { fame: 4 }, rarity: 'STANDARD' },
+  { id: 'electric-coupe', name: 'Electric Coupe', category: 'car', visual: '⌁', cost: 110000, description: 'Quiet speed and sharp technology.', effects: { aiSkill: 4, fame: 4 }, rarity: 'STANDARD' },
+  { id: 'executive-sedan', name: 'Executive Sedan', category: 'car', visual: '◇', cost: 180000, description: 'Arrive in control of the room.', effects: { influence: 8, fame: 5 }, rarity: 'RARE' },
+  { id: 'track-special', name: 'Track Special', category: 'car', visual: '◆', cost: 220000, description: 'Built for the next lap.', effects: { fame: 14 }, rarity: 'RARE' },
+  { id: 'grand-tourer', name: 'Grand Tourer', category: 'car', visual: '◈', cost: 270000, description: 'A long-distance status symbol.', effects: { fame: 13, lifestyle: 8 }, rarity: 'ELITE' },
+  { id: 'prototype-one', name: 'Prototype One', category: 'car', visual: '⌁', cost: 350000, description: 'An experimental flagship on four wheels.', effects: { fame: 18, aiSkill: 12 }, rarity: 'ELITE' },
+  { id: 'studio-life', name: 'Studio Life', category: 'lifestyle', visual: '◌', cost: 45000, description: 'More space for your ideas.', effects: { lifestyle: 8 }, rarity: 'STANDARD' },
+  { id: 'city-weekends', name: 'City Weekends', category: 'lifestyle', visual: '✧', cost: 65000, description: 'Make every weekend count.', effects: { lifestyle: 9, fame: 2 }, rarity: 'STANDARD' },
+  { id: 'wellness-club', name: 'Wellness Club', category: 'lifestyle', visual: '✦', cost: 85000, description: 'A calmer, stronger daily routine.', effects: { lifestyle: 12 }, rarity: 'RARE' },
+  { id: 'art-collector', name: 'Art Collector', category: 'lifestyle', visual: '▣', cost: 145000, description: 'Curate a life people remember.', effects: { lifestyle: 13, influence: 6 }, rarity: 'RARE' },
+  { id: 'private-retreat', name: 'Private Retreat', category: 'lifestyle', visual: '◇', cost: 240000, description: 'A destination of your own.', effects: { lifestyle: 22 }, rarity: 'ELITE' },
+  { id: 'global-elite', name: 'Global Elite', category: 'lifestyle', visual: '✦', cost: 325000, description: 'An open invitation to the world.', effects: { lifestyle: 25, influence: 13 }, rarity: 'ELITE' },
+  { id: 'rescue-pup', name: 'Rescue Pup', category: 'pet', visual: '✳', cost: 25000, description: 'A loyal friend with a new start.', effects: { lifestyle: 7 }, rarity: 'STANDARD' },
+  { id: 'street-cat', name: 'Street Cat', category: 'pet', visual: '⬡', cost: 30000, description: 'Independent company for any journey.', effects: { lifestyle: 6 }, rarity: 'STANDARD' },
+  { id: 'drone-bird', name: 'Drone Bird', category: 'pet', visual: '⌘', cost: 60000, description: 'A little intelligence in the sky.', effects: { aiSkill: 7, lifestyle: 3 }, rarity: 'RARE' },
+  { id: 'fox-companion', name: 'Fox Companion', category: 'pet', visual: '✳', cost: 85000, description: 'Clever company with a curious streak.', effects: { lifestyle: 8, influence: 3 }, rarity: 'RARE' },
+  { id: 'holo-hound', name: 'Holo Hound', category: 'pet', visual: '⬡', cost: 115000, description: 'Part companion, part next-generation tech.', effects: { aiSkill: 10, fame: 5 }, rarity: 'ELITE' },
+  { id: 'legendary-companion', name: 'Legendary Companion', category: 'pet', visual: '✦', cost: 150000, description: 'A companion everybody notices.', effects: { lifestyle: 12, fame: 12 }, rarity: 'ELITE' },
+  { id: 'savings-bond', name: 'Savings Bond', category: 'investment', visual: '▥', cost: 45000, description: 'A measured commitment to tomorrow.', effects: {}, passiveEffect: 'Future yield concept; not active yet.', rarity: 'STANDARD' },
+  { id: 'community-fund', name: 'Community Fund', category: 'investment', visual: '▥', cost: 65000, description: 'Support ideas with local momentum.', effects: {}, passiveEffect: 'Future dividend concept; not active yet.', rarity: 'STANDARD' },
+  { id: 'green-energy', name: 'Green Energy', category: 'investment', visual: '⌁', cost: 85000, description: 'Capital behind cleaner power.', effects: {}, passiveEffect: 'Future growth concept; not active yet.', rarity: 'RARE' },
+  { id: 'venture-seed', name: 'Venture Seed', category: 'investment', visual: '⇋', cost: 120000, description: 'Get in early on a new venture.', effects: {}, passiveEffect: 'Future risk/reward concept; not active yet.', rarity: 'RARE' },
+  { id: 'creator-fund', name: 'Creator Fund', category: 'investment', visual: '▥', cost: 135000, description: 'Back the next wave of talent.', effects: {}, passiveEffect: 'Future royalty concept; not active yet.', rarity: 'RARE' },
+  { id: 'deep-tech-fund', name: 'Deep Tech Fund', category: 'investment', visual: '⌁', cost: 180000, description: 'Long-term bets on difficult ideas.', effects: {}, passiveEffect: 'Future growth concept; not active yet.', rarity: 'ELITE' },
+  { id: 'moonshot-portfolio', name: 'Moonshot Portfolio', category: 'investment', visual: '⇋', cost: 250000, description: 'A basket of ambitious wagers.', effects: {}, passiveEffect: 'Future high-risk concept; not active yet.', rarity: 'ELITE' },
+  { id: 'shared-loft', name: 'Shared Loft', category: 'property', visual: '▤', cost: 80000, description: 'A first foothold in the city.', effects: { lifestyle: 4 }, rarity: 'STANDARD' },
+  { id: 'townhouse', name: 'Townhouse', category: 'property', visual: '▤', cost: 150000, description: 'A place with room to grow.', effects: { lifestyle: 8 }, rarity: 'STANDARD' },
+  { id: 'smart-home', name: 'Smart Home', category: 'property', visual: '▥', cost: 230000, description: 'Living space with an intelligent edge.', effects: { lifestyle: 8, aiSkill: 7 }, rarity: 'RARE' },
+  { id: 'skyline-penthouse', name: 'Skyline Penthouse', category: 'property', visual: '◇', cost: 350000, description: 'The whole city in view.', effects: { lifestyle: 12, fame: 8 }, rarity: 'RARE' },
+  { id: 'country-estate', name: 'Country Estate', category: 'property', visual: '◒', cost: 450000, description: 'A private escape with lasting presence.', effects: { lifestyle: 17, influence: 10 }, rarity: 'ELITE' },
+  { id: 'landmark-residence', name: 'Landmark Residence', category: 'property', visual: '◇', cost: 600000, description: 'An unmistakable address.', effects: { lifestyle: 20, influence: 20 }, rarity: 'ELITE' },
+];

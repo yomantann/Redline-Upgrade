@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { BOARD_SPACES } from '../game/board-data';
+import { SpaceIcon } from './space-icon';
 import type { MatchPlayer } from '../game/match';
 import { ErrorBoundary } from './error-boundary';
 import { BoardScene, ROUTE } from './board-scene';
@@ -23,11 +24,14 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const [zoom, setZoom] = useState(1);
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
+  const [selectedSpace, setSelectedSpace] = useState<number | null>(null);
+  const [hoveredSpace, setHoveredSpace] = useState<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
   const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const active = players.find(p => p.playerId === activePlayerId);
   const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
+  const info = BOARD_SPACES[(hoveredSpace ?? selectedSpace ?? 0) - 1];
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -96,8 +100,8 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
-      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} />}
-      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} />}>
+      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
+      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
         <Canvas
           aria-hidden="true"
           data-testid="board-canvas"
@@ -108,7 +112,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           dpr={[1, 1.6]}
           onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
         >
-          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
+          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />
         </Canvas>
       </ErrorBoundary>}
       <div className="ru-board__telemetry" aria-live="polite">
@@ -127,10 +131,19 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
         <span className="ru-board__minimap-endpoints"><span>START</span><span>FINISH</span></span>
       </div>
     </div>
+    <div className="ru-board__information" role="status" aria-live="polite">
+      {info ? <><SpaceIcon name={info.icon} size={29} />{info.secondaryIcon && <SpaceIcon name={info.secondaryIcon} size={29} />}<div><span>SPACE {String(info.number).padStart(2, '0')} / {info.trigger === 'LAND_OR_PASS' ? 'PASS OR LAND' : info.trigger === 'LAND' ? 'LAND ONLY' : 'NO ACTIVE EFFECT'}</span><strong>{info.label}</strong><p>{info.description}</p></div><button type="button" onClick={() => { setSelectedSpace(null); setHoveredSpace(null); }} aria-label="Close space information">×</button></>
+        : <p>Select or hover over a board space to learn what happens there.</p>}
+    </div>
     <footer className="ru-board__foot">
-      <div className="ru-board__legend" aria-label="Space type legend">
-        <span><i />NORMAL</span><span className="event"><i />EVENT</span><span className="gamble"><i />GAMBLE</span><span className="milestone"><i />MILESTONE</span><span className="milestone"><i />CAREER CHANGE</span><span className="payday"><i />SALARY GATE $</span>
-      </div>
+      <details className="ru-board__space-legend">
+        <summary>BOARD LEGEND</summary>
+        <div>{[
+          ['salary', 'Salary Gate'], ['career', 'Career Change'], ['car', 'Car'], ['lifestyle', 'Lifestyle'],
+          ['pet', 'Pet'], ['investment', 'Investment'], ['property', 'Property'], ['wealth', 'Card Space'],
+          ['gamble', 'Gamble'], ['event', 'Event'], ['start', 'Start'], ['finish', 'Finish'],
+        ].map(([icon, label]) => <span key={label}><SpaceIcon name={icon} size={20} />{label}</span>)}</div>
+      </details>
       <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>
     </footer>
     {/* Persistent DOM semantics: canvas is a drawing surface, not the source of game state. */}
@@ -138,9 +151,9 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       <div data-testid="board-start-pad" aria-label={`Start pad, ${players.filter(p => p.position === 0).length} players`}>Start pad, position zero</div>
       {BOARD_SPACES.map(space => {
         const occupants = players.filter(p => p.position === space.number);
-        return <div key={space.number} data-testid={`board-space-${space.number}`} aria-label={`Space ${space.number}, ${space.payday ? 'Payday, ' : ''}${space.type.toLowerCase()}, ${zones[Math.floor((space.number - 1) / 15)]}${occupants.length ? `, occupied by ${occupants.map(p => p.displayName).join(' and ')}` : ''}${landingPosition === space.number ? ', landing space' : ''}`}>
+        return <button type="button" key={space.number} data-testid={`board-space-${space.number}`} onClick={() => setSelectedSpace(space.number)} aria-label={`Space ${space.number}, ${space.label}. ${space.description}${occupants.length ? ` Occupied by ${occupants.map(p => p.displayName).join(' and ')}.` : ''}${landingPosition === space.number ? ' Landing space.' : ''}`}>
           Space {space.number}: {space.payday ? 'PAYDAY + ' : ''}{space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
-        </div>;
+        </button>;
       })}
       {players.map(p => <div key={p.playerId} data-testid={`board-pawn-${p.playerId}`} aria-label={`${p.displayName}, ${p.position === 0 ? 'start pad' : `space ${p.position}`}`}>
         {p.displayName} at {p.position === 0 ? 'start' : `space ${p.position}`}

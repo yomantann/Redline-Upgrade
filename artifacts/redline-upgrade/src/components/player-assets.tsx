@@ -1,4 +1,5 @@
 import { getAsset, type AssetSlot } from '@/game/assets';
+import { SpaceIcon } from './space-icon';
 import './player-assets.css';
 
 const slots: { slot: AssetSlot; label: string; empty: string }[] = [
@@ -19,7 +20,7 @@ export function PlayerAssets({ equipment, playerIndex }: { equipment: Record<Ass
           return (
             <div className={`player-asset ${asset ? 'owned' : 'empty'}`} key={slot} title={asset ? `${asset.name} — ${asset.description}` : `${label}: ${empty}`} data-testid={`asset-player-${playerIndex}-${slot}`}>
               <div className="player-asset-art" data-category={asset?.category ?? slot} aria-hidden="true">
-                <b>{asset?.visual ?? '+'}</b>
+                 <b><SpaceIcon name={asset?.category ?? (slot === 'companion' ? 'pet' : slot)} size={24} /></b>
               </div>
               <div className="player-asset-label">{label}</div>
               <strong className="player-asset-name">{asset?.name ?? empty}</strong>

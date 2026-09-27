@@ -40,7 +40,7 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">PHASE 05 // TABLETOP</span>
+        <span className="header-phase">PHASE 07A // TABLETOP</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>

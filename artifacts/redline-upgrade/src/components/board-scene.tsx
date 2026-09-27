@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { BOARD_SPACES } from '../game/board-data';
 import type { BoardSpace } from '../game/board-data';
 import type { MatchPlayer } from '../game/match';
+import { ICON_PATHS } from '../game/icon-paths';
 import { PawnModel } from './pawns/PawnModel';
 
 type Point = { x: number; z: number };
@@ -76,6 +77,29 @@ function PrintedLabel({ lines, x, y, z, w, h, color }: {
   </mesh>;
 }
 
+function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { icon: string; y: number; color: string; x?: number; z?: number; size?: number }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    ctx.translate(64, 64);
+    ctx.scale(4.4, 4.4);
+    ctx.translate(-12, -12);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.stroke(new Path2D(ICON_PATHS[icon] ?? ICON_PATHS.milestone));
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    return map;
+  }, [icon, color]);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, y + 0.05, z]}>
+    <planeGeometry args={[size, size]} />
+    <meshBasicMaterial map={texture} transparent depthWrite={false} />
+  </mesh>;
+}
+
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
   const lines = useMemo(() => [`0${index + 1} / ${name}`], [index, name]);
   const texture = useMemo(() => graphic(lines, color), [lines, color]);
@@ -115,18 +139,17 @@ const mats = {
   dark: new THREE.MeshStandardMaterial({ color: '#17231e', metalness: 0.6, roughness: 0.38 }),
 };
 
-function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; landing: boolean }) {
+function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace; active: boolean; landing: boolean; onSelect: (n: number) => void; onHover: (n: number | null) => void }) {
   const { x, z } = ROUTE[space.number];
   const landmark = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
-  const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.payday ? mats.lime : space.type === 'EVENT' ? mats.lime : mats.normal;
-  const marker = space.payday ? '$' : space.type === 'EVENT' ? '◆' : space.type === 'GAMBLE' ? '!' : space.type === 'CAREER_CHANGE' ? '↗' : landmark ? '◇' : '—';
-  return <group position={[x, 0, z]}>
+  const sideMaterial = space.type === 'GAMBLE' || landmark ? mats.accent : space.payday ? mats.lime : space.type === 'EVENT' || space.type === 'CARD' ? mats.lime : mats.normal;
+  return <group position={[x, 0, z]} onPointerDown={(event) => { event.stopPropagation(); onSelect(space.number); }} onPointerOver={(event) => { event.stopPropagation(); onHover(space.number); }} onPointerOut={() => onHover(null)}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
     <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
     <mesh position={[0, landmark ? 0.79 : 0.63, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={tileTop}
-      material={finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : space.type === 'GAMBLE' ? mats.gamble : space.type === 'EVENT' ? mats.event : mats.normal} castShadow receiveShadow />
+      material={finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : space.type === 'GAMBLE' ? mats.gamble : space.type === 'EVENT' || space.type === 'CARD' ? mats.event : mats.normal} castShadow receiveShadow />
     <mesh position={[0, topY + 0.015, 0.82]} geometry={stripShape} material={landing || active ? mats.lime : sideMaterial} />
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.63, 0.71, 8]} /><primitive object={mats.accent} attach="material" />
@@ -146,8 +169,9 @@ function Tile({ space, active, landing }: { space: BoardSpace; active: boolean; 
         <ringGeometry args={[0.72, 0.79, 32]} /><primitive object={mats.accent} attach="material" />
       </mesh>
     </group>}
-    <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={-0.55} y={topY + 0.045} z={-0.37} w={0.95} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    <PrintedLabel lines={[marker]} x={0.65} y={topY + 0.047} z={-0.45} w={0.37} h={0.36} color={space.payday || space.type === 'EVENT' ? COLORS.lime : space.type === 'NORMAL' ? '#88a093' : COLORS.orange} />
+    <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={space.type === 'NORMAL' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
+    {space.type !== 'NORMAL' && <PrintedIcon icon={space.icon} y={topY} color={space.payday || space.type === 'CARD' ? COLORS.lime : COLORS.orange} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.74} />}
+    {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
     {finish && <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
   </group>;
 }
@@ -226,6 +250,7 @@ function StartGate() {
       <boxGeometry args={[2.94, 0.06, 3.28]} /><primitive object={mats.normal} attach="material" />
     </mesh>
     <PrintedLabel lines={['START', '00 / LAUNCH PAD']} x={0} y={0.801} z={0.15} w={2.25} h={0.78} color={COLORS.lime} />
+    <PrintedIcon icon="start" y={0.76} color={COLORS.lime} x={0} z={-0.83} size={0.7} />
     {[-1, 1].map(s => <group key={s}>
       <mesh position={[s * 1.34, 1.05, -1.2]} castShadow><boxGeometry args={[0.14, 0.55, 0.18]} /><primitive object={mats.lime} attach="material" /></mesh>
       <mesh position={[s * 1.34, 1.63, -1.2]} castShadow><boxGeometry args={[0.14, 0.55, 0.18]} /><primitive object={mats.lime} attach="material" /></mesh>
@@ -247,7 +272,7 @@ function FinishGate() {
       <boxGeometry args={[0.18, 1.85, 0.22]} /><primitive object={mats.accent} attach="material" />
     </mesh>)}
     <mesh position={[0, 2.7, -0.25]} castShadow><boxGeometry args={[2.9, 0.23, 0.25]} /><primitive object={mats.accent} attach="material" /></mesh>
-    <PrintedLabel lines={['FINISH', 'CASHOUT']} x={0} y={0.84} z={0.98} w={2.25} h={0.66} color={COLORS.orange} />
+    <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={0.84} z={0.98} w={2.25} h={0.66} color={COLORS.orange} />
   </group>;
 }
 
@@ -311,8 +336,8 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
   return null;
 }
 
-export function BoardScene({ players, activePlayerId, landingPosition, overview, reduceMotion, zoom, pan }: {
-  players: MatchPlayer[]; activePlayerId: string; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point;
+export function BoardScene({ players, activePlayerId, landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover }: {
+  players: MatchPlayer[]; activePlayerId: string; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point; onSpaceSelect: (n: number) => void; onSpaceHover: (n: number | null) => void;
 }) {
   const activePosition = players.find(p => p.playerId === activePlayerId)?.position ?? 0;
   return <>
@@ -324,7 +349,7 @@ export function BoardScene({ players, activePlayerId, landingPosition, overview,
     <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i > 0 && i % 15 === 0} />)}
-    {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} />)}
+    {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     <StartGate />
     <FinishGate />
     {ZONES.map((name, i) => <StandingLabel key={name} name={name} index={i} x={ZONE_ANCHORS[i].x} z={ZONE_ANCHORS[i].z} color={ZONE_COLORS[i]} />)}

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { createServer } from 'vite';
 
 // Vite loads the same TypeScript game modules as the app, without a browser.
@@ -8,6 +9,9 @@ try {
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
   const { getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
+  const { getAsset, assets } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
+  const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
 
   for (let i = 0; i < 50; i++) {
@@ -46,13 +50,25 @@ try {
   match = move(start(8), 2);
   assert.equal(match.phase, 'decision');
   assert.equal(match.pending.slot, 'car');
-  const poor = { ...match, players: match.players.map((player, index) => index ? player : { ...player, wealth: 40000 }) };
-  assert.equal(advanceMatch(poor, { type: 'BUY_ASSET', assetId: 'budget-racer' }), poor);
-  const purchased = advanceMatch(match, { type: 'BUY_ASSET', assetId: 'budget-racer' });
-  assert.equal(purchased.players[0].wealth, 850000);
-  assert.equal(purchased.players[0].fame, match.players[0].fame + 3);
-  assert.equal(purchased.players[0].equipment.car, 'budget-racer');
-  assert.equal(advanceMatch(purchased, { type: 'BUY_ASSET', assetId: 'budget-racer' }), purchased);
+  assert.equal(match.pending.offeredAssetIds.length, 3);
+  assert.equal(new Set(match.pending.offeredAssetIds).size, 3);
+  for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
+    assert.equal(assets.filter(asset => asset.category === category).length, 10);
+  }
+  assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);
+  assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
+  assert(visualAssets.every(asset => existsSync(asset.filePath)));
+  assert(Array.from({ length: 75 }, (_, index) => getSpace(index + 1)).every(space => ICON_PATHS[space.icon] && (!space.secondaryIcon || ICON_PATHS[space.secondaryIcon])));
+  const offeredCar = getAsset(match.pending.offeredAssetIds[0]);
+  const hiddenCar = assets.find(asset => asset.category === 'car' && !match.pending.offeredAssetIds.includes(asset.id));
+  assert.equal(advanceMatch(match, { type: 'BUY_ASSET', assetId: hiddenCar.id }), match);
+  const poor = { ...match, players: match.players.map((player, index) => index ? player : { ...player, wealth: 0 }) };
+  assert.equal(advanceMatch(poor, { type: 'BUY_ASSET', assetId: offeredCar.id }), poor);
+  const purchased = advanceMatch(match, { type: 'BUY_ASSET', assetId: offeredCar.id });
+  assert.equal(purchased.players[0].wealth, 900000 - offeredCar.cost + (offeredCar.effects.wealth ?? 0));
+  assert.equal(purchased.players[0].fame, match.players[0].fame + (offeredCar.effects.fame ?? 0));
+  assert.equal(purchased.players[0].equipment.car, offeredCar.id);
+  assert.equal(advanceMatch(purchased, { type: 'BUY_ASSET', assetId: offeredCar.id }), purchased);
   match = move(start(28), 2);
   assert.equal(match.pending.slot, 'lifestyle');
   assert.equal(advanceMatch(match, { type: 'SKIP_ASSET' }).phase, 'landed');
@@ -91,8 +107,17 @@ try {
   assert.equal(match.pending.slot, 'companion');
   assert.equal(advanceMatch(match, { type: 'BUY_ASSET', assetId: 'cyber-dog' }), match);
   match = advanceMatch(match, { type: 'CHOOSE_ASSET_CATEGORY', category: 'pet' });
-  match = advanceMatch(match, { type: 'BUY_ASSET', assetId: 'cyber-dog' });
-  assert.equal(match.players[0].equipment.companion, 'cyber-dog');
+  assert.equal(match.pending.offeredAssetIds.length, 3);
+  const petId = match.pending.offeredAssetIds[0];
+  match = advanceMatch(match, { type: 'BUY_ASSET', assetId: petId });
+  assert.equal(match.players[0].equipment.companion, petId);
+  match = move(start(1), 2);
+  assert.equal(match.pending.kind, 'CARD');
+  assert.equal(match.pending.deck, 'wealth');
+  assert.equal(advanceMatch(match, { type: 'ACKNOWLEDGE_CARD' }).phase, 'landed');
+  match = move(start(13, 1), 2);
+  assert.equal(match.pending.deck, 'gamble');
+  assert.equal(advanceMatch(match, { type: 'AUTO_DECIDE' }).phase, 'landed');
   match = move(start(58, 1), 2);
   assert.equal(match.pending.slot, 'property');
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });

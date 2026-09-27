@@ -1,4 +1,5 @@
 import { BOARD_SPACES } from '../game/board-data';
+import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
 import { ROUTE, ZONE_ANCHORS } from './board-scene';
 
@@ -22,7 +23,7 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0, z: 0 } }: { players: MatchPlayer[]; activePlayerId: string; zoom?: number; pan?: { x: number; z: number } }) {
+export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
@@ -56,22 +57,23 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
         <text x={p.x} y={p.y+11} textAnchor="middle" fill="#e9e7dc" fontFamily="Space Mono, monospace" fontSize="6">UPGRADE / 01</text>
       </g>; })()}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
-      {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
+      {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><path d={ICON_PATHS.start} transform={`translate(${p.x-7} ${p.y-32}) scale(.6)`} fill="none" stroke="#d4e981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
       {BOARD_SPACES.map(space => {
         const { x, z } = ROUTE[space.number];
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
         const y = milestone ? .86 : .7;
         const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
-        const color = milestone ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' ? '#566b48' : '#345147';
-        const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' ? '#d4e981' : '#90aea0';
+        const color = milestone ? '#794337' : space.payday ? '#577455' : space.type === 'GAMBLE' ? '#67503b' : space.type === 'EVENT' || space.type === 'CARD' ? '#566b48' : '#345147';
+        const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : space.type === 'GAMBLE' ? '#e8a367' : space.type === 'EVENT' || space.type === 'CARD' ? '#d4e981' : '#90aea0';
         const center = project(x,z,y+.02);
-        return <g key={space.number}>
-          <title>{`Space ${space.number}, ${space.payday ? 'Payday, ' : ''}${space.type.toLowerCase()}`}</title>
+        return <g key={space.number} data-board-space={space.number} style={{ cursor: 'pointer' }} onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)}>
+          <title>{`Space ${space.number}, ${space.label}. ${space.description}`}</title>
           <polygon points={block.right} fill="#101e19" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.front} fill="#13241e" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.top} fill={color} stroke={accent} strokeWidth={milestone ? 2.5 : 1.2} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
-          {space.payday ? <text x={center.x+14} y={center.y-6} textAnchor="middle" fill="#d4e981" fontSize="15" fontWeight="900">$</text> : space.type !== 'NORMAL' && <circle cx={center.x+14} cy={center.y-8} r="2.8" fill={accent} />}
+          {space.type !== 'NORMAL' && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+7} ${center.y-19}) scale(.55)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+          {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </g>;
       })}
       {(() => { const p = project(finish.x,finish.z,1.6); return <g><path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" /><rect x={p.x-19} y={p.y-42} width="116" height="24" fill="#f96346" /><text x={p.x+39} y={p.y-25} textAnchor="middle" fill="#18241d" fontFamily="Barlow Condensed, sans-serif" fontSize="18" fontWeight="900">FINISH / ENDGAME SOON</text></g>; })()}

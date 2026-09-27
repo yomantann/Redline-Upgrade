@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { assetOptions, type AssetCategory, type AssetDefinition } from '@/game/assets';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
 import { CareerGlyph } from './career-reveal';
+import { SpaceIcon } from './space-icon';
 import './milestone-choice.css';
 
 type Props = { pending: PendingDecision; player: MatchPlayer; onAction: (action: MatchAction) => void };
@@ -23,20 +25,21 @@ function AssetArtwork({ asset, index }: { asset: AssetDefinition; index: number 
   return (
     <div className="milestone-art" data-category={asset.category} aria-label={`${asset.name} visual`}>
       <span className="milestone-art-index">{String(index + 1).padStart(2, '0')} / {asset.rarity.toUpperCase()}</span>
-      {image ? <img src={visual} alt="" style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }} /> : <span className="milestone-art-symbol" aria-hidden="true">{visual || asset.name.slice(0, 1)}</span>}
+      <span className="milestone-art-symbol" aria-hidden="true"><SpaceIcon name={asset.category} size={58} /></span>
+      {image && <img src={visual} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }} />}
       <span className="milestone-art-caption">{asset.category.toUpperCase()} / REDLINE</span>
     </div>
   );
 }
 
-function AssetCard({ asset, index, wealth, onBuy }: { asset: AssetDefinition; index: number; wealth: number; onBuy: () => void }) {
+function AssetCard({ asset, index, wealth, selected, onSelect, onBuy }: { asset: AssetDefinition; index: number; wealth: number; selected: boolean; onSelect: () => void; onBuy: () => void }) {
   const affordable = wealth >= asset.cost;
   const effects = Object.entries(asset.effects).filter(([, value]) => value != null && value !== 0);
   return (
-    <article className="milestone-card" data-testid={`card-asset-${asset.id}`}>
+    <article className={`milestone-card asset-offer-card ${selected ? 'selected' : ''}`} data-testid={`card-asset-${asset.id}`} tabIndex={0} aria-label={`Select ${asset.name} offer`} onClick={onSelect} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(); } }}>
       <AssetArtwork asset={asset} index={index} />
       <div className="milestone-card-body">
-        <span className="milestone-card-kicker mono">{asset.category} / {asset.rarity}</span>
+        <span className="milestone-card-kicker mono"><SpaceIcon name={asset.category} size={13} /> {asset.category} / {asset.rarity}</span>
         <h3>{asset.name}</h3>
         <p className="milestone-card-desc">{asset.description}</p>
         <div className="milestone-card-price"><span className="mono">COST / WEALTH</span><strong>{formatMoney(asset.cost)}</strong></div>
@@ -44,7 +47,7 @@ function AssetCard({ asset, index, wealth, onBuy }: { asset: AssetDefinition; in
           {effects.length ? effects.map(([key, value]) => <span key={key}>{value! > 0 ? '+' : ''}{key === 'wealth' ? formatMoney(value!) : value} {statLabels[key] ?? key}</span>) : <span>NO IMMEDIATE STAT CHANGE</span>}
         </div>
         {asset.passiveEffect && <p className="milestone-passive"><b>SPECIAL / ON FILE</b>{asset.passiveEffect}</p>}
-        <button className="milestone-buy" type="button" disabled={!affordable} onClick={onBuy} data-testid={`button-buy-asset-${asset.id}`}>
+        <button className="milestone-buy" type="button" disabled={!affordable} onClick={(event) => { event.stopPropagation(); onBuy(); }} data-testid={`button-buy-asset-${asset.id}`}>
           <span>{affordable ? `BUY ${asset.name}` : 'NOT ENOUGH WEALTH'}</span><span aria-hidden="true">{affordable ? '↗' : '—'}</span>
         </button>
       </div>
@@ -66,6 +69,7 @@ function CareerCard({ career, index, onSelect }: { career: Career; index: number
         <h3>{career.name}</h3>
         <p className="milestone-card-desc">{career.description}</p>
         <div className="milestone-card-price"><span className="mono">SALARY RANGE</span><strong>{formatMoney(career.salaryTiers[0])}–{formatMoney(career.salaryTiers[3])}</strong></div>
+        <div className="career-tier-strip" aria-label="Four salary tiers">{career.salaryTiers.map((salary, tier) => <span className={`salary-tier-${tier + 1}`} key={tier}><small>{SALARY_TIERS[tier]}</small><b>{formatMoney(salary)}</b></span>)}</div>
         <div className="milestone-effects"><span>ABILITY / {career.abilityName}</span></div>
         <p className="milestone-passive">{career.abilityDescription}</p>
         <button className="milestone-buy" type="button" onClick={onSelect} data-testid={`button-select-career-${career.id}`}><span>SELECT CAREER</span><span aria-hidden="true">↗</span></button>
@@ -75,9 +79,13 @@ function CareerCard({ career, index, onSelect }: { career: Career; index: number
 }
 
 export function MilestoneChoice({ pending, player, onAction }: Props) {
+  const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const currentCareer = player.careerId ? getCareer(player.careerId) : undefined;
   const category = pending.kind === 'ASSET' ? pending.category ?? (pending.slot === 'companion' ? null : pending.slot) : null;
-  const options = category ? assetOptions(category as AssetCategory) : [];
+  const offers = pending.kind === 'ASSET' ? pending.offeredAssetIds : undefined;
+  const options = category ? assetOptions(category as AssetCategory).filter(asset => !offers || offers.includes(asset.id)).slice(0, 3) : [];
+
+  if (pending.kind === 'CARD') return null;
 
   if (player.isCPU) {
     return (
@@ -109,7 +117,7 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
         <Header space={pending.space} eyebrow={`${category.toUpperCase()} MILESTONE`} title={titles[category] ?? 'Choose your'} description="Every purchase changes the run. Compare the cost, the immediate effects and the long game before you commit." />
         <div className="milestone-meta mono"><span>AVAILABLE WEALTH / <b>{formatMoney(player.wealth)}</b></span><span>{options.length} OPTIONS // ONE SLOT</span></div>
         <div className={`milestone-grid ${options.length === 2 ? 'two' : ''}`}>
-          {options.map((asset, index) => <AssetCard key={asset.id} asset={asset} index={index} wealth={player.wealth} onBuy={() => onAction({ type: 'BUY_ASSET', assetId: asset.id })} />)}
+          {options.map((asset, index) => <AssetCard key={asset.id} asset={asset} index={index} wealth={player.wealth} selected={selectedAsset === asset.id} onSelect={() => setSelectedAsset(asset.id)} onBuy={() => onAction({ type: 'BUY_ASSET', assetId: asset.id })} />)}
         </div>
         <div className="milestone-footer"><span className="mono">CAN'T AFFORD IT OR NOT THE RIGHT FIT? KEEP MOVING.</span><button type="button" className="milestone-skip" onClick={() => onAction({ type: 'SKIP_ASSET' })} data-testid="button-skip-asset">SKIP PURCHASE ↗</button></div>
       </section>
