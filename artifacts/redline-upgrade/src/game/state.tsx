@@ -45,7 +45,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const rollDice = useCallback(() => {
     const die1 = rollD4();
     const die2 = rollD4();
-    dispatchMatch({ type: 'ROLL', result: { die1, die2, total: die1 + die2 } });
+    dispatchMatch({ type: 'ROLL', result: { die1, die2, total: die1 + die2, doubles: die1 === die2 } });
   }, [dispatchMatch]);
   const value = useMemo(
     () => ({ player, match, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice }),

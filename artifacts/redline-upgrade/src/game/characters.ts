@@ -1,8 +1,11 @@
+import { characterAbilityId, getAbility } from './abilities';
+
 export interface CharacterDefinition {
   id: string;
   name: string;
   imagePath: string;
   description: string;
+  abilityIds: readonly string[];
   abilityName: string;
   abilityDescription: string;
 }
@@ -58,14 +61,19 @@ const imageFileById: Record<string, string> = {
 };
 
 export const characters: CharacterDefinition[] = roster.map(
-  ([id, name, description, abilityName, abilityDescription]) => ({
+  ([id, name, description]) => {
+   const abilityId = characterAbilityId(id);
+   const ability = getAbility(abilityId);
+   return {
     id,
     name,
     imagePath: `characters/${imageFileById[id]}`,
     description,
-    abilityName,
-    abilityDescription,
-  }),
+    abilityIds: [abilityId],
+    abilityName: ability?.name ?? 'Passive Ability',
+    abilityDescription: ability?.description ?? 'No ability description available.',
+   };
+  },
 );
 
 export function getCharacter(id: string): CharacterDefinition | undefined {

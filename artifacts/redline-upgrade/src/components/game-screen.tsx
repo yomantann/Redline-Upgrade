@@ -136,6 +136,7 @@ export function GameScreen() {
   const landing = match.lastLanding;
   const roll = match.roll;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
+  const recentLog = match.eventLog.slice(-4).reverse();
 
   return (
     <main className="game-screen">
@@ -252,6 +253,10 @@ export function GameScreen() {
             ) : (
               <><span className="mono">LANDING REPORT</span><p>Roll the dice to reveal your first destination.</p></>
             )}
+          </div>
+          <div className="readout-landing" aria-live="polite">
+            <span className="mono">EVENT LOG</span>
+            {recentLog.length ? recentLog.map((entry) => <p key={entry.id}><strong>{entry.label}</strong><br />{entry.detail}</p>) : <p>No event activity yet.</p>}
           </div>
         </div>
       </section>}
