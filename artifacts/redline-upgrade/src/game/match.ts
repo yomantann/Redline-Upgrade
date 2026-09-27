@@ -376,11 +376,15 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
       addNativeStatChange(match, drafts, match.turnIndex, 'wealth', previousWealth, nextWealth, payday ? 'Salary Gate' : 'Movement');
       moved = emit(moved, drafts.filter((draft) => !(draft.type === 'WEALTH_CHANGED' && previousWealth === nextWealth)));
-      if (space.type === 'CAREER_CHANGE') {
-        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space } : match.lastLanding };
+      if (moved.phase !== 'moving') return moved;
+      const currentAfterMove = moved.players[moved.turnIndex];
+      const resolvedSpace = getSpace(currentAfterMove.position);
+      if (!resolvedSpace) throw new Error(`Invalid movement position: ${currentAfterMove.position}`);
+      if (resolvedSpace.type === 'CAREER_CHANGE') {
+        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space: resolvedSpace } : moved.lastLanding };
       }
-      if (moved.stepsRemaining > 0 && position < 75) return moved;
-      return land(moved, space, previousPosition);
+      if (moved.stepsRemaining > 0 && currentAfterMove.position < 75) return moved;
+      return land(moved, resolvedSpace, previousPosition);
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
@@ -424,17 +428,14 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return autoDecide(match);
     case 'NEXT_TURN':
       if (match.phase !== 'landed') return match;
-      return emit(
-        resetTurnScopedState({
-          ...emit(match, [{ type: 'TURN_END', playerIndex: match.turnIndex }]),
-          turnIndex: (match.turnIndex + 1) % 4,
-          round: match.turnIndex === 3 ? match.round + 1 : match.round,
-          phase: 'ready',
-          roll: null,
-          stepsRemaining: 0,
-          turnCounter: match.turnCounter + 1,
-        }),
-        [{ type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 }],
-      );
+      return emit({
+        ...emit(resetTurnScopedState(match), [{ type: 'TURN_END', playerIndex: match.turnIndex }]),
+        turnIndex: (match.turnIndex + 1) % 4,
+        round: match.turnIndex === 3 ? match.round + 1 : match.round,
+        phase: 'ready',
+        roll: null,
+        stepsRemaining: 0,
+        turnCounter: match.turnCounter + 1,
+      }, [{ type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 }]);
   }
 }

@@ -1,4 +1,4 @@
-import { getAsset } from './assets';
+import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
 import { getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
 import { getCareer } from './careers';
@@ -272,6 +272,29 @@ function milestoneType(spaceNumber: number): 'car' | 'lifestyle' | 'companion' |
   }
 }
 
+function milestoneSlot(spaceNumber: number): AssetSlot | null {
+  switch (spaceNumber) {
+    case 10: return 'car';
+    case 30: return 'lifestyle';
+    case 45: return 'companion';
+    case 60: return 'property';
+    default: return null;
+  }
+}
+
+function pickUnique<T>(items: readonly T[], count: number): T[] {
+  const remaining = [...items];
+  for (let i = remaining.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+  }
+  return remaining.slice(0, count);
+}
+
+function drawAssets(category: AssetCategory): string[] {
+  return pickUnique(assetOptions(category), 3).map((asset) => asset.id);
+}
+
 function getRewardBonus(match: Match, playerId: string, stat: PlayerStat): number {
   const key = `${playerId}:${stat}`;
   return match.rewardModifiers[key]?.amount ?? 0;
@@ -476,6 +499,26 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
           deck: space.deck,
         });
       }
+    }
+  }
+  const finalPosition = state.players[actor.slot].position;
+  const finalSpace = getSpace(finalPosition);
+  if (actor.slot === state.turnIndex && finalSpace) {
+    const landing = { playerIndex: actor.slot, space: finalSpace };
+    const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
+    if (finalSpace.type === 'CAREER_CHANGE') {
+      state = { ...state, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: landing };
+    } else if (slot && !state.players[actor.slot].equipment[slot]) {
+      state = {
+        ...state,
+        phase: 'decision',
+        pending: { kind: 'ASSET', slot, space: finalSpace.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) },
+        lastLanding: landing,
+      };
+    } else if (finalSpace.deck) {
+      state = { ...state, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number }, lastLanding: landing };
+    } else {
+      state = { ...state, phase: 'landed', pending: null, lastLanding: landing };
     }
   }
   return state;
