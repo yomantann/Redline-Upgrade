@@ -1,7 +1,7 @@
 import './_group.css';
 import './sculpted.css';
 import type { CSSProperties } from 'react';
-import { PawnFallback } from './_shared/pawn-fallback';
+import { SculptedPawn } from './SculptedPawn';
 import { pawnCatalog } from './Gallery';
 
 const rimLights: Record<string, string> = {
@@ -31,29 +31,6 @@ const rimLights: Record<string, string> = {
 export function Sculpted() {
   return (
     <main className="sculpted-gallery">
-      <svg className="sculpted-gallery__filter-defs" aria-hidden="true">
-        <defs>
-          <filter id="sculpted-resin-finish" x="-24%" y="-20%" width="148%" height="145%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency=".48" numOctaves="2" seed="19" result="paint-grain" />
-            <feColorMatrix in="paint-grain" type="saturate" values="0" result="soft-grain" />
-            <feComponentTransfer in="soft-grain" result="matte-grain">
-              <feFuncA type="table" tableValues="0 .13" />
-            </feComponentTransfer>
-            <feComposite in="matte-grain" in2="SourceAlpha" operator="in" result="surface-grain" />
-            <feBlend in="SourceGraphic" in2="surface-grain" mode="soft-light" result="painted-surface" />
-            <feDiffuseLighting in="SourceAlpha" surfaceScale="4.2" diffuseConstant=".48" lightingColor="#bdd8e5" result="edge-relief">
-              <feDistantLight azimuth="228" elevation="57" />
-            </feDiffuseLighting>
-            <feComposite in="edge-relief" in2="SourceAlpha" operator="in" result="lit-relief" />
-            <feBlend in="painted-surface" in2="lit-relief" mode="soft-light" result="sculpted-relief" />
-            <feSpecularLighting in="SourceAlpha" surfaceScale="3.6" specularConstant=".5" specularExponent="21" lightingColor="#f1fbff" result="paint-glints">
-              <feDistantLight azimuth="230" elevation="63" />
-            </feSpecularLighting>
-            <feComposite in="paint-glints" in2="SourceAlpha" operator="in" result="shape-glints" />
-            <feBlend in="sculpted-relief" in2="shape-glints" mode="screen" />
-          </filter>
-        </defs>
-      </svg>
       <header className="sculpted-gallery__header">
         <div className="sculpted-gallery__title">Redline Upgrade <span>//</span> Character pieces</div>
         <div className="sculpted-gallery__count"><i /> 21 unique pieces</div>
@@ -63,7 +40,7 @@ export function Sculpted() {
           <article className="sculpted-gallery__tile" key={id} style={{ '--piece-rim': rimLights[id], '--piece-order': index } as CSSProperties}>
             <div className="sculpted-gallery__stage">
               <div className="sculpted-gallery__halo" />
-              <PawnFallback characterId={id} />
+              <SculptedPawn characterId={id} />
               <span className="sculpted-gallery__index">{String(index + 1).padStart(2, '0')}</span>
             </div>
             <div className="sculpted-gallery__name">{name}</div>

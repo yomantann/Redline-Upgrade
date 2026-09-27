@@ -15,13 +15,6 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-.sculpted-gallery__filter-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
 .sculpted-gallery__header {
   height: 25px;
   margin-bottom: 9px;
@@ -122,9 +115,10 @@
   height: 100%;
   transform: translateY(2px) scale(1.08);
   filter:
-    url(#sculpted-resin-finish)
-    drop-shadow(-3px 0 4px color-mix(in srgb, var(--piece-rim) 47%, transparent))
-    drop-shadow(3px 1px 4px color-mix(in srgb, var(--piece-rim) 34%, transparent))
+    saturate(1.24)
+    contrast(1.07)
+    drop-shadow(-2px 0 3px color-mix(in srgb, var(--piece-rim) 25%, transparent))
+    drop-shadow(2px 1px 3px color-mix(in srgb, var(--piece-rim) 20%, transparent))
     drop-shadow(0 9px 7px rgba(0, 0, 0, .4));
 }
 
