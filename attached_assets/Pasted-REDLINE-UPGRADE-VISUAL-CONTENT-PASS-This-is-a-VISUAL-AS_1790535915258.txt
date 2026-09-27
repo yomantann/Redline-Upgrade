@@ -1,0 +1,211 @@
+REDLINE UPGRADE — VISUAL CONTENT PASS
+
+This is a VISUAL/ASSET task only.
+
+Do not modify:
+- game logic
+- movement
+- dice logic
+- event engine
+- abilities
+- careers mechanics
+- card effects
+- CPU behavior
+- multiplayer
+- authentication
+- GitHub architecture
+
+Use the existing Redline Upgrade implementation.
+
+==================================================
+1. CAREER CARDS
+==================================================
+
+Improve the visual presentation of the existing Career cards.
+
+Each career should feel like a premium futuristic board-game card rather than a plain information card.
+
+Preserve all existing:
+- career names
+- salary tiers
+- abilities
+- categories
+- data
+- functionality
+
+Only improve presentation.
+
+Career cards should clearly display:
+
+CAREER NAME
+Career category/category icons
+Ability
+Salary information
+
+Use the existing Redline Upgrade dark/futuristic visual identity.
+
+Each career should have a distinct visual treatment appropriate to the ACTUAL career.
+
+Do not invent gameplay effects.
+
+Do not change career data.
+
+==================================================
+2. SALARY VISUALS
+==================================================
+
+Preserve the existing salary-tier system.
+
+Make the salary tier visually obvious.
+
+Use the existing low/high salary color coding.
+
+The player should immediately understand:
+
+LOW
+MEDIUM
+HIGH
+or whatever salary tiers already exist.
+
+Do not change salary values.
+
+==================================================
+3. MILESTONE CHOICE ARTWORK
+==================================================
+
+Prepare the visual system for milestone choices.
+
+The current milestone sequence is:
+
+1. CAR
+2. LIFESTYLE / CAREER CHANGE
+3. INVESTMENT / PET
+4. PROPERTY
+
+Create approximately 10 visual choices for each milestone category.
+
+IMPORTANT:
+
+These are choices displayed to the player.
+
+When the milestone is triggered, the existing game should eventually be able to show 3 randomly selected choices from the appropriate pool.
+
+Do not modify the actual milestone gameplay logic in this task.
+
+Create/organize the artwork so it can be referenced as:
+
+CAR_01 through CAR_10
+LIFESTYLE_01 through LIFESTYLE_10
+INVESTMENT_01 through INVESTMENT_10
+PET_01 through PET_10
+PROPERTY_01 through PROPERTY_10
+
+Use whatever asset naming convention best fits the existing project, but keep the groups clearly separated.
+
+==================================================
+4. ART DIRECTION
+==================================================
+
+The artwork should feel like the same game:
+
+- futuristic
+- edgy
+- slightly ridiculous
+- premium board game
+- meme-friendly
+- AI/future culture
+- dark Redline aesthetic
+
+Do NOT make everything generic sci-fi.
+
+The individual choices should be visually distinguishable.
+
+For example:
+
+CAR:
+Different recognizable vehicle silhouettes.
+
+PROPERTY:
+Different types of homes/properties.
+
+LIFESTYLE:
+Distinct lifestyle choices.
+
+INVESTMENT:
+Clearly recognizable investment concepts.
+
+PET:
+Distinct recognizable pets.
+
+Avoid making 10 nearly identical variations.
+
+==================================================
+5. EXISTING PLAYER CARD INTEGRATION
+==================================================
+
+If the existing player card already displays:
+
+- Car
+- Lifestyle
+- Investment
+- Pet
+- Property
+
+make the selected asset display visually cleanly there.
+
+Do not change the underlying game state.
+
+Do not change how selections work.
+
+Only improve the visual presentation if necessary.
+
+==================================================
+6. IMPORTANT CONSTRAINT
+==================================================
+
+Do not redesign the board.
+
+Do not redesign the character pieces.
+
+Do not redesign the dice.
+
+Do not modify game mechanics.
+
+Do not create new resources.
+
+Do not add new currencies.
+
+Do not add new gameplay effects.
+
+This task is specifically for:
+
+CAREER CARD VISUALS
++
+MILESTONE ASSET ARTWORK
++
+ASSET PRESENTATION
+
+==================================================
+7. VALIDATION
+==================================================
+
+Verify:
+
+- Existing career cards still work.
+- Existing milestone UI still works.
+- Existing player card still works.
+- No game logic was changed.
+- All new assets load correctly.
+- No broken image references.
+- Existing character pieces remain unchanged.
+
+At completion report:
+
+1. Career card changes
+2. Assets created
+3. Asset naming/location
+4. UI changes
+5. Files modified
+6. Any assets that remain placeholders
+
+STOP after this visual pass.
