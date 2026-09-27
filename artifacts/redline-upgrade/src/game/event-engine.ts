@@ -1,5 +1,6 @@
 import { getAsset } from './assets';
 import { getAbility, type EffectDefinition, type EffectType } from './abilities';
+import { getSpace } from './board-data';
 import { getCareer } from './careers';
 import { getCharacter } from './characters';
 import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './events/types';
@@ -261,6 +262,16 @@ function resolveTargets(match: Match, actor: MatchPlayer, event: AnyGameEvent, t
   }
 }
 
+function milestoneType(spaceNumber: number): 'car' | 'lifestyle' | 'companion' | 'property' | null {
+  switch (spaceNumber) {
+    case 10: return 'car';
+    case 30: return 'lifestyle';
+    case 45: return 'companion';
+    case 60: return 'property';
+    default: return null;
+  }
+}
+
 function getRewardBonus(match: Match, playerId: string, stat: PlayerStat): number {
   const key = `${playerId}:${stat}`;
   return match.rewardModifiers[key]?.amount ?? 0;
@@ -340,6 +351,136 @@ function applyStatDelta(
   return updated;
 }
 
+function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, event: AnyGameEvent, amount: number): Match {
+  if (!amount) return match;
+  let state = match;
+  const direction = amount > 0 ? 1 : -1;
+  const steps = Math.abs(amount);
+  for (let step = 0; step < steps; step += 1) {
+    const current = state.players[actor.slot];
+    const nextPosition = Math.min(75, Math.max(0, current.position + direction));
+    if (nextPosition === current.position) break;
+    state = updatePlayer(state, actor.slot, (player) => ({ ...player, position: nextPosition }));
+    queue.push({
+      type: 'PLAYER_MOVED',
+      playerIndex: actor.slot,
+      source: 'EFFECT',
+      sourceEventId: event.id,
+      abilityId: event.abilityId,
+      depth: event.depth + 1,
+      previousPosition: current.position,
+      newPosition: nextPosition,
+      distance: direction,
+    });
+    const space = getSpace(nextPosition);
+    if (!space) continue;
+    queue.push({
+      type: 'PASS_SPACE',
+      playerIndex: actor.slot,
+      source: 'EFFECT',
+      sourceEventId: event.id,
+      abilityId: event.abilityId,
+      depth: event.depth + 1,
+      previousPosition: current.position,
+      newPosition: nextPosition,
+      spaceNumber: nextPosition,
+    });
+    const isFinalStep = step === steps - 1;
+    if (space.payday) {
+      const beforeWealth = state.players[actor.slot].wealth;
+      const salaryAmount = state.players[actor.slot].salaryAmount;
+      state = updatePlayer(state, actor.slot, (player) => ({ ...player, wealth: player.wealth + salaryAmount }));
+      queue.push({
+        type: 'SALARY_GATE',
+        playerIndex: actor.slot,
+        source: 'EFFECT',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        previousPosition: current.position,
+        newPosition: nextPosition,
+        spaceNumber: nextPosition,
+        salaryAmount,
+        previousWealth: beforeWealth,
+        newWealth: beforeWealth + salaryAmount,
+      });
+      addNativeStatChange(state, queue, actor.slot, 'wealth', beforeWealth, beforeWealth + salaryAmount, 'Salary Gate');
+    }
+    const occupants = state.players.filter((player, index) => index !== actor.slot && player.position === nextPosition);
+    for (const occupant of occupants) {
+      queue.push({
+        type: isFinalStep ? 'LAND_ON_PLAYER' : 'PASS_PLAYER',
+        playerIndex: actor.slot,
+        source: 'EFFECT',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        previousPosition: current.position,
+        newPosition: nextPosition,
+        spaceNumber: nextPosition,
+        targetPlayerId: occupant.playerId,
+        targetPlayerIndex: occupant.slot,
+        targetPosition: occupant.position,
+      });
+    }
+    if (space.type === 'CAREER_CHANGE') {
+      queue.push({
+        type: 'CAREER_CHANGE',
+        playerIndex: actor.slot,
+        source: 'EFFECT',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        spaceNumber: nextPosition,
+        stage: 'TRIGGERED',
+        previousCareerId: state.players[actor.slot].careerId,
+        newCareerId: state.players[actor.slot].careerId,
+        previousSalary: state.players[actor.slot].salaryAmount,
+        newSalary: state.players[actor.slot].salaryAmount,
+      });
+    }
+    if (isFinalStep) {
+      queue.push({
+        type: 'LAND_ON_SPACE',
+        playerIndex: actor.slot,
+        source: 'EFFECT',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        previousPosition: current.position,
+        newPosition: nextPosition,
+        spaceNumber: nextPosition,
+      });
+      const milestone = milestoneType(nextPosition);
+      if (space.type === 'MILESTONE' && milestone && space.trigger === 'LAND') {
+        queue.push({
+          type: 'MILESTONE',
+          playerIndex: actor.slot,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          spaceNumber: nextPosition,
+          milestoneType: milestone,
+        });
+      }
+      if (space.deck) {
+        queue.push({
+          type: 'CARD_DRAW',
+          playerIndex: actor.slot,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          spaceNumber: nextPosition,
+          deck: space.deck,
+        });
+      }
+    }
+  }
+  return state;
+}
+
 function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, event: AnyGameEvent, effect: EffectDefinition): Match {
   const reason = effect.reason ?? getAbility(event.abilityId ?? '')?.name ?? event.type;
   switch (effect.type) {
@@ -410,13 +551,12 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       });
       return match;
     case 'MOVE_PLAYER': {
-      const current = actor.position;
-      return updatePlayer(match, actor.slot, (player) => ({ ...player, position: Math.min(75, Math.max(0, player.position + effect.amount)) }));
+      return applyMovePlayerEffect(match, queue, actor, event, effect.amount);
     }
     case 'AFFECT_OTHER_PLAYER':
       return resolveTargets(match, actor, event, effect.target ?? 'LANDED_ON_PLAYER').reduce(
         (state, index) => effect.effects.reduce(
-          (nestedState, nestedEffect) => applyEffect(nestedState, queue, state.players[index], { ...event, targetPlayerId: state.players[index].playerId, targetPlayerIndex: index }, nestedEffect),
+          (nestedState, nestedEffect) => applyEffect(nestedState, queue, actor, { ...event, targetPlayerId: state.players[index].playerId, targetPlayerIndex: index }, nestedEffect),
           state,
         ),
         match,

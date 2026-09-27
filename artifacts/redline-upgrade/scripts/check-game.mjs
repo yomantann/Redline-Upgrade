@@ -180,7 +180,7 @@ try {
   const purchaseDebug = start(8);
   match = move({
     ...purchaseDebug,
-    players: purchaseDebug.players.map((player, index) => index === 0 ? { ...player, careerId: 'real-estate-investor', wealth: 900000 } : player),
+    players: purchaseDebug.players.map((player, index) => index === 0 ? { ...player, characterId: 'hotwired', careerId: 'real-estate-investor', wealth: 900000 } : player),
   }, 2);
   const lifestyleBefore = match.players[0].lifestyle;
   const carId = match.pending.offeredAssetIds[0];

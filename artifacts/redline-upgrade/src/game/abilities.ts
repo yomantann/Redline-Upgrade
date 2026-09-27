@@ -135,6 +135,12 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     effects: [{ type: 'ADD_FAME', amount: 5, reason: 'Main Character' }],
     mode: 'PASSIVE',
   },
+  [characterAbilityId('hotwired')]: {
+    trigger: 'ASSET_PURCHASED',
+    conditions: [{ kind: 'ANY' }],
+    effects: [{ type: 'ADD_LIFESTYLE', amount: 5, reason: 'Jump Start' }],
+    mode: 'PASSIVE',
+  },
   [careerAbilityId('degen-trader')]: {
     trigger: 'ROLL_OF_8',
     conditions: [{ kind: 'ANY' }, { kind: 'PLAYER_CAREER_TAG', tag: 'risk' }],
@@ -143,7 +149,7 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
   },
   [careerAbilityId('real-estate-investor')]: {
     trigger: 'ASSET_PURCHASED',
-    conditions: [{ kind: 'ANY' }],
+    conditions: [{ kind: 'ANY' }, { kind: 'EVENT_CATEGORY_IS', category: 'property' }],
     effects: [{ type: 'ADD_LIFESTYLE', amount: 5, reason: 'Property Ladder' }],
     mode: 'PASSIVE',
   },
