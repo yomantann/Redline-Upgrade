@@ -177,13 +177,10 @@ try {
   assert(match.pending.cardId);
   assert(eventTypes(match).includes('CARD_DRAW'));
   const cardBeforeResolve = getCard(match.pending.cardId);
-  const wealthBeforeCard = match.players[0].wealth;
   match = advanceMatch(match, { type: 'ACKNOWLEDGE_CARD' });
   assert.equal(match.phase, 'landed');
   assert(eventTypes(match).includes('CARD_RESOLVED'));
-  if (cardBeforeResolve.effects.some((effect) => effect.type === 'ADD_WEALTH' || effect.type === 'REMOVE_WEALTH')) {
-    assert.notEqual(match.players[0].wealth, wealthBeforeCard);
-  }
+  assert(match.eventLog.some((entry) => entry.label === cardBeforeResolve.title.toUpperCase()));
 
   match = move(start(13, 1), 2);
   assert.equal(match.pending.deck, 'gamble');

@@ -271,17 +271,23 @@ function meetsCondition(match: Match, player: MatchPlayer, event: AnyGameEvent, 
   }
 }
 
-function filterTargetsByCareerTag(match: Match, targets: number[], careerTag?: EffectDefinition['careerTag']): number[] {
-  if (!careerTag) return targets;
+function filterTargetsByCareerTag(
+  match: Match,
+  targets: number[],
+  careerTag?: EffectDefinition['careerTag'],
+  careerTags?: EffectDefinition['careerTags'],
+): number[] {
+  const requiredTags = careerTags?.length ? careerTags : careerTag ? [careerTag] : [];
+  if (!requiredTags.length) return targets;
   return targets.filter((index) => {
     const careerId = match.players[index].careerId;
     const career = careerId ? getCareer(careerId) : undefined;
-    return Boolean(career?.tags.includes(careerTag));
+    return Boolean(career && requiredTags.some((tag) => career.tags.includes(tag)));
   });
 }
 
 function resolveEffectTargets(match: Match, actor: MatchPlayer, event: AnyGameEvent, effect: EffectDefinition): number[] {
-  return filterTargetsByCareerTag(match, resolveTargets(match, actor, event, effect.target), effect.careerTag);
+  return filterTargetsByCareerTag(match, resolveTargets(match, actor, event, effect.target), effect.careerTag, effect.careerTags);
 }
 
 function resolveTargets(match: Match, actor: MatchPlayer, event: AnyGameEvent, target: EffectDefinition['target'] = 'SELF'): number[] {
@@ -418,6 +424,7 @@ function applyStatDelta(
 function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, targetIndex: number, event: AnyGameEvent, amount: number): Match {
   if (!amount) return match;
   let state = match;
+  let drawnCardId: string | undefined;
   const direction = amount > 0 ? 1 : -1;
   const steps = Math.abs(amount);
   for (let step = 0; step < steps; step += 1) {
@@ -518,6 +525,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       }
       if (space.deck) {
         const card = drawCard(space.deck);
+        drawnCardId = card.id;
         queue.push({
           type: 'CARD_DRAW',
           playerIndex: targetIndex,
@@ -548,8 +556,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      const queuedCardId = [...queue].reverse().find((draft) => draft.type === 'CARD_DRAW' && draft.playerIndex === targetIndex && draft.spaceNumber === finalSpace.number)?.cardId;
-      const card = (queuedCardId ? getCard(queuedCardId) : undefined) ?? drawCard(finalSpace.deck);
+      const card = (drawnCardId ? getCard(drawnCardId) : undefined) ?? drawCard(finalSpace.deck);
       state = { ...state, turnIndex: targetIndex, phase: 'decision', pending: { kind: 'CARD', deck: finalSpace.deck, cardId: card.id, space: finalSpace.number }, lastLanding: landing };
     } else if (targetIndex === state.turnIndex) {
       state = { ...state, phase: 'landed', pending: null, lastLanding: landing };

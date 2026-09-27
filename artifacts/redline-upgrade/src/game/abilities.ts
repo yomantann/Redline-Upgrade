@@ -54,6 +54,7 @@ interface EffectBase {
   amount?: number;
   reason?: string;
   careerTag?: CareerCategoryTag;
+  careerTags?: readonly CareerCategoryTag[];
 }
 
 export type EffectDefinition =

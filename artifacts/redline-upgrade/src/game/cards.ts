@@ -48,10 +48,7 @@ export const cards: readonly CardDefinition[] = [
     rarity: 'STANDARD',
     target: 'ALL_PLAYERS',
     careerTags: ['service', 'hustle'],
-    effects: [
-      { type: 'ADD_WEALTH', target: 'ALL_PLAYERS', careerTag: 'service', amount: 10000, reason: 'Hustle Season' },
-      { type: 'ADD_WEALTH', target: 'ALL_PLAYERS', careerTag: 'hustle', amount: 10000, reason: 'Hustle Season' },
-    ],
+    effects: [{ type: 'ADD_WEALTH', target: 'ALL_PLAYERS', careerTags: ['service', 'hustle'], amount: 10000, reason: 'Hustle Season' }],
   },
   {
     id: 'wealth-rent-spike',
@@ -99,10 +96,7 @@ export const cards: readonly CardDefinition[] = [
     rarity: 'STANDARD',
     target: 'ALL_PLAYERS',
     careerTags: ['medical', 'science'],
-    effects: [
-      { type: 'ADD_AI_SKILL', target: 'ALL_PLAYERS', careerTag: 'medical', amount: 1, reason: 'Biohack' },
-      { type: 'ADD_AI_SKILL', target: 'ALL_PLAYERS', careerTag: 'science', amount: 1, reason: 'Biohack' },
-    ],
+    effects: [{ type: 'ADD_AI_SKILL', target: 'ALL_PLAYERS', careerTags: ['medical', 'science'], amount: 1, reason: 'Biohack' }],
   },
   {
     id: 'ai-open-source-sprint',
