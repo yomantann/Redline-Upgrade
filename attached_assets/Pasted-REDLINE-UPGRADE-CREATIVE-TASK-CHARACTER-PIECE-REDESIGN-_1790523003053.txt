@@ -1,0 +1,310 @@
+REDLINE UPGRADE — CREATIVE TASK
+CHARACTER PIECE REDESIGN / QUALITY PASS
+
+IMPORTANT:
+This is a VISUAL DESIGN task only.
+
+Do NOT modify:
+- Game logic
+- Player state
+- Character IDs
+- Character selection
+- Board movement
+- Dice
+- Careers
+- Cards
+- Events
+- Multiplayer
+- Game rules
+
+==================================================
+GOAL
+==================================================
+
+Review all 21 existing Redline Upgrade character game pieces.
+
+Some current pieces look acceptable, but others look like generic 3D humanoid figures with the character's colors/images applied to them.
+
+That is NOT the desired final style.
+
+The goal is:
+
+"Collectible board-game pawn meets stylized character figurine meets Redline meme character."
+
+Each piece should have a DISTINCTIVE SILHOUETTE that communicates the character even without the original portrait beside it.
+
+Do NOT simply convert the character portrait into a 3D human.
+
+Do NOT create generic humanoid bodies for every character.
+
+==================================================
+DESIGN PRINCIPLE
+==================================================
+
+Each character piece should be designed around:
+
+1. Character personality
+2. Character visual identity
+3. Character meme/concept
+4. Existing character artwork
+5. A distinctive silhouette
+
+The piece should still be recognizable when:
+
+- Very small on the board
+- Viewed from above
+- Viewed from the side
+- Shown as a black silhouette
+
+If the piece could belong to a completely different character, redesign it.
+
+==================================================
+IMPORTANT EXAMPLE
+==================================================
+
+The current piece shown for the cat character is NOT good enough.
+
+It currently looks like:
+
+- Generic humanoid body
+- Generic head
+- Random wings/arms
+- Character colors applied afterward
+
+Instead, the character concept should drive the physical design.
+
+For a character represented by a screaming/glitching cat image, the piece could use:
+
+- Oversized cat head
+- Distinctive ears
+- Aggressive/open-mouth expression
+- Cat-like body proportions
+- Tail or other recognizable cat silhouette
+- Glitch/electronic details
+- Character-specific base
+
+It should look like a stylized collectible cat character, NOT a human wearing cat colors.
+
+This principle applies to every character.
+
+==================================================
+CHARACTER-SPECIFIC SILHOUETTES
+==================================================
+
+Use the existing character artwork and names as the primary inspiration.
+
+GUARDIAN H
+→ Shield / guardian silhouette
+→ Protective stance
+→ Distinctive armor or shield element
+
+CLICK CLICK
+→ Strong cat/click/media identity
+→ Oversized cat features if appropriate to existing artwork
+→ Camera/click/glitch details where appropriate
+→ Should NOT be a generic humanoid
+
+FROSTBYTE
+→ Ice/crystal silhouette
+→ Frozen/angular shapes
+→ Distinctive icy head/body features
+
+SADMAN
+→ Slumped / defeated / melancholy silhouette
+→ Exaggerated sad posture
+→ Immediately recognizable from silhouette
+
+RAINBOW DASH
+→ Fast / colorful / energetic silhouette
+→ Racing or motion-inspired elements
+
+ACCUSER
+→ Pointing / judging / accusing silhouette
+→ One exaggerated gesture should define the piece
+
+LOW FLAME
+→ Flame should be a major part of the silhouette
+→ Do not make this simply a person with a flame texture
+
+WANDERING EYE
+→ Giant eye should be the defining shape
+→ Strange/unsettling visual silhouette
+
+THE RIND
+→ Rough / layered / rugged silhouette
+→ Character-specific shape rather than generic humanoid
+
+ANOINTED
+→ Crown / halo / divine-inspired silhouette
+→ Strong recognizable top silhouette
+
+EXECUTIVE P
+→ Exaggerated executive/business silhouette
+→ Suit/power/authority elements
+
+ALPHA PRIME
+→ Exaggerated powerful/muscular silhouette
+→ Heroic/absurd proportions
+
+ROLL SAFE
+→ Brain / thinking / safe / meme-inspired silhouette
+→ Distinctive head or prop
+
+HOTWIRED
+→ Electrical/wired silhouette
+→ Visible cable/tech elements
+→ Asymmetry is encouraged
+
+PANIC BOT
+→ Robot silhouette
+→ Chaotic/frantic posture
+→ Mechanical features
+
+PRIMATE
+→ Clearly primate-inspired silhouette
+→ Do not use generic human proportions
+
+PAIN HIDER
+→ Mask / hidden-face silhouette
+→ Concealed or mysterious posture
+
+PROM KING
+→ Crown / formal / king silhouette
+→ Exaggerated ceremonial details
+
+IDOL CORE
+→ Performer/idol silhouette
+→ Stage/performance-inspired features
+
+DANGER ZONE
+→ Warning/risk silhouette
+→ Hazard-inspired geometry
+
+THE TANK
+→ Heavy armored silhouette
+→ Tank-like/armored physical presence
+→ Wide, stable silhouette
+
+==================================================
+STYLE
+==================================================
+
+The overall collection should feel unified.
+
+Think:
+
+- Premium board game
+- Collectible miniatures
+- Futuristic
+- Dark
+- Slightly ridiculous
+- Meme-driven
+- Cyberpunk
+- Redline aesthetic
+
+Avoid:
+
+- Generic toy soldier
+- Generic chess pawn
+- Generic humanoid
+- Realistic human anatomy
+- Overly complicated miniature detail
+- Random accessories that don't relate to the character
+
+==================================================
+3D DESIGN REQUIREMENTS
+==================================================
+
+Each piece should have:
+
+- Distinctive silhouette
+- Stable base
+- Character-specific upper body/head
+- 2–4 recognizable design features
+- Appropriate material treatment
+- Subtle Redline-style detailing
+
+The base can remain consistent across characters so they clearly belong to the same game.
+
+The CHARACTER portion should be different.
+
+Think:
+
+COMMON BASE
++
+UNIQUE CHARACTER FIGURE
+
+rather than:
+
+COMMON HUMAN FIGURE
++
+DIFFERENT TEXTURE
+
+==================================================
+IMPORTANT: PRESERVE EXISTING ART
+==================================================
+
+Do not remove or replace the original character artwork from the character selection system.
+
+The 3D piece is a separate representation of the character.
+
+The goal is for the portrait and 3D piece to clearly feel like the SAME character.
+
+==================================================
+QUALITY STANDARD
+==================================================
+
+Before accepting a piece, ask:
+
+1. Can I identify the character from the silhouette?
+2. Does the shape reflect the character's concept?
+3. Does it look like a designed collectible miniature?
+4. Does it avoid looking like a generic human?
+5. Does it remain readable when small on the board?
+6. Does it look good beside the other 20 pieces?
+
+If the answer is no, redesign it.
+
+==================================================
+DO NOT REDESIGN EVERYTHING AUTOMATICALLY
+==================================================
+
+Review all 21 pieces first.
+
+Keep pieces that already meet this standard.
+
+Spend the redesign effort on the weakest pieces.
+
+Prioritize silhouette and character identity over adding more detail.
+
+==================================================
+BOARD COMPATIBILITY
+==================================================
+
+All pieces must continue to:
+
+- Fit on existing board spaces
+- Maintain existing player positioning
+- Render efficiently
+- Work with existing camera/zoom
+- Work with CPU players
+- Work with player selection
+- Use the existing character IDs
+
+Do not change gameplay code.
+
+==================================================
+FINAL RESULT
+==================================================
+
+The collection should look like 21 unique collectible game pieces.
+
+Someone should be able to see the pieces without the character portraits and say:
+
+"Those are 21 different characters."
+
+Not:
+
+"Those are 21 versions of the same person."
+
+STOP after completing this visual character-piece pass.
