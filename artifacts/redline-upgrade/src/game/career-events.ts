@@ -15,7 +15,7 @@ export function matchesCareerTarget(player: Pick<Player, 'careerId'>, target: Ca
   if (!player.careerId) return false;
   if (target.kind === 'career') return target.ids.includes(player.careerId);
   const career = getCareer(player.careerId);
-  return Boolean(career && target.ids.includes(career.categoryId));
+  return Boolean(career && career.tags.some((tag) => target.ids.includes(tag)));
 }
 
 /** Pure helper for future Wealth events; the caller chooses if and when an event takes effect. */

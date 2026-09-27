@@ -18,6 +18,8 @@ export interface Player {
   upgrades: string[];
 }
 
+export type PlayerStat = 'wealth' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
+
 export function createPlayer(characterId: string, displayName = 'Player 1'): Player {
   if (!getCharacter(characterId)) {
     throw new Error(`Unknown character: ${characterId}`);

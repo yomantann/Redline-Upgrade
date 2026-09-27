@@ -1,15 +1,18 @@
 import { characters } from './characters';
-import { createPlayer, type Player } from './player';
+import { createPlayer, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, startingWealth, type SalaryTier } from './careers';
 import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
 import type { DeckId } from './decks';
+import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
+import type { EventLogEntry } from './events/types';
 
-export type MatchPlayer = Player & { isCPU: boolean; slot: number };
+export type MatchPlayer = ReturnType<typeof createPlayer> & { isCPU: boolean; slot: number };
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed';
-export interface DiceResult { die1: number; die2: number; total: number }
+export interface DiceResult { die1: number; die2: number; total: number; doubles: boolean }
 export interface Landing { playerIndex: number; space: BoardSpace }
 export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE'; space: number }
+export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type PendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
   | { kind: 'CARD'; deck: DeckId; space: number }
@@ -24,6 +27,12 @@ export interface Match {
   lastLanding: Landing | null;
   wealthEvents: WealthEvent[];
   pending: PendingDecision | null;
+  eventLog: EventLogEntry[];
+  eventCursor: number;
+  turnCounter: number;
+  abilityUsage: Record<string, AbilityUsageState>;
+  effectProtections: Record<string, ProtectionState[]>;
+  rewardModifiers: Record<string, RewardModifierState>;
 }
 
 function pickUnique<T>(items: readonly T[], count: number): T[] {
@@ -36,10 +45,24 @@ function pickUnique<T>(items: readonly T[], count: number): T[] {
   return remaining.slice(0, count);
 }
 
+function emit(match: Match, drafts: EventDraft[]): Match {
+  return drafts.length ? resolveEventQueue(match, drafts) : match;
+}
+
+function resetTurnScopedState(match: Match): Match {
+  const rewardModifiers = Object.fromEntries(
+    Object.entries(match.rewardModifiers).filter(([, value]) => value.amount !== 0),
+  );
+  return {
+    ...match,
+    rewardModifiers,
+  };
+}
+
 export function createMatch(characterId: string): Match {
   const ids = [characterId, ...pickUnique(characters.map(({ id }) => id).filter(id => id !== characterId), 3)];
   const assignedCareers = pickUnique(careers, 4);
-  return {
+  const match: Match = {
     players: ids.map((id, slot) => {
       const career = assignedCareers[slot];
       const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
@@ -66,7 +89,14 @@ export function createMatch(characterId: string): Match {
     lastLanding: null,
     wealthEvents: [],
     pending: null,
+    eventLog: [],
+    eventCursor: 0,
+    turnCounter: 1,
+    abilityUsage: {},
+    effectProtections: {},
+    rewardModifiers: {},
   };
+  return emit(match, [{ type: 'TURN_START', playerIndex: 0 }]);
 }
 
 export function rollD4(): number {
@@ -99,18 +129,49 @@ function milestoneSlot(space: number): AssetSlot | null {
   }
 }
 
+function milestoneType(space: number): 'car' | 'lifestyle' | 'companion' | 'property' | null {
+  switch (space) {
+    case 10: return 'car';
+    case 30: return 'lifestyle';
+    case 45: return 'companion';
+    case 60: return 'property';
+    default: return null;
+  }
+}
+
 function drawAssets(category: AssetCategory): string[] {
   return pickUnique(assetOptions(category), 3).map(asset => asset.id);
 }
 
-function land(match: Match, space: BoardSpace): Match {
+function land(match: Match, space: BoardSpace, previousPosition: number): Match {
   const slot = space.type === 'MILESTONE' ? milestoneSlot(space.number) : null;
   const landing = { playerIndex: match.turnIndex, space };
-  if (slot && !match.players[match.turnIndex].equipment[slot]) {
-    return { ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } };
+  const drafts: EventDraft[] = [{ type: 'LAND_ON_SPACE', playerIndex: match.turnIndex, previousPosition, newPosition: space.number, spaceNumber: space.number }];
+  const occupants = match.players.filter((player, index) => index !== match.turnIndex && player.position === space.number);
+  for (const occupant of occupants) {
+    drafts.push({
+      type: 'LAND_ON_PLAYER',
+      playerIndex: match.turnIndex,
+      targetPlayerId: occupant.playerId,
+      targetPlayerIndex: occupant.slot,
+      targetPosition: occupant.position,
+      previousPosition,
+      newPosition: space.number,
+      spaceNumber: space.number,
+    });
   }
-  if (space.deck) return { ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, space: space.number } };
-  return { ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null };
+  const milestone = milestoneType(space.number);
+  if (space.type === 'MILESTONE' && milestone && space.trigger === 'LAND') {
+    drafts.push({ type: 'MILESTONE', playerIndex: match.turnIndex, spaceNumber: space.number, milestoneType: milestone });
+  }
+  if (slot && !match.players[match.turnIndex].equipment[slot]) {
+    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
+  }
+  if (space.deck) {
+    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck });
+    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'CARD', deck: space.deck, space: space.number } }, drafts);
+  }
+  return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
 }
 
 function resume(match: Match): Match {
@@ -134,9 +195,32 @@ function assignNewCareer(match: Match, careerId: string): Match {
   const players = match.players.map((player, index) => index === match.turnIndex
     ? { ...player, careerId, salaryTier, salaryAmount: career.salaryTiers[salaryTier - 1] }
     : player);
-  // A career change replaces the salary/ability but never awards new starting Wealth
-  // or removes previously earned stats and assets.
   return { ...match, players };
+}
+
+function applyAssetStats(match: Match, playerIndex: number, assetId: string): [Match, EventDraft[]] {
+  const asset = getAsset(assetId);
+  if (!asset) return [match, []];
+  const player = match.players[playerIndex];
+  const next = {
+    ...player,
+    equipment: { ...player.equipment },
+  };
+  const drafts: EventDraft[] = [];
+  next.equipment[(asset.category === 'pet' || asset.category === 'investment') ? 'companion' : asset.category] = asset.id;
+  const nextWealth = Math.max(0, player.wealth - asset.cost + (asset.effects.wealth ?? 0));
+  next.wealth = nextWealth;
+  addNativeStatChange(match, drafts, playerIndex, 'wealth', player.wealth, nextWealth, `Purchased ${asset.name}`);
+  for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+    const delta = asset.effects[stat] ?? 0;
+    next[stat] = player[stat] + delta;
+    addNativeStatChange(match, drafts, playerIndex, stat, player[stat], next[stat], `Purchased ${asset.name}`);
+  }
+  const updated = {
+    ...match,
+    players: match.players.map((item, index) => index === playerIndex ? next : item),
+  };
+  return [updated, drafts];
 }
 
 function purchase(match: Match, assetId: string): Match {
@@ -146,24 +230,25 @@ function purchase(match: Match, assetId: string): Match {
   const player = match.players[match.turnIndex];
   const category: AssetCategory | null = pending.slot === 'companion' ? pending.category ?? null : pending.slot;
   if (!asset || asset.category !== category || !pending.offeredAssetIds?.includes(assetId) || player.equipment[pending.slot] || asset.cost > player.wealth) return match;
-  const players = match.players.map((item, index) => index === match.turnIndex ? {
-    ...item,
-    equipment: { ...item.equipment, [pending.slot]: assetId },
-    wealth: item.wealth - asset.cost + (asset.effects.wealth ?? 0),
-    aiSkill: item.aiSkill + (asset.effects.aiSkill ?? 0),
-    fame: item.fame + (asset.effects.fame ?? 0),
-    lifestyle: item.lifestyle + (asset.effects.lifestyle ?? 0),
-    influence: item.influence + (asset.effects.influence ?? 0),
-  } : item);
-  const event: WealthEvent = { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: -asset.cost + (asset.effects.wealth ?? 0), kind: 'PURCHASE', space: pending.space };
-  return resume({ ...match, players, wealthEvents: [...match.wealthEvents, event] });
+  const [updated, statDrafts] = applyAssetStats(match, match.turnIndex, assetId);
+  const current = match.players[match.turnIndex];
+  const nextPlayer = updated.players[match.turnIndex];
+  const wealthEvent: WealthEvent = { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: nextPlayer.wealth - current.wealth, kind: 'PURCHASE', space: pending.space };
+  const drafts = [
+    ...createPurchaseEvents(match.turnIndex, assetId, current.wealth, nextPlayer.wealth),
+    ...statDrafts,
+  ];
+  return emit(resume({ ...updated, wealthEvents: [...match.wealthEvents, wealthEvent] }), drafts);
 }
 
 function autoDecide(match: Match): Match {
   const pending = match.pending;
   if (match.phase !== 'decision' || !match.players[match.turnIndex].isCPU || !pending) return match;
   const player = match.players[match.turnIndex];
-  if (pending.kind === 'CARD') return resume(match);
+  if (pending.kind === 'CARD') {
+    const result = resume(match);
+    return emit(result, [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck: pending.deck, spaceNumber: pending.space, cardId: `example-${pending.deck}` }]);
+  }
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
@@ -192,16 +277,69 @@ function autoDecide(match: Match): Match {
   return resume(assignNewCareer(match, chosen.id));
 }
 
+function createStepEvents(match: Match, previousPosition: number, position: number, isFinalStep: boolean, salaryAmount: number, hitPayday: boolean): EventDraft[] {
+  const drafts: EventDraft[] = [{
+    type: 'PASS_SPACE',
+    playerIndex: match.turnIndex,
+    previousPosition,
+    newPosition: position,
+    spaceNumber: position,
+  }];
+  const space = getSpace(position);
+  if (!space) return drafts;
+  if (hitPayday) {
+    drafts.push({
+      type: 'SALARY_GATE',
+      playerIndex: match.turnIndex,
+      previousPosition,
+      newPosition: position,
+      spaceNumber: position,
+      salaryAmount,
+      previousWealth: match.players[match.turnIndex].wealth,
+      newWealth: match.players[match.turnIndex].wealth + salaryAmount,
+    });
+  }
+  if (space.type === 'CAREER_CHANGE') {
+    drafts.push({
+      type: 'CAREER_CHANGE',
+      playerIndex: match.turnIndex,
+      spaceNumber: position,
+      stage: 'TRIGGERED',
+      previousCareerId: match.players[match.turnIndex].careerId,
+      newCareerId: match.players[match.turnIndex].careerId,
+      previousSalary: match.players[match.turnIndex].salaryAmount,
+      newSalary: match.players[match.turnIndex].salaryAmount,
+    });
+  }
+  const occupants = match.players.filter((player, index) => index !== match.turnIndex && player.position === position);
+  for (const occupant of occupants) {
+    drafts.push({
+      type: isFinalStep ? 'LAND_ON_PLAYER' : 'PASS_PLAYER',
+      playerIndex: match.turnIndex,
+      previousPosition,
+      newPosition: position,
+      spaceNumber: position,
+      targetPlayerId: occupant.playerId,
+      targetPlayerIndex: occupant.slot,
+      targetPosition: occupant.position,
+    });
+  }
+  return drafts;
+}
+
 /** Guard each transition so stale timers and repeated clicks cannot reapply an effect. */
 export function advanceMatch(match: Match, action: MatchAction): Match {
   switch (action.type) {
     case 'ROLL': {
       if (match.phase !== 'ready') return match;
-      const { die1, die2, total } = action.result;
+      const { die1, die2, total, doubles } = action.result;
       if (![die1, die2].every((n) => Number.isInteger(n) && n >= 1 && n <= 4) || total !== die1 + die2) {
         throw new Error('Invalid 2d4 roll');
       }
-      return { ...match, phase: 'rolling', roll: action.result, stepsRemaining: total };
+      return emit(
+        { ...match, phase: 'rolling', roll: { die1, die2, total, doubles }, stepsRemaining: total },
+        [{ type: 'DICE_ROLL', playerIndex: match.turnIndex, die1, die2, total, doubles }],
+      );
     }
     case 'REVEAL':
       return match.phase === 'rolling' ? { ...match, phase: 'reveal' } : match;
@@ -210,30 +348,37 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (match.players[match.turnIndex].position < 75) return { ...match, phase: 'moving' };
       const space = getSpace(75);
       if (!space) throw new Error('Missing finish space');
-      return land(match, space);
+      return land(match, space, 75);
     }
     case 'STEP': {
       if (match.phase !== 'moving') return match;
       const current = match.players[match.turnIndex];
+      const previousPosition = current.position;
       const position = Math.min(75, current.position + 1);
       const space = getSpace(position);
       if (!space) throw new Error(`Invalid movement position: ${position}`);
-      // PASS effects resolve on entry, including the destination. LAND effects are handled
-      // below only after movement ends; they must not grant this Payday a second time.
       const payday = space.payday && position !== current.position;
-      const players = match.players.map((player, index) => index === match.turnIndex
-        ? { ...player, position, wealth: player.wealth + (payday ? player.salaryAmount : 0) }
-        : player);
-      const wealthEvents = payday
-        ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY' as const, space: position }]
-        : match.wealthEvents;
-      const stepsRemaining = match.stepsRemaining - 1;
-      const moved = { ...match, players, wealthEvents, stepsRemaining };
+      const previousWealth = current.wealth;
+      const nextWealth = previousWealth + (payday ? current.salaryAmount : 0);
+      let moved: Match = {
+        ...match,
+        players: match.players.map((player, index) => index === match.turnIndex
+          ? { ...player, position, wealth: nextWealth }
+          : player),
+        wealthEvents: payday
+          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY', space: position }]
+          : match.wealthEvents,
+        stepsRemaining: match.stepsRemaining - 1,
+      };
+      const drafts = createStepEvents(match, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, payday);
+      drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
+      addNativeStatChange(match, drafts, match.turnIndex, 'wealth', previousWealth, nextWealth, payday ? 'Salary Gate' : 'Movement');
+      moved = emit(moved, drafts.filter((draft) => !(draft.type === 'WEALTH_CHANGED' && previousWealth === nextWealth)));
       if (space.type === 'CAREER_CHANGE') {
-        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space } : match.lastLanding };
+        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: 35 }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space } : match.lastLanding };
       }
-      if (stepsRemaining > 0 && position < 75) return moved;
-      return land(moved, space);
+      if (moved.stepsRemaining > 0 && position < 75) return moved;
+      return land(moved, space, previousPosition);
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
@@ -251,24 +396,46 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'SELECT_CAREER': {
       const pending = match.pending;
       if (match.phase !== 'decision' || pending?.kind !== 'CAREER' || pending.stage !== 'offers' || !pending.options?.includes(action.careerId)) return match;
+      const previous = match.players[match.turnIndex];
       const updated = assignNewCareer(match, action.careerId);
-      return { ...updated, pending: { ...pending, stage: 'salary', selectedCareerId: action.careerId, previousCareerId: match.players[match.turnIndex].careerId ?? undefined } };
+      const next = updated.players[updated.turnIndex];
+      return emit(
+        { ...updated, pending: { ...pending, stage: 'salary', selectedCareerId: action.careerId, previousCareerId: previous.careerId ?? undefined } },
+        [{
+          type: 'CAREER_CHANGE',
+          playerIndex: updated.turnIndex,
+          spaceNumber: 35,
+          stage: 'RESOLVED',
+          previousCareerId: previous.careerId,
+          newCareerId: next.careerId,
+          previousSalary: previous.salaryAmount,
+          newSalary: next.salaryAmount,
+        }],
+      );
     }
     case 'ACKNOWLEDGE_CAREER':
       return match.phase === 'decision' && match.pending?.kind === 'CAREER' && match.pending.stage === 'salary' ? resume(match) : match;
     case 'ACKNOWLEDGE_CARD':
-      return match.phase === 'decision' && match.pending?.kind === 'CARD' && !match.players[match.turnIndex].isCPU ? resume(match) : match;
+      if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.players[match.turnIndex].isCPU) return match;
+      return emit(resume(match), [{ type: 'CARD_RESOLVED', playerIndex: match.turnIndex, deck: match.pending.deck, spaceNumber: match.pending.space, cardId: `example-${match.pending.deck}` }]);
     case 'AUTO_DECIDE':
       return autoDecide(match);
     case 'NEXT_TURN':
       if (match.phase !== 'landed') return match;
-      return {
-        ...match,
-        turnIndex: (match.turnIndex + 1) % 4,
-        round: match.turnIndex === 3 ? match.round + 1 : match.round,
-        phase: 'ready',
-        roll: null,
-        stepsRemaining: 0,
-      };
+      return emit(
+        resetTurnScopedState({
+          ...match,
+          turnIndex: (match.turnIndex + 1) % 4,
+          round: match.turnIndex === 3 ? match.round + 1 : match.round,
+          phase: 'ready',
+          roll: null,
+          stepsRemaining: 0,
+          turnCounter: match.turnCounter + 1,
+        }),
+        [
+          { type: 'TURN_END', playerIndex: match.turnIndex },
+          { type: 'TURN_START', playerIndex: (match.turnIndex + 1) % 4 },
+        ],
+      );
   }
 }
