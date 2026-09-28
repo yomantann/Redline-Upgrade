@@ -24,10 +24,17 @@ const gambles = new Set([15, 50, 70]);
 const upgradeTokenSpaces = new Set([2, 14, 55]);
 // Deck assignments preserve the existing board route; landing triggers the live deck draw.
 // Phase 14 adds only ordinary spaces, spread across the latter half of the circuit.
+export const PHASE_14_5_CONVERTED_EVENT_SPACES: Partial<Record<number, DeckId>> = {
+  5: 'wealth', 13: 'ai', 20: 'lifestyle', 24: 'fame', 27: 'wealth',
+  33: 'ai', 37: 'wealth', 39: 'influence', 47: 'fame', 49: 'wealth',
+  57: 'influence', 64: 'wealth', 67: 'fame', 72: 'wealth',
+};
+
 const cardSpaces: Partial<Record<number, DeckId>> = {
   3: 'wealth', 7: 'ai', 12: 'fame', 17: 'lifestyle', 22: 'influence',
   26: 'lifestyle', 32: 'wealth', 36: 'influence', 42: 'ai',
   48: 'wealth', 52: 'fame', 58: 'fame', 62: 'influence', 69: 'ai',
+  ...PHASE_14_5_CONVERTED_EVENT_SPACES,
 };
 export const PHASE_14_BOARD_CHANGES = {
   openRoad: [1],

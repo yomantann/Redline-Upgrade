@@ -142,23 +142,10 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
   const lines = useMemo(() => [`0${index + 1} / ${name}`], [index, name]);
   const texture = useMemo(() => graphic(lines, color), [lines, color]);
   useEffect(() => () => texture.dispose(), [texture]);
-  return <group position={[x, 0, z]}>
-    <mesh position={[0, 0.72, 0]} castShadow>
-      <boxGeometry args={[0.095, 1.4, 0.1]} /><primitive object={mats.dark} attach="material" />
-    </mesh>
-    <mesh position={[0, 1.43, 0]} castShadow>
-      <boxGeometry args={[3.25, 0.82, 0.13]} />
-      <meshStandardMaterial color="#172820" metalness={0.62} roughness={0.44} />
-    </mesh>
-    <mesh position={[0, 1.43, 0.075]}>
-      <planeGeometry args={[3.1, 0.71]} />
-      <meshBasicMaterial map={texture} transparent depthWrite={false} />
-    </mesh>
-    <mesh position={[0, 1.04, 0.08]}>
-      <boxGeometry args={[3.14, 0.035, 0.035]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
-    </mesh>
-  </group>;
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.145, z]}>
+    <planeGeometry args={[2.9, 0.42]} />
+    <meshBasicMaterial map={texture} transparent depthWrite={false} />
+  </mesh>;
 }
 
 function ZoneFrame({ index, color }: { index: number; color: string }) {
@@ -167,22 +154,14 @@ function ZoneFrame({ index, color }: { index: number; color: string }) {
   const next = ROUTE[Math.min(75, routeIndex + 1)];
   const angle = Math.atan2(next.z - point.z, next.x - point.x);
   return <group position={[point.x, 0.14, point.z]} rotation={[0, -angle, 0]}>
-    <mesh position={[0, 0.03, -1.6]} receiveShadow>
-      <boxGeometry args={[4.8, 0.08, 0.11]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.78} roughness={0.34} />
+    <mesh position={[0, 0.012, 0]} receiveShadow>
+      <boxGeometry args={[0.1, 0.02, 2.9]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.12} metalness={0.56} roughness={0.42} />
     </mesh>
-    <mesh position={[0, 0.03, 1.6]} receiveShadow>
-      <boxGeometry args={[4.8, 0.08, 0.11]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.78} roughness={0.34} />
-    </mesh>
-    {[-2.25, 2.25].map((x) => <mesh key={x} position={[x, 0.62, 0]} castShadow>
-      <boxGeometry args={[0.12, 1.18, 3.3]} />
-      <meshStandardMaterial color="#101b18" metalness={0.76} roughness={0.36} />
+    {[-1.25, 1.25].map((z) => <mesh key={z} position={[0, 0.008, z]} receiveShadow>
+      <boxGeometry args={[3.5, 0.014, 0.045]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.48} roughness={0.46} />
     </mesh>)}
-    <mesh position={[0, 1.2, 0]} castShadow>
-      <boxGeometry args={[4.62, 0.12, 0.14]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.16} metalness={0.72} roughness={0.3} />
-    </mesh>
   </group>;
 }
 
@@ -556,8 +535,6 @@ export function BoardScene({ players, activePlayerId, finishOrder = [], landingP
     <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
     <CenterEmblem />
-    {TABLETOP_DRESSING.map((panel) => <DressingPanel key={panel.id} panel={panel} />)}
-    {TABLETOP_STRUCTURES.map((structure) => <TabletopStructure key={structure.id} structure={structure} />)}
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i % 15 === 14} zoneColor={ZONE_COLORS[Math.floor(i / 15)]} />)}
     {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     <StartGate />

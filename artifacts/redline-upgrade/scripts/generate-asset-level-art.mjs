@@ -1,4 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +26,13 @@ const assets = [...source.matchAll(/id:\s*'([^']+)'[^}]*?category:\s*'(car|lifes
 const hash = value => [...value].reduce((total, char) => (total * 33 + char.charCodeAt(0)) >>> 0, 5381);
 const palettes = ['#d4e981', '#e9c477', '#88c6c2', '#a8df8d', '#f5a67e', '#83c5e8'];
 
+function convertToWebp(input, output) {
+  execFileSync('magick', [
+    '-background', 'none', '-density', '144', input, '-resize', '640x640!',
+    '-strip', '-quality', '90', output,
+  ], { stdio: 'inherit' });
+}
+
 function signatureFor(asset, level, seed, accent, secondary) {
   const shift = (seed % 18) - 9;
   switch (asset.category) {
@@ -32,9 +40,9 @@ function signatureFor(asset, level, seed, accent, secondary) {
       return [
         `<path d="M470 ${150 + shift}h92l22 15h-98zM500 ${147 + shift}v-13m55 13v-13" />`,
         `<path d="M91 486q205 34 456 1" stroke-width="9" opacity=".78"/>`,
-        `<circle cx="${376 + shift}" cy="420" r="34"/><circle cx="${584 - shift}" cy="342" r="34"/>`,
+        `<path d="M463 199h109m-86 14h69" stroke="${secondary}" stroke-width="5" opacity=".84"/>`,
         ...(level >= 3 ? [`<path d="M120 465q172 23 376 0" stroke="${secondary}" stroke-width="13" opacity=".7"/>`, `<path d="M285 345h151m-126 12h98" stroke="${secondary}" stroke-width="7" opacity=".85"/>`] : []),
-        ...(level >= 4 ? [`<circle cx="${376 + shift}" cy="420" r="20" stroke="${secondary}" stroke-width="6"/>`, `<circle cx="${584 - shift}" cy="342" r="20" stroke="${secondary}" stroke-width="6"/>`, `<path d="M252 134h108l-8-13h-92zM77 468l-32 16 24 12 36-11" stroke="${secondary}" stroke-width="8"/>`] : []),
+        ...(level >= 4 ? [`<path d="M252 134h108l-8-13h-92zM77 468l-32 16 24 12 36-11" stroke="${secondary}" stroke-width="8"/>`] : []),
       ].join('');
     case 'lifestyle': {
       const id = asset.id;
@@ -98,20 +106,46 @@ function signatureFor(asset, level, seed, accent, secondary) {
 for (const asset of assets) {
   const [directory, prefix] = groups[asset.category];
   const ordinal = legacyByCategory[asset.category].indexOf(asset.id);
-  const base = ordinal >= 0 ? `../${prefix}_${String(ordinal + 1).padStart(2, '0')}.webp` : `../phase11/${asset.id}.svg`;
+  const assetDirectory = path.join(root, 'public/milestone-assets', directory);
+  const phase14Directory = path.join(assetDirectory, 'phase14');
+  const sourceBase = ordinal >= 0
+    ? path.join(assetDirectory, `${prefix}_${String(ordinal + 1).padStart(2, '0')}.webp`)
+    : path.join(assetDirectory, 'phase11', `${asset.id}.svg`);
+  const level1Path = path.join(phase14Directory, `${asset.id}-level-1.webp`);
   const seed = hash(asset.id);
   const accent = palettes[seed % palettes.length];
   const secondary = palettes[(seed >>> 8) % palettes.length];
+  mkdirSync(phase14Directory, { recursive: true });
+  if (ordinal < 0) convertToWebp(sourceBase, level1Path);
+  const baseWebp = ordinal >= 0 ? sourceBase : level1Path;
+
   for (const level of [2, 3, 4]) {
-    const dir = path.join(root, 'public/milestone-assets', directory, 'phase14');
-    mkdirSync(dir, { recursive: true });
     const details = signatureFor(asset, level, seed, accent, secondary);
     const cornerFrame = level >= 3
       ? `<path d="M34 124V34h90m402 0h90v90M34 516v90h90m402 0h90v-90" fill="none" stroke="${accent}" stroke-width="${level === 4 ? 8 : 5}" stroke-linecap="round" opacity=".72"/>`
       : '';
     const halo = `<circle cx="${480 + (seed % 48)}" cy="${110 + ((seed >>> 5) % 72)}" r="${72 + level * 8}" fill="${accent}" opacity=".08"/>`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><defs><filter id="asset-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><image href="${base}" width="640" height="640"/><g>${halo}</g><g fill="none" stroke="${accent}" stroke-width="${level === 2 ? 7 : level === 3 ? 8 : 9}" stroke-linecap="round" stroke-linejoin="round" opacity=".82" filter="url(#asset-glow)">${details}</g><g fill="none" stroke="${secondary}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".74">${details}</g>${cornerFrame}</svg>`;
-    writeFileSync(path.join(dir, `${asset.id}-level-${level}.svg`), svg);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><defs><filter id="asset-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g>${halo}</g><g fill="none" stroke="${accent}" stroke-width="${level === 2 ? 7 : level === 3 ? 8 : 9}" stroke-linecap="round" stroke-linejoin="round" opacity=".82" filter="url(#asset-glow)">${details}</g><g fill="none" stroke="${secondary}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".74">${details}</g>${cornerFrame}</svg>`;
+    const overlaySvg = path.join(phase14Directory, `${asset.id}-level-${level}.overlay.svg`);
+    const overlayPng = path.join(phase14Directory, `${asset.id}-level-${level}.overlay.png`);
+    const output = path.join(phase14Directory, `${asset.id}-level-${level}.webp`);
+    writeFileSync(overlaySvg, svg);
+    try {
+      execFileSync('magick', [
+        '-background', 'none', '-density', '144', overlaySvg, '-resize', '640x640!',
+        '-alpha', 'on', overlayPng,
+      ], { stdio: 'inherit' });
+      execFileSync('magick', [
+        baseWebp, overlayPng, '-compose', 'over', '-composite',
+        '-strip', '-quality', '90', output,
+      ], { stdio: 'inherit' });
+    } finally {
+      for (const temporaryFile of [overlaySvg, overlayPng]) {
+        if (existsSync(temporaryFile)) unlinkSync(temporaryFile);
+      }
+    }
+    const oldSvg = path.join(phase14Directory, `${asset.id}-level-${level}.svg`);
+    if (existsSync(oldSvg)) unlinkSync(oldSvg);
   }
 }
-console.log(`Generated ${assets.length * 3} level-specific Phase 14 upgrade artworks.`);
+console.log(`Generated ${assets.length * 3} composited Phase 14 upgrade WebPs and ${assets.length - legacyByCategory.car.length - legacyByCategory.lifestyle.length - legacyByCategory.pet.length - legacyByCategory.investment.length - legacyByCategory.property.length} Phase 11 Level 1 WebPs.`);

@@ -20,6 +20,7 @@ import { AbilityActivationBanner, formatEventTransition, formatSpaceFeedbackOutc
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
+import { EndgameAttributeBonusSummary } from './endgame-attribute-bonus-summary';
 import { SpaceIcon } from './space-icon';
 import { CareerDeckBadges } from './career-deck-badges';
 import './game-screen.css';
@@ -269,7 +270,7 @@ export function GameScreen() {
     } else if (phase === 'decision' && isCPU && pending) {
       if (pending.kind === 'CARD') {
         delay = pending.stage === 'draw' ? CARD_READ_MINIMUM_MS : CPU_CARD_RESULT_MS;
-        callback = () => dispatchMatch({ type: pending.stage === 'draw' ? 'RESOLVE_CARD' : 'ACKNOWLEDGE_CARD' });
+        callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
       } else {
         delay = 1050;
         callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
@@ -314,6 +315,7 @@ export function GameScreen() {
   if (match.phase === 'complete') {
     return (
       <main className="game-screen game-screen-finish-line">
+        <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} />
       </main>
     );
@@ -330,6 +332,7 @@ export function GameScreen() {
       : undefined;
     return (
       <main className="game-screen game-screen-finish-line">
+        <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <FinishLinePanel
           player={active}
           endgame={active.endgame}
@@ -363,13 +366,6 @@ export function GameScreen() {
         <div>
           <span className="eyebrow">MATCH 01 / LOCAL TABLETOP</span>
           <h1 className="display">The <span>board.</span></h1>
-        </div>
-        <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
-          <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
-          <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
-           <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? pending?.kind === 'CARD' ? 'Card draw in progress' : 'Milestone decision in progress' : 'Space reached'}</small>
-          <button className="action turn-roll" type="button" onClick={rollDice} disabled={Boolean(rollDisabledReason)} aria-describedby={rollDisabledReason ? 'top-roll-disabled-reason' : undefined} data-testid="button-roll-top">ROLL DICE <span aria-hidden="true">↗</span></button>
-          {rollDisabledReason && <small className="roll-disabled-reason" id="top-roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
         </div>
       </section>
 
@@ -467,6 +463,25 @@ export function GameScreen() {
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
         finishOrder={match.finishOrder}
        /></div>
+        <aside className="game-dice-panel" aria-label="Turn status and dice">
+          <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
+            <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
+            <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
+            <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
+            {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
+          </div>
+          <DiceRoller
+            roll={roll}
+            phase={match.phase}
+            disabled={active.isCPU || match.phase !== 'ready'}
+            disabledReason={rollDisabledReason}
+            onRoll={rollDice}
+            onRollComplete={onRollComplete}
+            rollerName={active.displayName}
+            isHuman={!active.isCPU}
+            buttonTestId="button-roll-top"
+          />
+        </aside>
        <CardTabletop
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
          activeCard={match.phase === 'decision' && pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined}
@@ -484,16 +499,6 @@ export function GameScreen() {
       {match.phase === 'ready' && !active.isCPU && <UpgradeTokenControls player={active} onAction={(action: MatchAction) => dispatchMatch(action)} />}
 
       {match.phase !== 'decision' && <section className="game-console">
-        <DiceRoller
-          roll={roll}
-          phase={match.phase}
-          disabled={active.isCPU || match.phase !== 'ready'}
-                  disabledReason={rollDisabledReason}
-          onRoll={rollDice}
-          onRollComplete={onRollComplete}
-          rollerName={active.displayName}
-          isHuman={!active.isCPU}
-        />
         <div className="game-readout">
           <div className="readout-top mono"><span>FIELD REPORT // LIVE</span><span>2 × D4</span></div>
           <div className="readout-primary">

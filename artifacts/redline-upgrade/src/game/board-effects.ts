@@ -39,7 +39,7 @@ export interface BoardEffectDefinition {
   effects: readonly BoardEffectAction[];
 }
 
-export const BOARD_EFFECTS: readonly BoardEffectDefinition[] = [
+const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
   {
     id: 'quick-contract',
     spaceNumber: 1,
@@ -203,6 +203,9 @@ export const BOARD_EFFECTS: readonly BoardEffectDefinition[] = [
     ],
   },
 ];
+
+export const BOARD_EFFECTS: readonly BoardEffectDefinition[] = allBoardEffectDefinitions
+  .filter((effect) => effect.spaceNumber === 1);
 
 export const BOARD_EFFECTS_BY_SPACE = new Map<number, BoardEffectDefinition>(
   BOARD_EFFECTS.map((effect) => [effect.spaceNumber, effect] as const),

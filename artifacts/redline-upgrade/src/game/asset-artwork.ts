@@ -9,8 +9,8 @@ const artworkGroups: Record<AssetCategory, { directory: string; prefix: string }
   property: { directory: 'properties', prefix: 'PROPERTY' },
 };
 
-// Keep the commissioned Phase 1-10 files stable. New assets use their own
-// authored SVG path rather than shifting the ordinal legacy mapping.
+// Keep commissioned Phase 1-10 Level 1 WebPs stable. New assets use their own
+// Phase 14 WebP files rather than shifting the ordinal legacy mapping.
 const legacyArtworkIds: Record<AssetCategory, readonly string[]> = {
   car: ['budget-racer', 'flex-car', 'supercar', 'electric-hypercar', 'street-tuner', 'electric-coupe', 'executive-sedan', 'track-special', 'grand-tourer', 'prototype-one'],
   lifestyle: ['luxury-travel', 'vip-life', 'low-key-life', 'creator-lifestyle', 'studio-life', 'city-weekends', 'wellness-club', 'art-collector', 'private-retreat', 'global-elite'],
@@ -26,7 +26,7 @@ const artworkByAssetId = Object.fromEntries(assets.map((asset) => {
     return [asset.id, `milestone-assets/${group.directory}/${group.prefix}_${String(legacyIndex + 1).padStart(2, '0')}.webp`];
   }
   const phase11Directory = asset.category === 'car' ? 'cars' : asset.category === 'property' ? 'properties' : `${asset.category}s`;
-  return [asset.id, `milestone-assets/${phase11Directory}/phase11/${asset.id}.svg`];
+  return [asset.id, `milestone-assets/${phase11Directory}/phase14/${asset.id}-level-1.webp`];
 })) as Record<string, string>;
 
 export function getAssetArtworkFilePath(assetId: string): string | undefined {
@@ -39,7 +39,7 @@ export function getAssetArtworkFilePathForLevel(assetId: string, level: AssetLev
   if (!asset || !basePath) return undefined;
   if (level === 1) return basePath;
   const directory = artworkGroups[asset.category].directory;
-  return `milestone-assets/${directory}/phase14/${asset.id}-level-${level}.svg`;
+  return `milestone-assets/${directory}/phase14/${asset.id}-level-${level}.webp`;
 }
 
 export function getAssetArtworkUrl(assetId: string, level: AssetLevel = 1): string | undefined {

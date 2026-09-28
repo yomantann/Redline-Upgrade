@@ -32,6 +32,7 @@ try {
   const { PlayerAssets } = await vite.ssrLoadModule('/src/components/player-assets.tsx');
   const { MilestoneChoice } = await vite.ssrLoadModule('/src/components/milestone-choice.tsx');
   const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
+  const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
   const { AbilityActivationBanner, SpaceRewardBanner, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
@@ -199,7 +200,11 @@ try {
   }
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
-  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number), [3, 7, 12, 17, 22, 26, 32, 36, 42, 48, 52, 58, 62, 69]);
+  assert.deepEqual(
+    BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number),
+    [3, 5, 7, 12, 13, 17, 20, 22, 24, 26, 27, 32, 33, 36, 37, 39, 42, 47, 48, 49, 52, 57, 58, 62, 64, 67, 69, 72],
+    'all generic event spaces now draw from existing card decks',
+  );
   assert.equal(BOARD_SPACES[0].label, 'OPEN ROAD', 'Space 1 clearly identifies the start of the route');
   assert.equal(BOARD_SPACES[0].effectId, 'quick-contract', 'Space 1 retains its existing Quick Contract effect');
   assert.equal(BOARD_SPACES[1].type, 'UPGRADE_TOKEN', 'Space 2 uses the existing Upgrade Token space mechanic');
@@ -207,7 +212,12 @@ try {
   assert.deepEqual([...PAYDAY_SPACES], [6, 18, 29, 41, 54, 66, 73]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE').map(space => space.number), [10, 30, 35, 45, 60, 75]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'GAMBLE').map(space => space.number), [15, 50, 70]);
-  const expectedDeckCodes = new Map([[3, 'W'], [7, 'AI'], [12, 'FM'], [17, 'LS'], [22, 'IN'], [26, 'LS'], [32, 'W'], [36, 'IN'], [42, 'AI'], [48, 'W'], [52, 'FM'], [58, 'FM'], [62, 'IN'], [69, 'AI']]);
+  const expectedDeckCodes = new Map([
+    [3, 'W'], [5, 'W'], [7, 'AI'], [12, 'FM'], [13, 'AI'], [17, 'LS'], [20, 'LS'], [22, 'IN'],
+    [24, 'FM'], [26, 'LS'], [27, 'W'], [32, 'W'], [33, 'AI'], [36, 'IN'], [37, 'W'], [39, 'IN'],
+    [42, 'AI'], [47, 'FM'], [48, 'W'], [49, 'W'], [52, 'FM'], [57, 'IN'], [58, 'FM'], [62, 'IN'],
+    [64, 'W'], [67, 'FM'], [69, 'AI'], [72, 'W'],
+  ]);
   for (const [number, code] of expectedDeckCodes) {
     const visual = getSpaceVisual(BOARD_SPACES[number - 1]);
     assert.equal(visual.className, 'deck', `space ${number} is visually identified as a draw space`);
@@ -218,8 +228,8 @@ try {
   assert.equal(gambleVisual.deckCode, 'GMB', 'Gamble carries its deck identifier');
   assert.equal(gambleVisual.deckName, 'GAMBLE', 'Gamble uses the same deck identity as its cards');
   assert.equal(new Set([...expectedDeckCodes.values(), gambleVisual.deckCode]).size, 6, 'all six deck identities have a visible short code');
-  assert.equal(BOARD_EFFECTS.length, 15, 'the board has 15 active predictable effects');
-  assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1, 5, 13, 20, 24, 27, 33, 37, 39, 47, 49, 57, 64, 67, 72]);
+  assert.equal(BOARD_EFFECTS.length, 1, 'Space 1 retains the only unique board effect');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').map(space => space.number), [2, 14, 55], 'Space 2 joins the existing Upgrade Token spaces');
   assert(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').every(space => space.trigger === 'LAND' && getSpaceVisual(space).className === 'upgrade'), 'token spaces award only on landing and have a distinct visual');
   assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 27, 'Space 2 and five ordinary spaces are replaced without changing route length');
@@ -849,12 +859,47 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   match = move(start(13, 1), 2);
   assert.equal(match.pending.deck, 'gamble');
   const cpuCardId = match.pending.cardId;
-  match = advanceMatch(match, { type: 'AUTO_DECIDE' });
-  assert.equal(match.phase, 'landed');
+  const cpuCardResult = advanceMatch(match, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuCardResult.phase, 'decision', 'CPU card result stays visible before acknowledgement');
+  assert.equal(cpuCardResult.pending.stage, 'resolved');
+  assert(eventTypes(cpuCardResult).includes('CARD_RESOLVED'));
+  match = advanceMatch(cpuCardResult, { type: 'AUTO_DECIDE' });
+  assert.equal(match.phase, 'landed', 'the second timed CPU stage resumes the turn');
   assert(eventTypes(match).includes('CARD_RESOLVED'));
   assert(match.cardPiles.gamble.discardPile.includes(cpuCardId));
   assert.equal(match.cardPiles.gamble.inFlight.length, 0);
   assertCompleteCardPiles(match.cardPiles);
+
+  let consecutiveCpuMatch = start(1, 1);
+  const consecutiveCardStops = [
+    { before: 1, deck: 'wealth' },
+    { before: 5, deck: 'ai' },
+    { before: 10, deck: 'fame' },
+  ];
+  for (let index = 0; index < consecutiveCardStops.length; index += 1) {
+    if (index > 0) {
+      consecutiveCpuMatch = {
+        ...consecutiveCpuMatch,
+        phase: 'ready',
+        pending: null,
+        roll: null,
+        stepsRemaining: 0,
+        turnIndex: 1,
+        players: consecutiveCpuMatch.players.map((player, playerIndex) => playerIndex === 1
+          ? { ...player, position: consecutiveCardStops[index].before, status: 'ACTIVE' }
+          : player),
+      };
+    }
+    consecutiveCpuMatch = move(consecutiveCpuMatch, 2);
+    assert.equal(consecutiveCpuMatch.pending.kind, 'CARD');
+    assert.equal(consecutiveCpuMatch.pending.deck, consecutiveCardStops[index].deck);
+    const resultStage = advanceMatch(consecutiveCpuMatch, { type: 'AUTO_DECIDE' });
+    assert.equal(resultStage.pending.stage, 'resolved');
+    consecutiveCpuMatch = advanceMatch(resultStage, { type: 'AUTO_DECIDE' });
+    assert.equal(consecutiveCpuMatch.phase, 'landed');
+    assert.equal(consecutiveCpuMatch.pending, null);
+  }
+  assertCompleteCardPiles(consecutiveCpuMatch.cardPiles);
   match = move(start(58, 1), 2);
   assert.equal(match.pending.slot, 'property');
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });
@@ -913,6 +958,16 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   // immutable finish snapshot exactly once for both human and CPU players.
   assert.deepEqual([...FINISH_ORDER_WEALTH_REWARDS], [100000, 75000, 50000, 25000]);
   let finishOrderFixture = withoutAbilities(createMatch(id));
+  finishOrderFixture = {
+    ...finishOrderFixture,
+    players: finishOrderFixture.players.map((player, index) => ({
+      ...player,
+      aiSkill: [10, 10, 4, 3][index],
+      fame: [2, 12, 10, 1][index],
+      lifestyle: [5, 4, 16, 3][index],
+      influence: [5, 8, 2, 18][index],
+    })),
+  };
   const arrivalWealths = [900000, 1000, 500000, 250000];
   for (let rank = 0; rank < 4; rank += 1) {
     const playerIndex = rank;
@@ -928,7 +983,10 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     const player = finished.players[playerIndex];
     assert.equal(player.status, 'FINISHED');
     assert.equal(finished.finishOrder[rank], playerIndex);
-    assert.equal(player.wealth, arrivalWealths[playerIndex] + FINISH_ORDER_WEALTH_REWARDS[rank]);
+    assert.equal(
+      player.wealth,
+      arrivalWealths[playerIndex] + FINISH_ORDER_WEALTH_REWARDS[rank] + (rank === 3 ? 50_000 : 0),
+    );
     assert.equal(player.endgame.snapshot.wealth, player.wealth, 'finish snapshot includes the reward');
     assert.equal(finished.wealthEvents.filter(event => event.playerIndex === playerIndex && event.space === 75).length, 1);
     assert.equal(finished.wealthEvents.find(event => event.playerIndex === playerIndex && event.space === 75)?.kind, 'FINISH_BONUS');
@@ -941,6 +999,33 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
       stepsRemaining: 0,
     };
   }
+  assert.deepEqual(
+    finishOrderFixture.endgameAttributeBonuses.map((award) => [award.attribute, award.playerIndex, award.amount]),
+    [
+      ['aiSkill', 0, 50_000],
+      ['fame', 1, 50_000],
+      ['lifestyle', 2, 50_000],
+      ['influence', 3, 50_000],
+    ],
+    'each final attribute has one $50K winner; the earlier finisher wins the AI Skill tie',
+  );
+  const finalBonusMarkup = renderToStaticMarkup(React.createElement(EndgameAttributeBonusSummary, {
+    awards: finishOrderFixture.endgameAttributeBonuses,
+    players: finishOrderFixture.players,
+  }));
+  assert(finalBonusMarkup.includes('Four leaders. Four $50K awards.'), 'the final leaderboard summary shows the four attribute awards');
+  assert(finalBonusMarkup.includes('lower player slot wins'), 'the tie-break rule is documented in the visible summary');
+  for (let playerIndex = 0; playerIndex < finishOrderFixture.players.length; playerIndex += 1) {
+    const player = finishOrderFixture.players[playerIndex];
+    assert.equal(player.wealth, arrivalWealths[playerIndex] + FINISH_ORDER_WEALTH_REWARDS[playerIndex] + 50_000);
+    assert.equal(player.endgame.snapshot.wealth, player.wealth, 'final attribute bonus is included in every finish snapshot');
+    assert.equal(player.endgame.baseValue, calculateEndgameBaseValue(player), 'pending endgame value includes the bonus wealth');
+  }
+  assert.equal(
+    advanceMatch(finishOrderFixture, { type: 'STEP' }),
+    finishOrderFixture,
+    'the final attribute bonuses cannot be awarded twice',
+  );
 
   assert.equal(advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }).players[0].endgame.status, 'RESOLVED');
   assert.deepEqual([0, 1, 2, 3, 4, 12].map(getEndgameTokenTier), [0, 1, 2, 3, 4, 4]);
@@ -1216,90 +1301,20 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: carId });
   assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 1);
 
-  function isolatedEffectStart(position, slot = 0) {
-    const match = startWithoutProtection(position, slot);
-    return {
-      ...match,
-      players: match.players.map((player, index) => index === slot
-        ? { ...player, characterId: 'guardian_h', careerId: 'doctor' }
-        : player),
-    };
-  }
-  const penaltyLanding = move(isolatedEffectStart(2), 3);
-  assert.equal(penaltyLanding.players[0].position, 5);
-  assert.equal(penaltyLanding.players[0].wealth, 897000);
-  assert.equal(countEvent(penaltyLanding, 'BOARD_EFFECT_RESOLVED'), 1);
-  const passedEffect = move(isolatedEffectStart(3), 4);
-  assert.equal(passedEffect.players[0].position, 7);
-  assert.equal(countEvent(passedEffect, 'BOARD_EFFECT_RESOLVED'), 0, 'passing an effect space does not trigger it');
+  const convertedEventLanding = move(start(3), 2);
+  assert.equal(convertedEventLanding.players[0].position, 5);
+  assert.equal(convertedEventLanding.pending.kind, 'CARD');
+  assert.equal(convertedEventLanding.pending.deck, 'wealth');
+  assert.equal(countEvent(convertedEventLanding, 'BOARD_EFFECT_RESOLVED'), 0);
+  const passedConvertedSpace = move(start(3), 4);
+  assert.equal(passedConvertedSpace.players[0].position, 7);
+  assert.equal(countEvent(passedConvertedSpace, 'CARD_DRAW'), 1, 'passing space 5 does not draw; landing on space 7 draws once');
 
-  const cpuStart = isolatedEffectStart(2);
-  const cpuMatch = {
-    ...cpuStart,
-    players: cpuStart.players.map((player, index) => index === 0 ? { ...player, isCPU: true } : player),
-  };
-  const cpuLanding = move(cpuMatch, 3);
-  assert.equal(cpuLanding.players[0].wealth, 897000, 'CPU landings resolve the same board effect');
-
-  const protectedStart = isolatedEffectStart(2);
-  const protectedPlayerId = protectedStart.players[0].playerId;
-  const protectedWealthBefore = protectedStart.players[0].wealth;
-  const protectedMatch = move({
-    ...protectedStart,
-    effectProtections: {
-      ...protectedStart.effectProtections,
-      [protectedPlayerId]: [{ remaining: 1, blockedEffectTypes: ['REMOVE_WEALTH'] }],
-    },
-  }, 3);
-  assert.equal(protectedMatch.players[0].wealth, protectedWealthBefore, 'existing protection blocks a matching board penalty');
-  assert.equal(protectedMatch.effectProtections[protectedPlayerId].length, 0, 'blocked effect consumes its protection');
-
-  const digitalCareer = careers.find(career => career.tags.includes('digital'));
-  const digitalStart = startWithoutProtection(10);
-  const digitalMatch = {
-    ...digitalStart,
-    players: digitalStart.players.map((player, index) => index === 0 ? { ...player, careerId: digitalCareer.id } : player),
-  };
-  const aiBefore = digitalMatch.players[0].aiSkill;
-  const digitalLanding = move(digitalMatch, 3);
-  assert.equal(digitalLanding.players[0].aiSkill, aiBefore + 2, 'career-tagged effects grant the digital-career bonus');
-
-  const rivalStart = withoutAbilities(startWithoutProtection(36));
-  const rivalMatch = {
-    ...rivalStart,
-    players: rivalStart.players.map((player, index) => {
-      if (index === 0) return { ...player, position: 36, wealth: 40000 };
-      if (index === 1) return { ...player, position: 42, wealth: 50000 };
-      return { ...player, wealth: 900000 };
-    }),
-  };
-  const rivalLanding = move(rivalMatch, 3);
-  assert.equal(rivalLanding.players[0].influence, rivalMatch.players[0].influence + 1);
-  assert.equal(rivalLanding.players[0].wealth, 42000, 'the rival-contract effect transfers wealth to the landing player');
-  assert.equal(rivalLanding.players[1].wealth, 48000, 'the rival-contract effect targets the nearest player ahead');
-
-  const spotlightStart = startWithoutProtection(44);
-  const spotlightMatch = {
-    ...spotlightStart,
-    players: spotlightStart.players.map((player, index) => {
-      if (index === 0) return { ...player, position: 44 };
-      if (index === 1) return { ...player, position: 42 };
-      if (index === 2) return { ...player, position: 50 };
-      return player;
-    }),
-  };
-  const actorFameBefore = spotlightMatch.players[0].fame;
-  const trailingFameBefore = spotlightMatch.players[1].fame;
-  const leadingFameBefore = spotlightMatch.players[2].fame;
-  const spotlightLanding = move(spotlightMatch, 3);
-  assert.equal(spotlightLanding.players[0].fame, actorFameBefore + 1);
-  assert.equal(spotlightLanding.players[1].fame, trailingFameBefore - 1, 'rival spotlight targets the nearest player behind');
-  assert.equal(spotlightLanding.players[2].fame, leadingFameBefore, 'rival spotlight does not target players ahead');
-
-  const rollStart = withoutAbilities(startWithoutProtection(46));
-  const rollBefore = rollStart.players[0].wealth;
-  const rollLanding = move(rollStart, 3);
-  assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');
+  assert.deepEqual(
+    BOARD_SPACES.filter(space => space.type === 'EVENT').map(space => space.number),
+    [1],
+    'generic event effects are replaced while Space 1 remains the unique Open Road space',
+  );
   console.log('CARD ARTWORK AUDIT');
   console.log('DECK | TOTAL | WITH IMAGE | MISSING');
   for (const deck of decks) {
@@ -1310,7 +1325,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     }).length;
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
-  console.log('PASS: 21 portraits, 21 character ability displays, 20 career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and event regressions');
+  console.log('PASS: 21 portraits, 21 character ability displays, 20 career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions');
 } finally {
   await vite.close();
 }

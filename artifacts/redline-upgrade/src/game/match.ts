@@ -30,6 +30,49 @@ export type MatchPlayer = ReturnType<typeof createPlayer> & {
   status: PlayerMatchStatus;
   endgame: EndgameState | null;
 };
+export type EndgameAttribute = 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
+export interface EndgameAttributeBonus {
+  attribute: EndgameAttribute;
+  label: 'AI SKILL' | 'FAME' | 'LIFESTYLE' | 'INFLUENCE';
+  playerIndex: number;
+  value: number;
+  amount: 50_000;
+}
+
+const ENDGAME_ATTRIBUTES: readonly { attribute: EndgameAttribute; label: EndgameAttributeBonus['label'] }[] = [
+  { attribute: 'aiSkill', label: 'AI SKILL' },
+  { attribute: 'fame', label: 'FAME' },
+  { attribute: 'lifestyle', label: 'LIFESTYLE' },
+  { attribute: 'influence', label: 'INFLUENCE' },
+];
+
+export function calculateEndgameAttributeBonuses(
+  players: readonly MatchPlayer[],
+  finishOrder: readonly number[],
+): EndgameAttributeBonus[] {
+  return ENDGAME_ATTRIBUTES.map(({ attribute, label }) => {
+    const highest = Math.max(...players.map((player) => player[attribute]));
+    const leaders = players
+      .map((player, playerIndex) => ({ playerIndex, value: player[attribute] }))
+      .filter((candidate) => candidate.value === highest)
+      // Ties go to the earlier finisher; player-array order is the deterministic fallback.
+      .sort((a, b) => {
+        const aRank = finishOrder.indexOf(a.playerIndex);
+        const bRank = finishOrder.indexOf(b.playerIndex);
+        const rankDifference = (aRank < 0 ? Number.MAX_SAFE_INTEGER : aRank)
+          - (bRank < 0 ? Number.MAX_SAFE_INTEGER : bRank);
+        return rankDifference || a.playerIndex - b.playerIndex;
+      });
+    const winner = leaders[0];
+    return {
+      attribute,
+      label,
+      playerIndex: winner.playerIndex,
+      value: highest,
+      amount: 50_000,
+    };
+  });
+}
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed' | 'endgame' | 'complete';
 export interface DiceResult { die1: number; die2: number; total: number; doubles: boolean }
 export interface Landing { playerIndex: number; space: BoardSpace }
@@ -50,6 +93,7 @@ export interface Match {
   wealthEvents: WealthEvent[];
   /** Player indexes in the order they reached space 75. */
   finishOrder: number[];
+  endgameAttributeBonuses: EndgameAttributeBonus[] | null;
   pending: PendingDecision | null;
   eventLog: EventLogEntry[];
   eventCursor: number;
@@ -165,7 +209,45 @@ function finishPlayersAtLine(match: Match): Match {
       lastLanding: currentSpace ? { playerIndex: match.turnIndex, space: currentSpace } : match.lastLanding,
     } : {}),
   };
-  return resolveEventQueue(nextMatch, drafts);
+  const resolved = resolveEventQueue(nextMatch, drafts);
+  if (
+    resolved.endgameAttributeBonuses
+    || resolved.finishOrder.length !== resolved.players.length
+    || !resolved.players.every((player) => player.status === 'FINISHED')
+  ) return resolved;
+
+  const bonuses = calculateEndgameAttributeBonuses(resolved.players, resolved.finishOrder);
+  const bonusByPlayer = new Map<number, number>();
+  for (const bonus of bonuses) {
+    bonusByPlayer.set(bonus.playerIndex, (bonusByPlayer.get(bonus.playerIndex) ?? 0) + bonus.amount);
+  }
+  const playersWithBonuses = resolved.players.map((player, playerIndex) => {
+    const amount = bonusByPlayer.get(playerIndex) ?? 0;
+    if (!amount) return player;
+    const awardedPlayer = { ...player, wealth: player.wealth + amount };
+    if (player.endgame?.status === 'PENDING') {
+      return {
+        ...awardedPlayer,
+        endgame: {
+          ...player.endgame,
+          baseValue: calculateEndgameBaseValue(awardedPlayer),
+          snapshot: { ...player.endgame.snapshot, wealth: awardedPlayer.wealth },
+        },
+      };
+    }
+    if (player.endgame?.status === 'RESOLVED' && player.endgame.finalGameValue !== undefined) {
+      return {
+        ...awardedPlayer,
+        endgame: { ...player.endgame, finalGameValue: player.endgame.finalGameValue + amount },
+      };
+    }
+    return awardedPlayer;
+  });
+  return {
+    ...resolved,
+    players: playersWithBonuses,
+    endgameAttributeBonuses: bonuses,
+  };
 }
 
 function emit(match: Match, drafts: EventDraft[]): Match {
@@ -215,6 +297,7 @@ export function createMatch(characterId: string): Match {
     lastLanding: null,
     wealthEvents: [],
     finishOrder: [],
+    endgameAttributeBonuses: null,
     pending: null,
     eventLog: [],
     eventCursor: 0,
@@ -757,7 +840,11 @@ function autoDecide(match: Match): Match {
     return resolveEndgameChoice(match, choice);
   }
   if (match.phase !== 'decision' || !pending) return match;
-  if (pending.kind === 'CARD') return acknowledgeCardDecision(resolveCardDecision(match));
+  if (pending.kind === 'CARD') {
+    return pending.stage === 'draw'
+      ? resolveCardDecision(match)
+      : acknowledgeCardDecision(match);
+  }
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])

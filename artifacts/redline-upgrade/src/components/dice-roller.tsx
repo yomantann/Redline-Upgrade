@@ -11,6 +11,7 @@ export interface DiceRollerProps {
   rollerName: string;
   isHuman: boolean;
   disabledReason?: string;
+  buttonTestId?: string;
 }
 
 function D4({ value, index }: { value: number | null; index: number }) {
@@ -25,7 +26,7 @@ function D4({ value, index }: { value: number | null; index: number }) {
   );
 }
 
-export function DiceRoller({ roll, phase, disabled, onRoll, onRollComplete, rollerName, isHuman, disabledReason }: DiceRollerProps) {
+export function DiceRoller({ roll, phase, disabled, onRoll, onRollComplete, rollerName, isHuman, disabledReason, buttonTestId }: DiceRollerProps) {
   const completeRef = useRef(onRollComplete);
   const firedRef = useRef(false);
   completeRef.current = onRollComplete;
@@ -84,7 +85,7 @@ export function DiceRoller({ roll, phase, disabled, onRoll, onRollComplete, roll
         onClick={onRoll}
         disabled={!canRoll}
         aria-describedby={!canRoll && disabledReason ? 'dice-roll-disabled-reason' : undefined}
-        data-testid="button-roll-dice"
+        data-testid={buttonTestId ?? 'button-roll-dice'}
         aria-label={isHuman ? 'Roll two four-sided dice' : 'CPU rolls automatically'}
       >
         <span>ROLL DICE</span>

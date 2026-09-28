@@ -39,7 +39,7 @@ try {
 
     const artworkPath = getAssetArtworkFilePath(asset.id);
     assert(artworkPath, `${asset.id} has an artwork path`);
-    assert.match(artworkPath, /\.(?:svg|webp|png|jpe?g)$/i, `${asset.id} points to an image file`);
+    assert.match(artworkPath, /\.webp$/i, `${asset.id} points to WebP artwork`);
     assert(!/\/(?:generic|placeholders?)\//i.test(artworkPath), `${asset.id} does not use a generic placeholder path`);
     const artworkFile = path.join(publicRoot, artworkPath.replace(/^\/+/, ''));
     assert(existsSync(artworkFile), `${asset.id} artwork file exists: ${artworkPath}`);
@@ -51,11 +51,9 @@ try {
       const levelFile = path.join(publicRoot, levelPath);
       assert(existsSync(levelFile), `${asset.id} level ${level} artwork exists: ${levelPath}`);
       const levelContents = readFileSync(levelFile);
-      if (level > 1) {
-        const embeddedImage = levelContents.toString('utf8').match(/<image[^>]+href="([^"]+)"/)?.[1];
-        assert(embeddedImage, `${asset.id} level ${level} includes its underlying asset artwork`);
-        assert(existsSync(path.resolve(path.dirname(levelFile), embeddedImage)), `${asset.id} level ${level} underlying artwork resolves: ${embeddedImage}`);
-      }
+      assert.match(levelPath, /\.webp$/i, `${asset.id} level ${level} is a rendered WebP`);
+      assert.equal(levelContents.toString('ascii', 0, 4), 'RIFF', `${asset.id} level ${level} has a WebP RIFF header`);
+      assert.equal(levelContents.toString('ascii', 8, 12), 'WEBP', `${asset.id} level ${level} has a WebP signature`);
       levelHashes.push({ assetId: asset.id, level, hash: createHash('sha256').update(levelContents).digest('hex') });
     }
   }
@@ -94,8 +92,8 @@ try {
   assert.equal(phase11Assets.length, 50, 'Phase 11 has exactly 50 new assets');
   for (const asset of phase11Assets) {
     const pathName = getAssetArtworkFilePath(asset.id);
-    assert(pathName?.endsWith('.svg'), `${asset.id} uses an SVG Phase 11 illustration`);
-    assert(pathName?.includes(`/phase11/${asset.id}.svg`), `${asset.id} has an ID-specific Phase 11 path`);
+    assert(pathName?.endsWith('.webp'), `${asset.id} uses a WebP Phase 11 illustration`);
+    assert(pathName?.includes(`/phase14/${asset.id}-level-1.webp`), `${asset.id} has an ID-specific Level 1 WebP path`);
   }
 
   for (const asset of visualAssets) {
@@ -132,7 +130,7 @@ try {
   assert.equal(catalog.collections.find((collection) => collection.id === 'milestone-states').items.length, 4, 'all four milestone states have a marker');
   assert.equal(catalog.collections.find((collection) => collection.id === 'endgame-support').items.length, 7, 'all seven endgame support symbols are mapped');
 
-  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct Level 1 artworks (20 per category), 400 unique Level 1–4 artworks, five asset display surfaces, and ${visualAssets.length} valid manifest paths.`);
+  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct WebP Level 1 artworks (20 per category), 400 unique WebP Level 1–4 artworks, five asset display surfaces, and ${visualAssets.length} valid manifest paths.`);
 } finally {
   await vite.close();
 }
