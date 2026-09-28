@@ -88,11 +88,24 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
           <title>{`Space ${space.number}, ${space.label}. ${space.description}`}</title>
           <polygon points={block.right} fill="#101e19" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
           <polygon points={block.front} fill="#13241e" stroke={accent} strokeOpacity=".65" strokeWidth="1" />
-          <polygon points={block.top} fill={color} stroke={accent} strokeWidth={milestone ? 2.5 : 1.2} />
+          <polygon
+            points={block.top}
+            fill={color}
+            stroke={accent}
+            strokeWidth={milestone ? 2.5 : visual.className === 'deck' ? 2.1 : visual.className === 'gamble' ? 1.45 : 1.2}
+            style={visual.className === 'deck' ? { filter: `drop-shadow(0 0 3px ${accent}88)` } : undefined}
+          />
            <rect x={center.x-30} y={center.y+21} width="16" height="3" rx="1" fill={accent} opacity={visual.className === 'safe' ? '.52' : '.9'} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
-           {visual.className !== 'safe' && <circle cx={center.x+16} cy={center.y-12} r="11" fill="#14211c" stroke={accent} strokeOpacity=".72" strokeWidth="1.4" />}
-           {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+7} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+            {visual.className === 'deck' ? <g aria-hidden="true">
+              <ellipse cx={center.x+16} cy={center.y-12} rx="15" ry="11.5" fill="#0b1512" stroke={accent} strokeWidth="2" />
+              <ellipse cx={center.x+16} cy={center.y-12} rx="11.5" ry="8.4" fill="#17221e" stroke="#eef0df" strokeOpacity=".28" strokeWidth=".7" />
+            </g> : visual.className !== 'safe' && <circle cx={center.x+16} cy={center.y-12} r="11" fill="#14211c" stroke={accent} strokeOpacity=".72" strokeWidth={visual.className === 'gamble' ? 1.2 : 1.4} />}
+            {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+(visual.className === 'deck' || visual.className === 'gamble' ? 4 : 7)} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+            {visual.deckCode && <g aria-hidden="true">
+              <rect x={center.x+7} y={center.y+1} width="18" height="9" rx="2" fill="#0b1512" stroke={accent} strokeOpacity=".92" strokeWidth=".85" />
+              <text x={center.x+16} y={center.y+7.3} textAnchor="middle" fill={accent} fontFamily="Space Mono, monospace" fontSize="5" fontWeight="700" letterSpacing=".1">{visual.deckCode}</text>
+            </g>}
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </g>;
       })}

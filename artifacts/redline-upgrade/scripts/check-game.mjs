@@ -14,6 +14,7 @@ try {
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { careers, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
+  const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
@@ -52,6 +53,17 @@ try {
   assert.deepEqual([...PAYDAY_SPACES], [6, 18, 29, 41, 54, 66, 73]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE').map(space => space.number), [10, 30, 35, 45, 60, 75]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'GAMBLE').map(space => space.number), [15, 50, 70]);
+  const expectedDeckCodes = new Map([[3, 'W'], [7, 'AI'], [12, 'FM'], [17, 'LS'], [22, 'IN'], [32, 'W'], [42, 'AI'], [52, 'FM'], [62, 'IN']]);
+  for (const [number, code] of expectedDeckCodes) {
+    const visual = getSpaceVisual(BOARD_SPACES[number - 1]);
+    assert.equal(visual.className, 'deck', `space ${number} is visually identified as a draw space`);
+    assert.equal(visual.deckCode, code, `space ${number} keeps the correct deck identifier`);
+  }
+  const gambleVisual = getSpaceVisual(BOARD_SPACES[14]);
+  assert.equal(gambleVisual.className, 'gamble', 'Gamble remains visually below regular card spaces');
+  assert.equal(gambleVisual.deckCode, 'GMB', 'Gamble carries its deck identifier');
+  assert.equal(gambleVisual.deckName, 'GAMBLE', 'Gamble uses the same deck identity as its cards');
+  assert.equal(new Set([...expectedDeckCodes.values(), gambleVisual.deckCode]).size, 6, 'all six deck identities have a visible short code');
   assert.equal(BOARD_EFFECTS.length, 15, 'the board has 15 active predictable effects');
   assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1, 5, 13, 20, 24, 27, 33, 37, 39, 47, 49, 57, 64, 67, 72]);
   assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 35, '35 spaces remain effect-free');

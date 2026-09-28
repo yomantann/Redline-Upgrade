@@ -168,6 +168,8 @@ const mats = {
   effect: new THREE.MeshStandardMaterial({ color: '#35483e', metalness: 0.42, roughness: 0.48 }),
   safeMarker: new THREE.MeshStandardMaterial({ color: '#8ea69a', metalness: 0.35, roughness: 0.58 }),
   gamble: new THREE.MeshStandardMaterial({ color: '#533b32', metalness: 0.5, roughness: 0.43 }),
+  deckSocket: new THREE.MeshStandardMaterial({ color: '#0d1715', metalness: 0.78, roughness: 0.3 }),
+  deckWell: new THREE.MeshStandardMaterial({ color: '#17221f', metalness: 0.52, roughness: 0.43 }),
   milestone: new THREE.MeshStandardMaterial({ color: '#603b32', metalness: 0.58, roughness: 0.38 }),
   accent: new THREE.MeshStandardMaterial({ color: COLORS.orange, emissive: COLORS.orange, emissiveIntensity: 0.24, metalness: 0.45 }),
   lime: new THREE.MeshStandardMaterial({ color: COLORS.lime, emissive: COLORS.lime, emissiveIntensity: 0.21 }),
@@ -177,15 +179,31 @@ const mats = {
 function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace; active: boolean; landing: boolean; onSelect: (n: number) => void; onHover: (n: number | null) => void }) {
   const { x, z } = ROUTE[space.number];
   const visual = getSpaceVisual(space);
-  const deckMaterial = useMemo(() => visual.className === 'deck'
-    ? new THREE.MeshStandardMaterial({ color: visual.tile, metalness: 0.46, roughness: 0.48 })
+  const deckMaterial = useMemo(() => visual.className === 'deck' || visual.className === 'gamble'
+    ? new THREE.MeshStandardMaterial({ color: visual.tile, metalness: visual.className === 'deck' ? 0.52 : 0.42, roughness: 0.46 })
     : null, [visual.className, visual.tile]);
-  useEffect(() => () => deckMaterial?.dispose(), [deckMaterial]);
+  const deckEdgeMaterial = useMemo(() => visual.className === 'deck' || visual.className === 'gamble'
+    ? new THREE.MeshStandardMaterial({
+      color: visual.accent,
+      emissive: visual.accent,
+      emissiveIntensity: visual.className === 'deck' ? 0.16 : 0.055,
+      metalness: 0.68,
+      roughness: 0.34,
+    })
+    : null, [visual.className, visual.accent]);
+  useEffect(() => () => {
+    deckMaterial?.dispose();
+    deckEdgeMaterial?.dispose();
+  }, [deckMaterial, deckEdgeMaterial]);
   const landmark = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
-  const sideMaterial = visual.className === 'gamble' || visual.className === 'major' ? mats.accent : space.payday ? mats.lime : visual.className === 'deck' ? mats.event : visual.className === 'effect' ? mats.effect : mats.normal;
-  const topMaterial = finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday : visual.className === 'gamble' ? mats.gamble : visual.className === 'effect' ? mats.effect : deckMaterial ?? mats.normal;
+  const sideMaterial = visual.className === 'major' ? mats.accent
+    : visual.className === 'deck' || visual.className === 'gamble' ? deckEdgeMaterial ?? mats.event
+    : space.payday ? mats.lime : visual.className === 'effect' ? mats.effect : mats.normal;
+  const topMaterial = finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday
+    : visual.className === 'effect' ? mats.effect : visual.className === 'gamble' ? deckMaterial ?? mats.gamble
+    : deckMaterial ?? mats.normal;
   return <group position={[x, 0, z]} onPointerDown={(event) => { event.stopPropagation(); onSelect(space.number); }} onPointerOver={(event) => { event.stopPropagation(); onHover(space.number); }} onPointerOut={() => onHover(null)}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
     <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
@@ -196,17 +214,27 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
       <boxGeometry args={[0.34, 0.035, 0.08]} />
       <meshStandardMaterial color={visual.accent} metalness={0.38} roughness={0.48} emissive={visual.accent} emissiveIntensity={visual.className === 'safe' ? 0.02 : 0.08} />
     </mesh>
-    {visual.className !== 'safe' && <group position={[0.59, topY + 0.005, -0.26]}>
+    {visual.className === 'deck' ? <group position={[0.59, topY + 0.005, -0.26]}>
+      <mesh position={[0, 0.006, 0]} castShadow>
+        <cylinderGeometry args={[0.5, 0.47, 0.075, 8]} /><primitive object={mats.deckSocket} attach="material" />
+      </mesh>
+      <mesh position={[0, 0.022, 0]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.026, 32]} /><primitive object={mats.deckWell} attach="material" />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.36, 0.026, 6, 32]} /><primitive object={deckEdgeMaterial ?? mats.event} attach="material" />
+      </mesh>
+    </group> : visual.className !== 'safe' && <group position={[0.59, topY + 0.005, -0.26]}>
       <mesh position={[0, 0.016, 0]}>
         <cylinderGeometry args={[0.43, 0.43, 0.035, 24]} /><primitive object={mats.dark} attach="material" />
       </mesh>
       <mesh position={[0, 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.34, 0.022, 6, 24]} />
-        <meshStandardMaterial color={visual.accent} metalness={0.68} roughness={0.36} />
+        <torusGeometry args={[0.34, visual.className === 'gamble' ? 0.018 : 0.022, 6, 24]} />
+        {visual.className === 'gamble' ? <primitive object={deckEdgeMaterial ?? mats.gamble} attach="material" /> : <meshStandardMaterial color={visual.accent} metalness={0.68} roughness={0.36} />}
       </mesh>
     </group>}
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.63, 0.71, 8]} /><primitive object={mats.accent} attach="material" />
+      <ringGeometry args={[0.63, 0.69, 8]} /><primitive object={deckEdgeMaterial ?? mats.accent} attach="material" />
     </mesh>}
     {space.effectId && <mesh position={[0.72, topY + 0.075, -0.68]} rotation={[-Math.PI / 2, 0, 0]} castShadow={false}>
       <boxGeometry args={[0.16, 0.025, 0.16]} />
@@ -226,6 +254,7 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={visual.className === 'safe' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
     {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
+    {visual.deckCode && <PrintedLabel lines={[visual.deckCode]} x={0.59} y={topY + 0.045} z={0.64} w={0.88} h={0.18} color={visual.accent} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
     {finish && <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
   </group>;

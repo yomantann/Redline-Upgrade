@@ -3,10 +3,13 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Router as WouterRouter, useLocation } from 'wouter';
 import { characters, getCharacter, type CharacterDefinition } from '@/game/characters';
 import { GameProvider, useGame } from '@/game/state';
+import { createMatch } from '@/game/match';
 import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
 import { CharacterPortrait } from '@/components/character-portrait';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
+import { GameBoard } from '@/components/game-board';
+import { EndgamePresentation } from '@/components/endgame-presentation';
 
 function Artwork({
   index = 0,
@@ -44,7 +47,8 @@ function Header() {
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
-        {match && <button className={`header-link ${location === '/board' ? 'active' : ''}`} type="button" onClick={() => navigate('/board')}>BOARD</button>}
+        <button className={`header-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>{match ? 'BOARD' : 'BOARD PREVIEW'}</button>
+        <button className={`header-link ${location === '/endgame-preview' ? 'active' : ''}`} type="button" onClick={() => navigate('/endgame-preview')} aria-label="Open endgame visual preview" title="Visual foundation only; no endgame rules are active">ENDGAME</button>
         <span className="header-index"><i /> LOCAL BUILD</span>
       </div>
     </header>
@@ -341,6 +345,48 @@ function NotFound() {
   );
 }
 
+function BoardVisualPreview() {
+  const previewMatch = useMemo(() => createMatch(characters[0].id), []);
+  const previewPlayers = previewMatch.players.map((player, index) => ({
+    ...player,
+    position: [0, 4, 9, 14][index] ?? 0,
+  }));
+  const activePlayer = previewPlayers.find((player) => !player.isCPU) ?? previewPlayers[0];
+
+  return (
+    <AppShell>
+      <main className="game-screen board-preview-page">
+        <div className="board-preview-banner mono" role="note" data-testid="text-board-visual-preview">
+          BOARD VISUAL PREVIEW / SAMPLE PIECE PLACEMENT / NO GAME STATE CHANGED
+        </div>
+        <GameBoard players={previewPlayers} activePlayerId={activePlayer.playerId} landingPosition={null} movingPlayerId={null} />
+      </main>
+    </AppShell>
+  );
+}
+
+function EndgamePreview() {
+  const { match } = useGame();
+  const previewMatch = useMemo(() => match ?? createMatch(characters[0].id), [match]);
+  const player = previewMatch.players.find((entry) => !entry.isCPU) ?? previewMatch.players[0];
+
+  return (
+    <AppShell>
+      <div className="endgame-preview-banner mono" role="note" data-testid="text-endgame-preview">
+        VISUAL FOUNDATION ONLY / {match ? 'CURRENT MATCH DATA' : 'SAMPLE SESSION DATA'} / NO SCORING OR CHOICES ACTIVE
+      </div>
+      <EndgamePresentation
+        player={player}
+        match={previewMatch}
+        finalTitle={null}
+        redlineCredits={null}
+        achievements={null}
+        finalGamble={null}
+      />
+    </AppShell>
+  );
+}
+
 function Router() {
   const [location] = useLocation();
   const { match, careerRevealed } = useGame();
@@ -351,7 +397,9 @@ function Router() {
       {location === '/setup' && <Setup />}
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
       {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
-      {!['/', '/characters', '/setup', '/career', '/board'].includes(location) && <NotFound />}
+      {location === '/board-preview' && <BoardVisualPreview />}
+      {location === '/endgame-preview' && <EndgamePreview />}
+      {!['/', '/characters', '/setup', '/career', '/board', '/board-preview', '/endgame-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
   );
 }

@@ -8,15 +8,17 @@ export interface BoardSpaceVisual {
   className: BoardVisualClass;
   accent: string;
   tile: string;
+  deckCode?: string;
+  deckName?: string;
 }
 
-const DECK_VISUALS: Record<DeckId, Pick<BoardSpaceVisual, 'accent' | 'tile'>> = {
-  wealth: { accent: '#d8e78b', tile: '#3d4b3e' },
-  ai: { accent: '#88c6c2', tile: '#344a48' },
-  fame: { accent: '#f5a67e', tile: '#4b4039' },
-  lifestyle: { accent: '#dbbbdc', tile: '#483f4a' },
-  influence: { accent: '#e9c477', tile: '#4a4438' },
-  gamble: { accent: '#f57970', tile: '#4a3936' },
+const DECK_VISUALS: Record<DeckId, Pick<BoardSpaceVisual, 'accent' | 'tile' | 'deckCode' | 'deckName'>> = {
+  wealth: { accent: '#d8e78b', tile: '#3d4b3e', deckCode: 'W', deckName: 'WEALTH' },
+  ai: { accent: '#88c6c2', tile: '#344a48', deckCode: 'AI', deckName: 'AI SKILL' },
+  fame: { accent: '#f5a67e', tile: '#4b4039', deckCode: 'FM', deckName: 'FAME' },
+  lifestyle: { accent: '#dbbbdc', tile: '#483f4a', deckCode: 'LS', deckName: 'LIFESTYLE' },
+  influence: { accent: '#e9c477', tile: '#4a4438', deckCode: 'IN', deckName: 'INFLUENCE' },
+  gamble: { accent: '#f57970', tile: '#4a3936', deckCode: 'GMB', deckName: 'GAMBLE' },
 };
 
 const EFFECT_ACCENTS = {
@@ -41,7 +43,7 @@ export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
       return { className: 'deck', ...DECK_VISUALS[space.deck] };
     }
     case 'GAMBLE':
-      return { className: 'gamble', accent: '#e8a367', tile: '#594139' };
+      return { className: 'gamble', ...DECK_VISUALS.gamble };
     case 'SALARY_GATE':
       return { className: 'salary', accent: '#d4e981', tile: '#496752' };
     case 'CAREER_CHANGE':

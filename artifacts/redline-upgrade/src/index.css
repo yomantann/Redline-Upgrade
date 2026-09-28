@@ -285,11 +285,12 @@ a { color: inherit; text-decoration: none; }
   .home-title { font-size: clamp(100px,14vw,165px); }
 }
 @media (max-width: 767px) {
-  .site-header { min-height: 67px; }
-  .brand { font-size: 23px; }
+  .site-header { min-height: 67px; padding-inline: 18px; gap: 12px; }
+  .brand { font-size: 18px; gap: 9px; white-space: nowrap; }
+  .brand-mark { width: 20px; height: 20px; }
   .header-phase, .header-index { display: none; }
-  .header-right { gap: 18px; }
-  .header-link { font-size: 9px; }
+  .header-right { gap: 12px; flex-shrink: 0; }
+  .header-link { font-size: 8px; white-space: nowrap; }
   .page-footer { font-size: 9px; flex-wrap: wrap; }
   .home-hero { display: flex; flex-direction: column; min-height: 0; }
   .home-copy { padding-top: 55px; min-height: 550px; }
@@ -320,8 +321,11 @@ a { color: inherit; text-decoration: none; }
   .setup-art { min-height: 330px; }
 }
 @media (max-width: 390px) {
-  .header-right { gap: 11px; }
-  .header-link { font-size: 8px; }
+  .site-header { padding-inline: 12px; }
+  .brand { font-size: 16px; gap: 7px; }
+  .brand-mark { width: 18px; height: 18px; }
+  .header-right { gap: 7px; }
+  .header-link { font-size: 7px; }
   .home-title { font-size: 26vw; }
   .home-actions { align-items: flex-start; flex-direction: column; }
   .roster-grid { gap: 7px; }

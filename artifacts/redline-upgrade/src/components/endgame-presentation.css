@@ -1,0 +1,868 @@
+.endgame-preview-banner {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 11px clamp(20px, 4.2vw, 72px);
+  border-bottom: 1px solid #35413c;
+  background: #111a17;
+  color: #a8b3a8;
+  font-size: 9px;
+  letter-spacing: .11em;
+}
+
+.endgame-page {
+  --endgame-line: #35413c;
+  --endgame-soft: #a8b3a8;
+  --endgame-panel: #131c19;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 4.2vw, 72px) 82px;
+}
+
+.endgame-masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 30px;
+  padding: 56px 0 39px;
+  border-bottom: 1px solid var(--endgame-line);
+}
+
+.endgame-page-title {
+  margin: 26px 0 0 -5px;
+  font-size: clamp(82px, 12vw, 180px);
+  color: #e9e7dc;
+}
+
+.endgame-page-title span,
+.endgame-section-label h2 span,
+.endgame-choice-heading span {
+  color: transparent;
+  -webkit-text-stroke: 1px #e9e7dc;
+}
+
+.endgame-masthead-meta {
+  display: grid;
+  gap: 10px;
+  color: #849087;
+  text-align: right;
+  padding-bottom: 7px;
+}
+
+.endgame-identity {
+  display: grid;
+  grid-template-columns: minmax(210px, .55fr) minmax(260px, 1fr) minmax(230px, .72fr);
+  min-height: 340px;
+  border-bottom: 1px solid var(--endgame-line);
+}
+
+.endgame-portrait-wrap {
+  position: relative;
+  min-height: 320px;
+  border-right: 1px solid var(--endgame-line);
+}
+
+.endgame-portrait {
+  height: 100%;
+  min-height: 320px;
+  background: #25312d;
+}
+
+.endgame-portrait img {
+  object-position: center 24%;
+}
+
+.endgame-portrait-caption {
+  position: absolute;
+  right: 14px;
+  bottom: 13px;
+  color: #d4e981;
+  background: rgba(11, 16, 16, .82);
+  padding: 6px 8px;
+}
+
+.endgame-portrait-fallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 320px;
+  color: #d4e981;
+  background: #17231f;
+  font: 10px 'Space Mono', monospace;
+  letter-spacing: .12em;
+}
+
+.endgame-identity-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 42px clamp(24px, 4vw, 62px);
+}
+
+.endgame-identity-name {
+  max-width: 650px;
+  margin: 18px 0 33px -4px;
+  font-size: clamp(58px, 7.4vw, 112px);
+  overflow-wrap: anywhere;
+}
+
+.endgame-career-line,
+.endgame-salary-line {
+  display: grid;
+  grid-template-columns: minmax(110px, .6fr) minmax(120px, 1fr) minmax(100px, .8fr);
+  gap: 16px;
+  align-items: baseline;
+  border-top: 1px solid #526057;
+  padding: 14px 0;
+}
+
+.endgame-salary-line {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.endgame-career-line .mono,
+.endgame-salary-line .mono {
+  color: #77857a;
+}
+
+.endgame-career-line strong,
+.endgame-salary-line strong {
+  color: #d4e981;
+  font: 700 24px/1 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+}
+
+.endgame-career-line > span:last-child {
+  color: #c1c9be;
+  font: 10px 'Space Mono', monospace;
+  letter-spacing: .08em;
+}
+
+.endgame-title-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  align-items: flex-start;
+  padding: 31px clamp(20px, 3vw, 43px);
+  border-left: 1px solid var(--endgame-line);
+  background: linear-gradient(135deg, #18231e, #111817);
+}
+
+.endgame-title-panel > span {
+  color: #f96346;
+}
+
+.endgame-title-panel strong {
+  margin: 19px 0 9px;
+  color: #e9e7dc;
+  font: 800 clamp(34px, 4vw, 62px)/.9 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.endgame-title-panel small {
+  color: #7f8b82;
+  font: 9px 'Space Mono', monospace;
+  letter-spacing: .1em;
+}
+
+.endgame-stats,
+.endgame-assets,
+.endgame-achievements {
+  display: grid;
+  grid-template-columns: minmax(190px, .72fr) minmax(0, 1.9fr) minmax(190px, .62fr);
+  gap: clamp(25px, 4vw, 70px);
+  padding: 65px 0;
+  border-bottom: 1px solid var(--endgame-line);
+}
+
+.endgame-section-label h2 {
+  margin: 22px 0 0 -3px;
+  font-size: clamp(54px, 5.1vw, 78px);
+}
+
+.endgame-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(75px, 1fr));
+  align-content: start;
+  border-top: 1px solid #526057;
+}
+
+.endgame-stat {
+  min-height: 135px;
+  padding: 18px 17px;
+  border-right: 1px solid var(--endgame-line);
+}
+
+.endgame-stat:first-child {
+  border-left: 1px solid var(--endgame-line);
+}
+
+.endgame-stat-label {
+  color: #839087;
+}
+
+.endgame-stat strong {
+  display: block;
+  margin-top: 32px;
+  color: #e9e7dc;
+  font: 800 clamp(32px, 3.4vw, 57px)/.8 'Barlow Condensed', sans-serif;
+}
+
+.endgame-stat.accent strong {
+  color: #f96346;
+}
+
+.endgame-credits {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 135px;
+  padding: 18px 0 17px 24px;
+  border-left: 2px solid #d4e981;
+}
+
+.endgame-credits > span {
+  color: #d4e981;
+}
+
+.endgame-credits strong {
+  color: #d4e981;
+  font: 800 clamp(34px, 3.7vw, 61px)/.8 'Barlow Condensed', sans-serif;
+}
+
+.endgame-credits small {
+  color: #76847a;
+  font: 9px 'Space Mono', monospace;
+  letter-spacing: .08em;
+}
+
+.endgame-trophy-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.endgame-trophy {
+  min-width: 0;
+  background: var(--endgame-panel);
+  border: 1px solid #3a4840;
+}
+
+.endgame-trophy.collected {
+  border-color: #a4b979;
+}
+
+.endgame-trophy-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 13px;
+  color: #839087;
+  border-bottom: 1px solid #35413c;
+}
+
+.endgame-trophy.collected .endgame-trophy-top {
+  color: #d4e981;
+}
+
+.endgame-trophy-notch {
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.endgame-trophy-art {
+  position: relative;
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 48%, #344841, #17221e 60%, #101715);
+}
+
+.endgame-trophy-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  background: repeating-linear-gradient(0deg, transparent 0 20px, #b2c5a4 21px, transparent 22px), repeating-linear-gradient(90deg, transparent 0 20px, #b2c5a4 21px, transparent 22px);
+}
+
+.endgame-trophy-art img {
+  position: relative;
+  width: 100%;
+  height: 128px;
+  object-fit: cover;
+  opacity: .87;
+}
+
+.endgame-trophy-mark {
+  position: relative;
+  color: #d4e981;
+  font: 44px/1 'Barlow Condensed', sans-serif;
+}
+
+.endgame-trophy-pending {
+  position: absolute;
+  bottom: 11px;
+  color: #718078;
+}
+
+.endgame-trophy-copy {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+}
+
+.endgame-trophy-copy > span {
+  color: #839087;
+}
+
+.endgame-trophy.collected .endgame-trophy-copy > span {
+  color: #d4e981;
+}
+
+.endgame-trophy-copy strong {
+  color: #e9e7dc;
+  font: 700 24px/.9 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.endgame-trophy-copy small {
+  min-height: 30px;
+  color: #89968c;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.endgame-choice-panel,
+.endgame-gamble-panel {
+  padding: 62px 0;
+  border-bottom: 1px solid var(--endgame-line);
+}
+
+.endgame-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  padding-bottom: 17px;
+  border-bottom: 1px solid #526057;
+}
+
+.endgame-panel-heading > .mono:last-child {
+  color: #7c8980;
+}
+
+.endgame-choice-heading {
+  margin: 32px 0 31px;
+  font-size: clamp(67px, 8vw, 126px);
+}
+
+.endgame-choice-rail {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.endgame-choice {
+  position: relative;
+  min-height: 193px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 20px 21px;
+  border: 1px solid #4a574e;
+  background: #15201c;
+  overflow: hidden;
+}
+
+.endgame-choice::after {
+  content: '';
+  position: absolute;
+  right: -34px;
+  bottom: -62px;
+  width: 150px;
+  height: 150px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: .2;
+}
+
+.endgame-choice.cash-out {
+  color: #d4e981;
+}
+
+.endgame-choice.double-down {
+  color: #f96346;
+}
+
+.endgame-choice.grab-gamble {
+  color: #a8c9bd;
+}
+
+.endgame-choice > span {
+  color: currentColor;
+}
+
+.endgame-choice strong {
+  color: #e9e7dc;
+  font: 800 clamp(33px, 4vw, 62px)/.82 'Barlow Condensed', sans-serif;
+}
+
+.endgame-choice small {
+  color: #87958b;
+  font-size: 12px;
+}
+
+.endgame-gamble-pending {
+  position: relative;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px clamp(20px, 7vw, 115px);
+  overflow: hidden;
+  background: #15201c;
+}
+
+.endgame-pending-cross {
+  position: absolute;
+  top: 50%;
+  right: 9%;
+  width: 250px;
+  height: 250px;
+  border: 1px solid #80977f;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  opacity: .23;
+}
+
+.endgame-pending-cross::before,
+.endgame-pending-cross::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: #80977f;
+}
+
+.endgame-pending-cross::after {
+  transform: rotate(90deg);
+}
+
+.endgame-gamble-pending h2 {
+  position: relative;
+  margin: 0 0 19px -3px;
+  font-size: clamp(65px, 7vw, 106px);
+}
+
+.endgame-gamble-pending p {
+  position: relative;
+  max-width: 390px;
+  margin: 0;
+  color: #99a69b;
+  line-height: 1.55;
+}
+
+.endgame-gamble-content {
+  display: grid;
+  grid-template-columns: minmax(170px, .55fr) minmax(250px, 1fr) minmax(190px, .55fr);
+  gap: clamp(22px, 4vw, 63px);
+  align-items: center;
+  padding-top: 29px;
+}
+
+.endgame-gamble-art {
+  min-height: 270px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #171f1c;
+  border: 1px solid #45534a;
+}
+
+.endgame-gamble-art img {
+  width: 100%;
+  height: 270px;
+  object-fit: cover;
+}
+
+.endgame-gamble-art span {
+  padding: 25px;
+  color: #9aab99;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.endgame-gamble-copy {
+  min-width: 0;
+}
+
+.endgame-gamble-copy h2 {
+  margin: 17px 0 13px -3px;
+  color: #e9e7dc;
+  font: 800 clamp(49px, 5vw, 80px)/.82 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.endgame-gamble-copy > p {
+  max-width: 480px;
+  color: #adb8ac;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.endgame-gamble-effect,
+.endgame-gamble-result {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 15px 0;
+  border-top: 1px solid #536158;
+}
+
+.endgame-gamble-result {
+  grid-template-columns: auto 1fr;
+}
+
+.endgame-gamble-effect > span:first-child,
+.endgame-gamble-result > span {
+  color: #819086;
+}
+
+.endgame-gamble-effect strong,
+.endgame-gamble-result strong {
+  color: #e9e7dc;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.endgame-gamble-value {
+  color: #f96346;
+  font: 700 11px 'Space Mono', monospace;
+  text-align: right;
+}
+
+.endgame-gamble-result.pending strong {
+  color: #d4e981;
+}
+
+.endgame-gamble-result.resolved strong {
+  color: #d4e981;
+}
+
+.endgame-gamble-card {
+  width: min(100%, 270px);
+  justify-self: end;
+}
+
+.endgame-achievement-list {
+  display: grid;
+  gap: 8px;
+}
+
+.endgame-achievement {
+  display: grid;
+  grid-template-columns: 32px 35px minmax(0, 1fr) auto;
+  gap: 15px;
+  align-items: center;
+  min-height: 82px;
+  padding: 12px 16px;
+  background: #15201c;
+  border: 1px solid #3d4b42;
+}
+
+.endgame-achievement.locked {
+  opacity: .57;
+}
+
+.endgame-achievement-index {
+  color: #f96346;
+  font: 10px 'Space Mono', monospace;
+}
+
+.endgame-achievement-medal {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  color: #d4e981;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  font: 19px/1 'Barlow Condensed', sans-serif;
+}
+
+.endgame-achievement-medal::first-letter {
+  transform: rotate(-45deg);
+}
+
+.endgame-achievement strong {
+  color: #e9e7dc;
+  font: 700 23px/.9 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+}
+
+.endgame-achievement p {
+  margin: 5px 0 0;
+  color: #8d9a90;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.endgame-achievement > .mono:last-child {
+  color: #d4e981;
+}
+
+.endgame-achievement.locked > .mono:last-child {
+  color: #87938a;
+}
+
+.endgame-achievement-pending {
+  min-height: 180px;
+  display: grid;
+  align-content: center;
+  gap: 11px;
+  padding: 25px;
+  border: 1px dashed #526057;
+  background: #121b18;
+}
+
+.endgame-achievement-pending .mono {
+  color: #d4e981;
+}
+
+.endgame-achievement-pending p {
+  max-width: 410px;
+  margin: 0;
+  color: #89958b;
+  font-size: 13px;
+}
+
+@media (max-width: 1080px) {
+  .endgame-identity {
+    grid-template-columns: minmax(190px, .5fr) minmax(250px, 1fr);
+  }
+
+  .endgame-title-panel {
+    grid-column: 1 / -1;
+    min-height: 150px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-top: 1px solid var(--endgame-line);
+    border-left: 0;
+  }
+
+  .endgame-title-panel strong {
+    margin: 0 auto 0 0;
+  }
+
+  .endgame-stats,
+  .endgame-assets,
+  .endgame-achievements {
+    grid-template-columns: 1fr;
+  }
+
+  .endgame-section-label h2 {
+    margin-bottom: 12px;
+  }
+
+  .endgame-credits {
+    min-height: 110px;
+    border-left: 0;
+    border-top: 2px solid #d4e981;
+    padding: 19px 0 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .endgame-page {
+    padding-bottom: 50px;
+  }
+
+  .endgame-masthead {
+    display: block;
+    padding-top: 40px;
+  }
+
+  .endgame-masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    text-align: left;
+    margin-top: 30px;
+  }
+
+  .endgame-identity {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .endgame-portrait-wrap,
+  .endgame-title-panel {
+    border-right: 0;
+  }
+
+  .endgame-portrait-wrap {
+    min-height: 300px;
+    border-bottom: 1px solid var(--endgame-line);
+  }
+
+  .endgame-portrait {
+    min-height: 300px;
+  }
+
+  .endgame-identity-copy {
+    padding: 34px 0 38px;
+  }
+
+  .endgame-title-panel {
+    min-height: 170px;
+    display: grid;
+    align-content: center;
+    justify-content: initial;
+    padding: 27px 0;
+  }
+
+  .endgame-title-panel strong {
+    margin: 12px 0 0;
+  }
+
+  .endgame-career-line,
+  .endgame-salary-line {
+    grid-template-columns: 1fr 1fr;
+    gap: 9px 16px;
+  }
+
+  .endgame-career-line .mono,
+  .endgame-salary-line .mono {
+    grid-column: 1 / -1;
+  }
+
+  .endgame-career-line > span:last-child {
+    text-align: right;
+  }
+
+  .endgame-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .endgame-stat {
+    min-height: 115px;
+    border-bottom: 1px solid var(--endgame-line);
+  }
+
+  .endgame-stat strong {
+    margin-top: 25px;
+  }
+
+  .endgame-trophy-grid,
+  .endgame-choice-rail {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .endgame-gamble-content {
+    grid-template-columns: 1fr;
+  }
+
+  .endgame-gamble-art {
+    min-height: 210px;
+  }
+
+  .endgame-gamble-art img {
+    height: 210px;
+  }
+
+  .endgame-gamble-card {
+    width: min(100%, 300px);
+    justify-self: start;
+  }
+
+  .endgame-achievement {
+    grid-template-columns: 26px 31px minmax(0, 1fr);
+  }
+
+  .endgame-achievement > .mono:last-child {
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 430px) {
+  .endgame-masthead {
+    padding-bottom: 30px;
+  }
+
+  .endgame-page-title {
+    font-size: clamp(75px, 23vw, 100px);
+  }
+
+  .endgame-identity-name {
+    font-size: clamp(57px, 17vw, 82px);
+  }
+
+  .endgame-stat-grid,
+  .endgame-trophy-grid,
+  .endgame-choice-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .endgame-stat {
+    min-height: 93px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    border-left: 1px solid var(--endgame-line);
+  }
+
+  .endgame-stat strong {
+    margin-top: 0;
+  }
+
+  .endgame-choice {
+    min-height: 155px;
+  }
+
+  .endgame-choice strong {
+    font-size: 46px;
+  }
+
+  .endgame-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .endgame-gamble-effect {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .endgame-gamble-value {
+    text-align: left;
+  }
+
+  .endgame-achievement {
+    grid-template-columns: 24px 29px minmax(0, 1fr);
+    gap: 10px;
+    padding-inline: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .endgame-page *,
+  .endgame-page *::before,
+  .endgame-page *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

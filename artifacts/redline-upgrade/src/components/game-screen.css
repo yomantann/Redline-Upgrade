@@ -36,6 +36,15 @@
 .readout-landing p { font-size: 12px; line-height: 1.5; color: #a5b2a6; margin: 6px 0 0; }
 .game-gate { min-height: 70vh; padding: 90px clamp(20px,4.2vw,72px); }
 .game-gate h1 { font-size: clamp(85px,12vw,160px); }
+.board-preview-banner {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  border-left: 2px solid #d4e981;
+  background: #141d19;
+  color: #a6b4a5;
+  font-size: 9px;
+  letter-spacing: .1em;
+}
 @media (max-width: 1000px) {
   .game-console { grid-template-columns: 1fr; }
 }
