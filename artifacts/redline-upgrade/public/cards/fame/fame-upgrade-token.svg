@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#49332d"/><stop offset="1" stop-color="#1a1514"/></linearGradient>
+    <radialGradient id="light"><stop stop-color="#fff4ce" stop-opacity=".7"/><stop offset="1" stop-color="#f5a67e" stop-opacity="0"/></radialGradient>
+    <linearGradient id="coin" x2="0" y2="1"><stop stop-color="#fff0bd"/><stop offset=".55" stop-color="#e6a76b"/><stop offset="1" stop-color="#88492e"/></linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <path d="M65 0h510L404 364H236z" fill="url(#light)"/>
+  <path d="M103 429h434v72H103z" fill="#281d19" stroke="#f5a67e" stroke-width="5"/>
+  <path d="m152 428 41-100h37l30 100m160 0 30-100h37l41 100" fill="#a45637" stroke="#f5a67e" stroke-width="7"/>
+  <circle cx="320" cy="290" r="140" fill="#241b18" stroke="#f5a67e" stroke-width="8"/>
+  <circle cx="320" cy="290" r="111" fill="url(#coin)" stroke="#fff0bd" stroke-width="6"/>
+  <circle cx="320" cy="290" r="89" fill="none" stroke="#7d482f" stroke-width="5"/>
+  <path d="m320 207 21 54 58 4-45 36 15 57-49-32-49 32 15-57-45-36 58-4z" fill="#523126"/>
+  <path d="M279 355h82m-70 20h58" stroke="#fff0bd" stroke-width="7" stroke-linecap="round"/>
+  <path d="M111 136h12m-6-6v12m412 72h12m-6-6v12M188 67h10m-5-5v10m264 49h10m-5-5v10" stroke="#ffe6b4" stroke-width="4" stroke-linecap="round"/>
+  <text x="320" y="560" fill="#f7e6d4" text-anchor="middle" font-family="monospace" font-weight="700" font-size="25" letter-spacing="8">BREAKTHROUGH PASS</text>
+</svg>

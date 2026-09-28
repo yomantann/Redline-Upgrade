@@ -8,6 +8,7 @@ export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_
 export type CardEffect =
   | { kind: 'STAT'; stat: PlayerStat; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
   | { kind: 'TRANSFER_WEALTH'; amount: number; target: 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER'; reason?: string }
+  | { kind: 'UPGRADE_TOKEN'; amount: number; reason?: string }
   | { kind: 'MODIFY_SALARY'; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
   | { kind: 'PROTECT'; amount?: number; target?: CardTarget; careerTag?: CareerCategoryTag; blockedEffectTypes?: EffectType[]; reason?: string }
   | { kind: 'REWARD_MODIFIER'; stat: PlayerStat; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
@@ -24,6 +25,7 @@ export interface CardDefinition {
   effects: readonly CardEffect[];
   /** Unique visual concept used to create this card's art; never shown as gameplay copy. */
   artCue: string;
+  artworkPath: string;
 }
 
 const stat = (statName: PlayerStat, amount: number, target: CardTarget = 'SELF', careerTag?: CareerCategoryTag): CardEffect => ({
@@ -44,6 +46,9 @@ const reward = (statName: PlayerStat, amount: number, target: CardTarget = 'SELF
 const risk = (chance: number, win: readonly CardEffect[], loss: readonly CardEffect[]): CardEffect => ({
   kind: 'RISK', chance, win, loss,
 });
+const upgradeToken = (): CardEffect => ({
+  kind: 'UPGRADE_TOKEN', amount: 1, reason: 'Upgrade Token card',
+});
 const card = (
   id: string,
   deck: DeckId,
@@ -54,7 +59,8 @@ const card = (
   effects: readonly CardEffect[],
   artCue: string,
   rarity: CardDefinition['rarity'] = 'STANDARD',
-): CardDefinition => ({ id, deck, title, description, effect, value, effects, artCue, rarity });
+  artworkPath = `cards/${deck}/${id}.webp`,
+): CardDefinition => ({ id, deck, title, description, effect, value, effects, artCue, rarity, artworkPath });
 
 export const cards: readonly CardDefinition[] = [
   // WEALTH
@@ -158,6 +164,12 @@ export const cards: readonly CardDefinition[] = [
   card('gamble-double-exposure', 'gamble', 'Double Exposure', 'Two cameras, one bet, and no control over the clip.', '40%: gain $15,000 Wealth and 3 Fame. Otherwise lose $15,000 and 2 Fame.', '+$15,000 / +3 FAME or losses', [risk(0.4, [stat('wealth', 15000), stat('fame', 3)], [stat('wealth', -15000), stat('fame', -2)])], 'A gambler stands between a gold spotlight and a pair of cameras recording opposite outcomes.'),
   card('gamble-last-chip', 'gamble', 'Last Chip', 'The final chip gets one more chance to be a terrible idea.', '25%: gain $32,000 Wealth. Otherwise lose $16,000.', '+$32,000 or -$16,000', [risk(0.25, [stat('wealth', 32000)], [stat('wealth', -16000)])], 'A solitary red chip rolls across a vast black table toward a distant gold payout slot.', 'RARE'),
   card('gamble-wild-reversal', 'gamble', 'Wild Reversal', 'The table turns over. Your opponent may be underneath it.', '50%: take 3 Influence from a random opponent. Otherwise lose 2 Influence.', 'rival -3 / +3 INFL. or -2 INFL.', [risk(0.5, [stat('influence', -3, 'RANDOM_OPPONENT'), stat('influence', 3)], [stat('influence', -2)])], 'A roulette table flips into a chaotic storm of red chips and scattered influence tokens.'),
+  card('wealth-upgrade-token', 'wealth', 'Asset Accelerator', 'Turn a temporary edge into a stronger milestone asset—or save it.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold upgrade token rises from an open black investment case beside a wealth ledger.', 'RARE', 'cards/wealth/wealth-upgrade-token.svg'),
+  card('ai-upgrade-token', 'ai', 'Adaptive Upgrade', 'A compact toolkit that can improve an owned asset or wait for later.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A luminous machine-learning chip powers a precision upgrade token.', 'RARE', 'cards/ai/ai-upgrade-token.svg'),
+  card('fame-upgrade-token', 'fame', 'Breakthrough Pass', 'A rare opening to improve an owned asset or hold for the endgame.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A spotlight frames a gold token above a rising award stage.', 'RARE', 'cards/fame/fame-upgrade-token.svg'),
+  card('lifestyle-upgrade-token', 'lifestyle', 'Premium Upgrade', 'A one-time pass for a stronger asset, a recovered milestone, or later.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A refined travel case opens around a polished upgrade token and passport.', 'RARE', 'cards/lifestyle/lifestyle-upgrade-token.svg'),
+  card('influence-upgrade-token', 'influence', 'Network Access', 'Use the connection to improve an asset or keep the opportunity for later.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'Two hands exchange a gold token over a dark, connected city map.', 'RARE', 'cards/influence/influence-upgrade-token.svg'),
+  card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, recover a missed milestone at random, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
 ];
 
 export const cardsForDeck = (deck: DeckId): readonly CardDefinition[] => cards.filter(card => card.deck === deck);

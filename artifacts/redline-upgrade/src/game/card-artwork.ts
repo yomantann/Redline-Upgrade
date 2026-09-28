@@ -1,7 +1,7 @@
 import { cards } from './cards';
 
 const artworkByCardId: Record<string, string> = Object.fromEntries(
-  cards.map(card => [card.id, `cards/${card.deck}/${card.id}.webp`]),
+  cards.map(card => [card.id, card.artworkPath]),
 );
 
 export function getCardArtworkFilePath(cardId: string): string | undefined {

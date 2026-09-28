@@ -20,6 +20,11 @@ export type GameEventType =
   | 'BOARD_EFFECT_RESOLVED'
   | 'CARD_DRAW'
   | 'CARD_RESOLVED'
+  | 'UPGRADE_TOKEN_GAINED'
+  | 'UPGRADE_TOKEN_SPENT'
+  | 'UPGRADE_TOKEN_HELD'
+  | 'ASSET_UPGRADED'
+  | 'MILESTONE_RECOVERED'
   | 'ASSET_PURCHASED'
   | 'CAR_PURCHASED'
   | 'LIFESTYLE_PURCHASED'
@@ -74,6 +79,7 @@ export interface GameEvent {
   cardId?: string;
   assetId?: string;
   assetName?: string;
+  assetLevel?: number;
   category?: AssetCategory;
   cost?: number;
   stat?: PlayerStat;

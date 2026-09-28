@@ -2,7 +2,8 @@ import { characters } from './characters';
 import { createPlayer, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, startingWealth, type SalaryTier } from './careers';
-import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
+import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
+import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
 import type { EventLogEntry } from './events/types';
@@ -101,7 +102,18 @@ export function createMatch(characterId: string): Match {
     rewardModifiers: {},
     cardPiles: createCardPiles(),
   };
-  return emit(match, [{ type: 'TURN_START', playerIndex: 0 }]);
+  const startingTokenEvents = match.players.flatMap((player, playerIndex) => {
+    const career = careers.find((item) => item.id === player.careerId);
+    const amount = career?.startingUpgradeTokens ?? 0;
+    return amount > 0 ? [{
+      type: 'UPGRADE_TOKEN_GAINED' as const,
+      playerIndex,
+      delta: amount,
+      reason: `${career?.name} starting benefit`,
+      description: `${player.displayName} gained ${amount} Upgrade Token from the ${career?.name} starting benefit.`,
+    }] : [];
+  });
+  return emit(match, [...startingTokenEvents, { type: 'TURN_START', playerIndex: 0 }]);
 }
 
 export function rollD4(): number {
@@ -115,6 +127,9 @@ export type MatchAction =
   | { type: 'STEP' }
   | { type: 'CHOOSE_ASSET_CATEGORY'; category: 'pet' | 'investment' }
   | { type: 'BUY_ASSET'; assetId: string }
+  | { type: 'UPGRADE_ASSET'; assetId: string }
+  | { type: 'RECOVER_MILESTONE' }
+  | { type: 'HOLD_UPGRADE_TOKEN' }
   | { type: 'SKIP_ASSET' }
   | { type: 'KEEP_CAREER' }
   | { type: 'SWITCH_CAREER' }
@@ -153,6 +168,16 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
   const slot = space.type === 'MILESTONE' ? milestoneSlot(space.number) : null;
   const landing = { playerIndex: match.turnIndex, space };
   const drafts: EventDraft[] = [{ type: 'LAND_ON_SPACE', playerIndex: match.turnIndex, previousPosition, newPosition: space.number, spaceNumber: space.number }];
+  if (space.type === 'UPGRADE_TOKEN') {
+    drafts.push({
+      type: 'UPGRADE_TOKEN_GAINED',
+      playerIndex: match.turnIndex,
+      delta: 1,
+      spaceNumber: space.number,
+      reason: 'Upgrade Token board space',
+      description: `${match.players[match.turnIndex].displayName} gained 1 Upgrade Token at space ${space.number}.`,
+    });
+  }
   const occupants = match.players.filter((player, index) => index !== match.turnIndex && player.position === space.number);
   for (const occupant of occupants) {
     drafts.push({
@@ -221,17 +246,18 @@ function assignNewCareer(match: Match, careerId: string): Match {
   return { ...match, players };
 }
 
-function applyAssetStats(match: Match, playerIndex: number, assetId: string): [Match, EventDraft[]] {
+function applyAssetStats(match: Match, playerIndex: number, assetId: string, chargeCost = true): [Match, EventDraft[]] {
   const asset = getAsset(assetId);
   if (!asset) return [match, []];
   const player = match.players[playerIndex];
   const next = {
     ...player,
     equipment: { ...player.equipment },
+    assetLevels: { ...player.assetLevels, [asset.id]: 1 as AssetLevel },
   };
   const drafts: EventDraft[] = [];
   next.equipment[(asset.category === 'pet' || asset.category === 'investment') ? 'companion' : asset.category] = asset.id;
-  const nextWealth = Math.max(0, player.wealth - asset.cost + (asset.effects.wealth ?? 0));
+  const nextWealth = Math.max(0, player.wealth - (chargeCost ? asset.cost : 0) + (asset.effects.wealth ?? 0));
   next.wealth = nextWealth;
   addNativeStatChange(match, drafts, playerIndex, 'wealth', player.wealth, nextWealth, `Purchased ${asset.name}`);
   for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
@@ -262,6 +288,140 @@ function purchase(match: Match, assetId: string): Match {
     ...statDrafts,
   ];
   return emit(resume({ ...updated, wealthEvents: [...match.wealthEvents, wealthEvent] }), drafts);
+}
+
+function applyAssetLevelEffects(match: Match, playerIndex: number, assetId: string, level: AssetLevel): [Match, EventDraft[]] {
+  const asset = getAsset(assetId);
+  if (!asset) return [match, []];
+  const player = match.players[playerIndex];
+  const next = { ...player, assetLevels: { ...player.assetLevels, [assetId]: level } };
+  const drafts: EventDraft[] = [];
+  for (const stat of ['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+    const delta = asset.effects[stat] ?? 0;
+    const previousValue = player[stat];
+    const newValue = stat === 'wealth' ? Math.max(0, previousValue + delta) : previousValue + delta;
+    next[stat] = newValue;
+    addNativeStatChange(match, drafts, playerIndex, stat, previousValue, newValue, `Upgraded ${asset.name} to Level ${level}`);
+  }
+  return [{
+    ...match,
+    players: match.players.map((item, index) => index === playerIndex ? next : item),
+  }, drafts];
+}
+
+function upgradeOwnedAsset(match: Match, assetId: string): Match {
+  if (match.phase !== 'ready') return match;
+  const player = match.players[match.turnIndex];
+  if (availableUpgradeTokens(player) < 1 || !getOwnedUpgradeableAssets(player).some((asset) => asset.id === assetId)) return match;
+  const asset = getAsset(assetId);
+  if (!asset) return match;
+  const previousLevel = player.assetLevels[assetId] ?? 1;
+  if (previousLevel >= MAX_ASSET_LEVEL) return match;
+  const level = (previousLevel + 1) as AssetLevel;
+  const [updated, statDrafts] = applyAssetLevelEffects(match, match.turnIndex, assetId, level);
+  const nextPlayer = {
+    ...updated.players[match.turnIndex],
+    upgradeTokens: player.upgradeTokens - 1,
+  };
+  const valueBefore = assetValueAtLevel(asset, previousLevel);
+  const valueAfter = assetValueAtLevel(asset, level);
+  return emit({
+    ...updated,
+    players: updated.players.map((item, index) => index === match.turnIndex ? nextPlayer : item),
+  }, [
+    {
+      type: 'UPGRADE_TOKEN_SPENT',
+      playerIndex: match.turnIndex,
+      delta: -1,
+      assetId,
+      assetName: asset.name,
+      assetLevel: level,
+      reason: 'Upgrade owned asset',
+      description: `${player.displayName} spent 1 Upgrade Token to upgrade ${asset.name} to Level ${level}.`,
+    },
+    {
+      type: 'ASSET_UPGRADED',
+      playerIndex: match.turnIndex,
+      assetId,
+      assetName: asset.name,
+      assetLevel: level,
+      category: asset.category,
+      delta: valueAfter - valueBefore,
+      description: `${asset.name} reached Level ${level}; its asset value increased to ${formatAssetValue(valueAfter)} and its listed effects increased by one base set.`,
+    },
+    ...statDrafts,
+  ]);
+}
+
+function recoverMissedMilestone(match: Match, random: () => number = Math.random): Match {
+  if (match.phase !== 'ready') return match;
+  const player = match.players[match.turnIndex];
+  if (availableUpgradeTokens(player) < 1 || !getEligibleRecoveryMilestones(player).length) return match;
+  const recovery = chooseRecoveredMilestoneAsset(player, random);
+  if (!recovery) return match;
+  const [updated, statDrafts] = applyAssetStats(match, match.turnIndex, recovery.asset.id, false);
+  const nextPlayer = { ...updated.players[match.turnIndex], upgradeTokens: player.upgradeTokens - 1 };
+  const milestoneType = recovery.milestone.slot;
+  return emit({
+    ...updated,
+    players: updated.players.map((item, index) => index === match.turnIndex ? nextPlayer : item),
+  }, [
+    {
+      type: 'UPGRADE_TOKEN_SPENT',
+      playerIndex: match.turnIndex,
+      delta: -1,
+      assetId: recovery.asset.id,
+      assetName: recovery.asset.name,
+      reason: 'Recover missed milestone',
+      description: `${player.displayName} spent 1 Upgrade Token to recover a missed milestone asset.`,
+    },
+    {
+      type: 'MILESTONE_RECOVERED',
+      playerIndex: match.turnIndex,
+      spaceNumber: recovery.milestone.space,
+      milestoneType,
+      assetId: recovery.asset.id,
+      assetName: recovery.asset.name,
+      category: recovery.category,
+      assetLevel: 1,
+      description: `${player.displayName} randomly recovered ${recovery.asset.name} (${recovery.category}) from the missed milestone at space ${recovery.milestone.space}.`,
+    },
+    ...statDrafts,
+  ]);
+}
+
+function holdUpgradeToken(match: Match): Match {
+  if (match.phase !== 'ready') return match;
+  const player = match.players[match.turnIndex];
+  if (availableUpgradeTokens(player) < 1) return match;
+  const nextPlayer = { ...player, heldUpgradeTokens: player.heldUpgradeTokens + 1 };
+  return emit({
+    ...match,
+    players: match.players.map((item, index) => index === match.turnIndex ? nextPlayer : item),
+  }, [{
+    type: 'UPGRADE_TOKEN_HELD',
+    playerIndex: match.turnIndex,
+    delta: 1,
+    description: `${player.displayName} reserved 1 Upgrade Token for the future endgame.`,
+  }]);
+}
+
+function autoUseUpgradeToken(match: Match): Match {
+  if (match.phase !== 'ready') return match;
+  const player = match.players[match.turnIndex];
+  if (!player.isCPU || availableUpgradeTokens(player) < 1) return match;
+  const upgradeable = getOwnedUpgradeableAssets(player);
+  const recoverable = getEligibleRecoveryMilestones(player);
+  const decision = Math.random();
+  if (recoverable.length && (!upgradeable.length || decision < 0.48)) return recoverMissedMilestone(match);
+  if (upgradeable.length && decision < 0.86) {
+    const chosen = upgradeable.sort((a, b) =>
+      assetValueAtLevel(b, (player.assetLevels[b.id] ?? 1) + 1)
+      - assetValueAtLevel(a, (player.assetLevels[a.id] ?? 1) + 1),
+    )[0];
+    return upgradeOwnedAsset(match, chosen.id);
+  }
+  return holdUpgradeToken(match);
 }
 
 function resolveCardDecision(match: Match): Match {
@@ -437,6 +597,12 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         ? { ...match, pending: { ...match.pending, category: action.category, offeredAssetIds: drawAssets(action.category) } } : match;
     case 'BUY_ASSET':
       return purchase(match, action.assetId);
+    case 'UPGRADE_ASSET':
+      return upgradeOwnedAsset(match, action.assetId);
+    case 'RECOVER_MILESTONE':
+      return recoverMissedMilestone(match);
+    case 'HOLD_UPGRADE_TOKEN':
+      return holdUpgradeToken(match);
     case 'SKIP_ASSET':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' ? resume(match) : match;
     case 'KEEP_CAREER':
@@ -481,7 +647,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const endedTurn = emit(resetTurnScopedState(match), [{ type: 'TURN_END', playerIndex: match.turnIndex }]);
       const nextTurnIndex = (endedTurn.turnIndex + 1) % 4;
       const nextRound = endedTurn.turnIndex === 3 ? endedTurn.round + 1 : endedTurn.round;
-      return emit({
+      return autoUseUpgradeToken(emit({
         ...endedTurn,
         turnIndex: nextTurnIndex,
         round: nextRound,
@@ -489,6 +655,6 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         roll: null,
         stepsRemaining: 0,
         turnCounter: nextTurnCounter,
-      }, [{ type: 'TURN_START', playerIndex: nextTurnIndex }]);
+      }, [{ type: 'TURN_START', playerIndex: nextTurnIndex }]));
   }
 }

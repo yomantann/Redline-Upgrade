@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#1d3434"/><stop offset="1" stop-color="#101817"/></linearGradient>
+    <linearGradient id="coin" x2="1" y2="1"><stop stop-color="#e9f0bc"/><stop offset=".55" stop-color="#99d0b3"/><stop offset="1" stop-color="#397a77"/></linearGradient>
+    <pattern id="circuit" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M0 32h21V10h23v22h20M32 0v15m0 49V48" fill="none" stroke="#88c6c2" stroke-opacity=".16" stroke-width="3"/><circle cx="21" cy="32" r="4" fill="#88c6c2" fill-opacity=".25"/></pattern>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/><rect width="640" height="640" fill="url(#circuit)"/>
+  <path d="M144 145h352v350H144z" rx="22" fill="#15201f" stroke="#88c6c2" stroke-width="8"/>
+  <path d="M175 176h290v287H175z" fill="#1d2928" stroke="#42615c" stroke-width="4"/>
+  <g stroke="#88c6c2" stroke-width="9">
+    <path d="M105 208h39m-39 58h39m-39 58h39m-39 58h39m-39 58h39M496 208h39m-39 58h39m-39 58h39m-39 58h39m-39 58h39M207 106v39m58-39v39m58-39v39m58-39v39m58-39v39M207 495v39m58-39v39m58-39v39m58-39v39m58-39v39" stroke-linecap="round"/>
+  </g>
+  <circle cx="320" cy="320" r="119" fill="url(#coin)" stroke="#d6f0d4" stroke-width="7"/>
+  <circle cx="320" cy="320" r="92" fill="none" stroke="#244843" stroke-width="5"/>
+  <path d="M273 291h27l20-28 20 28h27l-18 23 15 39-44-24-44 24 15-39z" fill="#19312e"/>
+  <path d="M283 374h74m-58 20h42" stroke="#244843" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="320" cy="111" r="13" fill="#d7f29f"/><circle cx="529" cy="320" r="13" fill="#d7f29f"/>
+  <text x="320" y="578" fill="#e5f0d9" text-anchor="middle" font-family="monospace" font-weight="700" font-size="26" letter-spacing="8">ADAPTIVE UPGRADE</text>
+</svg>

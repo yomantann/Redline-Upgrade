@@ -4,7 +4,7 @@ import { getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { getDeck } from '@/game/decks';
-import type { PendingDecision, WealthEvent } from '@/game/match';
+import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { useGame } from '@/game/state';
 import { CareerGlyph } from './career-reveal';
@@ -13,6 +13,7 @@ import { GameBoard } from './game-board';
 import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
+import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { SpaceIcon } from './space-icon';
 import './game-screen.css';
@@ -187,6 +188,7 @@ export function GameScreen() {
                     <span className="mono">{category?.name ?? 'CAREER'}</span>
                     <b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b>
                     <small title={career?.abilityDescription}>{career?.abilityName ?? 'NO ABILITY ASSIGNED'}</small>
+                    {career?.startingBenefitDescription && <small className="mono" title="Career benefit granted only at match start">START BENEFIT / {career.startingBenefitDescription}</small>}
                     {career && (
                       <small className="mono" title="Primary and secondary card-deck affinity">
                         DECK AFFINITY / {getDeck(career.deckAffinity.primary).name}
@@ -206,7 +208,7 @@ export function GameScreen() {
                    <div key={label}><span className="mono"><SpaceIcon name={label === 'AI SKILL' ? 'ai' : label.toLowerCase()} size={11} /> {label}</span><b>{value.toLocaleString()}</b></div>
                 ))}
               </div>
-               <PlayerAssets equipment={contestant.equipment} playerIndex={index} />
+               <PlayerAssets equipment={contestant.equipment} assetLevels={contestant.assetLevels} upgradeTokens={contestant.upgradeTokens} heldUpgradeTokens={contestant.heldUpgradeTokens} playerIndex={index} />
             </article>
           );
         })}
@@ -229,6 +231,8 @@ export function GameScreen() {
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />
        </div>}
+
+      {match.phase === 'ready' && !active.isCPU && <UpgradeTokenControls player={active} onAction={(action: MatchAction) => dispatchMatch(action)} />}
 
       {match.phase !== 'decision' && <section className="game-console">
         <DiceRoller

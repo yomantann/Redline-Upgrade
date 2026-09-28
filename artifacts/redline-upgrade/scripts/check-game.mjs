@@ -17,7 +17,8 @@ try {
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
-  const { getAsset, assets } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { availableUpgradeTokens, getEligibleRecoveryMilestones } = await vite.ssrLoadModule('/src/game/upgrade-tokens.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
@@ -27,6 +28,9 @@ try {
     assert.equal(match.players.length, 4);
     assert.equal(new Set(match.players.map(player => player.careerId)).size, 4);
     assert(match.players.every(player => player.salaryAmount === getCareer(player.careerId).salaryTiers[player.salaryTier - 1]));
+    const doctor = match.players.find(player => player.careerId === 'doctor');
+    if (doctor) assert.equal(doctor.upgradeTokens, 1, 'Doctor grants one match-start Upgrade Token');
+    assert(match.players.filter(player => player.careerId !== 'doctor').every(player => player.upgradeTokens === 0), 'no other starting career grants a token');
     assertCompleteCardPiles(match.cardPiles);
   }
   function start(position, slot = 0, wealth = 900000) {
@@ -48,6 +52,16 @@ try {
   }
   const eventTypes = (match) => match.eventLog.map((entry) => entry.eventType);
   const countEvent = (match, type) => match.eventLog.filter((entry) => entry.eventType === type).length;
+  function readyWithPlayer(base, playerIndex, updates) {
+    return {
+      ...base,
+      phase: 'ready',
+      pending: null,
+      turnIndex: playerIndex,
+      stepsRemaining: 0,
+      players: base.players.map((player, index) => index === playerIndex ? { ...player, ...updates } : player),
+    };
+  }
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number), [3, 7, 12, 17, 22, 32, 42, 52, 62]);
@@ -67,21 +81,26 @@ try {
   assert.equal(new Set([...expectedDeckCodes.values(), gambleVisual.deckCode]).size, 6, 'all six deck identities have a visible short code');
   assert.equal(BOARD_EFFECTS.length, 15, 'the board has 15 active predictable effects');
   assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1, 5, 13, 20, 24, 27, 33, 37, 39, 47, 49, 57, 64, 67, 72]);
-  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 35, '35 spaces remain effect-free');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').map(space => space.number), [14, 55], 'exactly two existing board spaces award Upgrade Tokens');
+  assert(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').every(space => space.trigger === 'LAND' && getSpaceVisual(space).className === 'upgrade'), 'token spaces award only on landing and have a distinct visual');
+  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 33, 'the two token spaces replace NORMAL spaces without changing route length');
 
-  assert.equal(cards.length, 90, 'the full card set has 90 cards');
-  assert.equal(new Set(cards.map(card => card.id)).size, 90, 'card IDs are unique');
-  assert.equal(new Set(cards.map(card => card.title)).size, 90, 'card names are unique');
-  assert.equal(new Set(cards.map(card => JSON.stringify(card.effects))).size, 90, 'card gameplay outcomes are unique');
-  assert.equal(new Set(cards.map(card => card.artCue)).size, 90, 'card art concepts are unique');
+  assert.equal(cards.length, 96, 'the full card set has 96 cards');
+  assert.equal(new Set(cards.map(card => card.id)).size, 96, 'card IDs are unique');
+  assert.equal(new Set(cards.map(card => card.title)).size, 96, 'card names are unique');
+  assert.equal(new Set(cards.filter(card => !card.id.endsWith('upgrade-token')).map(card => JSON.stringify(card.effects))).size, 90, 'the original 90 card outcomes remain unique');
+  assert.equal(new Set(cards.map(card => card.artCue)).size, 96, 'card art concepts are unique');
+  const tokenCards = cards.filter(card => card.id.endsWith('upgrade-token'));
+  assert.equal(tokenCards.length, 6, 'there is one Upgrade Token card in each deck');
+  assert.deepEqual([...tokenCards.map(card => card.deck)].sort(), ['ai', 'fame', 'gamble', 'influence', 'lifestyle', 'wealth']);
   for (const deck of decks) {
-    assert.equal(cardsForDeck(deck.id).length, 15, `${deck.name} contains 15 cards`);
-    assert.equal(deck.count, 15, `${deck.name} reports 15 cards`);
+    assert.equal(cardsForDeck(deck.id).length, 16, `${deck.name} contains 16 cards`);
+    assert.equal(deck.count, 16, `${deck.name} reports 16 cards`);
   }
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
   const validDecks = new Set(decks.map(deck => deck.id));
-  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
+  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
   const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT']);
   const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER']);
   const abilityById = new Map(abilities.map(ability => [ability.id, ability]));
@@ -106,6 +125,7 @@ try {
     }
   }
   assert.equal(careers.length, 15, 'the career roster retains all 15 careers');
+  assert.equal(careers.filter(career => career.startingUpgradeTokens === 1).length, 1, 'exactly one existing career grants a starting token');
   for (const career of careers) {
     assert(categories.some(category => category.id === career.categoryId), `${career.id} uses an existing career category`);
     assert(career.abilityIds.length >= 2 && career.abilityName && career.abilityDescription, `${career.id} has a career ability and affinity abilities`);
@@ -147,6 +167,8 @@ try {
         if (effect.careerTag) assert(careerTags.has(effect.careerTag), `${cardId} uses an existing career tag`);
       } else if (effect.kind === 'TRANSFER_WEALTH') {
         assert(effect.amount > 0 && ['RANDOM_OPPONENT', 'WEALTH_LEADER', 'WEALTH_TRAILER'].includes(effect.target), `${cardId} has a valid wealth transfer`);
+      } else if (effect.kind === 'UPGRADE_TOKEN') {
+        assert.equal(effect.amount, 1, `${cardId} grants exactly one Upgrade Token`);
       } else if (effect.kind === 'MODIFY_SALARY') {
         assert(Number.isFinite(effect.amount) && effect.amount !== 0, `${cardId} has a valid salary effect`);
         if (effect.careerTag) assert(careerTags.has(effect.careerTag), `${cardId} uses an existing salary career tag`);
@@ -166,14 +188,17 @@ try {
     assert(artPath, `${card.id} has an artwork mapping`);
     assert(existsSync(new URL(`../public/${artPath}`, import.meta.url)), `${card.id} artwork exists at ${artPath}`);
     const probe = createMatch(id);
+    const tokenCountBefore = probe.players[0].upgradeTokens;
     const resolved = resolveEventQueue(probe, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: card.deck, cardId: card.id, spaceNumber: 1 }]);
     assert(resolved.eventLog.some(entry => entry.eventType === 'CARD_RESOLVED' && entry.detail.includes(card.title)), `${card.id} resolves through the event engine`);
+    assert.equal(resolved.players[0].upgradeTokens, tokenCountBefore + (card.id.endsWith('upgrade-token') ? 1 : 0), `${card.id} applies any token reward through the event engine`);
   }
 
   let seeded = createMatch(id);
   assert.equal(seeded.eventLog.at(-1).eventType, 'TURN_START');
   const seededWealth = seeded.players[0].wealth;
   const seededFame = seeded.players[0].fame;
+  const seededLifestyle = seeded.players[0].lifestyle;
   seeded = { ...seeded, players: seeded.players.map((player, index) => index ? player : { ...player, careerId: 'degen-trader', characterId: 'danger_zone' }) };
   seeded = advanceMatch(seeded, { type: 'ROLL', result: { die1: 4, die2: 4, total: 8, doubles: true } });
   assert(eventTypes(seeded).includes('DICE_ROLL'));
@@ -181,7 +206,7 @@ try {
   assert(eventTypes(seeded).includes('ROLL_OF_8'));
   assert.equal(seeded.players[0].wealth, seededWealth + 10000);
   assert.equal(seeded.players[0].fame, seededFame);
-  assert.equal(seeded.players[0].lifestyle, 0);
+  assert.equal(seeded.players[0].lifestyle, seededLifestyle);
 
   let rollTwo = startWithoutProtection(1);
   rollTwo = {
@@ -409,6 +434,15 @@ try {
   for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
     assert.equal(assets.filter(asset => asset.category === category).length, 10);
   }
+  for (const asset of assets) {
+    assert.equal(Object.keys(asset.visualVariants ?? {}).length, MAX_ASSET_LEVEL, `${asset.id} has a visual reference at every upgrade level`);
+    assert(asset.visualVariants[1].startsWith('factory:'), `${asset.id} keeps its original Level 1 artwork`);
+    assert.deepEqual([2, 3, 4].map(level => asset.visualVariants[level]), [
+      `${asset.category}:reinforcement`,
+      `${asset.category}:expansion`,
+      `${asset.category}:signature`,
+    ], `${asset.id} has category-appropriate Level 2–4 visuals`);
+  }
   assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);
   assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
   assert(visualAssets.every(asset => existsSync(asset.filePath)));
@@ -422,9 +456,101 @@ try {
   assert.equal(purchased.players[0].wealth, 900000 - offeredCar.cost + (offeredCar.effects.wealth ?? 0));
   assert.equal(purchased.players[0].fame, match.players[0].fame + (offeredCar.effects.fame ?? 0));
   assert.equal(purchased.players[0].equipment.car, offeredCar.id);
+  assert.equal(purchased.players[0].assetLevels[offeredCar.id], 1, 'purchased assets begin at Level 1');
   assert(eventTypes(purchased).includes('ASSET_PURCHASED'));
   assert(eventTypes(purchased).includes('CAR_PURCHASED'));
   assert.equal(advanceMatch(purchased, { type: 'BUY_ASSET', assetId: offeredCar.id }), purchased);
+
+  const tokenSpaceStart = start(12);
+  const tokenSpaceLanding = move({
+    ...tokenSpaceStart,
+    eventLog: [],
+    eventCursor: 0,
+    players: tokenSpaceStart.players.map((player, index) => index === 0
+      ? { ...player, position: 12, upgradeTokens: 0, heldUpgradeTokens: 0 }
+      : player),
+  }, 2);
+  assert.equal(tokenSpaceLanding.players[0].position, 14);
+  assert.equal(tokenSpaceLanding.players[0].upgradeTokens, 1, 'landing on a token space grants one token');
+  assert.equal(countEvent(tokenSpaceLanding, 'UPGRADE_TOKEN_GAINED'), 1);
+  assert.equal(advanceMatch(tokenSpaceLanding, { type: 'HOLD_UPGRADE_TOKEN' }), tokenSpaceLanding, 'token actions are blocked outside the ready phase');
+
+  const upgradeReady = readyWithPlayer(purchased, 0, { upgradeTokens: 1, heldUpgradeTokens: 0 });
+  const upgradeBasePlayer = upgradeReady.players[0];
+  const upgraded = advanceMatch(upgradeReady, { type: 'UPGRADE_ASSET', assetId: offeredCar.id });
+  assert.equal(upgraded.players[0].assetLevels[offeredCar.id], 2);
+  assert.equal(upgraded.players[0].upgradeTokens, 0);
+  assert.equal(upgraded.players[0].wealth, upgradeBasePlayer.wealth + (offeredCar.effects.wealth ?? 0), 'upgrading does not charge the purchase price again');
+  for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence']) {
+    assert.equal(upgraded.players[0][stat], upgradeBasePlayer[stat] + (offeredCar.effects[stat] ?? 0), `Level 2 repeats the asset's ${stat} effect`);
+  }
+  assert(upgraded.eventLog.find(entry => entry.eventType === 'ASSET_UPGRADED')?.detail.includes('Level 2'), 'asset upgrade level is included in the event log');
+  assert.equal(upgraded.eventLog.some(entry => entry.eventType === 'UPGRADE_TOKEN_SPENT'), true);
+  assert.equal(availableUpgradeTokens(readyWithPlayer(upgradeReady, 0, { heldUpgradeTokens: 1 } ).players[0]), 0, 'held tokens cannot be spent mid-match');
+  const capped = readyWithPlayer(upgradeReady, 0, {
+    assetLevels: { ...upgradeReady.players[0].assetLevels, [offeredCar.id]: MAX_ASSET_LEVEL },
+    upgradeTokens: 1,
+  });
+  assert.equal(advanceMatch(capped, { type: 'UPGRADE_ASSET', assetId: offeredCar.id }), capped, 'Level 4 is the maximum');
+
+  const emptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
+  const recoverBase = readyWithPlayer(start(31), 0, {
+    position: 31,
+    equipment: emptyEquipment,
+    assetLevels: {},
+    upgradeTokens: 1,
+    heldUpgradeTokens: 0,
+  });
+  assert.deepEqual(getEligibleRecoveryMilestones(recoverBase.players[0]).map(milestone => milestone.space), [10, 30]);
+  const previousRandom = Math.random;
+  let recovered;
+  try {
+    Math.random = () => 0;
+    recovered = advanceMatch(recoverBase, { type: 'RECOVER_MILESTONE' });
+  } finally {
+    Math.random = previousRandom;
+  }
+  assert.equal(recovered.phase, 'ready', 'milestone recovery does not open an asset-choice screen');
+  assert.equal(recovered.players[0].equipment.car, assets.find(asset => asset.category === 'car').id, 'recovery chooses a random eligible milestone asset');
+  assert.equal(recovered.players[0].assetLevels[recovered.players[0].equipment.car], 1);
+  assert.equal(recovered.players[0].upgradeTokens, 0);
+  assert.equal(eventTypes(recovered).includes('MILESTONE_RECOVERED'), true);
+  assert.equal(eventTypes(recovered).includes('UPGRADE_TOKEN_SPENT'), true);
+  const notPassed = readyWithPlayer(recoverBase, 0, { position: 9 });
+  assert.equal(advanceMatch(notPassed, { type: 'RECOVER_MILESTONE' }), notPassed, 'future milestone assets cannot be recovered');
+
+  const holdStart = readyWithPlayer(start(10), 0, { upgradeTokens: 1, heldUpgradeTokens: 0 });
+  const held = advanceMatch(holdStart, { type: 'HOLD_UPGRADE_TOKEN' });
+  assert.equal(held.players[0].upgradeTokens, 1, 'holding preserves the match token total');
+  assert.equal(held.players[0].heldUpgradeTokens, 1);
+  assert.equal(availableUpgradeTokens(held.players[0]), 0);
+  assert.equal(advanceMatch(held, { type: 'HOLD_UPGRADE_TOKEN' }), held, 'a reserved token cannot be held twice');
+
+  const cpuTurnStart = {
+    ...purchased,
+    phase: 'landed',
+    pending: null,
+    turnIndex: 0,
+    players: purchased.players.map((player, index) => index === 1 ? {
+      ...player,
+      position: 0,
+      equipment: { ...player.equipment, car: offeredCar.id },
+      assetLevels: { [offeredCar.id]: 1 },
+      upgradeTokens: 1,
+      heldUpgradeTokens: 0,
+    } : player),
+  };
+  let cpuTurn;
+  try {
+    Math.random = () => 0;
+    cpuTurn = advanceMatch(cpuTurnStart, { type: 'NEXT_TURN' });
+  } finally {
+    Math.random = previousRandom;
+  }
+  assert.equal(cpuTurn.turnIndex, 1);
+  assert.equal(cpuTurn.players[1].assetLevels[offeredCar.id], 2, 'CPU spends its available token when starting a turn');
+  assert.equal(cpuTurn.players[1].upgradeTokens, 0);
+
   match = move(start(28), 2);
   assert.equal(match.pending.slot, 'lifestyle');
   assert.equal(advanceMatch(match, { type: 'SKIP_ASSET' }).phase, 'landed');
@@ -515,7 +641,7 @@ try {
     },
   };
   const reshuffled = drawCardFromPiles(reshuffleTestPile, 'wealth');
-  assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 14);
+assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(reshuffled.cardPiles.wealth.discardPile.length, 0);
   assert.equal(reshuffled.cardPiles.wealth.inFlight.length, 1);
   assertCompleteCardPiles(reshuffled.cardPiles);
@@ -649,7 +775,7 @@ try {
   const rollBefore = rollStart.players[0].wealth;
   const rollLanding = move(rollStart, 3);
   assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');
-  console.log('PASS: 90 unique cards, effects and artwork; finite piles and reshuffle; existing careers, assets and CPU turns');
+  console.log('PASS: 96 cards, two token spaces, token upgrades/recovery/holding, career benefit, CPU use, finite piles and existing assets');
 } finally {
   await vite.close();
 }

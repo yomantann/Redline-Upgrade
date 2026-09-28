@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#422a28"/><stop offset="1" stop-color="#171414"/></linearGradient>
+    <linearGradient id="coin" x2="1" y2="1"><stop stop-color="#fff0bd"/><stop offset=".53" stop-color="#e99a77"/><stop offset="1" stop-color="#8b433c"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#f57970" stop-opacity=".3"/><stop offset="1" stop-color="#f57970" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/><circle cx="320" cy="318" r="284" fill="url(#halo)"/>
+  <circle cx="320" cy="313" r="207" fill="#191718" stroke="#bb6154" stroke-width="8"/>
+  <circle cx="320" cy="313" r="177" fill="#2a2020" stroke="#f57970" stroke-width="6"/>
+  <g stroke="#f57970" stroke-width="4">
+    <path d="M320 136v354M143 313h354M195 188l250 250m0-250L195 438"/>
+    <path d="M320 136a177 177 0 0 1 153 88l-153 89zm153 88a177 177 0 0 1 0 178l-153-89zm0 178a177 177 0 0 1-153 88V313zm-153 88a177 177 0 0 1-153-88l153-89zm-153-88a177 177 0 0 1 0-178l153 89zm0-178a177 177 0 0 1 153-88v177z"/>
+  </g>
+  <circle cx="320" cy="313" r="82" fill="url(#coin)" stroke="#fff0bd" stroke-width="6"/>
+  <circle cx="320" cy="313" r="62" fill="none" stroke="#824b3d" stroke-width="4" stroke-dasharray="4 8"/>
+  <path d="m320 266 15 30 34 5-25 24 6 34-30-16-30 16 6-34-25-24 34-5z" fill="#4b2d2c"/>
+  <path d="M291 360h58" stroke="#fff0bd" stroke-width="6" stroke-linecap="round"/>
+  <path d="M320 87v27m-12-15h24M92 313h26m-14-13v26m430-13h26m-14-13v26" stroke="#f6b2a0" stroke-width="6" stroke-linecap="round"/>
+  <text x="320" y="565" fill="#f4e3d9" text-anchor="middle" font-family="monospace" font-weight="700" font-size="25" letter-spacing="8">WILDCARD UPGRADE</text>
+</svg>

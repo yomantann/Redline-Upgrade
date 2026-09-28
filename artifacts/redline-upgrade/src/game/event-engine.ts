@@ -58,6 +58,7 @@ export interface EventDraft {
   cardId?: string;
   assetId?: string;
   assetName?: string;
+  assetLevel?: number;
   category?: 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
   cost?: number;
   stat?: PlayerStat;
@@ -115,6 +116,11 @@ function eventLabel(event: AnyGameEvent): string {
     case 'BOARD_EFFECT_RESOLVED': return getBoardEffect(event.effectId)?.label ?? 'BOARD EFFECT';
     case 'CARD_DRAW': return event.cardId ? `DREW ${getCard(event.cardId)?.title ?? 'CARD'}` : 'CARD DRAW';
     case 'CARD_RESOLVED': return event.cardId ? getCard(event.cardId)?.title ?? 'CARD RESOLVED' : 'CARD RESOLVED';
+    case 'UPGRADE_TOKEN_GAINED': return 'UPGRADE TOKEN GAINED';
+    case 'UPGRADE_TOKEN_SPENT': return 'UPGRADE TOKEN SPENT';
+    case 'UPGRADE_TOKEN_HELD': return 'TOKEN HELD FOR ENDGAME';
+    case 'ASSET_UPGRADED': return 'ASSET UPGRADED';
+    case 'MILESTONE_RECOVERED': return 'MILESTONE RECOVERED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
     case 'CAR_PURCHASED': return 'CAR PURCHASED';
     case 'LIFESTYLE_PURCHASED': return 'LIFESTYLE PURCHASED';
@@ -162,6 +168,12 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
       return `${player.displayName} drew ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
     case 'CARD_RESOLVED':
       return event.description ?? `${player.displayName} resolved ${getCard(event.cardId ?? '')?.title ?? `a ${event.deck} card`}.`;
+    case 'UPGRADE_TOKEN_GAINED':
+    case 'UPGRADE_TOKEN_SPENT':
+    case 'UPGRADE_TOKEN_HELD':
+    case 'ASSET_UPGRADED':
+    case 'MILESTONE_RECOVERED':
+      return event.description ?? `${player.displayName} ${event.type.toLowerCase().replaceAll('_', ' ')}.`;
     case 'ASSET_PURCHASED':
       return `${player.displayName} purchased ${event.assetName}.`;
     case 'CAR_PURCHASED':
@@ -506,6 +518,19 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
           depth: event.depth + 1,
           spaceNumber: nextPosition,
           milestoneType: milestone,
+        });
+      }
+      if (space.type === 'UPGRADE_TOKEN' && space.trigger === 'LAND') {
+        queue.push({
+          type: 'UPGRADE_TOKEN_GAINED',
+          playerIndex: targetIndex,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          delta: 1,
+          spaceNumber: nextPosition,
+          description: `${state.players[targetIndex].displayName} gained 1 Upgrade Token at space ${nextPosition}.`,
         });
       }
       if (space.effectId && space.trigger === 'LAND') {
@@ -878,8 +903,8 @@ function applyCardEffects(
       return;
     }
 
-    const target = effect.kind === 'TRANSFER_WEALTH' ? effect.target : effect.target ?? 'SELF';
-    const careerTag = effect.kind === 'TRANSFER_WEALTH' ? undefined : effect.careerTag;
+    const target = effect.kind === 'TRANSFER_WEALTH' ? effect.target : 'target' in effect ? effect.target ?? 'SELF' : 'SELF';
+    const careerTag = effect.kind === 'TRANSFER_WEALTH' || !('careerTag' in effect) ? undefined : effect.careerTag;
     const targets = cardTargetIndices(state, state.players[event.playerIndex], event, target, careerTag, effectSalt);
     for (const targetIndex of targets) {
       const targetEvent: AnyGameEvent = {
@@ -889,6 +914,22 @@ function applyCardEffects(
       };
       const actor = state.players[event.playerIndex];
       switch (effect.kind) {
+        case 'UPGRADE_TOKEN':
+          if (!Number.isInteger(effect.amount) || effect.amount <= 0) {
+            throw new Error(`Invalid Upgrade Token amount on ${cardId}`);
+          }
+          queue.push({
+            type: 'UPGRADE_TOKEN_GAINED',
+            playerIndex: targetIndex,
+            source: 'EFFECT',
+            sourceEventId: event.id,
+            abilityId: event.abilityId,
+            depth: event.depth + 1,
+            delta: effect.amount,
+            reason: effect.reason ?? card.title,
+            description: `${state.players[targetIndex].displayName} gained ${effect.amount} Upgrade Token${effect.amount === 1 ? '' : 's'} from ${card.title}.`,
+          });
+          break;
         case 'STAT':
           state = applyStatDelta(
             state,
@@ -1054,6 +1095,12 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);
       state = applyCardEffects(state, queue, event, card.id, card.effects);
+    }
+    if (event.type === 'UPGRADE_TOKEN_GAINED' && Number.isInteger(event.delta) && (event.delta ?? 0) > 0) {
+      state = updatePlayer(state, event.playerIndex, (player) => ({
+        ...player,
+        upgradeTokens: player.upgradeTokens + (event.delta ?? 0),
+      }));
     }
     if (event.type === 'BOARD_EFFECT_RESOLVED') {
       const effect = getBoardEffect(event.effectId);

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#3b3629"/><stop offset="1" stop-color="#151613"/></linearGradient>
+    <linearGradient id="coin" x2="0" y2="1"><stop stop-color="#fff0bf"/><stop offset=".6" stop-color="#e9c477"/><stop offset="1" stop-color="#8b692f"/></linearGradient>
+    <pattern id="net" width="72" height="72" patternUnits="userSpaceOnUse"><path d="M0 0 72 72M72 0 0 72" stroke="#e9c477" stroke-opacity=".1" stroke-width="2"/></pattern>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/><rect width="640" height="640" fill="url(#net)"/>
+  <g fill="#20231d" stroke="#c2a45f" stroke-width="5">
+    <circle cx="130" cy="178" r="24"/><circle cx="509" cy="174" r="24"/><circle cx="107" cy="431" r="24"/><circle cx="533" cy="431" r="24"/>
+  </g>
+  <g fill="none" stroke="#e9c477" stroke-width="5">
+    <path d="m148 190 83 58m261-58-83 58M129 407l100-72m282 72-100-72"/>
+    <path d="M130 202v205m379-205v205"/>
+  </g>
+  <path d="M114 334q43-74 96-28l63 54-41 45-67-27q-37 12-58-13-19-22 7-31zm412 0q-43-74-96-28l-63 54 41 45 67-27q37 12 58-13 19-22-7-31z" fill="#6b7353" stroke="#e9c477" stroke-width="7"/>
+  <circle cx="320" cy="309" r="111" fill="url(#coin)" stroke="#fff0bf" stroke-width="7"/>
+  <circle cx="320" cy="309" r="88" fill="none" stroke="#81632e" stroke-width="5"/>
+  <path d="M278 284h25l17-23 18 23h24l-17 21 12 33-37-19-37 19 12-33z" fill="#453a24"/>
+  <path d="M282 353h76" stroke="#fff0bf" stroke-width="7" stroke-linecap="round"/>
+  <text x="320" y="557" fill="#eee8d3" text-anchor="middle" font-family="monospace" font-weight="700" font-size="25" letter-spacing="8">NETWORK ACCESS</text>
+</svg>

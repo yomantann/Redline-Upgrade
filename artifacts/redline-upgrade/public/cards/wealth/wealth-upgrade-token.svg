@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#273329"/><stop offset="1" stop-color="#111713"/></linearGradient>
+    <radialGradient id="coin"><stop stop-color="#fff0a3"/><stop offset=".5" stop-color="#d4a83f"/><stop offset="1" stop-color="#73521e"/></radialGradient>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0v42" fill="none" stroke="#d4e981" stroke-opacity=".08"/></pattern>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/><rect width="640" height="640" fill="url(#grid)"/>
+  <path d="M110 403V240a18 18 0 0 1 18-18h384a18 18 0 0 1 18 18v163" fill="#1a211c" stroke="#8b7440" stroke-width="9"/>
+  <path d="M88 403h464v111H88z" fill="#222c24" stroke="#d4e981" stroke-width="5"/>
+  <path d="M125 430h78v64h-78zm312 0h78v64h-78z" fill="#121815" stroke="#8b7440" stroke-width="5"/>
+  <circle cx="320" cy="307" r="123" fill="#151b16" stroke="#d4e981" stroke-width="9"/>
+  <circle cx="320" cy="307" r="95" fill="url(#coin)" stroke="#fff0a3" stroke-width="5"/>
+  <circle cx="320" cy="307" r="75" fill="none" stroke="#7b5a26" stroke-width="5" stroke-dasharray="5 10"/>
+  <path d="m320 248 42 22v48c0 35-42 61-42 61s-42-26-42-61v-48z" fill="#273329" stroke="#fff0a3" stroke-width="6"/>
+  <path d="m320 268 8 24 25 1-20 15 7 24-20-14-20 14 7-24-20-15 25-1z" fill="#d4e981"/>
+  <text x="320" y="557" fill="#e8e5cf" text-anchor="middle" font-family="monospace" font-weight="700" font-size="25" letter-spacing="8">ASSET ACCELERATOR</text>
+</svg>

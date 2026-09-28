@@ -1,1 +1,2 @@
 - [Browser preview limits](redline-webgl-preview.md) — screenshot browser may lack WebGL; automated browser testing may fail independently of the app.
+- [Game harness setup](game-harness.md) — run the Vite SSR harness from the artifact directory and make fixtures explicit around randomized careers.
