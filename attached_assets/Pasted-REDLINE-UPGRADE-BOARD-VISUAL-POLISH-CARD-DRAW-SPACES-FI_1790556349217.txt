@@ -1,0 +1,144 @@
+REDLINE UPGRADE — BOARD VISUAL POLISH
+CARD-DRAW SPACES + FINAL BOARD ATMOSPHERE
+
+The 75-space board and its gameplay are already complete.
+
+Do NOT redesign the board layout or change gameplay.
+
+The main issue to fix is that the spaces that cause players to draw cards from the six decks are not visually prominent enough.
+
+==================================================
+CARD-DRAW SPACES
+==================================================
+
+The existing card spaces should be immediately recognizable when viewing the board.
+
+There are six decks:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Keep the existing space locations and mechanics.
+
+Make the card-draw spaces more visually distinct using:
+
+- stronger deck-specific color
+- clear deck icon
+- recessed/inset treatment
+- stronger border
+- subtle glow or edge lighting
+- small deck identifier
+
+The effect should still look like a physical board-game space rather than a UI button.
+
+Do NOT make the spaces enormous.
+
+Do NOT add text-heavy labels.
+
+Players should be able to identify the deck from the icon/color.
+
+==================================================
+VISUAL HIERARCHY
+==================================================
+
+The board should have a clear hierarchy:
+
+1. Major milestones / Career Change
+2. Card-draw spaces
+3. Payday / Gamble
+4. Ordinary effect spaces
+5. Safe spaces
+
+Card spaces should therefore be noticeably stronger than normal spaces, but not stronger than the major milestones.
+
+==================================================
+DECK IDENTITIES
+==================================================
+
+Give each deck a consistent visual identity.
+
+WEALTH
+Financial/luxury/market aesthetic.
+
+AI SKILL
+Futuristic AI/technology aesthetic.
+
+FAME
+Media/spotlight/celebrity aesthetic.
+
+LIFESTYLE
+Luxury/experience/status aesthetic.
+
+INFLUENCE
+Networking/power/connection aesthetic.
+
+GAMBLE
+High-risk/casino/chaos aesthetic.
+
+Use restrained color differences that remain readable on the dark board.
+
+==================================================
+BOARD ATMOSPHERE
+==================================================
+
+Make a final visual polish pass around the existing board.
+
+Keep:
+
+- negative space
+- futuristic tabletop feel
+- physical 3D materials
+- subtle environmental elements
+- section identities
+- existing player pieces
+
+Do NOT fill every empty area.
+
+Add only a few premium environmental details where they improve the board.
+
+The board should feel like a physical futuristic game board, not a video-game HUD.
+
+==================================================
+DO NOT CHANGE
+==================================================
+
+Do NOT change:
+
+- 75 spaces
+- space positions
+- movement
+- 2d4
+- card mechanics
+- career mechanics
+- character abilities
+- event engine
+- milestones
+- Payday
+- Gamble mechanics
+- CPU
+- player pieces
+- zoom/pan
+
+This is a visual-only polish pass.
+
+==================================================
+VALIDATION
+==================================================
+
+Verify:
+
+- all existing card spaces remain functional
+- each deck has consistent visual identity
+- card spaces are clearly visible when zoomed out
+- card spaces remain attractive when zoomed in
+- player pieces remain unobstructed
+- board zoom/pan still works
+- typecheck passes
+- production build passes
+
+Report the visual changes and assets created.
+STOP after this pass.

@@ -1,0 +1,247 @@
+REDLINE UPGRADE — CREATIVE PASS C
+ENDGAME VISUAL FOUNDATION
+
+Create the visual foundation for the Redline Upgrade endgame.
+
+IMPORTANT:
+
+This is a VISUAL/UI foundation only.
+
+Do NOT change or invent the final game scoring rules.
+
+Do NOT implement the final Redline Credit calculation.
+
+Do NOT implement multiplayer/authentication.
+
+The exact endgame mechanics will be implemented later in GitHub.
+
+==================================================
+1. ENDGAME SCREEN
+==================================================
+
+Create a premium endgame presentation that feels like the conclusion of a futuristic high-stakes board game.
+
+The final screen should visually transition from:
+
+GAME COMPLETE
+→ PLAYER RESULTS
+→ FINAL WEALTH / STATS
+→ ASSETS
+→ ACHIEVEMENTS / MILESTONES
+→ FINAL STATUS
+→ REDLINE CREDITS
+
+Do not hard-code final scoring values.
+
+Use the existing player/game state where available.
+
+==================================================
+2. FINAL PLAYER PRESENTATION
+==================================================
+
+Feature the player's:
+
+- character game piece/avatar
+- character name
+- career
+- salary tier
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- acquired Car
+- Lifestyle/Career choice
+- Investment/Pet
+- Property
+
+Use existing artwork wherever available.
+
+Make the player feel like they are presenting their completed "life."
+
+==================================================
+3. FINAL STATUS / TITLE
+==================================================
+
+Create a visual area for a future final title.
+
+Examples of the STYLE of title:
+
+- THE AI WHIZ
+- THE DEGEN
+- THE CORPORATE KING
+- THE SOCIAL ICON
+- THE HUSTLER
+- THE LIFESTYLE LEGEND
+
+IMPORTANT:
+
+Do not implement the actual title-selection rules yet.
+
+Create the UI component that can receive a future title from the game engine.
+
+==================================================
+4. REDLINE CREDITS
+==================================================
+
+Create a visually impressive area for:
+
+REDLINE CREDITS
+
+This should be presented as the game's final meta-currency.
+
+Do NOT implement the calculation.
+
+The component should accept a future calculated value.
+
+Create a satisfying visual presentation such as:
+
+- digital counter
+- animated count-up
+- futuristic credit display
+- premium Redline branding
+
+==================================================
+5. FINAL CHOICES
+==================================================
+
+Create visual placeholders/components for the eventual final choices:
+
+CASH OUT
+DOUBLE DOWN
+GRAB GAMBLE CARD
+
+These should look like three distinct high-stakes options.
+
+Do NOT implement the mechanics yet.
+
+They should be visually ready for the future GitHub implementation.
+
+==================================================
+6. ENDGAME GAMBLE PRESENTATION
+==================================================
+
+Create a visual treatment for a final Gamble card.
+
+The existing Gamble deck/card artwork should be reusable.
+
+Create a dramatic reveal area for:
+
+- card artwork
+- card name
+- card effect
+- result
+
+Do not create new Gamble mechanics.
+
+==================================================
+7. ASSET DISPLAY
+==================================================
+
+Create a polished final collection display for acquired:
+
+- Car
+- Lifestyle
+- Investment/Pet
+- Property
+
+Use the existing milestone artwork.
+
+These should feel like trophies from the completed game.
+
+==================================================
+8. ACHIEVEMENT DISPLAY
+==================================================
+
+Create a visual area capable of displaying future achievements such as:
+
+- highest Wealth
+- highest AI Skill
+- highest Fame
+- highest Lifestyle
+- highest Influence
+- unique character/career achievements
+- milestone achievements
+- Gamble achievements
+- interaction achievements
+
+Do NOT create scoring rules.
+
+This is a reusable visual component for future data.
+
+==================================================
+9. ANIMATION
+==================================================
+
+Use restrained animation.
+
+Good candidates:
+
+- final board fade/transition
+- character piece presentation
+- stat count-up
+- asset reveal
+- title reveal
+- Redline Credit counter
+- final choice reveal
+
+Avoid excessive animations.
+
+The experience should feel premium.
+
+==================================================
+10. RESPONSIVE DESIGN
+==================================================
+
+Make the endgame presentation work on:
+
+- desktop
+- tablet
+- smaller screens
+
+Preserve the existing dark futuristic aesthetic.
+
+==================================================
+11. DO NOT CHANGE
+==================================================
+
+Do NOT change:
+
+- current game rules
+- scoring
+- card effects
+- character abilities
+- career abilities
+- career categories
+- board
+- movement
+- CPU
+- multiplayer
+- authentication
+- Redline Credit calculation
+
+Only create the visual foundation.
+
+==================================================
+12. VALIDATION
+==================================================
+
+Verify:
+
+- existing game still builds
+- current game flow is unaffected
+- endgame components render with placeholder/future data where necessary
+- existing artwork paths work
+- milestone artwork is reused
+- Gamble artwork can be displayed
+- typecheck passes
+- production build passes
+
+Report:
+
+1. Endgame components created
+2. Existing artwork reused
+3. New artwork created
+4. Files modified
+5. Validation results
+6. Which components are ready for future GitHub mechanics
