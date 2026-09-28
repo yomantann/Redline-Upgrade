@@ -6,7 +6,8 @@ import { getAsset, type AssetSlot } from '@/game/assets';
 import { getDeck } from '@/game/decks';
 import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
 import type { EndgameChoice } from '@/game/endgame';
-import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
+import type { EventLogEntry } from '@/game/events/types';
+import { FINISH_ORDER_WEALTH_REWARDS, formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { useGame } from '@/game/state';
 import { CareerGlyph } from './career-reveal';
 import { CharacterPortrait } from './character-portrait';
@@ -14,6 +15,8 @@ import { GameBoard } from './game-board';
 import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
+import { PlayerAbilityDetails } from './player-ability-details';
+import { AbilityActivationBanner, formatSpaceFeedbackOutcome, SpaceRewardBanner, type AbilityFeedback } from './game-event-feedback';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
@@ -44,6 +47,18 @@ function WealthCounter({ amount, compact = false }: { amount: number; compact?: 
   return <span className={compact ? 'wealth-number compact' : 'wealth-number'} data-testid="text-wealth-counter">{formatMoney(display)}</span>;
 }
 
+const spaceFeedbackTypes = new Set([
+  'BOARD_EFFECT_RESOLVED',
+  'WEALTH_CHANGED',
+  'AI_SKILL_CHANGED',
+  'FAME_CHANGED',
+  'LIFESTYLE_CHANGED',
+  'INFLUENCE_CHANGED',
+  'UPGRADE_TOKEN_GAINED',
+  'MILESTONE',
+  'CAREER_CHANGE',
+]);
+
 export function GameScreen() {
   const [, navigate] = useLocation();
   const { match, dispatchMatch, rollDice } = useGame();
@@ -54,8 +69,29 @@ export function GameScreen() {
   const pending = match?.pending;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
   const latestEvent: WealthEvent | undefined = match?.wealthEvents.filter(event => event.kind === 'PAYDAY').at(-1);
+  const latestAbilityEvent = match?.eventLog.filter(event => event.source === 'ABILITY').at(-1);
+  const landedPlayer = match && match.lastLanding ? match.players[match.lastLanding.playerIndex] : undefined;
+  const isCardLanding = match?.pending?.kind === 'CARD'
+    || match?.lastLanding?.space.type === 'CARD'
+    || match?.lastLanding?.space.type === 'GAMBLE';
+  const latestSpaceEvent = !isCardLanding && landedPlayer && match?.lastLanding
+    ? match.eventLog.slice().reverse().find(event =>
+      event.playerId === landedPlayer.playerId
+      && !event.abilityId
+      && spaceFeedbackTypes.has(event.eventType),
+    )
+    : undefined;
   const lastSeenEvent = useRef(latestEvent?.id);
+  const lastSeenAbilityEvent = useRef(latestAbilityEvent?.id);
+  const lastSeenSpaceEvent = useRef(latestSpaceEvent?.id);
   const [visibleEvent, setVisibleEvent] = useState<WealthEvent | null>(null);
+  const [abilityNotice, setAbilityNotice] = useState<AbilityFeedback | null>(null);
+  const [spaceNotice, setSpaceNotice] = useState<{
+    event: EventLogEntry;
+    playerName: string;
+    spaceLabel: string;
+    outcome: string;
+  } | null>(null);
   const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
   const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; amount: number; player: string } | null>(null);
   const previousDecision = useRef<PendingDecision | null>(pending ?? null);
@@ -104,6 +140,41 @@ export function GameScreen() {
   }, [latestEvent?.id]);
 
   useEffect(() => {
+    if (!latestAbilityEvent || latestAbilityEvent.id === lastSeenAbilityEvent.current || !match) return;
+    lastSeenAbilityEvent.current = latestAbilityEvent.id;
+    const player = match.players.find(candidate => candidate.playerId === latestAbilityEvent.playerId);
+    if (!player) return;
+    const career = player.careerId ? getCareer(player.careerId) : undefined;
+    const abilityType = career?.abilityIds.includes(latestAbilityEvent.abilityId ?? '') ? 'CAREER' : 'CHARACTER';
+    const character = getCharacter(player.characterId);
+    setAbilityNotice({
+      event: latestAbilityEvent,
+      abilityType,
+      playerName: abilityType === 'CAREER' ? career?.name ?? player.displayName : character?.name ?? player.displayName,
+    });
+    const timer = window.setTimeout(() => {
+      setAbilityNotice(current => current?.event.id === latestAbilityEvent.id ? null : current);
+    }, 4200);
+    return () => window.clearTimeout(timer);
+  }, [latestAbilityEvent?.id]);
+
+  useEffect(() => {
+    if (!latestSpaceEvent || latestSpaceEvent.id === lastSeenSpaceEvent.current || !match?.lastLanding || !landedPlayer) return;
+    lastSeenSpaceEvent.current = latestSpaceEvent.id;
+    const character = getCharacter(landedPlayer.characterId);
+    setSpaceNotice({
+      event: latestSpaceEvent,
+      playerName: character?.name ?? landedPlayer.displayName,
+      spaceLabel: match.lastLanding.space.label,
+      outcome: formatSpaceFeedbackOutcome(latestSpaceEvent),
+    });
+    const timer = window.setTimeout(() => {
+      setSpaceNotice(current => current?.event.id === latestSpaceEvent.id ? null : current);
+    }, 3800);
+    return () => window.clearTimeout(timer);
+  }, [latestSpaceEvent?.id]);
+
+  useEffect(() => {
     if (!match) return;
     let delay: number;
     let callback: () => void;
@@ -150,7 +221,7 @@ export function GameScreen() {
   if (match.phase === 'complete') {
     return (
       <main className="game-screen game-screen-finish-line">
-        <MatchResultsPanel players={match.players} />
+        <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} />
       </main>
     );
   }
@@ -162,6 +233,9 @@ export function GameScreen() {
         <FinishLinePanel
           player={active}
           endgame={active.endgame}
+          finishPlace={match.finishOrder.indexOf(match.turnIndex) + 1}
+          finishBonus={FINISH_ORDER_WEALTH_REWARDS[match.finishOrder.indexOf(match.turnIndex)] ?? 0}
+          abilityNotice={abilityNotice ?? undefined}
           onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
           onContinue={() => dispatchMatch({ type: 'NEXT_TURN' })}
         />
@@ -191,6 +265,8 @@ export function GameScreen() {
           <span className="mono">WEALTH {visibleEvent.amount >= 0 ? 'INCREASED' : 'DECREASED'}</span>
         </div>
       )}
+      {spaceNotice && <SpaceRewardBanner {...spaceNotice} />}
+      {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
       {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong><span className="mono">−{formatMoney(purchaseNotice.amount)} WEALTH // ADDED TO PLAYER SHEET</span></div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 
@@ -219,7 +295,6 @@ export function GameScreen() {
                   <div>
                     <span className="mono">{category?.name ?? 'CAREER'}</span>
                     <b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b>
-                    <small title={career?.abilityDescription}>{career?.abilityName ?? 'NO ABILITY ASSIGNED'}</small>
                     {career?.startingBenefitDescription && <small className="mono" title="Career benefit granted only at match start">START BENEFIT / {career.startingBenefitDescription}</small>}
                     {career && (
                       <small className="mono" title="Primary and secondary card-deck affinity">
@@ -229,6 +304,7 @@ export function GameScreen() {
                     )}
                   </div>
               </div>
+              <PlayerAbilityDetails career={career} character={character} />
                <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY TIER / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}<small> / PAYDAY</small></b></div>
               <div className="game-player-wealth">
                  <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH</span>
@@ -259,6 +335,8 @@ export function GameScreen() {
          cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
+          actorName={currentCharacter?.name ?? active.displayName}
+          resultSummary={match.eventLog.slice().reverse().find(event => event.eventType === 'CARD_RESOLVED')?.detail}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />

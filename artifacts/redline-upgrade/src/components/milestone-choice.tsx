@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { assetOptions, type AssetCategory, type AssetDefinition } from '@/game/assets';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
-import { getAssetArtworkUrl, getCategoryArtworkUrl } from '@/game/asset-artwork';
+import { getCategoryArtworkUrl } from '@/game/asset-artwork';
 import { CareerGlyph } from './career-reveal';
 import { SpaceIcon } from './space-icon';
+import { AssetArtwork } from './asset-artwork';
 import './milestone-choice.css';
 
 type Props = { pending: PendingDecision; player: MatchPlayer; onAction: (action: MatchAction) => void };
@@ -20,24 +21,17 @@ function Header({ space, eyebrow, title, highlighted, description }: { space: nu
   );
 }
 
-function AssetArtwork({ asset, index }: { asset: AssetDefinition; index: number }) {
-  const image = getAssetArtworkUrl(asset.id);
-  return (
-    <div className={`milestone-art ${image ? 'has-artwork' : ''}`} data-category={asset.category} aria-label={`${asset.name} visual`}>
-      <span className="milestone-art-index">{String(index + 1).padStart(2, '0')} / {asset.rarity.toUpperCase()}</span>
-      <span className="milestone-art-symbol" aria-hidden="true"><SpaceIcon name={asset.category} size={58} /></span>
-      {image && <img className="milestone-art-image" src={image} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
-      <span className="milestone-art-caption">{asset.category.toUpperCase()} / REDLINE</span>
-    </div>
-  );
-}
-
 function AssetCard({ asset, index, wealth, selected, onSelect, onBuy }: { asset: AssetDefinition; index: number; wealth: number; selected: boolean; onSelect: () => void; onBuy: () => void }) {
   const affordable = wealth >= asset.cost;
   const effects = Object.entries(asset.effects).filter(([, value]) => value != null && value !== 0);
   return (
     <article className={`milestone-card asset-offer-card ${selected ? 'selected' : ''}`} data-testid={`card-asset-${asset.id}`} tabIndex={0} aria-label={`Select ${asset.name} offer`} onClick={onSelect} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(); } }}>
-      <AssetArtwork asset={asset} index={index} />
+      <div className="milestone-art has-artwork" data-category={asset.category} aria-label={`${asset.name} visual`}>
+        <span className="milestone-art-index">{String(index + 1).padStart(2, '0')} / {asset.rarity.toUpperCase()}</span>
+        <span className="milestone-art-symbol" aria-hidden="true"><SpaceIcon name={asset.category} size={58} /></span>
+        <AssetArtwork assetId={asset.id} level={1} className="milestone-art-image" alt={`${asset.name}, level 1`} />
+        <span className="milestone-art-caption">{asset.category.toUpperCase()} / LEVEL 1</span>
+      </div>
       <div className="milestone-card-body">
         <span className="milestone-card-kicker mono"><SpaceIcon name={asset.category} size={13} /> {asset.category} / {asset.rarity}</span>
         <h3>{asset.name}</h3>

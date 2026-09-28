@@ -18,17 +18,25 @@ try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
   const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
-  const { getCardArtworkFilePath } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
+  const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
   const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
-  const { careers, categories, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { getPublicAssetUrl } = await vite.ssrLoadModule('/src/lib/public-asset-url.ts');
+  const { CharacterPortrait } = await vite.ssrLoadModule('/src/components/character-portrait.tsx');
+  const { AssetArtwork } = await vite.ssrLoadModule('/src/components/asset-artwork.tsx');
+  const { PlayerAbilityDetails } = await vite.ssrLoadModule('/src/components/player-ability-details.tsx');
+  const { PlayerAssets } = await vite.ssrLoadModule('/src/components/player-assets.tsx');
+  const { MilestoneChoice } = await vite.ssrLoadModule('/src/components/milestone-choice.tsx');
+  const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
+  const { AbilityActivationBanner, SpaceRewardBanner, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
-  const { getAssetArtworkFilePath } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { getAssetArtworkFilePath, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
     calculateEndgameBaseValue,
@@ -43,11 +51,92 @@ try {
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
 
+  assert.equal(getPublicAssetUrl('/characters/idol_core.png', '/redline-upgrade'), '/redline-upgrade/characters/idol_core.png');
+  assert.equal(getPublicAssetUrl('characters/danger_zone.png', '/redline-upgrade/'), '/redline-upgrade/characters/danger_zone.png');
+  assert.equal(getPublicAssetUrl('characters/the_tank.png', '/'), '/characters/the_tank.png');
+  assert.equal(new Set(characters.map(character => character.imagePath)).size, 21, 'all characters reference distinct portrait files');
+  for (const character of characters) {
+    assert(existsSync(new URL(`../public/${character.imagePath}`, import.meta.url)), `${character.name} portrait exists at ${character.imagePath}`);
+    const portraitMarkup = renderToStaticMarkup(React.createElement(CharacterPortrait, { character }));
+    assert(portraitMarkup.includes(`src="/${character.imagePath}"`), `${character.name} portrait renders at its public URL`);
+  }
+  for (const characterId of ['idol_core', 'danger_zone', 'the_tank']) {
+    const character = characters.find(entry => entry.id === characterId);
+    assert(character, `${characterId} remains in the roster`);
+    assert(existsSync(new URL(`../public/${character.imagePath}`, import.meta.url)), `${characterId} portrait asset is present`);
+  }
+
+  for (const character of characters) {
+    for (const career of careers) {
+      const abilityMarkup = renderToStaticMarkup(React.createElement(PlayerAbilityDetails, { career, character }));
+      assert(abilityMarkup.includes('CAREER ABILITY') && abilityMarkup.includes(career.abilityName), `${career.name} ability is visible on player cards`);
+      assert(abilityMarkup.includes('CHARACTER ABILITY') && abilityMarkup.includes(character.abilityName), `${character.name} ability is visible on player cards`);
+      assert(abilityMarkup.includes(career.abilityDescription) && abilityMarkup.includes(character.abilityDescription), 'player cards include concise ability descriptions');
+    }
+  }
+
+  const feedbackEvent = {
+    id: 'phase13-ability-fixture',
+    kind: 'EVENT',
+    eventType: 'ROLL_OF_8',
+    source: 'ABILITY',
+    playerId: 'phase13-fixture',
+    abilityId: 'character:guardian_h',
+    label: 'HOLD THE LINE',
+    detail: 'Triggered by ROLL OF 8. Protected from penalty.',
+    amount: 20000,
+    round: 1,
+    turnIndex: 0,
+    depth: 1,
+    timestamp: 0,
+  };
+  const abilityBannerMarkup = renderToStaticMarkup(React.createElement(AbilityActivationBanner, {
+    notice: { event: feedbackEvent, playerName: 'Guardian H', abilityType: 'CHARACTER' },
+  }));
+  assert(abilityBannerMarkup.includes('CHARACTER ABILITY ACTIVATED'));
+  assert(abilityBannerMarkup.includes('ROLL OF 8') && abilityBannerMarkup.includes('Protected from penalty.'));
+  assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'AI_SKILL_CHANGED', amount: 2 }), /\+2 AI SKILL/);
+  assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'UPGRADE_TOKEN_GAINED', amount: 1 }), /\+1 UPGRADE TOKEN/);
+  assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'WEALTH_CHANGED', amount: 20000 }), /WEALTH/);
+  const rewardBannerMarkup = renderToStaticMarkup(React.createElement(SpaceRewardBanner, {
+    event: feedbackEvent,
+    playerName: 'Guardian H',
+    spaceLabel: 'UPGRADE TOKEN',
+    outcome: '+1 UPGRADE TOKEN',
+  }));
+  assert(rewardBannerMarkup.includes('+1 UPGRADE TOKEN') && rewardBannerMarkup.includes('UPGRADE TOKEN'));
+
+  for (const deck of decks) {
+    const deckCards = cardsForDeck(deck.id);
+    assert.equal(deckCards.length, deck.count, `${deck.name} deck count matches its metadata`);
+    assert(deckCards.every(card => getCardArtworkUrl(card.id)?.endsWith(getCardArtworkFilePath(card.id))), `${deck.name} cards expose public artwork URLs`);
+    const card = deckCards[0];
+    for (const cardStage of ['draw', 'resolved']) {
+      const cardMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
+        activeDeck: deck.id,
+        activeCard: card,
+        cardStage,
+        actorName: 'Frostbyte',
+        isCPU: true,
+        resultSummary: 'Frostbyte received the recorded card result.',
+      }));
+      assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
+      assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
+      assert(cardMarkup.includes('Frostbyte landed on'), `${deck.name} draw identifies its player`);
+      assert(cardStage === 'draw'
+        ? cardMarkup.includes('face-up for the table')
+        : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
+    }
+  }
+
   for (let i = 0; i < 50; i++) {
     const match = createMatch(id);
     assert.equal(match.players.length, 4);
     assert.equal(new Set(match.players.map(player => player.careerId)).size, 4);
     assert(match.players.every(player => player.salaryAmount === getCareer(player.careerId).salaryTiers[player.salaryTier - 1]));
+    assert(match.players.every(player => player.wealth === player.salaryAmount), 'starting Wealth equals assigned salary for every player');
+    assert(match.players.some(player => !player.isCPU && player.wealth === player.salaryAmount), 'human starting Wealth equals assigned salary');
+    assert(match.players.filter(player => player.isCPU).every(player => player.wealth === player.salaryAmount), 'CPU starting Wealth equals assigned salary');
     const doctor = match.players.find(player => player.careerId === 'doctor');
     if (doctor) assert.equal(doctor.upgradeTokens, 1, 'Doctor grants one match-start Upgrade Token');
     assert(match.players.filter(player => player.careerId !== 'doctor').every(player => player.upgradeTokens === 0), 'no other starting career grants a token');
@@ -222,9 +311,12 @@ try {
     }
   }
   for (const card of cards) {
+    assert(card.id?.trim() && card.title?.trim() && card.deck, 'each active card has an ID, name, and deck');
+    assert(card.description?.trim() && card.effect?.trim(), `${card.id} has a description and effect`);
     validateCardEffects(card.effects, card.id);
     const artPath = getCardArtworkFilePath(card.id);
     assert(artPath, `${card.id} has an artwork mapping`);
+    assert.equal(artPath, card.artworkPath, `${card.id} uses its authored artwork reference`);
     assert(existsSync(new URL(`../public/${artPath}`, import.meta.url)), `${card.id} artwork exists at ${artPath}`);
     const probe = createMatch(id);
     const tokenCountBefore = probe.players[0].upgradeTokens;
@@ -461,6 +553,13 @@ try {
   assert(eventTypes(match).includes('MILESTONE'));
   assert.equal(match.pending.offeredAssetIds.length, 3);
   assert.equal(new Set(match.pending.offeredAssetIds).size, 3);
+  const milestoneMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: match.pending,
+    player: match.players[0],
+    onAction: () => {},
+  }));
+  assert.equal((milestoneMarkup.match(/class="milestone-art-image/g) ?? []).length, 3, 'all three milestone options render shared asset artwork');
+  assert(milestoneMarkup.includes('LEVEL 1') && milestoneMarkup.includes('COST / WEALTH'), 'milestone choices label initial level and purchase cost');
   assert.equal(assets.length, 100, 'the complete milestone catalog has 100 choices');
   for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
     assert.equal(assets.filter(asset => asset.category === category).length, 20);
@@ -470,6 +569,48 @@ try {
   assert.equal(new Set(levelOneArtworkPaths).size, 100, 'every milestone choice has a distinct Level 1 artwork path');
   assert.equal(getAssetArtworkFilePath('budget-racer'), 'milestone-assets/cars/CAR_01.webp', 'legacy car artwork mapping remains stable');
   assert.equal(getAssetArtworkFilePath('luxury-travel'), 'milestone-assets/lifestyles/LIFESTYLE_01.webp', 'legacy lifestyle artwork mapping remains stable');
+  for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
+    const representative = assets.find(asset => asset.category === category);
+    assert(representative, `${category} has an asset artwork fixture`);
+    for (const level of [1, 2, 3, 4]) {
+      const artworkMarkup = renderToStaticMarkup(React.createElement(AssetArtwork, {
+        assetId: representative.id,
+        level,
+        className: 'test-asset-artwork',
+        alt: `${representative.name} level ${level}`,
+      }));
+      assert(artworkMarkup.includes(getAssetArtworkUrl(representative.id)), `${category} level ${level} renders its shared artwork`);
+      assert(artworkMarkup.includes(`data-visual-variant="${representative.visualVariants[level]}"`), `${category} level ${level} identifies its visual variant`);
+      assert.equal(artworkMarkup.includes('asset-upgrade-overlay'), level > 1, `${category} level ${level} uses the correct upgrade overlay state`);
+    }
+  }
+  const playerAssetFixture = Object.fromEntries(
+    ['car', 'lifestyle', 'pet', 'property'].map(category => [
+      category === 'pet' ? 'companion' : category,
+      assets.find(asset => asset.category === category).id,
+    ]),
+  );
+  const playerAssetLevels = Object.fromEntries(Object.values(playerAssetFixture).map(assetId => [assetId, 4]));
+  const playerAssetsMarkup = renderToStaticMarkup(React.createElement(PlayerAssets, {
+    equipment: playerAssetFixture,
+    assetLevels: playerAssetLevels,
+    upgradeTokens: 2,
+    heldUpgradeTokens: 0,
+    playerIndex: 0,
+  }));
+  for (const category of ['car', 'lifestyle', 'pet', 'property']) {
+    const asset = assets.find(entry => entry.category === category);
+    assert(playerAssetsMarkup.includes(asset.name) && playerAssetsMarkup.includes('LEVEL 4'), `${category} Level 4 artwork appears on the player card`);
+  }
+  const investment = assets.find(asset => asset.category === 'investment');
+  const investmentAssetsMarkup = renderToStaticMarkup(React.createElement(PlayerAssets, {
+    equipment: { ...playerAssetFixture, companion: investment.id },
+    assetLevels: { ...playerAssetLevels, [investment.id]: 3 },
+    upgradeTokens: 0,
+    heldUpgradeTokens: 0,
+    playerIndex: 1,
+  }));
+  assert(investmentAssetsMarkup.includes(investment.name) && investmentAssetsMarkup.includes('LEVEL 3'), 'investment artwork and level appear in the shared companion slot');
   for (const asset of assets) {
     assert.equal(Object.keys(asset.visualVariants ?? {}).length, MAX_ASSET_LEVEL, `${asset.id} has a visual reference at every upgrade level`);
     assert.deepEqual([2, 3, 4].map(level => asset.visualVariants[level]), [
@@ -482,6 +623,8 @@ try {
   assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);
   assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
   assert(visualAssets.every(asset => existsSync(asset.filePath)));
+  const specialSpaces = BOARD_SPACES.filter(space => space.type !== 'NORMAL');
+  assert(specialSpaces.length > 0 && specialSpaces.every(space => ICON_PATHS[space.icon]), 'every special board space has an available icon');
   assert(Array.from({ length: 75 }, (_, index) => getSpace(index + 1)).every(space => ICON_PATHS[space.icon] && (!space.secondaryIcon || ICON_PATHS[space.secondaryIcon])));
   const offeredCar = getAsset(match.pending.offeredAssetIds[0]);
   const hiddenCar = assets.find(asset => asset.category === 'car' && !match.pending.offeredAssetIds.includes(asset.id));
@@ -750,6 +893,40 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     match,
     'a finished player cannot roll while choosing an endgame path',
   );
+
+  // Finish rewards use arrival order, not Wealth, and are included in the
+  // immutable finish snapshot exactly once for both human and CPU players.
+  assert.deepEqual([...FINISH_ORDER_WEALTH_REWARDS], [100000, 75000, 50000, 25000]);
+  let finishOrderFixture = withoutAbilities(createMatch(id));
+  const arrivalWealths = [900000, 1000, 500000, 250000];
+  for (let rank = 0; rank < 4; rank += 1) {
+    const playerIndex = rank;
+    finishOrderFixture = {
+      ...finishOrderFixture,
+      phase: 'ready',
+      turnIndex: playerIndex,
+      players: finishOrderFixture.players.map((player, index) => index === playerIndex
+        ? { ...player, position: 74, wealth: arrivalWealths[index], isCPU: index === 1 }
+        : player),
+    };
+    const finished = move(finishOrderFixture, 2);
+    const player = finished.players[playerIndex];
+    assert.equal(player.status, 'FINISHED');
+    assert.equal(finished.finishOrder[rank], playerIndex);
+    assert.equal(player.wealth, arrivalWealths[playerIndex] + FINISH_ORDER_WEALTH_REWARDS[rank]);
+    assert.equal(player.endgame.snapshot.wealth, player.wealth, 'finish snapshot includes the reward');
+    assert.equal(finished.wealthEvents.filter(event => event.playerIndex === playerIndex && event.space === 75).length, 1);
+    assert.equal(finished.wealthEvents.find(event => event.playerIndex === playerIndex && event.space === 75)?.kind, 'FINISH_BONUS');
+    assert.equal(advanceMatch(finished, { type: 'STEP' }), finished, 'finish reward cannot repeat');
+    finishOrderFixture = {
+      ...finished,
+      phase: 'ready',
+      pending: null,
+      roll: null,
+      stepsRemaining: 0,
+    };
+  }
+
   assert.equal(advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }).players[0].endgame.status, 'RESOLVED');
   assert.deepEqual([0, 1, 2, 3, 4, 12].map(getEndgameTokenTier), [0, 1, 2, 3, 4, 4]);
   assert(cashOutValue(100000, 4).finalGameValue > cashOutValue(100000, 0).finalGameValue, 'held tokens enhance Cash Out without becoming cash');
@@ -924,14 +1101,26 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     titledCompleteMatch.players[1].endgame.endGameTitle,
     'equivalent player histories receive the same title regardless of human or CPU control',
   );
-  const { MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
+  const { FinishLinePanel, MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
   const resultsMarkup = renderToStaticMarkup(
-    React.createElement(MatchResultsPanel, { players: titledCompleteMatch.players }),
+    React.createElement(MatchResultsPanel, { players: titledCompleteMatch.players, finishOrder: [2, 3, 0, 1] }),
   );
   assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
   assert(resultsMarkup.includes('0 available · 0 held · 2 spent'), 'the final token ledger uses event history, not the upgrades list');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
+  assert(resultsMarkup.includes('1ST TO FINISH') && resultsMarkup.includes('FINISH BONUS'), 'final records distinguish arrival order from final-value placement');
+
+  const lastFinisher = finishOrderFixture.players[3];
+  const finishPanelMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
+    player: lastFinisher,
+    endgame: lastFinisher.endgame,
+    finishPlace: 4,
+    finishBonus: FINISH_ORDER_WEALTH_REWARDS[3],
+    onChoose: () => {},
+    onContinue: () => {},
+  }));
+  assert(finishPanelMarkup.includes('4TH TO FINISH!') && finishPanelMarkup.includes('FINISH BONUS'), 'finish screen announces arrival place and the Wealth bonus');
 
   const cpuFinishStart = withoutAbilities(start(73, 1), 1);
   const cpuPending = move(cpuFinishStart, 2);
@@ -1095,7 +1284,17 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   const rollBefore = rollStart.players[0].wealth;
   const rollLanding = move(rollStart, 3);
   assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');
-  console.log('PASS: 96 cards, 100 unique milestone visuals, finish-line choices, held-token endgame tiers, CPU endgame, event logs and finite piles');
+  console.log('CARD ARTWORK AUDIT');
+  console.log('DECK | TOTAL | WITH IMAGE | MISSING');
+  for (const deck of decks) {
+    const deckCards = cardsForDeck(deck.id);
+    const withImages = deckCards.filter(card => {
+      const path = getCardArtworkFilePath(card.id);
+      return Boolean(path && existsSync(new URL(`../public/${path}`, import.meta.url)));
+    }).length;
+    console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
+  }
+  console.log('PASS: 21 portraits, 21 character ability displays, 20 career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and event regressions');
 } finally {
   await vite.close();
 }

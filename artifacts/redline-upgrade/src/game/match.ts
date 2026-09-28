@@ -1,7 +1,7 @@
 import { characters } from './characters';
 import { createPlayer, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
-import { careers, startingWealth, type SalaryTier } from './careers';
+import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
 import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
@@ -33,7 +33,7 @@ export type MatchPlayer = ReturnType<typeof createPlayer> & {
 export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed' | 'endgame' | 'complete';
 export interface DiceResult { die1: number; die2: number; total: number; doubles: boolean }
 export interface Landing { playerIndex: number; space: BoardSpace }
-export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE'; space: number }
+export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE' | 'FINISH_BONUS'; space: number }
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type PendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
@@ -48,6 +48,8 @@ export interface Match {
   stepsRemaining: number;
   lastLanding: Landing | null;
   wealthEvents: WealthEvent[];
+  /** Player indexes in the order they reached space 75. */
+  finishOrder: number[];
   pending: PendingDecision | null;
   eventLog: EventLogEntry[];
   eventCursor: number;
@@ -95,11 +97,36 @@ function finishPlayersAtLine(match: Match): Match {
   if (!newlyFinished.length) return match;
 
   const drafts: EventDraft[] = [];
+  const finishOrder = [...(match.finishOrder ?? [])];
+  const wealthEvents = [...match.wealthEvents];
   const players = match.players.map((player, playerIndex) => {
     if (!newlyFinished.includes(playerIndex)) return player;
-    const snapshot = createFinishSnapshot(player, player.slot, player.isCPU, match.round, match.turnCounter);
-    const tokenTier = getEndgameTokenTier(player.heldUpgradeTokens);
-    const baseValue = calculateEndgameBaseValue(player);
+    const rank = finishOrder.length;
+    finishOrder.push(playerIndex);
+    const finishReward = FINISH_ORDER_WEALTH_REWARDS[rank] ?? 0;
+    const rewardedWealth = player.wealth + finishReward;
+    const rewardedPlayer = { ...player, wealth: rewardedWealth };
+    if (finishReward > 0) {
+      wealthEvents.push({
+        id: (wealthEvents.at(-1)?.id ?? 0) + 1,
+        playerIndex,
+        amount: finishReward,
+        kind: 'FINISH_BONUS',
+        space: 75,
+      });
+      addNativeStatChange(
+        match,
+        drafts,
+        playerIndex,
+        'wealth',
+        player.wealth,
+        rewardedWealth,
+        `Finish reward (${rank + 1}${rank === 0 ? 'st' : rank === 1 ? 'nd' : rank === 2 ? 'rd' : 'th'} place)`,
+      );
+    }
+    const snapshot = createFinishSnapshot(rewardedPlayer, player.slot, player.isCPU, match.round, match.turnCounter);
+    const tokenTier = getEndgameTokenTier(rewardedPlayer.heldUpgradeTokens);
+    const baseValue = calculateEndgameBaseValue(rewardedPlayer);
     drafts.push(
       {
         type: 'FINISH_LINE_REACHED',
@@ -116,7 +143,7 @@ function finishPlayersAtLine(match: Match): Match {
       },
     );
     return {
-      ...player,
+      ...rewardedPlayer,
       status: 'FINISHED' as const,
       endgame: { status: 'PENDING' as const, snapshot, baseValue, tokenTier },
     };
@@ -129,6 +156,8 @@ function finishPlayersAtLine(match: Match): Match {
   const nextMatch: Match = {
     ...match,
     players,
+    finishOrder,
+    wealthEvents,
     ...(currentPlayerFinished ? {
       phase: 'endgame' as const,
       stepsRemaining: 0,
@@ -185,6 +214,7 @@ export function createMatch(characterId: string): Match {
     stepsRemaining: 0,
     lastLanding: null,
     wealthEvents: [],
+    finishOrder: [],
     pending: null,
     eventLog: [],
     eventCursor: 0,

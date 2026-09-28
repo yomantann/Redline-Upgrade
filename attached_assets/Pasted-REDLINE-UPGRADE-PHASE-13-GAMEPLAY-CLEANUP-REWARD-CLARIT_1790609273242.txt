@@ -1,0 +1,496 @@
+REDLINE UPGRADE — PHASE 13
+GAMEPLAY CLEANUP, REWARD CLARITY & PLAYER INFORMATION
+
+This phase is primarily a cleanup and usability pass.
+
+Do NOT add major new gameplay systems. Improve the clarity, consistency, visuals, and feedback of the systems that already exist.
+
+Preserve all existing Phase 8–12 mechanics.
+
+==================================================
+1. STARTING WEALTH
+==================================================
+
+Change starting Wealth so that each player begins with Wealth equal to their assigned career salary.
+
+Example:
+
+Career Salary: $80K
+Starting Wealth: $80K
+
+Do NOT start players with a lower/default Wealth value.
+
+Make sure this applies equally to:
+- Human players
+- CPU players
+
+The salary assigned during career selection should therefore immediately establish the player's starting Wealth.
+
+Update any tests that currently expect the old starting value.
+
+==================================================
+2. FINISH-LINE ORDER BONUS
+==================================================
+
+Reward players based on the order in which they reach Space 75.
+
+The earlier a player reaches the finish line, the larger their additional Wealth reward.
+
+Create a simple data-driven finish-order reward table that is easy to rebalance.
+
+For example:
+
+1st to finish → largest bonus
+2nd → second-largest bonus
+3rd → smaller bonus
+4th → smallest bonus
+
+Do NOT create another resource.
+
+Add a clear event/UI notification when the player finishes:
+
+"1ST TO FINISH!"
+"+$XXK FINISH BONUS"
+
+The bonus should be added to Wealth and included in final game value.
+
+CPU players receive the same rules.
+
+Track actual finish order rather than determining it later from final Wealth.
+
+==================================================
+3. MILESTONE ASSET VISIBILITY
+==================================================
+
+Fix the existing milestone asset visuals so they display clearly everywhere.
+
+This must work for ALL milestone asset categories:
+
+- Car
+- Lifestyle
+- Pet
+- Investment
+- Property
+
+The selected asset should display correctly:
+
+1. On the player card
+2. Anywhere the player's assets are shown
+3. In milestone selection
+4. In asset upgrade UI
+5. In final/endgame views
+
+Use the correct Level 1–4 visual when an asset has been upgraded.
+
+Do not hardcode individual assets.
+
+Create/reuse a consistent asset-display component that can handle every milestone asset.
+
+Make sure:
+- Image is not cropped incorrectly
+- Image is not too small
+- Image has appropriate aspect ratio
+- Transparent artwork displays correctly
+- Asset name remains readable
+- Current level is obvious
+
+Example:
+
+PET
+HOLODOG
+LVL 3
+[IMAGE]
+
+==================================================
+4. CARD SPACE VISIBILITY
+
+Whenever ANY player lands on a card space, the card draw/action must be visible to EVERY player in the local game.
+
+Do not make card activity visible only to the player who landed.
+
+Example:
+
+"FROSTBYTE landed on an AI Skill space."
+
+Then show the card being drawn.
+
+The card should be visible to all players.
+
+Show:
+
+- Deck type
+- Card image
+- Card name
+- Card effect
+- Who drew it
+- Result
+
+This should apply consistently to all six decks:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+GAMBLE
+
+The existing card resolution mechanics should remain unchanged.
+
+==================================================
+5. EVERY CARD NEEDS ARTWORK
+
+Audit every card in every deck.
+
+There should be NO active deck card without an applicable image.
+
+Audit:
+
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Gamble
+
+For every card verify:
+
+- Card ID
+- Card name
+- Deck
+- Description
+- Effect
+- Image/asset reference
+
+If a card has no image, identify it clearly.
+
+Use the existing visual style and available artwork system.
+
+Do not silently assign unrelated artwork to a card simply to fill the slot.
+
+Create a clean placeholder only if necessary and clearly report which cards still need custom artwork.
+
+At completion report:
+
+Deck | Total Cards | Cards With Images | Missing Images
+
+==================================================
+6. CAREER ABILITY DISPLAY
+
+The player's Career Ability must be visible on their player card.
+
+Display:
+
+CAREER
+AI ENGINEER
+
+CAREER ABILITY
+[ABILITY NAME]
+
+[SHORT DESCRIPTION]
+
+Keep the description concise enough that the player can understand it during gameplay.
+
+Do not require players to open another screen just to remember their career ability.
+
+==================================================
+7. CHARACTER ABILITY DISPLAY
+
+The player's Character Ability must also appear on their player card.
+
+Use a separate clearly labeled section:
+
+CHARACTER ABILITY
+[ABILITY NAME]
+
+[SHORT DESCRIPTION]
+
+Career Ability and Character Ability must be visually distinct.
+
+==================================================
+8. ABILITY ACTIVATION FEEDBACK
+
+Whenever a character or career ability actually triggers, make it obvious to EVERY player.
+
+Use the existing event system.
+
+Examples:
+
+"GUARDIAN H — CHARACTER ABILITY ACTIVATED"
+
+"AI ENGINEER — CAREER ABILITY ACTIVATED"
+
+Then show the effect:
+
+"+$20K WEALTH"
+
+"+2 AI SKILL"
+
+"PROTECTED FROM PENALTY"
+
+Do not make this a permanent intrusive popup.
+
+Use a short visual notification/event banner and the existing event log.
+
+The player should never wonder why their stats changed.
+
+If an ability is triggered automatically, clearly indicate the trigger.
+
+Example:
+
+"ROLL OF 8 → ABILITY ACTIVATED"
+
+"LANDED ON PLAYER → ABILITY ACTIVATED"
+
+"PURCHASE → ABILITY ACTIVATED"
+
+==================================================
+9. PLAYER CARD V2 CLEANUP
+
+Continue refining Player Card V2.
+
+Use restrained color coding rather than making every section brightly colored.
+
+Suggested visual hierarchy:
+
+IDENTITY
+Character / Career
+
+MONEY
+Wealth / Salary
+
+STATS
+AI Skill
+Fame
+Lifestyle
+Influence
+
+ASSETS
+Car
+Lifestyle
+Pet
+Investment
+Property
+
+ABILITIES
+Character Ability
+Career Ability
+
+UPGRADES
+Upgrade Tokens
+
+Use the existing Redline visual language.
+
+Color coding should help players scan information without making the card visually noisy.
+
+Use consistent colors for:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+UPGRADE TOKENS
+
+Keep Career and Character abilities visually distinct but subdued.
+
+==================================================
+10. BOARD SPACE REWARD CLARITY
+
+Every non-card space that produces an effect should clearly communicate what happens.
+
+Examples:
+
+PAYDAY / SALARY
+"+$80K SALARY"
+
+WEALTH SPACE
+"+$20K WEALTH"
+
+AI SKILL SPACE
+"+2 AI SKILL"
+
+FAME SPACE
+"+2 FAME"
+
+LIFESTYLE SPACE
+"+2 LIFESTYLE"
+
+INFLUENCE SPACE
+"+2 INFLUENCE"
+
+UPGRADE TOKEN SPACE
+"+1 UPGRADE TOKEN"
+
+CAREER CHANGE
+"CAREER CHANGE AVAILABLE"
+
+MILESTONE
+"CHOOSE AN ASSET"
+
+Use a small, consistent visual feedback treatment when the space resolves.
+
+The player should understand the reward without having to inspect the event log.
+
+==================================================
+11. BOARD SPACE ICONS
+
+Audit all 75 board spaces.
+
+Every special space should have a clearly recognizable icon.
+
+The icon should communicate the action before the player lands on it.
+
+Keep the board visually clean.
+
+Do not cover up existing board artwork.
+
+Maintain the existing board design.
+
+==================================================
+12. TURN FEEDBACK
+
+Make the active player's turn extremely obvious.
+
+Show:
+
+"YOUR TURN"
+or
+"[PLAYER NAME]'S TURN"
+
+The Roll Dice button should remain prominent.
+
+If the player has Upgrade Tokens available, the existing Upgrade Token action should remain visible near the roll controls.
+
+If a player has a special action available, clearly indicate it without overwhelming the screen.
+
+==================================================
+13. CARD / EVENT PRESENTATION
+
+Create a consistent visual hierarchy for game events:
+
+PLAYER ACTION
+↓
+SPACE / CARD
+↓
+EFFECT
+↓
+ABILITY TRIGGER
+↓
+FINAL RESULT
+
+Example:
+
+"CLICK_CLICK LANDED ON WEALTH"
+
+[WEALTH CARD]
+
+"Market Pump"
+
+"+$35K"
+
+"CLICK_CLICK CHARACTER ABILITY ACTIVATED"
+
+"+$10K"
+
+"TOTAL: +$45K"
+
+This should make complicated turns easy to follow.
+
+==================================================
+14. CLEANUP AUDIT
+
+Look for existing areas where information is duplicated, overly small, difficult to read, or visually inconsistent.
+
+Prioritize:
+
+- Player cards
+- Asset images
+- Career information
+- Character abilities
+- Career abilities
+- Card display
+- Board-space rewards
+- Turn controls
+- Event notifications
+- Finish-line feedback
+- Endgame information
+
+Do not perform a complete visual redesign.
+
+Make targeted improvements.
+
+==================================================
+15. PERFORMANCE / COMPONENT CLEANUP
+
+Where appropriate:
+
+- Reuse shared components
+- Avoid duplicating asset-display logic
+- Avoid duplicated card-display logic
+- Avoid hardcoded asset-specific UI
+- Keep game logic separate from presentation
+- Preserve existing TypeScript architecture
+
+Do not rewrite functioning systems unnecessarily.
+
+==================================================
+16. TESTING
+
+Add/update tests for:
+
+- Starting Wealth equals salary
+- Human starting Wealth
+- CPU starting Wealth
+- Finish-order bonuses
+- Correct finish order tracking
+- Finish bonus included in Wealth
+- All five milestone asset categories rendering
+- Level 1–4 asset rendering
+- Card visibility to all local players
+- All six decks
+- Every card having an image reference
+- Character ability display
+- Career ability display
+- Ability activation events
+- Board-space reward notifications
+- Upgrade Token notification
+- Existing Phase 8–12 regression tests
+
+Run:
+
+- TypeScript typecheck
+- Game regression tests
+- Production build
+- Preview/restart validation
+- Secret scan if available
+
+==================================================
+17. FINAL AUDIT REPORT
+
+At completion report:
+
+1. Starting Wealth change
+2. Finish-order reward table
+3. Milestone asset rendering status
+4. Asset Level 1–4 rendering status
+5. Card-space visibility fix
+6. Card artwork audit
+
+For card artwork provide:
+
+DECK | TOTAL | WITH IMAGE | MISSING
+
+7. Character ability UI
+8. Career ability UI
+9. Ability activation feedback
+10. Player Card V2 cleanup
+11. Board-space reward feedback
+12. Board icon audit
+13. Turn UI cleanup
+14. Files changed
+15. Tests added
+16. Validation results
+17. Remaining visual/content issues
+
+Do NOT begin another major feature after completing this phase.
+STOP after Phase 13.

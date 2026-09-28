@@ -1,4 +1,5 @@
 import { assets, type AssetCategory } from './assets';
+import { getPublicAssetUrl } from '@/lib/public-asset-url';
 
 const artworkGroups: Record<AssetCategory, { directory: string; prefix: string }> = {
   car: { directory: 'cars', prefix: 'CAR' },
@@ -34,7 +35,7 @@ export function getAssetArtworkFilePath(assetId: string): string | undefined {
 
 export function getAssetArtworkUrl(assetId: string): string | undefined {
   const filePath = getAssetArtworkFilePath(assetId);
-  return filePath ? `${import.meta.env.BASE_URL}${filePath}` : undefined;
+  return filePath ? getPublicAssetUrl(filePath) : undefined;
 }
 
 export function getCategoryArtworkUrl(category: AssetCategory): string | undefined {

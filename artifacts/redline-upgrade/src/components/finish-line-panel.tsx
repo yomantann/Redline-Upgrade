@@ -4,8 +4,10 @@ import { formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
 import type { MatchPlayer } from '@/game/match';
+import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { CharacterPortrait } from './character-portrait';
 import { AssetArtwork } from './asset-artwork';
+import { AbilityActivationBanner, type AbilityFeedback } from './game-event-feedback';
 import './finish-line-panel.css';
 
 export interface FinishLinePanelProps {
@@ -13,6 +15,9 @@ export interface FinishLinePanelProps {
   endgame: EndgameState;
   onChoose: (choice: EndgameChoice) => void;
   onContinue: () => void;
+  finishPlace?: number;
+  finishBonus?: number;
+  abilityNotice?: AbilityFeedback;
 }
 
 const assetSlots: readonly { slot: AssetSlot; label: string }[] = [
@@ -54,6 +59,11 @@ const choices: readonly {
 
 function formatSignedMoney(value: number) {
   return `${value >= 0 ? '+' : '−'}${formatMoney(Math.abs(value))}`;
+}
+
+function finishOrdinal(place: number) {
+  const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
+  return `${place}${suffix}`;
 }
 
 function ChoiceButton({
@@ -257,7 +267,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
   );
 }
 
-export function FinishLinePanel({ player, endgame, onChoose, onContinue }: FinishLinePanelProps) {
+export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishPlace, finishBonus, abilityNotice }: FinishLinePanelProps) {
   const character = getCharacter(endgame.snapshot.characterId);
   const isResolved = endgame.status === 'RESOLVED';
 
@@ -291,13 +301,21 @@ export function FinishLinePanel({ player, endgame, onChoose, onContinue }: Finis
         </div>
       </section>
 
+      {finishPlace && finishPlace > 0 && (
+        <section className="finish-order-banner" aria-label="Finish-order reward" data-testid="finish-order-bonus">
+          <span className="mono">{finishOrdinal(finishPlace)} TO FINISH!</span>
+          <strong>+{formatMoney(finishBonus ?? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0)} FINISH BONUS</strong>
+          <small>ADDED TO WEALTH BEFORE THE FINAL SNAPSHOT</small>
+        </section>
+      )}
+      {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
       <SnapshotLedger endgame={endgame} />
       {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : <PendingDecision endgame={endgame} onChoose={onChoose} />}
     </main>
   );
 }
 
-export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
+export function MatchResultsPanel({ players, finishOrder = [] }: { players: MatchPlayer[]; finishOrder?: number[] }) {
   const resolvedPlayers = players
     .filter((player) => player.endgame?.status === 'RESOLVED')
     .sort((a, b) => {
@@ -334,6 +352,8 @@ export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
             const availableTokens = Math.max(0, endgame.snapshot.upgradeTokens - endgame.snapshot.heldUpgradeTokens);
+            const finishPlace = finishOrder.indexOf(player.slot) + 1;
+            const finishBonus = finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0;
             return (
               <article className={`finish-line-result-row ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
                 <div className="finish-line-result-placement" aria-label={`Placement ${index + 1}`}>
@@ -370,6 +390,7 @@ export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
                      <span className="mono">FINAL SIGNAL</span>
                      <strong>{endgame.endGameTitle ?? 'FINISH RECORDED'}</strong>
                      {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
+                     {finishPlace > 0 && <small className="finish-order-result mono">{finishOrdinal(finishPlace)} TO FINISH / +{formatMoney(finishBonus)} FINISH BONUS</small>}
                    </div>
                    <div className="finish-line-result-assets" role="group" aria-label={`${character?.name ?? player.displayName} final assets`}>
                      {assetSlots.map(({ slot, label }) => {

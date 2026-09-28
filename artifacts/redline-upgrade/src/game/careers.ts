@@ -70,10 +70,15 @@ export const careers: readonly Career[] = careerRecords.map((career) => ({
   abilityIds: [...career.abilityIds, ...careerAffinityAbilityIds(career.id)],
 }));
 
-export const STARTING_WEALTH_MULTIPLIER = 0.5;
-export function startingWealth(career: Career, salary: number): number {
-  return Math.max(0, Math.round(salary * STARTING_WEALTH_MULTIPLIER + career.startingWealthModifier));
+export function startingWealth(_career: Career, salary: number): number {
+  // Phase 13 starts every player with exactly their assigned salary.  Keep the
+  // career argument for callers that already use this helper; salary modifiers
+  // and starting benefits remain separate systems.
+  return salary;
 }
+
+/** Wealth awarded once, in actual arrival order, when a player reaches space 75. */
+export const FINISH_ORDER_WEALTH_REWARDS = [100_000, 75_000, 50_000, 25_000] as const;
 export function getCareer(id: string): Career | undefined {
   return careers.find(career => career.id === id);
 }

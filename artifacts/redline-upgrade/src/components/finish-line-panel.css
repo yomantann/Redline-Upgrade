@@ -495,8 +495,9 @@
 .finish-line-result-asset { min-width:0; padding:7px; border:1px solid #3c5042; background:#1d2b23; }
 .finish-line-result-asset.open { border-color:#344239; }
 .finish-line-result-asset > .mono { display:block; color:#849087; font-size:7px; }
-.finish-line-result-asset-art { display:grid; place-items:center; height:38px; margin:5px 0; border:1px solid #304238; background:#17231d; overflow:hidden; }
+.finish-line-result-asset-art { position:relative; display:grid; place-items:center; height:38px; margin:5px 0; border:1px solid #304238; background:#17231d; overflow:hidden; }
 .finish-line-result-asset-art > span { color:#6f8374; font:300 23px/1 'Barlow Condensed',sans-serif; }
+.finish-line-asset-art .asset-upgrade-overlay,.finish-line-result-asset-art .asset-upgrade-overlay { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; }
 .finish-line-result-asset-image { width:100%; height:100%; object-fit:contain; }
 .finish-line-result-asset strong { display:block; color:#e9e7dc; font:700 14px/.9 'Barlow Condensed',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
 .finish-line-result-asset.open strong { color:#718275; }

@@ -12,6 +12,8 @@ type Props = {
   onResolveCard?: () => void;
   onAcknowledge?: () => void;
   isCPU?: boolean;
+  actorName?: string;
+  resultSummary?: string;
 };
 
 export function CardTabletop({
@@ -22,6 +24,8 @@ export function CardTabletop({
   onResolveCard,
   onAcknowledge,
   isCPU = false,
+  actorName = isCPU ? 'CPU' : 'You',
+  resultSummary,
 }: Props) {
   const [preview, setPreview] = useState<DeckId | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -37,18 +41,19 @@ export function CardTabletop({
       {activeDeck && (
         <section className="card-draw-panel" aria-label={`${getDeck(activeDeck).name} card draw`} data-testid="section-card-draw">
           <div className="card-draw-copy">
-            <span className="eyebrow">CARD SPACE / {getDeck(activeDeck).serial}</span>
-            <h2>{activeCardResolved ? activeCard.title : 'Draw your card.'}</h2>
-            <p>{activeCardResolved ? activeCard.description : `The ${getDeck(activeDeck).name} card is ready. Reveal it to resolve its effect.`}</p>
+            <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
+            <h2>{activeCard?.title ?? 'Draw your card.'}</h2>
+            <p>{actorName} landed on a {getDeck(activeDeck).name} space.</p>
+            <p>{activeCardResolved ? (resultSummary || activeCard.description) : `The card is face-up for the table. ${actorName} will resolve its effect.`}</p>
           </div>
           <div className={`card-draw-stage ${activeCardResolved ? 'revealed' : ''}`} key={activeCardResolved ? activeCard.id : activeDeck}>
-            <RedlineCard deck={activeDeck} face={activeCardResolved ? 'front' : 'back'} card={activeCardResolved ? activeCard : undefined} />
+            <RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} />
           </div>
           <div className="card-draw-action">
             {isCPU ? <p>CPU CARD IN PROGRESS // BOARD PAUSED</p> : activeCardResolved
               ? <button type="button" className="action lime-action" onClick={onAcknowledge} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
               : <button type="button" className="action" onClick={onResolveCard} data-testid="button-draw-card">DRAW & RESOLVE <span aria-hidden="true">↗</span></button>}
-            <p>{activeCardResolved ? activeCard.effect : 'The card effect will update player stats and the event log.'}</p>
+            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b> // {activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'}</p>
           </div>
         </section>
       )}
