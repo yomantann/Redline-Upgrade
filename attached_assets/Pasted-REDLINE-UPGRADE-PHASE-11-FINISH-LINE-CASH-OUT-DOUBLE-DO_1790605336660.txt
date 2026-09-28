@@ -1,0 +1,163 @@
+REDLINE UPGRADE — PHASE 11: FINISH LINE + CASH OUT / DOUBLE DOWN / FINAL GAMBLE
+
+Build the next major gameplay phase using the existing Phase 8–10 event, card, career, milestone, asset, Upgrade Token, CPU, and movement architecture. Do not redesign existing systems.
+
+1. MILESTONE ASSET AUDIT
+Verify the milestone library contains 100 unique choices total:
+- Car: 10 original + 10 new = 20
+- Lifestyle: 10 original + 10 new = 20
+- Pet: 10 original + 10 new = 20
+- Investment: 10 original + 10 new = 20
+- Property: 10 original + 10 new = 20
+
+Preserve all original 10 choices in each category. Confirm the additional 10 have unique Level 1 visuals and are correctly wired into the existing milestone system. Players should still see exactly 3 randomly selected choices from the applicable 20-choice pool.
+
+IMPORTANT: Level 2–4 upgrade visuals are NOT additional milestone choices. For example, HoloDog Level 1–4 is one Pet asset with four progression visuals.
+
+Audit and report:
+- 20 choices per category
+- unique Level 1 visuals
+- Level 2–4 upgrade visuals
+- missing/duplicate artwork
+- any asset definitions without valid visuals
+
+Do not unnecessarily replace approved artwork.
+
+2. FINISH LINE
+When a player reaches Space 75, mark them FINISHED and stop their movement/turns. Do NOT end the entire game immediately; other players continue normally until they finish.
+
+Capture their final:
+- Character
+- Career
+- Salary
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Car
+- Lifestyle
+- Pet
+- Investment
+- Property
+- Asset levels
+- Held Upgrade Tokens
+- Relevant existing game flags
+
+Use the existing game state architecture. Add appropriate states such as ACTIVE, FINISHED, ENDGAME_PENDING, ENDGAME_RESOLVED.
+
+Show a strong "REDLINE COMPLETE / FINAL STAGE" UI and clearly indicate the player is finished.
+
+3. FINAL DECISION
+When eligible, present exactly three choices:
+
+CASH OUT
+- Safest option.
+- Accept accumulated final value.
+- Produce a data-driven finalGameValue.
+
+DOUBLE DOWN
+- Medium/high-risk option.
+- Use the existing 2d4 dice system.
+- Risk the final result for a significantly larger possible outcome.
+
+FINAL GAMBLE
+- Highest-risk option.
+- Use the existing Gamble deck/card infrastructure.
+- Can produce significant upside or downside.
+
+Do not create another currency or resource. Do not convert to Redline Credits yet.
+
+Before resolving, show a confirmation screen with:
+- Current Wealth
+- Assets
+- Held Upgrade Tokens
+- The three choices
+
+After resolution, show a clear breakdown such as:
+FINAL CHOICE
+BASE VALUE
+ENDGAME RESULT
+FINAL GAME VALUE
+
+4. UPGRADE TOKENS
+Integrate Phase 10 Upgrade Tokens into the endgame.
+
+Only UNUSED/Held tokens count. Tokens already spent on asset upgrades or milestone recovery do not count.
+
+Support 0 / 1 / 2 / 3 / 4+ held tokens.
+
+Held tokens should enhance the player's chosen Cash Out, Double Down, or Final Gamble path, but must NOT force the player into a particular choice. Keep the exact balancing values data-driven and easy to modify. Do not simply convert tokens into a fixed dollar amount.
+
+5. CPU
+CPU players must be able to finish and complete the endgame. Use simple deterministic/randomized logic to choose between Cash Out, Double Down, and Final Gamble. Correctly account for Wealth, assets, and held Upgrade Tokens.
+
+6. EVENT ENGINE
+Use the existing event system and add appropriate events for:
+FINISH_LINE_REACHED
+ENDGAME_STARTED
+ENDGAME_CHOICE_SELECTED
+CASH_OUT_RESOLVED
+DOUBLE_DOWN_RESOLVED
+FINAL_GAMBLE_RESOLVED
+ENDGAME_COMPLETED
+
+7. VISUALS
+Make the final stage feel distinct while matching the existing Redline Upgrade aesthetic:
+- Cash Out = controlled/secure
+- Double Down = high-stakes/risk
+- Final Gamble = chaotic/extreme
+
+Reuse existing components/styles where possible.
+
+8. PRESERVE
+Do not break or redesign:
+- 75-space board
+- board zoom/pan
+- 2d4 movement/dice animation
+- CPU
+- salary/pass-through system
+- Space 35 Career Change
+- six decks/deck affinities
+- character/career abilities
+- player interactions
+- milestones and 3-choice presentation
+- 20-choice milestone pools
+- asset levels
+- Upgrade Tokens
+- character pieces
+- existing artwork
+
+Do NOT implement yet:
+- final titles/statuses
+- Redline Credit conversion
+- persistent Auth/profile integration
+- multiplayer
+- cosmetics/lifetime statistics
+
+9. TESTING
+Add tests for:
+- reaching Space 75 and becoming FINISHED
+- finished players no longer rolling
+- other players continuing
+- CPU finishing
+- all final state values being preserved
+- held vs spent Upgrade Tokens
+- Cash Out
+- Double Down
+- Final Gamble
+- 0/1/2/3/4+ Upgrade Token states
+- confirmation before final choice
+- CPU endgame
+- event logging
+- all five milestone categories having 20 choices
+- exactly 3 milestone choices being presented
+- original 10 + new 10 remaining intact
+- Level 2–4 upgrade visuals not being treated as separate choices
+- all existing Phase 8–10 tests continuing to pass
+
+Run TypeScript typecheck, regression tests, Phase 11 tests, production build, preview/restart validation, and secret scan if available.
+
+At completion, report the finish-line/endgame implementation, milestone audit, unique visuals, missing/duplicate artwork, files changed, tests, validation results, and limitations.
+
+STOP after Phase 11. Do not begin the next phase automatically.
