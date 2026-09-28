@@ -1,0 +1,593 @@
+REDLINE UPGRADE — PHASE 13.5
+VISUAL / TERMINOLOGY / FEEDBACK CLEANUP
+
+This is a focused cleanup phase.
+
+Do NOT add new gameplay mechanics.
+
+Preserve all existing Phase 8–13 systems.
+
+==================================================
+1. CPU CARD DRAW PRESENTATION
+==================================================
+
+When a CPU player draws a card, show the card prominently to ALL players.
+
+The card should:
+
+- Appear substantially larger than the normal card UI
+- Be centered/prominent on the screen
+- Show the deck
+- Show the card name
+- Show the card artwork
+- Show the card effect
+- Clearly identify which CPU drew it
+
+Keep the card visible long enough for players to actually read it.
+
+Do not immediately resolve and disappear.
+
+Use a short presentation sequence:
+
+CPU ACTION
+→ CARD REVEAL
+→ CARD EFFECT
+→ RESULT
+
+The same presentation system should work for human and CPU players.
+
+Do not create separate card-resolution logic for CPU players.
+
+==================================================
+2. AUDIT ALL MILESTONE ASSET ARTWORK
+==================================================
+
+Audit EVERY milestone asset.
+
+Categories:
+
+- CAR
+- LIFESTYLE
+- PET
+- INVESTMENT
+- PROPERTY
+
+There should be 20 available assets per milestone category.
+
+Each asset must have actual unique artwork.
+
+DO NOT use generic placeholder icons as the final artwork.
+
+The screenshot currently shows newer assets using generic car/icon placeholders. Replace those wherever the actual unique asset artwork exists or create/identify the correct asset artwork reference.
+
+Also audit all upgraded versions.
+
+Every asset should support:
+
+LEVEL 1
+LEVEL 2
+LEVEL 3
+LEVEL 4
+
+where applicable.
+
+Each level must use the correct visual for that asset.
+
+Example:
+
+HOLODOG LVL 1
+→ Level 1 artwork
+
+HOLODOG LVL 2
+→ Level 2 artwork
+
+HOLODOG LVL 3
+→ Level 3 artwork
+
+HOLODOG LVL 4
+→ Level 4 artwork
+
+Do not display a generic icon when a specific asset image exists.
+
+==================================================
+3. MILESTONE IMAGE VALIDATION
+==================================================
+
+Create an automated/content audit where possible.
+
+For every milestone asset verify:
+
+- Asset ID
+- Category
+- Name
+- Level
+- Image path/reference
+- Image actually exists
+- Image is not a generic placeholder
+- Image displays correctly in the card
+- Image displays correctly in milestone selection
+- Image displays correctly on player card
+- Image displays correctly in upgrade UI
+
+Report any remaining missing artwork.
+
+Do not silently substitute unrelated artwork.
+
+==================================================
+4. CONSISTENT TERMINOLOGY
+==================================================
+
+Audit the entire game for inconsistent terminology.
+
+Choose ONE term for each concept and use it everywhere.
+
+Pay particular attention to:
+
+- Wealth
+- Salary
+- Salary Tier
+- Career
+- Career Category
+- Career Deck Affinity
+- Upgrade Token
+- Milestone
+- Asset
+- Asset Level
+- Finish
+- Finish Bonus
+- Card Deck
+
+The current "career affinity" terminology can be confusing.
+
+Use a clearer player-facing label.
+
+Preferred direction:
+
+CAREER DECKS
+
+or
+
+BONUS DECKS
+
+The underlying code can continue using "affinity" if useful.
+
+Player-facing UI should explain the mechanic clearly.
+
+Example:
+
+CAREER DECKS
+AI SKILL • WEALTH
+
+"Matching these decks can trigger your career bonus."
+
+Keep the explanation short.
+
+==================================================
+5. NUMBERS MUST SHOW WHAT CHANGED
+==================================================
+
+Whenever a player's number changes, clearly show the change.
+
+Examples:
+
+WEALTH
+$120K → $155K
++$35K
+
+AI SKILL
+2 → 4
++2
+
+FAME
+5 → 3
+-2
+
+INFLUENCE
+1 → 2
++1
+
+Do not only show the final number.
+
+Use the existing event/notification system.
+
+This applies to:
+
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Salary where modified
+- Upgrade Tokens
+- Any other numerical game-state change
+
+==================================================
+6. CARD RESOLUTION SHOULD NOT FEEL INSTANTANEOUS
+==================================================
+
+Make card resolution feel like an actual board-game moment.
+
+Sequence:
+
+1. Player lands
+2. Space is identified
+3. Card is revealed
+4. Card remains readable
+5. Effect is announced
+6. Ability interactions resolve
+7. Final result is shown
+8. Turn continues
+
+Do not remove the card immediately after drawing it.
+
+Allow enough time for players to understand what happened.
+
+Human and CPU cards use the same presentation framework.
+
+==================================================
+7. DISABLED ACTIONS MUST EXPLAIN WHY
+==================================================
+
+Any disabled button/action should communicate the reason.
+
+Bad:
+
+[UPGRADE] (disabled)
+
+Better:
+
+[UPGRADE]
+"Requires Upgrade Token"
+
+Examples:
+
+"Not enough Wealth"
+"Already owned"
+"Ability already used this turn"
+"No eligible asset"
+"Must reach milestone first"
+"Cannot use during this phase"
+
+Do not create vague disabled controls.
+
+==================================================
+8. SALARY TIER VISUAL SYSTEM
+==================================================
+
+Make salary tiers much more visually distinct.
+
+Use increasingly strong color treatment.
+
+LOWEST salary tier:
+Strong red/dark red treatment
+
+LOW salary tier:
+Orange/red
+
+STANDARD/MID:
+Neutral/dark treatment
+
+HIGH:
+Gold
+
+HIGHEST:
+Bright gold / premium gold treatment
+
+Gold should clearly communicate the highest salary tier.
+
+Red should clearly communicate the lowest salary tier.
+
+Use subtle shading, borders, labels, and accents rather than filling the entire player card with bright colors.
+
+The salary tier should remain visible on:
+
+- Career card
+- Player card
+- Career selection
+- Any relevant salary display
+
+==================================================
+9. CAREER CARD COLORS
+
+Career cards should have visual identity based on their deck affinities.
+
+Each career has primary and secondary deck affinities.
+
+Make those affinities visually obvious on the career card.
+
+Example:
+
+AI ENGINEER
+
+CAREER DECKS
+[AI SKILL] [WEALTH]
+
+The career card should use subtle visual accents associated with those decks.
+
+Do NOT make the entire career card two unrelated bright colors.
+
+Use:
+
+- Small affinity badges
+- Accent borders
+- Subtle background gradients
+- Deck icons
+- Small color strips
+
+The player should be able to understand:
+
+"This career is connected to these decks."
+
+==================================================
+10. CAREER AFFINITY ON PLAYER CARD
+==================================================
+
+The player's active career card/player card should clearly display the career's deck connections.
+
+Example:
+
+CAREER
+AI ENGINEER
+
+CAREER DECKS
+AI SKILL • WEALTH
+
+CAREER ABILITY
+[Ability Name]
+
+[Short description]
+
+The deck colors/icons should match the actual deck UI.
+
+Do not make players memorize what the colors mean.
+
+Use both icon AND text.
+
+==================================================
+11. PLAYER CARD COLOR HIERARCHY
+==================================================
+
+Continue cleaning the Player Card V2.
+
+Use restrained color coding.
+
+Suggested identities:
+
+WEALTH
+Green
+
+AI SKILL
+Blue
+
+FAME
+Gold/yellow
+
+LIFESTYLE
+Purple
+
+INFLUENCE
+Red/orange
+
+UPGRADE TOKENS
+Teal/lime
+
+SALARY
+Red → neutral → gold based on tier
+
+Career affinity colors should use the same deck colors.
+
+Do not create additional unrelated colors.
+
+The goal is:
+
+COLOR = QUICK INFORMATION
+
+not
+
+COLOR = DECORATION
+
+==================================================
+12. FINISH ORDER
+
+When a player reaches the finish line, permanently show their finish order.
+
+Examples:
+
+1ST
+2ND
+3RD
+4TH
+
+Show a small finish marker on:
+
+- Player card
+- Finish-line area
+- Appropriate board representation
+
+Once assigned, finish order cannot change.
+
+Show the finish bonus clearly.
+
+Example:
+
+1ST TO FINISH
++$100K
+
+WEALTH
+$420K → $520K
++$100K
+
+==================================================
+13. NO DEAD UI
+
+Audit the entire active game interface.
+
+Remove or replace:
+
+- Placeholder labels
+- Debug text
+- Empty boxes
+- Unused controls
+- Fake buttons
+- Placeholder asset images
+- Empty stat sections
+- Development-only labels
+- UI that suggests an action exists when it does not
+
+Do not remove functional UI simply because it looks minimal.
+
+Only remove clearly unused/dead elements.
+
+==================================================
+14. BOARD-SPACE FEEDBACK
+
+Every special board space should clearly communicate what happened.
+
+Examples:
+
+WEALTH
++$25K WEALTH
+
+AI SKILL
++2 AI SKILL
+
+FAME
++2 FAME
+
+LIFESTYLE
++1 LIFESTYLE
+
+INFLUENCE
++2 INFLUENCE
+
+UPGRADE
++1 UPGRADE TOKEN
+
+CAREER CHANGE
+CAREER CHANGE AVAILABLE
+
+MILESTONE
+CHOOSE YOUR ASSET
+
+SALARY
++$80K SALARY
+
+The reward should be visible immediately after resolution.
+
+==================================================
+15. ABILITY FEEDBACK
+
+Whenever a character or career ability triggers:
+
+Show:
+
+[CHARACTER / CAREER]
+ABILITY ACTIVATED
+
+[ABILITY NAME]
+
+[RESULT]
+
+Example:
+
+GUARDIAN H
+CHARACTER ABILITY ACTIVATED
+
+PROTECTOR
+
+"Penalty blocked"
+
+Or:
+
+AI ENGINEER
+CAREER ABILITY ACTIVATED
+
+"+2 AI SKILL"
+
+Use the existing event engine.
+
+Do not create a second ability system.
+
+==================================================
+16. VISUAL CONSISTENCY AUDIT
+
+Check:
+
+- Card dimensions
+- Card typography
+- Player card typography
+- Asset image sizing
+- Icons
+- Borders
+- Labels
+- Stat colors
+- Career colors
+- Salary colors
+- Button styles
+- Notification styles
+
+Reuse existing components where possible.
+
+Do not introduce unnecessary visual styles.
+
+==================================================
+17. TESTING
+
+Test:
+
+- CPU card reveal
+- Human card reveal
+- Card stays visible long enough
+- Card artwork
+- All six decks
+- All milestone categories
+- 20 assets per category
+- Asset Level 1–4 visuals
+- Career affinity display
+- Career card colors
+- Player card career affinity display
+- Salary tier colors
+- Number-change notifications
+- Disabled action explanations
+- Finish-order display
+- Finish bonus
+- Ability activation notifications
+- Dead UI cleanup
+
+Run:
+
+- TypeScript check
+- Existing regression tests
+- Production build
+- Preview/restart
+- Secret scan if available
+
+==================================================
+18. FINAL AUDIT REPORT
+
+Report:
+
+1. CPU card presentation changes
+2. Card presentation timing
+3. Milestone artwork audit
+4. Number of unique assets found per category
+5. Missing/placeholder asset count
+6. Level 1–4 asset status
+7. Terminology standardization
+8. Career deck/affinity terminology
+9. Career card color system
+10. Player card color system
+11. Salary tier colors
+12. Number-change feedback
+13. Disabled-action explanations
+14. Finish-order UI
+15. Dead UI removed
+16. Ability feedback
+17. Board-space feedback
+18. Tests
+19. Validation results
+20. Remaining artwork/content issues
+
+Do NOT add a new gameplay system.
+
+STOP after Phase 13.5.
