@@ -21,6 +21,18 @@ export interface Player {
   /** Tokens reserved for the future endgame; these cannot be spent mid-match. */
   heldUpgradeTokens: number;
   upgrades: string[];
+  history: PlayerMatchHistory;
+}
+
+export interface PlayerMatchHistory {
+  gambleCardsDrawn: number;
+  doubleDowns: number;
+  finalGambles: number;
+  largestWealthSwing: number;
+  playerEncounters: number;
+  careerChanges: number;
+  assetUpgrades: number;
+  upgradeTokensSpent: number;
 }
 
 export type PlayerStat = 'wealth' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
@@ -48,5 +60,15 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
     upgradeTokens: 0,
     heldUpgradeTokens: 0,
     upgrades: [],
+    history: {
+      gambleCardsDrawn: 0,
+      doubleDowns: 0,
+      finalGambles: 0,
+      largestWealthSwing: 0,
+      playerEncounters: 0,
+      careerChanges: 0,
+      assetUpgrades: 0,
+      upgradeTokensSpent: 0,
+    },
   };
 }

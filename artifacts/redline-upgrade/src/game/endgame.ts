@@ -28,6 +28,7 @@ export interface FinishSnapshot {
   upgradeTokens: number;
   heldUpgradeTokens: number;
   upgrades: string[];
+  history: Player['history'];
 }
 
 export interface EndgameDice {
@@ -51,6 +52,8 @@ export interface EndgameState {
   gambleCardId?: string;
   gambleRawDelta?: number;
   gambleAdjustedDelta?: number;
+  endGameTitle?: string;
+  endGameTitleDescription?: string;
 }
 
 export const ENDGAME_BALANCE = {
@@ -124,6 +127,7 @@ export function createFinishSnapshot(
     upgradeTokens: player.upgradeTokens,
     heldUpgradeTokens: player.heldUpgradeTokens,
     upgrades: [...player.upgrades],
+    history: { ...player.history },
   };
 }
 

@@ -5,6 +5,7 @@ import { getCharacter } from '@/game/characters';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
 import type { MatchPlayer } from '@/game/match';
 import { CharacterPortrait } from './character-portrait';
+import { AssetArtwork } from './asset-artwork';
 import './finish-line-panel.css';
 
 export interface FinishLinePanelProps {
@@ -85,6 +86,7 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   const { snapshot } = endgame;
   const career = snapshot.careerId ? getCareer(snapshot.careerId) : undefined;
   const salaryTier = SALARY_TIERS[snapshot.salaryTier - 1] ?? 'UNASSIGNED';
+  const availableTokens = Math.max(0, snapshot.upgradeTokens - snapshot.heldUpgradeTokens);
 
   return (
     <section className="finish-line-ledger" aria-labelledby="finish-line-ledger-heading">
@@ -122,9 +124,9 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           </div>
         </div>
         <div className="finish-line-token-readout">
-          <span className="mono">HELD UPGRADE TOKENS</span>
+          <span className="mono">UPGRADE TOKEN LEDGER</span>
           <strong>TIER {String(endgame.tokenTier).padStart(2, '0')}</strong>
-          <small>{snapshot.heldUpgradeTokens} held · endgame modifier</small>
+          <small>{availableTokens} available · {snapshot.heldUpgradeTokens} held · {snapshot.history.upgradeTokensSpent} spent</small>
         </div>
       </div>
       <div className="finish-line-assets" aria-label="Captured assets">
@@ -132,11 +134,19 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           const assetId = snapshot.equipment[slot];
           const asset = assetId ? getAsset(assetId) : undefined;
           const level = asset ? snapshot.assetLevels[asset.id] ?? 1 : null;
-          return (
-            <div className={`finish-line-asset ${asset ? 'collected' : 'open'}`} key={slot}>
-              <span className="mono">{label}</span>
+          const categoryLabel = asset?.category === 'pet'
+            ? 'PET'
+            : asset?.category === 'investment'
+              ? 'INVESTMENT'
+              : label;
+           return (
+            <div className={`finish-line-asset ${asset ? 'collected' : 'open'}`} key={slot} aria-label={asset ? `${categoryLabel}, ${asset.name}, level ${level}` : `${label}, open slot`}>
+              <span className="mono">{categoryLabel}</span>
+               <div className="finish-line-asset-art" aria-hidden="true">
+                 {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-asset-image" /> : <span>+</span>}
+               </div>
               <strong>{asset?.name ?? 'OPEN SLOT'}</strong>
-              <small>{asset ? `LEVEL ${level}` : 'NOT ACQUIRED'}</small>
+               <small>{asset ? `LEVEL ${level} / VALUE $${(asset.cost * (level ?? 1)).toLocaleString('en-US')}` : 'NOT ACQUIRED'}</small>
             </div>
           );
         })}
@@ -187,7 +197,6 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
   const choice = choices.find((entry) => entry.id === endgame.choice);
   const card = endgame.gambleCardId ? getCard(endgame.gambleCardId) : undefined;
   const hasFinalValue = typeof endgame.finalGameValue === 'number';
-
   return (
     <section className="finish-line-result" aria-labelledby="finish-line-result-heading" aria-live="polite">
       <div className="finish-line-section-heading">
@@ -199,6 +208,13 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
           <span className="mono">CHOICE MADE</span>
           <h2 id="finish-line-result-heading" className="display">{choice?.title ?? 'CHOICE RECORDED'}</h2>
         </div>
+       {(endgame.endGameTitle || endgame.endGameTitleDescription) && (
+         <div className="finish-line-endgame-callout" data-testid="finish-endgame-title">
+           <span className="eyebrow">ENDGAME SIGNAL // RECORDED</span>
+           {endgame.endGameTitle && <h3>{endgame.endGameTitle}</h3>}
+           {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
+         </div>
+       )}
         {hasFinalValue && (
           <div className="finish-line-final-value">
             <span className="mono">FINAL GAME VALUE</span>
@@ -317,6 +333,7 @@ export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
             const endgame = player.endgame!;
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
+            const availableTokens = Math.max(0, endgame.snapshot.upgradeTokens - endgame.snapshot.heldUpgradeTokens);
             return (
               <article className={`finish-line-result-row ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
                 <div className="finish-line-result-placement" aria-label={`Placement ${index + 1}`}>
@@ -324,7 +341,11 @@ export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
                   <strong>{String(index + 1).padStart(2, '0')}</strong>
                 </div>
                 <div className="finish-line-result-player">
-                  <div className="finish-line-result-avatar" aria-hidden="true">{character?.name.slice(0, 1) ?? player.displayName.slice(0, 1)}</div>
+                   <div className="finish-line-result-avatar" aria-hidden="true">
+                     {character
+                       ? <CharacterPortrait character={character} className="finish-line-result-avatar-image" />
+                       : player.displayName.slice(0, 1)}
+                   </div>
                   <div>
                     <span className="mono">{player.isCPU ? `CPU ${player.slot}` : 'LOCAL PLAYER'}</span>
                     <strong>{character?.name ?? player.displayName}</strong>
@@ -336,14 +357,43 @@ export function MatchResultsPanel({ players }: { players: MatchPlayer[] }) {
                   <strong>{career?.name ?? 'UNASSIGNED'}</strong>
                 </div>
                 <div className="finish-line-result-token">
-                  <span className="mono">HELD TOKEN TIER</span>
+                   <span className="mono">TOKEN LEDGER / TIER</span>
                   <strong>TIER {String(endgame.tokenTier).padStart(2, '0')}</strong>
-                  <small>{endgame.snapshot.heldUpgradeTokens} held</small>
+                  <small>{availableTokens} available · {endgame.snapshot.heldUpgradeTokens} held · {endgame.snapshot.history.upgradeTokensSpent} spent</small>
                 </div>
                 <div className="finish-line-result-value">
                   <span className="mono">FINAL GAME VALUE</span>
                   <strong>{typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'VALUE PENDING'}</strong>
                 </div>
+                 <div className="finish-line-result-extra">
+                   <div className="finish-line-result-verdict">
+                     <span className="mono">FINAL SIGNAL</span>
+                     <strong>{endgame.endGameTitle ?? 'FINISH RECORDED'}</strong>
+                     {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
+                   </div>
+                   <div className="finish-line-result-assets" role="group" aria-label={`${character?.name ?? player.displayName} final assets`}>
+                     {assetSlots.map(({ slot, label }) => {
+                       const assetId = endgame.snapshot.equipment[slot];
+                       const asset = assetId ? getAsset(assetId) : undefined;
+                       const level = asset ? endgame.snapshot.assetLevels[asset.id] ?? 1 : null;
+                       const categoryLabel = asset?.category === 'pet'
+                         ? 'PET'
+                         : asset?.category === 'investment'
+                           ? 'INVESTMENT'
+                           : label;
+                       return (
+                         <div className={`finish-line-result-asset ${asset ? 'collected' : 'open'}`} key={slot} role="group" aria-label={asset ? `${categoryLabel}, ${asset.name}, level ${level}` : `${label}, open slot`}>
+                           <span className="mono">{categoryLabel}</span>
+                           <div className="finish-line-result-asset-art" aria-hidden="true">
+                             {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-result-asset-image" /> : <span>+</span>}
+                           </div>
+                           <strong>{asset?.name ?? 'OPEN'}</strong>
+                           <small>{asset ? `LV ${level}` : 'EMPTY'}</small>
+                         </div>
+                       );
+                     })}
+                   </div>
+                 </div>
               </article>
             );
           })}

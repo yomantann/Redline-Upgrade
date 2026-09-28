@@ -241,6 +241,63 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
   return { ...match, eventLog: [...match.eventLog, entry].slice(-MAX_LOG_ENTRIES) };
 }
 
+function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
+  const player = match.players[event.playerIndex];
+  if (!player) return match;
+
+  const history = player.history;
+  const nextHistory = { ...history };
+  let changed = false;
+  const increment = (key: keyof typeof history) => {
+    const value = history[key];
+    if (typeof value === 'number') {
+      nextHistory[key] = value + 1;
+      changed = true;
+    }
+  };
+
+  switch (event.type) {
+    case 'CARD_DRAW':
+      if (event.deck === 'gamble') increment('gambleCardsDrawn');
+      break;
+    case 'DOUBLE_DOWN_RESOLVED':
+      increment('doubleDowns');
+      break;
+    case 'FINAL_GAMBLE_RESOLVED':
+      increment('finalGambles');
+      break;
+    case 'WEALTH_CHANGED': {
+      const swing = Math.abs(event.delta ?? 0);
+      if (swing > history.largestWealthSwing) {
+        nextHistory.largestWealthSwing = swing;
+        changed = true;
+      }
+      break;
+    }
+    case 'PASS_PLAYER':
+    case 'LAND_ON_PLAYER':
+      if (event.targetPlayerId) increment('playerEncounters');
+      break;
+    case 'CAREER_CHANGE':
+      if (event.stage === 'RESOLVED') increment('careerChanges');
+      break;
+    case 'ASSET_UPGRADED':
+      increment('assetUpgrades');
+      break;
+    case 'UPGRADE_TOKEN_SPENT':
+      increment('upgradeTokensSpent');
+      break;
+  }
+
+  if (!changed) return match;
+  return {
+    ...match,
+    players: match.players.map((entry, index) =>
+      index === event.playerIndex ? { ...entry, history: nextHistory } : entry,
+    ),
+  };
+}
+
 function getPlayerAbilityIds(player: MatchPlayer): string[] {
   const ids: string[] = [];
   const character = getCharacter(player.characterId);
@@ -1114,6 +1171,7 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     if ((draft.depth ?? 0) > MAX_EVENT_DEPTH) continue;
     const [nextState, event] = createEvent(state, draft);
     state = pushLog(nextState, event, undefined, undefined, event.finalGameValue ?? event.delta);
+    state = recordPlayerMatchHistory(state, event);
     if (event.type === 'CARD_RESOLVED' && event.cardId) {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);

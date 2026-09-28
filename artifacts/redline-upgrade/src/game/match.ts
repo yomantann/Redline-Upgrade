@@ -22,6 +22,7 @@ import {
   type EndgameState,
   type PlayerMatchStatus,
 } from './endgame';
+import { evaluateEndGameTitle } from './endgame-titles';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & {
   isCPU: boolean;
@@ -55,6 +56,23 @@ export interface Match {
   effectProtections: Record<string, ProtectionState[]>;
   rewardModifiers: Record<string, RewardModifierState>;
   cardPiles: CardPileMap;
+}
+
+function assignEndGameTitles(match: Match): Match {
+  return {
+    ...match,
+    players: match.players.map((player) => {
+      if (player.endgame?.status !== 'RESOLVED') return player;
+      if (player.endgame.endGameTitle && player.endgame.endGameTitleDescription) return player;
+      return {
+        ...player,
+        endgame: {
+          ...player.endgame,
+          ...evaluateEndGameTitle(player, player.endgame),
+        },
+      };
+    }),
+  };
 }
 
 function pickUnique<T>(items: readonly T[], count: number): T[] {
@@ -925,14 +943,14 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         }
       }
       if (nextIndex < 0) {
-        return {
+        return assignEndGameTitles({
           ...endedTurn,
           turnCounter: nextTurnCounter,
           phase: 'complete',
           roll: null,
           stepsRemaining: 0,
           pending: null,
-        };
+        });
       }
       const nextRound = nextIndex <= endedTurn.turnIndex ? endedTurn.round + 1 : endedTurn.round;
       const withUpdatedClock = { ...endedTurn, round: nextRound, turnCounter: nextTurnCounter };

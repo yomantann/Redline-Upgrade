@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
+import react from '@vitejs/plugin-react';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
 
 // Vite loads the same TypeScript game modules as the app, without a browser.
-const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true }, appType: 'custom' });
+const vite = await createServer({
+  configFile: false,
+  plugins: [react()],
+  resolve: { alias: { '@': new URL('../src/', import.meta.url).pathname } },
+  optimizeDeps: { noDiscovery: true },
+  server: { middlewareMode: true },
+  appType: 'custom',
+});
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
   const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
@@ -19,6 +29,7 @@ try {
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { getAssetArtworkFilePath } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
     calculateEndgameBaseValue,
     getEndgameTokenTier,
@@ -511,6 +522,8 @@ try {
   }
   assert(upgraded.eventLog.find(entry => entry.eventType === 'ASSET_UPGRADED')?.detail.includes('Level 2'), 'asset upgrade level is included in the event log');
   assert.equal(upgraded.eventLog.some(entry => entry.eventType === 'UPGRADE_TOKEN_SPENT'), true);
+  assert.equal(upgraded.players[0].history.upgradeTokensSpent, 1, 'spent Upgrade Tokens remain countable for the final record');
+  assert.equal(upgraded.players[0].history.assetUpgrades, 1, 'asset upgrades are retained for title evaluation');
   assert.equal(availableUpgradeTokens(readyWithPlayer(upgradeReady, 0, { heldUpgradeTokens: 1 } ).players[0]), 0, 'held tokens cannot be spent mid-match');
   const capped = readyWithPlayer(upgradeReady, 0, {
     assetLevels: { ...upgradeReady.players[0].assetLevels, [offeredCar.id]: MAX_ASSET_LEVEL },
@@ -810,6 +823,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(doubleResult.players[0].endgame.finalGameValue, Math.round(doubleResult.players[0].endgame.baseValue * 3.6));
   assert(eventTypes(doubleResult).includes('DOUBLE_DOWN_RESOLVED'));
   assert(eventTypes(doubleResult).includes('ENDGAME_COMPLETED'));
+  assert.equal(doubleResult.players[0].history.doubleDowns, 1, 'resolved Double Downs are retained in match history');
 
   const gambleStartBase = withoutAbilities(start(73), 0);
   const gambleDeck = gambleStartBase.cardPiles.gamble;
@@ -838,7 +852,86 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert(eventTypes(gambleResult).includes('CARD_RESOLVED'));
   assert(eventTypes(gambleResult).includes('FINAL_GAMBLE_RESOLVED'));
   assert(eventTypes(gambleResult).includes('ENDGAME_COMPLETED'));
+  assert.equal(gambleResult.players[0].history.gambleCardsDrawn, 1, 'Final Gamble card draws are retained in match history');
+  assert.equal(gambleResult.players[0].history.finalGambles, 1, 'Final Gamble choices are counted for title evaluation');
   assertCompleteCardPiles(gambleResult.cardPiles);
+
+  const titleFixture = createMatch(id);
+  const titleCompletionStart = {
+    ...titleFixture,
+    phase: 'landed',
+    turnIndex: 0,
+    players: titleFixture.players.map((player, index) => {
+      const featuredAsset = assets.find(asset => asset.category === 'car');
+      const titledPlayer = {
+        ...player,
+        position: 75,
+        wealth: index < 2 ? 100000 : 300000,
+        aiSkill: index < 2 ? 14 : 0,
+        fame: index === 2 ? 14 : 0,
+        lifestyle: 0,
+        influence: 0,
+        equipment: index === 0 && featuredAsset
+          ? { ...player.equipment, car: featuredAsset.id }
+          : player.equipment,
+        assetLevels: index === 0 && featuredAsset
+          ? { ...player.assetLevels, [featuredAsset.id]: 3 }
+          : player.assetLevels,
+        upgradeTokens: index === 0 ? 0 : player.upgradeTokens,
+        heldUpgradeTokens: index === 0 ? 0 : player.heldUpgradeTokens,
+        history: {
+          ...player.history,
+          gambleCardsDrawn: index === 3 ? 4 : 0,
+          finalGambles: index === 3 ? 1 : 0,
+          upgradeTokensSpent: index === 0 ? 2 : player.history.upgradeTokensSpent,
+        },
+      };
+      const choice = index === 3 ? 'FINAL_GAMBLE' : 'CASH_OUT';
+      const endgame = {
+        status: 'RESOLVED',
+        snapshot: createFinishSnapshot(titledPlayer, player.slot, player.isCPU, 3, 1),
+        baseValue: 300000,
+        tokenTier: 0,
+        choice,
+        finalGameValue: 350000,
+      };
+      return { ...titledPlayer, status: 'FINISHED', endgame };
+    }),
+  };
+  assert.equal(
+    evaluateEndGameTitle(titleCompletionStart.players[0], titleCompletionStart.players[0].endgame).endGameTitle,
+    'THE MACHINE',
+    'high AI skill produces a behavior-specific title',
+  );
+  assert.equal(
+    evaluateEndGameTitle(titleCompletionStart.players[2], titleCompletionStart.players[2].endgame).endGameTitle,
+    'THE MAIN CHARACTER',
+    'high Fame produces a distinct title',
+  );
+  assert.equal(
+    evaluateEndGameTitle(titleCompletionStart.players[3], titleCompletionStart.players[3].endgame).endGameTitle,
+    'THE DEGEN',
+    'actual gamble history and the final choice inform the title',
+  );
+  const titledCompleteMatch = advanceMatch(titleCompletionStart, { type: 'NEXT_TURN' });
+  assert.equal(titledCompleteMatch.phase, 'complete');
+  assert(titledCompleteMatch.players.every(player =>
+    typeof player.endgame?.endGameTitle === 'string'
+      && typeof player.endgame?.endGameTitleDescription === 'string',
+  ), 'all human and CPU players receive one stored title when the match completes');
+  assert.equal(
+    titledCompleteMatch.players[0].endgame.endGameTitle,
+    titledCompleteMatch.players[1].endgame.endGameTitle,
+    'equivalent player histories receive the same title regardless of human or CPU control',
+  );
+  const { MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
+  const resultsMarkup = renderToStaticMarkup(
+    React.createElement(MatchResultsPanel, { players: titledCompleteMatch.players }),
+  );
+  assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
+  assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
+  assert(resultsMarkup.includes('0 available · 0 held · 2 spent'), 'the final token ledger uses event history, not the upgrades list');
+  assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
 
   const cpuFinishStart = withoutAbilities(start(73, 1), 1);
   const cpuPending = move(cpuFinishStart, 2);
@@ -966,7 +1059,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   const digitalLanding = move(digitalMatch, 3);
   assert.equal(digitalLanding.players[0].aiSkill, aiBefore + 2, 'career-tagged effects grant the digital-career bonus');
 
-  const rivalStart = startWithoutProtection(36);
+  const rivalStart = withoutAbilities(startWithoutProtection(36));
   const rivalMatch = {
     ...rivalStart,
     players: rivalStart.players.map((player, index) => {
@@ -998,7 +1091,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(spotlightLanding.players[1].fame, trailingFameBefore - 1, 'rival spotlight targets the nearest player behind');
   assert.equal(spotlightLanding.players[2].fame, leadingFameBefore, 'rival spotlight does not target players ahead');
 
-  const rollStart = startWithoutProtection(46);
+  const rollStart = withoutAbilities(startWithoutProtection(46));
   const rollBefore = rollStart.players[0].wealth;
   const rollLanding = move(rollStart, 3);
   assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');

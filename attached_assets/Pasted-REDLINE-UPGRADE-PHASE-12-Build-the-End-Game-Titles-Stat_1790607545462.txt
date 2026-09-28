@@ -1,0 +1,503 @@
+REDLINE UPGRADE — PHASE 12
+
+Build the End-Game Titles/Statuses system and redesign the in-game Player Cards for a cleaner, more readable V2 presentation.
+
+Use the existing Phase 8–11 architecture. Preserve all existing gameplay mechanics.
+
+==================================================
+1. END-GAME TITLES / STATUS
+==================================================
+
+After the endgame result is resolved, evaluate each player's actual game history and final state to assign a fun Redline Upgrade title/status.
+
+Titles should describe HOW the player played, not simply who had the most Wealth.
+
+Use existing game data such as:
+
+- Final Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Career
+- Career category
+- Assets
+- Asset levels
+- Upgrade Tokens held
+- Endgame choice
+- Gambling behavior
+- Player interactions
+- Relevant existing event/achievement data
+
+Do NOT create another scoring system or resource.
+
+Titles should be generated from existing game-state values.
+
+==================================================
+2. TITLE EXAMPLES
+==================================================
+
+Create a broad data-driven title pool with meme/edgy/futuristic Redline flavor.
+
+Examples:
+
+HIGH WEALTH:
+"THE BAG HOLDER"
+
+HIGH AI:
+"THE MACHINE"
+
+HIGH FAME:
+"THE MAIN CHARACTER"
+
+HIGH LIFESTYLE:
+"THE BALLER"
+
+HIGH INFLUENCE:
+"THE POWER BROKER"
+
+HIGH GAMBLING/RISK:
+"THE DEGEN"
+
+STRONG ASSET COLLECTION:
+"THE COLLECTOR"
+
+HIGH UPGRADE TOKEN HOARD:
+"THE HOARDER"
+
+AGGRESSIVE PLAYER INTERACTION:
+"THE MENACE"
+
+LOW WEALTH / CHAOTIC SURVIVAL:
+"THE SURVIVOR"
+
+These are examples only. Expand the pool with similar funny/meme/edgy titles.
+
+Avoid generic rankings such as "Best Player" or "Worst Player."
+
+Titles should be based on measurable game behavior.
+
+==================================================
+3. TITLE ASSIGNMENT
+==================================================
+
+Each player receives ONE primary final title/status.
+
+The system should evaluate all eligible titles and select the title that best matches the player's actual game behavior using transparent data-driven rules.
+
+Do not create an overall player score.
+
+Do not make titles depend solely on final Wealth.
+
+A player with the highest Wealth should not automatically receive the same title every game.
+
+Store:
+
+endGameTitle
+endGameTitleDescription
+
+Example:
+
+THE DEGEN
+
+"Bet everything. Question nothing."
+
+==================================================
+4. SPECIAL BEHAVIOR TITLES
+==================================================
+
+Include titles based on memorable gameplay events where the existing event system supports them.
+
+Examples:
+
+- Heavy gambling
+- Multiple Double Downs
+- Final Gamble
+- Large Wealth swings
+- High Fame
+- High AI Skill
+- High Influence
+- High Lifestyle
+- Strong asset collection
+- Multiple asset upgrades
+- Large Upgrade Token stash
+- Frequent player interactions
+- Career-related achievements
+
+Use actual event/game history where available.
+
+Do not invent events that the current game does not track.
+
+If an exact behavior is not currently tracked, identify it rather than creating an unrelated new system.
+
+==================================================
+5. END-GAME RESULTS UI
+==================================================
+
+After all players complete the endgame, show a dedicated final results screen.
+
+Each player should display:
+
+CHARACTER
+CAREER
+FINAL GAME VALUE
+END-GAME TITLE
+SHORT TITLE DESCRIPTION
+
+Also show their major accomplishments where appropriate.
+
+Example:
+
+GUARDIAN H
+
+AI ENGINEER
+
+$620K
+
+THE MACHINE
+
+"Built the future. Probably broke something."
+
+Make the title visually prominent.
+
+==================================================
+6. PLAYER CARD V2
+==================================================
+
+Redesign the existing in-game player cards for clarity.
+
+The current player card contains a lot of information. Do not remove useful information; reorganize it into clearer sections.
+
+Create a cleaner visual hierarchy.
+
+Recommended structure:
+
+IDENTITY
+- Character
+- Character visual
+- Career
+- Career category
+- Salary tier/value
+
+MONEY
+- Wealth
+
+STATS
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+
+ASSETS
+- Car
+- Lifestyle
+- Pet
+- Investment
+- Property
+
+UPGRADES
+- Upgrade Token count
+
+Keep the player card compact enough to work for 4 players simultaneously.
+
+==================================================
+7. COLOR CODING
+==================================================
+
+Introduce consistent color coding without making the cards look overly colorful.
+
+Use a distinct visual identity for each major stat/deck:
+
+WEALTH
+Green
+
+AI SKILL
+Blue
+
+FAME
+Gold/yellow
+
+LIFESTYLE
+Purple
+
+INFLUENCE
+Red/orange
+
+UPGRADE TOKENS
+Distinct teal/lime accent
+
+Salary should retain the existing salary-tier color/shading system.
+
+Career categories can use subtle category accents rather than large blocks of color.
+
+The colors should help players scan the card quickly.
+
+==================================================
+8. PLAYER CARD VISUAL HIERARCHY
+==================================================
+
+Make the following immediately visible:
+
+1. Character
+2. Career
+3. Wealth
+4. Core stats
+5. Assets
+6. Upgrade Tokens
+
+Do not give every piece of information equal visual weight.
+
+The character image and current Wealth should be especially easy to identify.
+
+==================================================
+9. ASSET DISPLAY
+
+Improve the four/five milestone asset areas.
+
+Clearly show:
+
+- Asset category
+- Asset name
+- Current level
+
+Example:
+
+PET
+HOLODOG
+LVL 3
+
+Use the correct Level 1–4 artwork based on the player's current asset level.
+
+Do not display every upgrade level simultaneously.
+
+Show the player's current asset state.
+
+If the player does not own an asset, use a clean empty state.
+
+==================================================
+10. CAREER DISPLAY
+
+Make Career information more readable.
+
+Display:
+
+CAREER
+AI ENGINEER
+
+SALARY
+$XXK
+
+DECK AFFINITIES
+AI SKILL / WEALTH
+
+Preserve the existing career affinity system.
+
+Do not add new career mechanics.
+
+==================================================
+11. UPGRADE TOKEN DISPLAY
+
+Make Upgrade Tokens highly visible but compact.
+
+Example:
+
+UPGRADES
+🔧 3
+
+The player should immediately understand how many tokens are being held.
+
+Keep this consistent with the Phase 10/11 Upgrade Token system.
+
+==================================================
+12. CURRENT PLAYER EMPHASIS
+
+The active player's card should have a subtle visual distinction.
+
+Examples:
+
+- Highlight border
+- "YOUR TURN"
+- Subtle glow
+- Active indicator
+
+Do not make the active player card dramatically larger if that harms the 4-player layout.
+
+CPU cards should remain readable.
+
+==================================================
+13. OTHER PLAYER CARDS
+
+Other players should retain enough information to allow meaningful decisions.
+
+Players should be able to see:
+
+- Character
+- Career
+- Wealth
+- Core stats
+- Assets
+- Upgrade Tokens
+
+Do not hide these values unless an existing game mechanic explicitly hides them.
+
+==================================================
+14. RESPONSIVE DESIGN
+
+Player Card V2 must work across:
+
+- Desktop
+- Laptop
+- Smaller screens
+- 4-player local games
+
+Avoid excessive scrolling during normal gameplay.
+
+Preserve board zoom/pan functionality.
+
+The player cards should not cover important board interactions.
+
+==================================================
+15. ENDGAME CARD VERSION
+
+When the game reaches the final results screen, reuse the Player Card V2 visual language but create a dedicated endgame presentation.
+
+Show:
+
+CHARACTER
+CAREER
+FINAL GAME VALUE
+FINAL ASSETS
+UPGRADE TOKENS USED/HELD
+END-GAME TITLE
+
+The title should be visually prominent.
+
+==================================================
+16. EVENT ENGINE INTEGRATION
+
+Use existing event/game history data.
+
+Add an endgame title evaluation step after all endgame decisions have resolved.
+
+Do not create a separate parallel scoring engine.
+
+If additional tracking is genuinely required for a title, add the smallest possible event/state field.
+
+Examples:
+
+- Number of Double Downs
+- Number of Final Gambles
+- Number of player interactions
+
+Only add tracking when needed by an actual title.
+
+==================================================
+17. CPU
+
+CPU players receive titles using exactly the same evaluation system as human players.
+
+Do not create separate title rules for CPU players.
+
+==================================================
+18. PRESERVE
+
+Do not break:
+
+- 75-space board
+- Board zoom/pan
+- 2d4 movement
+- Dice animation
+- Salary system
+- Career Change
+- Six card decks
+- Deck affinities
+- Character abilities
+- Career abilities
+- Player interaction
+- Milestones
+- 20-choice milestone pools
+- 3-choice milestone presentation
+- Asset levels
+- Upgrade Tokens
+- Finish-line system
+- Cash Out
+- Double Down
+- Final Gamble
+- CPU behavior
+
+Do NOT implement yet:
+
+- Persistent Redline Credits conversion
+- Auth/profile integration
+- Multiplayer
+- Cosmetic unlocks
+- Lifetime player statistics
+
+==================================================
+19. TESTING
+
+Add tests for:
+
+- Endgame title evaluation
+- Different game states producing different appropriate titles
+- Title evaluation using actual game state
+- CPU and human title parity
+- Final results screen
+- Player Card V2 rendering/state data
+- Correct stat values
+- Correct Wealth
+- Correct career/salary
+- Correct asset display
+- Correct Level 1–4 asset visual
+- Correct Upgrade Token count
+- Active-player highlighting
+- 4-player layout
+- Existing gameplay regression
+- Existing Phase 10/11 tests
+
+==================================================
+20. VALIDATION
+
+Run:
+
+- TypeScript typecheck
+- Existing regression tests
+- New Phase 12 tests
+- Production build
+- Preview/restart validation
+- Secret scan if available
+
+Visually inspect:
+
+- 4-player game
+- Active player state
+- Different career categories
+- Different asset combinations
+- Level 1–4 asset displays
+- Upgrade Token display
+- Final results screen
+- End-game titles
+
+==================================================
+21. COMPLETION REPORT
+
+Report:
+
+1. End-game title system
+2. Title pool created
+3. Title evaluation rules
+4. Any new event/state tracking
+5. Player Card V2 changes
+6. Color-coding system
+7. Asset display changes
+8. Career display changes
+9. Upgrade Token display
+10. Endgame results UI
+11. Files created/modified
+12. Tests added
+13. Validation results
+14. Any limitations
+
+STOP after Phase 12.
+
+Do not automatically begin the next phase.
