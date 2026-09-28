@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <title>Redline Upgrade — Visual Asset Library</title>
+    <style>
+      :root {
+        font-family: "Space Mono", ui-monospace, monospace;
+        color: #eeeade;
+        background: #111714;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --line: #35413b;
+        --muted: #8e9a91;
+        --hot: #f96346;
+        --panel: #18211d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(ellipse at 12% 0%, rgba(94, 119, 89, .15), transparent 35rem),
+          repeating-linear-gradient(0deg, transparent 0 35px, rgba(138, 163, 138, .035) 36px),
+          repeating-linear-gradient(90deg, transparent 0 35px, rgba(138, 163, 138, .035) 36px),
+          #111714;
+      }
+      header, main, footer { width: min(1380px, calc(100% - 40px)); margin-inline: auto; }
+      header { padding: 44px 0 32px; border-bottom: 1px solid var(--line); }
+      .eyebrow { color: var(--hot); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+      h1, h2, h3, p { margin: 0; }
+      h1 {
+        margin-top: 15px;
+        font: 900 clamp(48px, 9vw, 100px)/.88 "Barlow Condensed", Impact, sans-serif;
+        letter-spacing: -.045em;
+        text-transform: uppercase;
+      }
+      .outline { color: transparent; -webkit-text-stroke: 1px #bfc8ba; }
+      .intro { max-width: 690px; margin-top: 20px; color: #a6b1a7; font: 14px/1.7 system-ui, sans-serif; }
+      .audit-line { margin-top: 22px; padding: 11px 13px; border-left: 2px solid #d4e981; background: rgba(212, 233, 129, .045); color: #aab5a8; font-size: 9px; letter-spacing: .08em; }
+      main { padding: 22px 0 60px; }
+      .collection { padding: 27px 0 32px; border-bottom: 1px solid var(--line); }
+      .collection-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+      .collection h2 { font: 800 clamp(23px, 3vw, 34px)/1 "Barlow Condensed", Impact, sans-serif; text-transform: uppercase; letter-spacing: -.02em; }
+      .collection-count { color: var(--muted); font-size: 9px; white-space: nowrap; }
+      .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 10px; }
+      .asset-card { min-width: 0; overflow: hidden; border: 1px solid #344039; background: linear-gradient(145deg, rgba(43, 57, 48, .76), rgba(20, 28, 24, .96)); }
+      .asset-art {
+        min-height: 108px;
+        display: grid;
+        place-items: center;
+        color: var(--accent, #d4e981);
+        background:
+          linear-gradient(135deg, transparent 0 48%, rgba(255,255,255,.035) 48.2% 49%, transparent 49.2%),
+          radial-gradient(circle at 50% 42%, rgba(123, 151, 119, .14), transparent 60%);
+        border-bottom: 1px solid #35413b;
+      }
+      .asset-art svg { width: 52px; height: 52px; overflow: visible; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 20%, transparent)); }
+      .asset-card.wide .asset-art svg { width: 108px; height: 12px; }
+      .asset-copy { min-height: 64px; padding: 10px 11px; }
+      .asset-copy strong { display: block; color: #e8e6db; font: 800 17px/1.1 "Barlow Condensed", Impact, sans-serif; }
+      .asset-copy small { display: block; margin-top: 6px; color: var(--muted); font-size: 8px; letter-spacing: .08em; overflow-wrap: anywhere; }
+      .asset-copy .usage { font: 10px/1.4 system-ui, sans-serif; letter-spacing: 0; }
+      .reuse { padding: 35px 0 12px; }
+      .reuse h2 { margin-bottom: 17px; color: var(--hot); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
+      .reuse-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+      .reuse-item { padding: 12px; border: 1px solid var(--line); background: rgba(24, 33, 29, .78); color: #a6b1a7; font: 11px/1.55 system-ui, sans-serif; }
+      .reuse-item b { display: block; margin-bottom: 5px; color: #e8e6db; font: 700 9px "Space Mono", monospace; text-transform: uppercase; }
+      .error { padding: 24px; border: 1px solid #f96346; color: #f7b2a2; }
+      footer { padding: 18px 0 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+      @media (max-width: 540px) {
+        header, main, footer { width: min(100% - 28px, 1380px); }
+        header { padding-top: 28px; }
+        .asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .collection-head { align-items: flex-start; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="eyebrow">Redline Upgrade // Creative Pass D</span>
+      <h1>Visual asset<br /><span class="outline">library.</span></h1>
+      <p class="intro">Reusable, transparent SVG symbols for career identities, deck motifs, milestone states, and endgame presentation. Existing character, card, and milestone artwork remains the primary art.</p>
+      <p class="audit-line">ASSET-ONLY REFERENCE / NO GAMEPLAY, RULES, OR BOARD LAYOUT CHANGED</p>
+    </header>
+    <main id="catalog" aria-live="polite"><p class="intro">Loading asset index…</p></main>
+    <footer>REDLINE UPGRADE / LOCAL SVG SPRITES / TRANSPARENT BY DEFAULT / SOURCES MAPPED IN assets.json</footer>
+    <script type="module">
+      const catalogRoot = document.querySelector("#catalog");
+      const svgNamespace = "http://www.w3.org/2000/svg";
+      const html = (tag, className, text) => {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text !== undefined) element.textContent = text;
+        return element;
+      };
+
+      try {
+        const response = await fetch("./assets.json");
+        if (!response.ok) throw new Error(`Asset catalog returned ${response.status}.`);
+        const catalog = await response.json();
+        catalogRoot.replaceChildren();
+
+        for (const collection of catalog.collections) {
+          const section = html("section", "collection");
+          const heading = html("div", "collection-head");
+          heading.append(
+            html("h2", "", collection.title),
+            html("span", "collection-count", `${String(collection.items.length).padStart(2, "0")} SYMBOLS`)
+          );
+          const grid = html("div", "asset-grid");
+
+          for (const item of collection.items) {
+            const card = html("article", `asset-card${item.viewBox?.startsWith("0 0 120") ? " wide" : ""}`);
+            card.style.setProperty("--accent", item.accent ?? "#d4e981");
+            const art = html("div", "asset-art");
+            const svg = document.createElementNS(svgNamespace, "svg");
+            svg.setAttribute("viewBox", item.viewBox ?? "0 0 48 48");
+            svg.setAttribute("role", "img");
+            svg.setAttribute("aria-label", item.label);
+            const use = document.createElementNS(svgNamespace, "use");
+            use.setAttribute("href", `${catalog.sprites[collection.sprite]}#${item.symbol}`);
+            svg.append(use);
+            art.append(svg);
+
+            const copy = html("div", "asset-copy");
+            copy.append(
+              html("strong", "", item.label),
+              html("small", "", `${item.categoryId ? `${item.categoryId} · ` : ""}${item.symbol}`)
+            );
+            if (item.usage) copy.append(html("small", "usage", item.usage));
+            card.append(art, copy);
+            grid.append(card);
+          }
+
+          section.append(heading, grid);
+          catalogRoot.append(section);
+        }
+
+        const reuseSection = html("section", "reuse");
+        reuseSection.append(html("h2", "", "Existing primary art retained"));
+        const reuseGrid = html("div", "reuse-list");
+        for (const [name, description] of Object.entries(catalog.reused)) {
+          const item = html("article", "reuse-item");
+          item.append(html("b", "", name.replaceAll(/([A-Z])/g, " $1")), html("span", "", description));
+          reuseGrid.append(item);
+        }
+        reuseSection.append(reuseGrid);
+        catalogRoot.append(reuseSection);
+      } catch (error) {
+        catalogRoot.replaceChildren(html("p", "error", `Could not load the visual asset index: ${error.message}`));
+      }
+    </script>
+  </body>
+</html>

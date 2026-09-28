@@ -12,7 +12,7 @@ import { getCardArtworkFilePath } from './card-artwork';
 export interface VisualAsset {
   id: string;
   name: string;
-  category: 'characters' | 'cars' | 'lifestyles' | 'pets' | 'investments' | 'properties' | 'cards' | 'icons' | 'ui';
+  category: 'characters' | 'careers' | 'cars' | 'lifestyles' | 'pets' | 'investments' | 'properties' | 'cards' | 'icons' | 'ui';
   filePath: string;
   assetType: 'image' | 'vector' | 'css-art' | 'symbol';
   description: string;
@@ -62,6 +62,10 @@ export const visualAssets: readonly VisualAsset[] = [
     status: 'available' as const,
   })),
   { id: 'ui_favicon', name: 'Redline favicon', category: 'ui', filePath: 'public/favicon.svg', assetType: 'vector', description: 'Browser favicon.', status: 'available' },
+  { id: 'visual_career_emblems', name: 'Career insignia sprite', category: 'careers', filePath: 'public/visual-library/careers.svg', assetType: 'symbol', description: 'Fifteen reusable, career-specific emblems. These supplement the existing category glyphs and career artwork system.', status: 'available' },
+  { id: 'visual_support_symbols', name: 'Deck and presentation support sprite', category: 'icons', filePath: 'public/visual-library/support.svg', assetType: 'symbol', description: 'Deck emblems, career category marks, milestone states, endgame support icons, and restrained presentation details.', status: 'available' },
+  { id: 'visual_asset_catalog', name: 'Visual asset mapping', category: 'ui', filePath: 'public/visual-library/assets.json', assetType: 'symbol', description: 'Source-of-truth mapping of new sprite symbols and references to existing art.', status: 'available' },
+  { id: 'visual_asset_preview', name: 'Visual asset atlas', category: 'ui', filePath: 'public/visual-library/index.html', assetType: 'css-art', description: 'Static local preview for the reusable asset library.', status: 'available' },
   { id: 'ui_board', name: '3D circuit board', category: 'ui', filePath: 'src/components/board-scene.tsx', assetType: 'vector', description: 'Code-rendered 3D board and tabletop.', status: 'available' },
   { id: 'ui_board_fallback', name: '2D circuit board', category: 'ui', filePath: 'src/components/board-fallback.tsx', assetType: 'vector', description: 'Interactive fallback when WebGL2 is unavailable.', status: 'available' },
 ];
