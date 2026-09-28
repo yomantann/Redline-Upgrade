@@ -190,6 +190,7 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     id: event.id,
     kind: 'EVENT',
     eventType: event.type,
+    source: event.source,
     playerId: event.playerId,
     targetPlayerId: event.targetPlayerId,
     abilityId: event.abilityId,
@@ -248,6 +249,18 @@ function meetsCondition(match: Match, player: MatchPlayer, event: AnyGameEvent, 
   switch (condition.kind) {
     case 'ANY':
       return true;
+    case 'EVENT_ACTOR_IS_SELF':
+      return event.playerId === player.playerId;
+    case 'EVENT_ACTOR_IS_OTHER':
+      return event.playerId !== player.playerId;
+    case 'EVENT_OWNER_IS_EVENT_TARGET':
+      return event.targetPlayerId === player.playerId;
+    case 'EVENT_DELTA_IS_NEGATIVE':
+      return typeof event.delta === 'number' && event.delta < 0;
+    case 'EVENT_DELTA_IS_POSITIVE':
+      return typeof event.delta === 'number' && event.delta > 0;
+    case 'EVENT_STAGE_IS':
+      return event.stage === condition.stage;
     case 'EVENT_HAS_TARGET_PLAYER':
       return Boolean(event.targetPlayerId);
     case 'EVENT_CATEGORY_IS':
@@ -940,6 +953,59 @@ function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] 
   return drafts;
 }
 
+function abilityOutcomeSummary(before: Match, after: Match, queuedEvents: number): string {
+  const changes: string[] = [];
+  const statLabels: Record<PlayerStat, string> = {
+    wealth: 'Wealth',
+    aiSkill: 'AI Skill',
+    fame: 'Fame',
+    lifestyle: 'Lifestyle',
+    influence: 'Influence',
+  };
+  const formatChange = (stat: PlayerStat, delta: number) => {
+    const sign = delta > 0 ? '+' : '−';
+    const amount = stat === 'wealth'
+      ? `$${Math.abs(delta).toLocaleString()}`
+      : Math.abs(delta).toLocaleString();
+    return `${sign}${amount}`;
+  };
+
+  for (const oldPlayer of before.players) {
+    const newPlayer = after.players.find((player) => player.playerId === oldPlayer.playerId);
+    if (!newPlayer) continue;
+    for (const stat of ['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+      const delta = newPlayer[stat] - oldPlayer[stat];
+      if (delta) changes.push(`${oldPlayer.displayName} ${statLabels[stat]} ${formatChange(stat, delta)}`);
+    }
+    const salaryDelta = newPlayer.salaryAmount - oldPlayer.salaryAmount;
+    if (salaryDelta) changes.push(`${oldPlayer.displayName} salary ${formatChange('wealth', salaryDelta)}`);
+    if (newPlayer.position !== oldPlayer.position) {
+      changes.push(`${oldPlayer.displayName} moved to space ${newPlayer.position}`);
+    }
+    const protectionCount = (protections: Match['effectProtections'][string] = []) =>
+      protections.reduce((total, protection) => total + protection.remaining, 0);
+    const protectionDelta = protectionCount(after.effectProtections[oldPlayer.playerId])
+      - protectionCount(before.effectProtections[oldPlayer.playerId]);
+    if (protectionDelta > 0) {
+      changes.push(`${oldPlayer.displayName} gained ${protectionDelta} protection charge${protectionDelta === 1 ? '' : 's'}`);
+    }
+  }
+
+  for (const [key, modifier] of Object.entries(after.rewardModifiers)) {
+    const oldAmount = before.rewardModifiers[key]?.amount ?? 0;
+    const added = modifier.amount - oldAmount;
+    if (added > 0) changes.push(`next positive ${modifier.stat} gain +${added}`);
+  }
+
+  if (after.pending?.kind === 'CARD' && before.pending?.kind !== 'CARD') {
+    changes.push(`drew a ${after.pending.deck.toUpperCase()} card`);
+  }
+  if (!changes.length && queuedEvents > 0) {
+    changes.push(`${queuedEvents} follow-up event${queuedEvents === 1 ? '' : 's'} queued`);
+  }
+  return changes.join('; ');
+}
+
 function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): Match {
   let next = match;
   for (const player of next.players) {
@@ -947,15 +1013,27 @@ function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): M
       const ability = getAbility(abilityId);
       if (!ability || ability.trigger !== event.type || !abilityAvailable(next, player, abilityId)) continue;
       if (!ability.conditions.every((condition) => meetsCondition(next, player, event, condition))) continue;
+      const beforeAbility = next;
+      const queuedBefore = queue.length;
       let abilityState = markAbilityUsed(next, player, abilityId);
       for (const effect of ability.effects) {
         abilityState = applyEffect(abilityState, queue, player, { ...event, abilityId, source: 'ABILITY' }, effect);
       }
+      const outcome = abilityOutcomeSummary(beforeAbility, abilityState, queue.length - queuedBefore);
+      const triggerLabel = `${eventLabel(event)} (${event.type.replace(/_/g, ' ')})`;
       next = pushLog(
         abilityState,
-        { ...event, id: `${event.id}:ability:${abilityId}:${player.playerId}`, abilityId, source: 'ABILITY', description: ability.description, playerId: player.playerId, playerIndex: player.slot },
+        {
+          ...event,
+          id: `${event.id}:ability:${abilityId}:${player.playerId}`,
+          abilityId,
+          source: 'ABILITY',
+          description: ability.description,
+          playerId: player.playerId,
+          playerIndex: player.slot,
+        },
         ability.name,
-        ability.description,
+        `Triggered by ${triggerLabel}. ${ability.description}${outcome ? ` Result: ${outcome}.` : ' No immediate resource change.'}`,
         ability.effects[0]?.amount,
       );
     }

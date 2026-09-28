@@ -1,4 +1,9 @@
 import { careerAbilityId, getAbility } from './abilities';
+import {
+  careerAffinityAbilityIds,
+  getCareerDeckAffinity,
+  type CareerDeckAffinity,
+} from './career-affinities';
 
 export const SALARY_TIERS = ['LOW', 'STANDARD', 'HIGH', 'ELITE'] as const;
 export type SalaryTier = 1 | 2 | 3 | 4;
@@ -20,6 +25,7 @@ export interface Career {
   categoryId: string;
   tags: readonly CareerCategoryTag[];
   abilityIds: readonly string[];
+  deckAffinity: CareerDeckAffinity;
   abilityName: string;
   abilityDescription: string;
   salaryTiers: readonly [number, number, number, number];
@@ -36,8 +42,8 @@ export const categories: readonly CareerCategory[] = [
   { id: 'flex-gig', name: 'FLEX / GIG', icon: '↯', description: 'Adapt quickly and take every opening.' },
 ];
 
-// All balancing lives here. Ability copy is descriptive; its special effects are future work.
-export const careers: readonly Career[] = [
+// Core career values stay defined here; deck affinity and its ability hooks are joined below.
+const careerRecords: Omit<Career, 'deckAffinity'>[] = [
   { id: 'ai-engineer', name: 'AI Engineer', description: 'Builds the models reshaping every industry.', icon: '⌘', categoryId: 'digital-risk', tags: ['digital', 'risk'], abilityIds: [careerAbilityId('ai-engineer')], abilityName: getAbility(careerAbilityId('ai-engineer'))?.name ?? 'MODEL UPGRADE', abilityDescription: getAbility(careerAbilityId('ai-engineer'))?.description ?? 'Gain extra AI Skill from future AI-related events.', salaryTiers: [70000, 100000, 140000, 200000], startingWealthModifier: 0, statModifiers: { aiSkill: 2 } },
   { id: 'race-driver', name: 'Race Driver', description: 'Lives for a faster line and a bigger finish.', icon: '◈', categoryId: 'performance', tags: ['performance'], abilityIds: [careerAbilityId('race-driver')], abilityName: getAbility(careerAbilityId('race-driver'))?.name ?? 'NEED FOR SPEED', abilityDescription: getAbility(careerAbilityId('race-driver'))?.description ?? 'Future car ownership can unlock special benefits.', salaryTiers: [45000, 85000, 150000, 300000], startingWealthModifier: 0, statModifiers: { influence: 1 } },
   { id: 'content-creator', name: 'Content Creator', description: 'Turns original ideas into an audience.', icon: '▣', categoryId: 'media-fame', tags: ['media', 'fame'], abilityIds: [careerAbilityId('content-creator')], abilityName: getAbility(careerAbilityId('content-creator'))?.name ?? 'GO VIRAL', abilityDescription: getAbility(careerAbilityId('content-creator'))?.description ?? 'Gain extra Fame from future Fame events.', salaryTiers: [30000, 75000, 130000, 240000], startingWealthModifier: 0, statModifiers: { fame: 2 } },
@@ -54,6 +60,12 @@ export const careers: readonly Career[] = [
   { id: 'entertainer', name: 'Entertainer', description: 'Commands a room and remembers the crowd.', icon: '✶', categoryId: 'media-fame', tags: ['media', 'fame'], abilityIds: [careerAbilityId('entertainer')], abilityName: getAbility(careerAbilityId('entertainer'))?.name ?? 'MAIN CHARACTER', abilityDescription: getAbility(careerAbilityId('entertainer'))?.description ?? 'Future player interactions can award Fame.', salaryTiers: [25000, 70000, 160000, 350000], startingWealthModifier: 0, statModifiers: { fame: 2 } },
   { id: 'real-estate-investor', name: 'Real Estate Investor', description: 'Sees potential where others see empty space.', icon: '▥', categoryId: 'business-entrepreneur', tags: ['business', 'entrepreneur'], abilityIds: [careerAbilityId('real-estate-investor')], abilityName: getAbility(careerAbilityId('real-estate-investor'))?.name ?? 'PROPERTY LADDER', abilityDescription: getAbility(careerAbilityId('real-estate-investor'))?.description ?? 'Future property purchases can grant extra benefits.', salaryTiers: [40000, 90000, 175000, 320000], startingWealthModifier: 5000, statModifiers: { influence: 1 } },
 ];
+
+export const careers: readonly Career[] = careerRecords.map((career) => ({
+  ...career,
+  deckAffinity: getCareerDeckAffinity(career.id),
+  abilityIds: [...career.abilityIds, ...careerAffinityAbilityIds(career.id)],
+}));
 
 export const STARTING_WEALTH_MULTIPLIER = 0.5;
 export function startingWealth(career: Career, salary: number): number {

@@ -11,8 +11,9 @@ try {
   const { getCardArtworkFilePath } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
   const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
+  const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
-  const { careers, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { careers, categories, getCareer } = await vite.ssrLoadModule('/src/game/careers.ts');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
@@ -79,7 +80,61 @@ try {
   }
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
-  const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE']);
+  const validDecks = new Set(decks.map(deck => deck.id));
+  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
+  const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT']);
+  const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER']);
+  const abilityById = new Map(abilities.map(ability => [ability.id, ability]));
+  assert.equal(characters.length, 21, 'the roster retains all 21 characters');
+  assert.equal(new Set(characters.flatMap(character => character.abilityIds)).size, 21, 'character ability IDs are unique');
+  const characterMechanics = characters.map(character => {
+    const ability = getAbility(character.abilityIds[0]);
+    return JSON.stringify({
+      trigger: ability.trigger,
+      conditions: ability.conditions,
+      effects: ability.effects,
+      usageLimits: ability.usageLimits,
+    });
+  });
+  assert.equal(new Set(characterMechanics).size, 21, 'all 21 character abilities have distinct mechanics');
+  for (const character of characters) {
+    assert(character.abilityIds.length > 0 && character.abilityName && character.abilityDescription, `${character.id} has non-empty ability metadata`);
+    for (const abilityId of character.abilityIds) {
+      const ability = getAbility(abilityId);
+      assert(ability && ability.trigger && validEventTypes.has(ability.trigger), `${character.id} has a valid ability trigger`);
+      assert(ability.effects.length > 0, `${character.id} has a non-empty ability effect list`);
+    }
+  }
+  assert.equal(careers.length, 15, 'the career roster retains all 15 careers');
+  for (const career of careers) {
+    assert(categories.some(category => category.id === career.categoryId), `${career.id} uses an existing career category`);
+    assert(career.abilityIds.length >= 2 && career.abilityName && career.abilityDescription, `${career.id} has a career ability and affinity abilities`);
+    assert(validDecks.has(career.deckAffinity.primary), `${career.id} has a valid primary deck affinity`);
+    if (career.deckAffinity.secondary) assert(validDecks.has(career.deckAffinity.secondary), `${career.id} has a valid secondary deck affinity`);
+    for (const abilityId of career.abilityIds) {
+      const ability = getAbility(abilityId);
+      assert(ability && ability.trigger && validEventTypes.has(ability.trigger), `${career.id} has a valid ability trigger`);
+      assert(ability.effects.length > 0, `${career.id} has a non-empty ability effect list`);
+    }
+  }
+  function validateAbilityEffects(effects, abilityId) {
+    assert(effects.length > 0, `${abilityId} has a gameplay effect`);
+    for (const effect of effects) {
+      assert(validEffectTypes.has(effect.type), `${abilityId} uses a valid effect type`);
+      if (effect.type.endsWith('_WEALTH') || effect.type.endsWith('_AI_SKILL') || effect.type.endsWith('_FAME') || effect.type.endsWith('_LIFESTYLE') || effect.type.endsWith('_INFLUENCE') || effect.type === 'MOVE_PLAYER' || effect.type === 'MODIFY_SALARY' || effect.type === 'MODIFY_REWARD') {
+        assert(Number.isFinite(effect.amount) && effect.amount !== 0, `${abilityId} has a valid numeric effect amount`);
+      }
+      if (effect.type === 'DRAW_CARD') assert(validDecks.has(effect.deck), `${abilityId} draws from a valid deck`);
+      if (effect.type === 'MODIFY_REWARD') assert(validStats.has(effect.stat), `${abilityId} modifies a valid stat reward`);
+      if (effect.type === 'AFFECT_OTHER_PLAYER') validateAbilityEffects(effect.effects, abilityId);
+      if (effect.type === 'TRIGGER_EVENT') assert(validEventTypes.has(effect.eventType), `${abilityId} triggers a valid event`);
+    }
+  }
+  for (const ability of abilities) {
+    assert(ability.trigger && validEventTypes.has(ability.trigger), `${ability.id} has a valid trigger`);
+    validateAbilityEffects(ability.effects, ability.id);
+    for (const condition of ability.conditions) assert(validConditions.has(condition.kind), `${ability.id} uses a valid condition`);
+  }
   function validateCardEffects(effects, cardId) {
     assert(effects.length > 0, `${cardId} has a gameplay effect`);
     for (const effect of effects) {
@@ -119,20 +174,208 @@ try {
   assert.equal(seeded.eventLog.at(-1).eventType, 'TURN_START');
   const seededWealth = seeded.players[0].wealth;
   const seededFame = seeded.players[0].fame;
-  seeded = { ...seeded, players: seeded.players.map((player, index) => index ? player : { ...player, careerId: 'degen-trader', characterId: 'idol_core' }) };
+  seeded = { ...seeded, players: seeded.players.map((player, index) => index ? player : { ...player, careerId: 'degen-trader', characterId: 'danger_zone' }) };
   seeded = advanceMatch(seeded, { type: 'ROLL', result: { die1: 4, die2: 4, total: 8, doubles: true } });
   assert(eventTypes(seeded).includes('DICE_ROLL'));
   assert(eventTypes(seeded).includes('DOUBLES_ROLLED'));
   assert(eventTypes(seeded).includes('ROLL_OF_8'));
   assert.equal(seeded.players[0].wealth, seededWealth + 10000);
-  assert.equal(seeded.players[0].fame, seededFame + 5);
+  assert.equal(seeded.players[0].fame, seededFame);
+  assert.equal(seeded.players[0].lifestyle, 0);
 
-  let match = move(start(4), 3);
+  let rollTwo = startWithoutProtection(1);
+  rollTwo = {
+    ...rollTwo,
+    players: rollTwo.players.map((player, index) => index === 0 ? { ...player, characterId: 'sadman' } : player),
+  };
+  const rollTwoFame = rollTwo.players[0].fame;
+  rollTwo = resolveEventQueue(rollTwo, [{ type: 'DICE_ROLL', playerIndex: 0, die1: 1, die2: 1, total: 2, doubles: true }]);
+  assert(eventTypes(rollTwo).includes('ROLL_OF_2'), 'a total of 2 emits its native roll event');
+  assert.equal(rollTwo.players[0].fame, rollTwoFame + 2, 'Sadman reacts to roll 2');
+
+  let doubles = startWithoutProtection(1);
+  doubles = {
+    ...doubles,
+    players: doubles.players.map((player, index) => index === 0 ? { ...player, characterId: 'primate' } : player),
+  };
+  const doublesLifestyle = doubles.players[0].lifestyle;
+  doubles = resolveEventQueue(doubles, [{ type: 'DICE_ROLL', playerIndex: 0, die1: 3, die2: 3, total: 6, doubles: true }]);
+  assert(eventTypes(doubles).includes('DOUBLES_ROLLED'), 'doubles emit their native roll event');
+  assert.equal(doubles.players[0].lifestyle, doublesLifestyle + 1, 'Primate reacts to doubles');
+
+  let passPlayer = startWithoutProtection(1);
+  passPlayer = {
+    ...passPlayer,
+    players: passPlayer.players.map((player, index) => index === 0 ? { ...player, characterId: 'rainbow_dash' } : player),
+  };
+  const passLifestyle = passPlayer.players[0].lifestyle;
+  passPlayer = resolveEventQueue(passPlayer, [{
+    type: 'PASS_PLAYER',
+    playerIndex: 0,
+    targetPlayerId: passPlayer.players[1].playerId,
+    targetPlayerIndex: 1,
+    previousPosition: 1,
+    newPosition: 2,
+    targetPosition: 2,
+  }]);
+  assert.equal(passPlayer.players[0].lifestyle, passLifestyle + 1, 'Rainbow Dash reacts to passing a player');
+
+  let landedOnOwner = startWithoutProtection(7);
+  landedOnOwner = {
+    ...landedOnOwner,
+    players: landedOnOwner.players.map((player, index) => {
+      if (index === 0) return { ...player, characterId: 'the_rind', wealth: 900000 };
+      if (index === 1) return { ...player, position: 7 };
+      return player;
+    }),
+  };
+  const ownerWealth = landedOnOwner.players[0].wealth;
+  landedOnOwner = resolveEventQueue(landedOnOwner, [{
+    type: 'LAND_ON_PLAYER',
+    playerIndex: 1,
+    targetPlayerId: landedOnOwner.players[0].playerId,
+    targetPlayerIndex: 0,
+    targetPosition: 7,
+    previousPosition: 6,
+    newPosition: 7,
+    spaceNumber: 7,
+  }]);
+  assert.equal(landedOnOwner.players[0].wealth, ownerWealth + 2500, 'the landed-on owner receives The Rind reaction');
+  assert(landedOnOwner.eventLog.some(entry => entry.abilityId === 'character:the_rind'), 'owner reaction is visible in the event log');
+  const ownerAbilityLog = landedOnOwner.eventLog.find(entry => entry.abilityId === 'character:the_rind' && entry.source === 'ABILITY');
+  assert(ownerAbilityLog.detail.includes('LAND ON PLAYER'), 'ability log identifies its trigger');
+  assert(ownerAbilityLog.detail.includes('$2,500'), 'ability log records the resulting Wealth change');
+
+  let affinity = startWithoutProtection(1);
+  affinity = {
+    ...affinity,
+    players: affinity.players.map((player, index) => index === 0 ? { ...player, careerId: 'ai-engineer' } : player),
+  };
+  const affinityAi = affinity.players[0].aiSkill;
+  affinity = resolveEventQueue(affinity, [{
+    type: 'CARD_DRAW',
+    playerIndex: 0,
+    deck: 'ai',
+    cardId: 'ai-pattern',
+    spaceNumber: 1,
+  }]);
+  assert.equal(affinity.players[0].aiSkill, affinityAi + 1, 'matching primary career affinity grants a small card-draw benefit');
+  assert(affinity.eventLog.some(entry => entry.abilityId?.startsWith('career-affinity:ai-engineer:ai')), 'career affinity ability is logged');
+  const firstAffinityWealth = affinity.players[0].wealth;
+  affinity = resolveEventQueue(affinity, [{
+    type: 'CARD_DRAW',
+    playerIndex: 0,
+    deck: 'ai',
+    cardId: 'ai-pattern',
+    spaceNumber: 1,
+  }]);
+  assert.equal(affinity.players[0].aiSkill, affinityAi + 1, 'primary affinity cannot grant twice in the same turn');
+  assert.equal(affinity.players[0].wealth, firstAffinityWealth, 'career AI Skill ability also respects its once-per-turn limit');
+  let secondaryAffinity = startWithoutProtection(1);
+  secondaryAffinity = {
+    ...secondaryAffinity,
+    players: secondaryAffinity.players.map((player, index) => index === 0 ? { ...player, careerId: 'ai-engineer' } : player),
+  };
+  const secondaryWealth = secondaryAffinity.players[0].wealth;
+  secondaryAffinity = resolveEventQueue(secondaryAffinity, [{
+    type: 'CARD_DRAW',
+    playerIndex: 0,
+    deck: 'wealth',
+    cardId: 'wealth-seed',
+    spaceNumber: 1,
+  }]);
+  assert.equal(secondaryAffinity.players[0].wealth, secondaryWealth + 1000, 'matching secondary career affinity grants a smaller benefit');
+
+  let characterCardReaction = startWithoutProtection(1);
+  characterCardReaction = {
+    ...characterCardReaction,
+    players: characterCardReaction.players.map((player, index) => index === 0 ? { ...player, characterId: 'idol_core', careerId: 'doctor' } : player),
+  };
+  const characterCardFame = characterCardReaction.players[0].fame;
+  characterCardReaction = resolveEventQueue(characterCardReaction, [{
+    type: 'CARD_DRAW',
+    playerIndex: 0,
+    deck: 'fame',
+    cardId: 'fame-clip',
+    spaceNumber: 1,
+  }]);
+  assert.equal(characterCardReaction.players[0].fame, characterCardFame + 1, 'Idol Core reacts to a Fame card draw');
+  const cardEffectBefore = affinity.players[0].aiSkill;
+  affinity = resolveEventQueue(affinity, [{
+    type: 'CARD_RESOLVED',
+    playerIndex: 0,
+    deck: 'ai',
+    cardId: 'ai-pattern',
+    spaceNumber: 1,
+    description: 'Pattern Found: Gain 3 AI Skill.',
+  }]);
+  assert.equal(affinity.players[0].aiSkill, cardEffectBefore + 3, 'existing card effects still resolve through the event engine');
+
+  let carPurchase = startWithoutProtection(8);
+  carPurchase = {
+    ...carPurchase,
+    players: carPurchase.players.map((player, index) => index === 0 ? { ...player, careerId: 'race-driver' } : player),
+  };
+  const carFame = carPurchase.players[0].fame;
+  carPurchase = resolveEventQueue(carPurchase, [{
+    type: 'CAR_PURCHASED',
+    playerIndex: 0,
+    category: 'car',
+    assetId: 'sport-coupe',
+    assetName: 'Sport Coupe',
+    cost: 1000,
+  }]);
+  assert.equal(carPurchase.players[0].fame, carFame + 1, 'Race Driver reacts to a car purchase');
+
+  let propertyPurchase = startWithoutProtection(8);
+  propertyPurchase = {
+    ...propertyPurchase,
+    players: propertyPurchase.players.map((player, index) => index === 0 ? { ...player, careerId: 'real-estate-investor' } : player),
+  };
+  const propertyWealth = propertyPurchase.players[0].wealth;
+  propertyPurchase = resolveEventQueue(propertyPurchase, [{
+    type: 'PROPERTY_PURCHASED',
+    playerIndex: 0,
+    category: 'property',
+    assetId: 'property-loft',
+    assetName: 'Property Loft',
+    cost: 1000,
+  }]);
+  assert.equal(propertyPurchase.players[0].wealth, propertyWealth + 2500, 'Real Estate Investor reacts to a property purchase');
+
+  const humanAbilityFixture = startWithoutProtection(1);
+  const cpuAbilityFixture = {
+    ...humanAbilityFixture,
+    players: humanAbilityFixture.players.map((player, index) => index === 0
+      ? { ...player, isCPU: true }
+      : player),
+  };
+  const humanAbility = resolveEventQueue({
+    ...humanAbilityFixture,
+    players: humanAbilityFixture.players.map((player, index) => index === 0 ? { ...player, characterId: 'sadman' } : player),
+  }, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]);
+  const cpuAbility = resolveEventQueue({
+    ...cpuAbilityFixture,
+    players: cpuAbilityFixture.players.map((player, index) => index === 0 ? { ...player, characterId: 'sadman' } : player),
+  }, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]);
+  assert.equal(cpuAbility.players[0].fame, humanAbility.players[0].fame, 'CPU and human fixtures resolve the same character ability outcome');
+  assert.equal(
+    cpuAbility.eventLog.filter(entry => entry.abilityId === 'character:sadman').length,
+    humanAbility.eventLog.filter(entry => entry.abilityId === 'character:sadman').length,
+    'CPU and human fixtures log the same ability activation',
+  );
+
+  const paydayStart = start(4);
+  const stablePaydayStart = {
+    ...paydayStart,
+    players: paydayStart.players.map((player, index) => index === 0 ? { ...player, characterId: 'frostbyte', careerId: 'doctor' } : player),
+  };
+  let match = move(stablePaydayStart, 3);
   assert.equal(match.players[0].wealth, 900000 + match.players[0].salaryAmount);
   assert.equal(match.wealthEvents.length, 1);
   assert(eventTypes(match).includes('SALARY_GATE'));
   assert.equal(advanceMatch(match, { type: 'STEP' }), match);
-  match = move(start(4), 2);
+  match = move({ ...stablePaydayStart, phase: 'ready', stepsRemaining: 0, pending: null, roll: null, lastLanding: null }, 2);
   assert.equal(match.players[0].wealth, 900000 + match.players[0].salaryAmount);
   assert.equal(match.wealthEvents.length, 1);
   const salaryDebug = start(4);
@@ -144,12 +387,20 @@ try {
   assert.equal(match.players[0].salaryAmount, originalSalary + 5000);
   assert.equal(match.players[0].wealth, 900000 + originalSalary + 5000);
   assert(eventTypes(match).includes('PLAYER_AFFECTED'));
-  match = move(start(4, 1), 2);
+  const secondPlayerStart = start(4, 1);
+  match = move({
+    ...secondPlayerStart,
+    players: secondPlayerStart.players.map((player, index) => index === 1 ? { ...player, characterId: 'frostbyte', careerId: 'doctor' } : player),
+  }, 2);
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
   match = advanceMatch(match, { type: 'NEXT_TURN' });
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
 
-  match = move(start(8), 2);
+  const carMilestoneStart = start(8);
+  match = move({
+    ...carMilestoneStart,
+    players: carMilestoneStart.players.map((player, index) => index === 0 ? { ...player, characterId: 'frostbyte', careerId: 'doctor' } : player),
+  }, 2);
   assert.equal(match.phase, 'decision');
   assert.equal(match.pending.slot, 'car');
   assert(eventTypes(match).includes('MILESTONE'));
@@ -227,6 +478,10 @@ try {
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: petId });
   assert.equal(match.players[0].equipment.companion, petId);
   let wealthStart = start(1);
+  wealthStart = {
+    ...wealthStart,
+    players: wealthStart.players.map((player, index) => index === 0 ? { ...player, careerId: 'doctor', characterId: 'frostbyte' } : player),
+  };
   const wealthDrawPile = wealthStart.cardPiles.wealth.drawPile.filter(cardId => cardId !== 'wealth-seed');
   wealthStart = {
     ...wealthStart,
@@ -299,7 +554,7 @@ try {
   const influenceBefore = match.players[0].influence;
   match = move(match, 2);
   assert(eventTypes(match).includes('LAND_ON_PLAYER'));
-  assert.equal(match.players[0].influence, influenceBefore + 5);
+  assert.equal(match.players[0].influence, influenceBefore + 1);
 
   const purchaseDebug = start(8);
   match = move({
@@ -309,17 +564,26 @@ try {
   const lifestyleBefore = match.players[0].lifestyle;
   const carId = match.pending.offeredAssetIds[0];
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: carId });
-  assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 5);
+  assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 1);
 
-  const penaltyLanding = move(startWithoutProtection(2), 3);
+  function isolatedEffectStart(position, slot = 0) {
+    const match = startWithoutProtection(position, slot);
+    return {
+      ...match,
+      players: match.players.map((player, index) => index === slot
+        ? { ...player, characterId: 'guardian_h', careerId: 'doctor' }
+        : player),
+    };
+  }
+  const penaltyLanding = move(isolatedEffectStart(2), 3);
   assert.equal(penaltyLanding.players[0].position, 5);
   assert.equal(penaltyLanding.players[0].wealth, 897000);
   assert.equal(countEvent(penaltyLanding, 'BOARD_EFFECT_RESOLVED'), 1);
-  const passedEffect = move(startWithoutProtection(3), 4);
+  const passedEffect = move(isolatedEffectStart(3), 4);
   assert.equal(passedEffect.players[0].position, 7);
   assert.equal(countEvent(passedEffect, 'BOARD_EFFECT_RESOLVED'), 0, 'passing an effect space does not trigger it');
 
-  const cpuStart = startWithoutProtection(2);
+  const cpuStart = isolatedEffectStart(2);
   const cpuMatch = {
     ...cpuStart,
     players: cpuStart.players.map((player, index) => index === 0 ? { ...player, isCPU: true } : player),

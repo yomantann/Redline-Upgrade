@@ -91,6 +91,7 @@ export interface EventLogEntry {
   id: string;
   kind: 'EVENT';
   eventType: GameEventType;
+  source: EventSource;
   playerId: string;
   targetPlayerId?: string;
   abilityId?: string;

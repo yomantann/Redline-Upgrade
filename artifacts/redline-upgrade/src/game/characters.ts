@@ -10,7 +10,7 @@ export interface CharacterDefinition {
   abilityDescription: string;
 }
 
-// Ability copy is character flavor for Phase 1; no mechanical effects exist yet.
+// Character identity and ability copy share the same IDs as the event-driven ability definitions.
 // Character art is imported into public/characters from the supplied source archive.
 const roster = [
   ['guardian_h', 'Guardian H', 'The last line of defense when a city forgets who it left behind.', 'Hold the Line', 'Stands firm when everything else gives way.'],

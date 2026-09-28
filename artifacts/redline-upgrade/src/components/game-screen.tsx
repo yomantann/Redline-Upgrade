@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
+import { getDeck } from '@/game/decks';
 import type { PendingDecision, WealthEvent } from '@/game/match';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { useGame } from '@/game/state';
@@ -182,7 +183,17 @@ export function GameScreen() {
                </div>
               <div className="game-player-career">
                 <CareerGlyph icon={career?.icon || career?.name || 'career'} />
-                 <div><span className="mono">{category?.name ?? 'CAREER'}</span><b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b><small title={career?.abilityDescription}>{career?.abilityName ?? 'NO ABILITY ASSIGNED'}</small></div>
+                  <div>
+                    <span className="mono">{category?.name ?? 'CAREER'}</span>
+                    <b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b>
+                    <small title={career?.abilityDescription}>{career?.abilityName ?? 'NO ABILITY ASSIGNED'}</small>
+                    {career && (
+                      <small className="mono" title="Primary and secondary card-deck affinity">
+                        DECK AFFINITY / {getDeck(career.deckAffinity.primary).name}
+                        {career.deckAffinity.secondary ? ` · ${getDeck(career.deckAffinity.secondary).name}` : ''}
+                      </small>
+                    )}
+                  </div>
               </div>
               <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}</b></div>
               <div className="game-player-wealth">
@@ -265,7 +276,19 @@ export function GameScreen() {
           </div>
           <div className="readout-landing" aria-live="polite">
             <span className="mono">EVENT LOG</span>
-            {recentLog.length ? recentLog.map((entry) => <p key={entry.id}><strong>{entry.label}</strong><br />{entry.detail}</p>) : <p>No event activity yet.</p>}
+            {recentLog.length ? recentLog.map((entry) => (
+              <p key={entry.id}>
+                <strong>{entry.label}</strong>
+                {entry.source === 'ABILITY' && (
+                  <>
+                    <br />
+                    <small className="mono">TRIGGER / {entry.eventType.replace(/_/g, ' ')}</small>
+                  </>
+                )}
+                <br />
+                {entry.detail}
+              </p>
+            )) : <p>No event activity yet.</p>}
           </div>
         </div>
       </section>}
