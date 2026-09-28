@@ -1,0 +1,645 @@
+REDLINE UPGRADE — PHASE 14
+
+This phase is focused on visual polish, board immersion, asset artwork completion, terminology cleanup, and gameplay flow.
+
+DO NOT add new gameplay systems.
+
+Preserve all existing Phase 8–13 mechanics, including:
+- 2d4 movement
+- CPU players
+- Careers
+- Career abilities
+- Character abilities
+- Six card decks
+- Milestones
+- Assets
+- Asset upgrades
+- Upgrade Tokens
+- Salary Gates
+- Finish system
+- Cash/wealth
+- Existing board rules
+
+==================================================
+1. COMPLETE ALL ASSET LEVEL ARTWORK
+==================================================
+
+This is a major priority.
+
+Every existing milestone asset needs complete visual artwork for:
+
+LEVEL 1
+LEVEL 2
+LEVEL 3
+LEVEL 4
+
+Keep the existing Level 1 artwork.
+
+Create/modify unique artwork for Levels 2, 3, and 4.
+
+The upgraded artwork should clearly be the SAME asset evolving.
+
+Do NOT simply place a "LVL 2" label on the same image.
+
+Each level should have a visible but tasteful visual progression.
+
+Examples:
+
+Level 1:
+Original HoloDog
+
+Level 2:
+Same HoloDog concept with a meaningful visual upgrade
+
+Level 3:
+Further evolved version
+
+Level 4:
+Clearly premium/final version
+
+Apply this to EVERY asset in EVERY milestone category:
+
+- CAR
+- LIFESTYLE
+- PET
+- INVESTMENT
+- PROPERTY
+
+There are currently 20 assets per category.
+
+Therefore audit the complete asset library and ensure every asset has:
+
+L1 artwork
+L2 artwork
+L3 artwork
+L4 artwork
+
+Do not use placeholder icons, generic silhouettes, or unrelated artwork where a real asset image should exist.
+
+The asset's identity must remain recognizable across all four levels.
+
+==================================================
+2. ASSET IMAGE VALIDATION
+==================================================
+
+Audit every asset reference used by:
+
+- Milestone selection
+- Purchase/choice UI
+- Player card
+- Asset ownership display
+- Asset upgrade UI
+- End-game display where applicable
+
+Make sure the correct image appears in every location.
+
+If an asset is Level 3, the Level 3 image must actually display.
+
+If an asset is upgraded from Level 1 → Level 2 → Level 3 → Level 4, the displayed artwork should change accordingly.
+
+Do not silently fall back to generic placeholder artwork.
+
+Report any remaining missing asset artwork.
+
+==================================================
+3. CAREER TERMINOLOGY CLEANUP
+==================================================
+
+Remove unnecessary player-facing career classifications that are not part of the actual six-deck system.
+
+Do NOT introduce "Professional" as a separate player-facing category simply because a career such as Doctor is professional.
+
+Do NOT introduce "Media/Fame" as a separate career classification.
+
+The existing Career Deck system should be the primary connection.
+
+Use:
+
+CAREER
+
+CAREER DECKS
+
+[DECK 1] [DECK 2]
+
+For example, a Doctor should simply display the actual deck affinities assigned to Doctor.
+
+An Influencer should display its actual deck affinities, including FAME where appropriate.
+
+Do not create another terminology layer that players have to learn.
+
+The underlying career category/tag system can remain if required by gameplay code, but unnecessary internal categories should not clutter the player-facing UI.
+
+==================================================
+4. REMOVE THE COMPLEX NUMBER-CHANGE UI
+==================================================
+
+Remove the previously planned/implemented requirement to show every numerical change as:
+
+$120K → $155K
++$35K
+
+Do NOT build or maintain a complicated before/after number-change system.
+
+The game should simply communicate the result.
+
+Examples:
+
++ $35K WEALTH
+
++2 FAME
+
++1 AI SKILL
+
+ABILITY ACTIVATED
++2 AI SKILL
+
+Keep result notifications clear and readable.
+
+Do not show unnecessary before/after calculations.
+
+Do not create additional state-tracking solely for this UI.
+
+==================================================
+5. CPU CARD REVEAL MUST CONTINUE AUTOMATICALLY
+==================================================
+
+When a CPU draws a card:
+
+The card should still appear prominently for all players.
+
+However, it must NOT remain on screen indefinitely.
+
+Create an automatic card-reveal timer.
+
+Target:
+
+5 seconds
+
+Sequence:
+
+CPU DRAWS CARD
+→ LARGE CARD REVEAL
+→ CARD EFFECT VISIBLE
+→ approximately 5 seconds
+→ CARD CLOSES
+→ EFFECT RESOLVES/CONTINUES
+→ GAMEPLAY RESUMES
+
+The timer should be visible subtly if useful, but do not make it distracting.
+
+The player should have enough time to read:
+
+- Deck
+- Card name
+- Artwork
+- Effect
+- CPU player who drew it
+
+Do not require a player to manually close the card for CPU turns.
+
+Human card interactions can remain interactive where appropriate.
+
+The important requirement is:
+
+CPU card reveals must NEVER block gameplay indefinitely.
+
+==================================================
+6. SPACE 1 — OPEN ROAD
+==================================================
+
+Change Space 1 to:
+
+OPEN ROAD
+
+It should visually communicate the beginning of the route.
+
+Do not make Space 1 a generic normal/standing space.
+
+Give it an appropriate Open Road icon/visual treatment.
+
+Keep its gameplay behavior simple unless an existing rule already applies.
+
+==================================================
+7. SPACE 2 — UPGRADE TOKEN
+==================================================
+
+Change Space 2 to:
+
+UPGRADE TOKEN
+
+Landing on Space 2 should use the existing Upgrade Token mechanic.
+
+Give the space a clear Upgrade Token visual.
+
+Make the icon and label immediately recognizable.
+
+Do not create a second token system.
+
+Use the existing Upgrade Token rules.
+
+==================================================
+8. REMOVE GENERIC/STANDING BOARD SPACES
+==================================================
+
+Audit the board for generic "standing"/ordinary spaces that currently provide little visual or gameplay identity.
+
+Where appropriate, replace those spaces with an applicable existing deck/card space.
+
+Use the six existing decks:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Do NOT create a seventh deck.
+
+Do NOT randomly change spaces that already have important mechanics.
+
+The goal is to make more of the board visually meaningful while preserving the overall balance and route.
+
+Each replaced space should use the existing deck-space visual language.
+
+==================================================
+9. BOARD ENVIRONMENT
+==================================================
+
+Continue improving the board so it feels like a physical futuristic game board rather than flat UI panels.
+
+Preserve the existing route and numbering.
+
+Improve:
+
+- depth
+- layered surfaces
+- raised sections
+- environmental structures
+- shadows
+- futuristic physical materials
+- section framing
+- surrounding 3D objects
+
+The board spaces themselves must remain readable.
+
+Do not overwhelm the board with decoration.
+
+==================================================
+10. BOARD-SIDE 3D OBJECTS
+==================================================
+
+The objects surrounding the board are currently too small and meaningless.
+
+Replace/enhance them so they feel like substantial 3D objects associated with that area of the board.
+
+They should:
+
+- have recognizable silhouettes
+- be larger
+- feel physically present
+- relate to the area they surround
+- fit Redline Upgrade's futuristic aesthetic
+
+These are environmental objects only.
+
+Do not attach new gameplay mechanics to them.
+
+==================================================
+11. PHASE / ZONE VISUAL IDENTITY
+==================================================
+
+Major board sections such as THE GRIND should feel like actual zones.
+
+When players enter a different phase of the route, the surrounding board environment should visibly change.
+
+Use:
+
+- environmental structures
+- zone borders
+- lighting
+- background treatment
+- signage
+- section framing
+- subtle effects
+- themed 3D objects
+
+The player should immediately feel:
+
+"I am entering a new part of the game."
+
+Do not change which spaces belong to which phase.
+
+Do not add new phases.
+
+==================================================
+12. SALARY GATE
+==================================================
+
+Salary Gate spaces should no longer use the normal Wealth "$" icon.
+
+Create a unique Salary Gate icon representing:
+
+- gate
+- checkpoint
+- threshold
+- barrier
+
+The space should clearly say:
+
+SALARY GATE
+
+Preserve all existing Salary Gate mechanics.
+
+==================================================
+13. BOARD SPACE ICON AUDIT
+==================================================
+
+Every special board space should clearly communicate what it does.
+
+Ensure visual identities exist for:
+
+- Open Road
+- Upgrade Token
+- Salary Gate
+- Card/Deck spaces
+- Milestone
+- Career Change
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Gamble
+- Finish
+
+Use the existing visual language wherever possible.
+
+Avoid unnecessary new colors.
+
+==================================================
+14. BOARD + DICE SHOULD BE THE PRIMARY GAMEPLAY VIEW
+==================================================
+
+The board should be the first and most important element players see during gameplay.
+
+Players should be able to see:
+
+BOARD
++
+ROLL DICE
++
+DICE RESULT
+
+without significant scrolling.
+
+Move the Roll Dice control closer to the board.
+
+Preserve the existing dice animation.
+
+Do not redesign the 2d4 system.
+
+==================================================
+15. RESPONSIVE GAMEPLAY LAYOUT
+==================================================
+
+Desktop:
+
+- Board receives the majority of visual attention
+- Dice control stays near board
+- Dice result remains visible
+- Player cards remain accessible but secondary
+
+Mobile:
+
+- Board remains primary
+- Dice control stays close to board
+- Avoid excessive scrolling between board and dice
+- Keep spaces and pieces readable
+
+Do not simply shrink the desktop layout.
+
+==================================================
+16. COLLAPSIBLE PLAYER STATUS
+==================================================
+
+Keep the detailed player cards but allow the section to collapse.
+
+Collapsed:
+
+PLAYER STATUS
+
+Show a compact summary:
+
+- Character
+- Career
+- Wealth
+- Salary
+- Upgrade Tokens
+- Finish status when applicable
+
+Expanded:
+
+Show the existing detailed player cards.
+
+The board should have more visual space when Player Status is collapsed.
+
+==================================================
+17. CHARACTER SELECTION
+==================================================
+
+On character selection, place the selection control directly beneath the character image/name.
+
+Preferred:
+
+CHARACTER IMAGE
+
+CHARACTER NAME
+
+[ SELECT CHARACTER ]
+
+After selection:
+
+[ SELECTED ✓ ]
+
+Do not require the player to scroll elsewhere to confirm their character.
+
+Preserve the existing character preview.
+
+==================================================
+18. BOARD ZOOM / PAN
+==================================================
+
+Preserve and improve board zoom/pan.
+
+Players should be able to:
+
+- zoom in
+- zoom out
+- inspect spaces
+- understand the whole route
+- pan where appropriate
+
+Do not let zoom/pan interfere with clicking spaces or rolling dice.
+
+Default camera should prioritize gameplay readability rather than showing the entire board at tiny scale.
+
+==================================================
+19. MOVEMENT FEEDBACK
+==================================================
+
+Preserve the existing piece movement animation.
+
+Make the following obvious:
+
+- starting space
+- spaces passed
+- destination
+- special space activated
+
+Temporarily emphasize the destination space.
+
+Do not change movement rules.
+
+==================================================
+20. PHASE TRANSITION FEEDBACK
+==================================================
+
+When entering a major phase such as THE GRIND:
+
+Use a short visual transition.
+
+Possible treatments:
+
+- zone title
+- environmental change
+- lighting shift
+- board framing
+- section marker
+
+Keep it short and non-blocking.
+
+==================================================
+21. DO NOT REDESIGN THE SIX DECKS
+==================================================
+
+The six decks already feel visually distinct.
+
+Preserve their current:
+
+- colors
+- card backs
+- icons
+- card frames
+- overall visual identity
+
+Only fix specific bugs or inconsistencies.
+
+==================================================
+22. DO NOT ADD NEW GAMEPLAY SYSTEMS
+==================================================
+
+This phase is NOT for:
+
+- new currencies
+- new decks
+- new careers
+- new milestones
+- new asset categories
+- new upgrade mechanics
+- new abilities
+- new board rules
+
+Focus entirely on:
+
+ARTWORK
+BOARD
+LAYOUT
+CLARITY
+FLOW
+PRESENTATION
+
+==================================================
+23. NO DEAD UI
+==================================================
+
+Remove:
+
+- placeholders
+- debug labels
+- empty boxes
+- fake controls
+- unused buttons
+- meaningless labels
+- generic asset placeholders
+
+Everything visible should either communicate useful game information or contribute meaningfully to the board environment.
+
+==================================================
+24. TESTING
+==================================================
+
+Test:
+
+- All milestone categories
+- All 20 assets in each category
+- Every asset Level 1
+- Every asset Level 2
+- Every asset Level 3
+- Every asset Level 4
+- Asset upgrade image changes
+- Player card asset images
+- Milestone selection images
+- CPU card reveal
+- 5-second CPU card timer
+- CPU gameplay continuation
+- Space 1 Open Road
+- Space 2 Upgrade Token
+- Deck spaces replacing generic spaces
+- Salary Gate icon
+- Board zones
+- Board-side objects
+- Board zoom
+- Board pan
+- Dice positioning
+- Mobile layout
+- Desktop layout
+- Collapsible Player Status
+- Character selection
+
+Run:
+
+- TypeScript check
+- Existing regression tests
+- Production build
+- Preview/restart
+
+==================================================
+25. FINAL REPORT
+==================================================
+
+Report:
+
+1. Total milestone assets audited
+2. Assets with complete L1-L4 artwork
+3. Any remaining placeholder artwork
+4. Any missing asset image references
+5. Asset upgrade visual verification
+6. Career terminology cleanup
+7. Number-change UI removed/simplified
+8. CPU card timer implementation
+9. Space 1 Open Road
+10. Space 2 Upgrade Token
+11. Generic space replacements
+12. Salary Gate visual
+13. Board environmental improvements
+14. Board phase/zone improvements
+15. Responsive layout improvements
+16. Dice/board positioning
+17. Character selection improvement
+18. Zoom/pan status
+19. Player Status collapse
+20. Tests and validation
+21. Remaining issues
+
+STOP after Phase 14.
