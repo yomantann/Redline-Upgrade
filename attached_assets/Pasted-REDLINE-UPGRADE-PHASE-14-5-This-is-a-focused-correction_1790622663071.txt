@@ -1,0 +1,622 @@
+REDLINE UPGRADE — PHASE 14.5
+
+This is a focused correction and polish phase.
+
+Do NOT add unrelated gameplay systems.
+
+Preserve all existing:
+- Careers
+- Character abilities
+- Six decks
+- Milestones
+- Assets
+- Asset upgrades
+- Upgrade Tokens
+- Salary Gates
+- 2d4 movement
+- CPU players
+- Finish system
+- Cash/Wealth
+- Existing card effects
+
+==================================================
+1. CRITICAL: FIX CPU CARD FREEZE
+==================================================
+
+Currently, when a CPU draws a card, the large card reveal appears but the game can freeze and fail to proceed to the next step.
+
+FIX THIS FIRST.
+
+CPU card flow must always be:
+
+CPU TURN
+→ MOVE
+→ LAND ON CARD SPACE
+→ CARD REVEAL
+→ SHOW CARD TO ALL PLAYERS
+→ SHOW EFFECT
+→ AUTOMATICALLY CLOSE CARD
+→ RESOLVE EFFECT
+→ CONTINUE GAMEPLAY
+→ NEXT TURN / NEXT STEP
+
+Use approximately a 5-second visible card presentation.
+
+The CPU must NEVER require the human player to click a close button.
+
+The timer must actually trigger the continuation of the game state.
+
+Make sure the timer cleanup and game continuation happen reliably even if:
+- the card has an effect
+- the card targets another player
+- an ability also triggers
+- the CPU is involved
+- multiple events are generated
+
+Do not allow a modal, overlay, timeout, or pending state to leave the match stuck.
+
+Test multiple consecutive CPU card draws.
+
+==================================================
+2. SIMPLIFY BOARD PHASE VISUALS
+==================================================
+
+The current large 3D phase/zone structures are obstructive and look cheap.
+
+Remove/reduce the large 3D objects that visually sit on top of or interfere with the board.
+
+The board should NOT look like it has giant structures placed over it.
+
+Instead, make different phases/areas feel different THROUGH THE BOARD ITSELF.
+
+Use subtle environmental treatment such as:
+
+- different board surface treatment
+- embedded textures
+- subtle lighting
+- section borders
+- color temperature
+- edge treatments
+- atmospheric background changes
+- integrated signage
+- subtle patterns
+- zone-specific material changes
+
+The effect should feel like:
+
+"this part of the board is different"
+
+NOT:
+
+"there is a giant 3D object sitting on the board."
+
+Keep all spaces readable.
+
+Keep player pieces visible.
+
+Keep board numbers visible.
+
+Keep movement unobstructed.
+
+The visual treatment should feel premium and intentional.
+
+==================================================
+3. REPLACE GENERIC / HARD-CODED EVENT SPACES
+==================================================
+
+Audit the board for spaces that currently have hard-coded one-off financial/event behavior that could instead use the existing six card decks.
+
+Where a space represents a generic event, replace it with the appropriate deck draw.
+
+Example:
+
+SPACE 5
+
+CURRENT:
+Unexpected Expense
+
+CHANGE TO:
+DRAW WEALTH CARD
+
+The player lands on Space 5:
+
+→ Wealth card is drawn
+→ Card is displayed
+→ Card effect resolves
+→ Gameplay continues
+
+Do NOT create a new event system for these spaces.
+
+Use the existing card/deck system.
+
+Apply this logic consistently across the board.
+
+==================================================
+4. PRESERVE TRUE SPECIAL SPACES
+==================================================
+
+Do NOT convert every space into a deck space.
+
+Keep spaces whose mechanics are intentionally unique, including applicable:
+
+- Open Road
+- Upgrade Token
+- Salary Gate
+- Career Change
+- Milestone
+- Finish
+- Any other intentionally unique existing milestone/system space
+
+The goal is:
+
+GENERIC EVENT SPACE
+→ appropriate deck draw
+
+UNIQUE GAMEPLAY SPACE
+→ existing unique mechanic
+
+Audit the entire board and document which spaces were converted.
+
+==================================================
+5. ASSIGN HARD-CODED SPACES TO THE MOST APPROPRIATE DECK
+==================================================
+
+Use the existing six decks:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Choose the deck based on what the existing space/event was intended to represent.
+
+Do not invent new decks.
+
+Do not change the existing deck visual identities.
+
+Example:
+
+Unexpected Expense
+→ WEALTH
+
+A generic career/skill event
+→ AI SKILL
+
+A recognition/social event
+→ FAME
+
+A lifestyle event
+→ LIFESTYLE
+
+A relationship/status event
+→ INFLUENCE
+
+A risk/chance event
+→ GAMBLE
+
+The existing card system should handle the actual effect.
+
+==================================================
+6. ASSET ARTWORK IS THE HIGHEST VISUAL PRIORITY
+==================================================
+
+The original asset artwork is good and should NOT be replaced unnecessarily.
+
+Preserve the existing original WebP artwork.
+
+Every asset now needs unique upgraded WebP artwork for:
+
+LEVEL 1
+LEVEL 2
+LEVEL 3
+LEVEL 4
+
+Level 1:
+Keep the original artwork.
+
+Level 2:
+Create a modified/evolved version of the SAME asset.
+
+Level 3:
+Create another clearly evolved version.
+
+Level 4:
+Create the most advanced/premium version.
+
+The asset must remain recognizable throughout.
+
+Do NOT simply:
+- add a "Level 2" label
+- add a border
+- change the filename
+- reuse the same image
+- apply a generic color filter
+
+The visual itself needs to change.
+
+The progression should feel like the owner upgraded the actual asset.
+
+==================================================
+7. USE WEBP FOR ALL ASSET ARTWORK
+==================================================
+
+Replace ALL SVG asset images with actual WebP artwork.
+
+SVG icons may remain where they are genuinely UI icons.
+
+However:
+
+FINAL MILESTONE ASSET ART
+MUST USE WEBP.
+
+This applies to:
+
+- Car assets
+- Lifestyle assets
+- Pet assets
+- Investment assets
+- Property assets
+- Level 1
+- Level 2
+- Level 3
+- Level 4
+
+Do not use SVG placeholders for final asset artwork.
+
+Do not silently fall back to generic SVG artwork.
+
+==================================================
+8. ASSET ARTWORK FILE STRUCTURE
+==================================================
+
+Create a consistent asset image structure.
+
+Each asset should have clearly identifiable artwork references for:
+
+asset-level-1.webp
+asset-level-2.webp
+asset-level-3.webp
+asset-level-4.webp
+
+Use the project's existing naming conventions if they are already established.
+
+Do not duplicate the same WebP into multiple levels.
+
+Verify every referenced file actually exists.
+
+==================================================
+9. COMPLETE ASSET AUDIT
+==================================================
+
+Audit every existing asset across:
+
+CAR
+LIFESTYLE
+PET
+INVESTMENT
+PROPERTY
+
+For every asset verify:
+
+- Level 1 WebP exists
+- Level 2 WebP exists
+- Level 3 WebP exists
+- Level 4 WebP exists
+- All four are visually different
+- All four clearly represent the same asset
+- No SVG is being used as the final asset image
+- Player card displays correct level image
+- Milestone selection displays correct image
+- Upgrade UI displays correct image
+- Owned asset displays correct image
+
+Do not consider the phase complete if placeholder artwork remains.
+
+Report the exact count of:
+
+- complete assets
+- incomplete assets
+- placeholder assets
+- SVG asset references
+
+==================================================
+10. ASSET UPGRADE DISPLAY
+==================================================
+
+When a player upgrades an asset:
+
+Make the visual change immediately obvious.
+
+Example:
+
+HOLODOG
+LEVEL 1
+→ upgrade
+LEVEL 2
+
+The player should see the new Level 2 WebP.
+
+Repeat through Level 4.
+
+Keep the upgrade mechanics unchanged.
+
+Only improve the visual representation.
+
+==================================================
+11. PLAYER CARD ASSET DISPLAY
+==================================================
+
+Make sure the actual asset artwork is visible clearly on the player's board card.
+
+Avoid tiny icons when the asset itself can be displayed.
+
+The player should be able to recognize:
+
+CAR
+LIFESTYLE
+PET / INVESTMENT
+PROPERTY
+
+from the actual artwork.
+
+Do not replace real asset artwork with generic category icons.
+
+==================================================
+12. RESPONSIVE PLAYER CARDS
+==================================================
+
+Desktop:
+
+Player cards may remain above the board and expanded.
+
+Phone:
+
+Player cards should remain above the board but default to minimized/collapsed.
+
+On mobile, show a compact player summary first.
+
+Allow the player to expand the cards when needed.
+
+Do not force players to scroll through large player cards before reaching the board.
+
+==================================================
+13. DICE / THROW POSITION
+==================================================
+
+Desktop:
+
+The Roll Dice / Your Throw control should sit BESIDE the board.
+
+Phone:
+
+The Roll Dice / Your Throw control should sit ABOVE the board.
+
+The player should see:
+
+YOUR THROW
+ROLL DICE
+DICE RESULT
+BOARD
+
+without needing to scroll away from the primary gameplay area.
+
+Preserve the existing 2d4 dice animation.
+
+Do not change the dice rules.
+
+==================================================
+14. BOARD REMAINS PRIMARY
+==================================================
+
+The gameplay hierarchy should be:
+
+PLAYER STATUS
+↓
+YOUR THROW / DICE
+↓
+BOARD
+↓
+secondary information
+
+Desktop can use horizontal space to place dice beside the board.
+
+Phone should stack:
+
+PLAYER STATUS
+YOUR THROW
+BOARD
+
+with player status minimized by default.
+
+==================================================
+15. ENDGAME ATTRIBUTE BONUSES
+==================================================
+
+Add endgame Wealth rewards based on who has the highest value in each of the four core attributes:
+
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+
+When the LAST remaining player crosses the finish line:
+
+Calculate the final attribute leaders.
+
+Award:
+
+MOST AI SKILL
++$50K WEALTH
+
+MOST FAME
++$50K WEALTH
+
+MOST LIFESTYLE
++$50K WEALTH
+
+MOST INFLUENCE
++$50K WEALTH
+
+This should happen only after the final player crosses the finish.
+
+The awards should be resolved once.
+
+==================================================
+16. ATTRIBUTE ENDGAME TIE HANDLING
+==================================================
+
+If multiple players are tied for the highest value in an attribute, do not silently choose one.
+
+Use a consistent existing tie rule if one already exists.
+
+If no tie rule exists, implement a simple deterministic tie resolution and document it.
+
+Do NOT award multiple $50K bonuses for the same category unless that is explicitly intended.
+
+==================================================
+17. ENDGAME PRESENTATION
+==================================================
+
+When the final player crosses the finish:
+
+Show a clear summary:
+
+ENDGAME ATTRIBUTE BONUSES
+
+AI SKILL
+[PLAYER]
++$50K
+
+FAME
+[PLAYER]
++$50K
+
+LIFESTYLE
+[PLAYER]
++$50K
+
+INFLUENCE
+[PLAYER]
++$50K
+
+Then continue into the existing endgame flow.
+
+Do not redesign the full endgame in this phase.
+
+==================================================
+18. DO NOT CHANGE THE SIX DECKS
+==================================================
+
+The six decks already have distinct visual identities.
+
+Preserve:
+
+- Colors
+- Card backs
+- Icons
+- Card frames
+- Deck names
+- Existing card artwork
+
+Only change how generic board spaces invoke the decks.
+
+==================================================
+19. DO NOT ADD NEW GAMEPLAY SYSTEMS
+==================================================
+
+This phase should NOT add:
+
+- New decks
+- New currencies
+- New careers
+- New milestone categories
+- New abilities
+- New asset categories
+- New upgrade mechanics
+- New board phases
+
+Focus on fixing and connecting existing systems.
+
+==================================================
+20. TESTING
+==================================================
+
+Specifically test:
+
+CPU card draw:
+- CPU lands on card
+- Card appears
+- Card remains visible approximately 5 seconds
+- Card closes automatically
+- Effect resolves
+- CPU turn completes
+- Next turn begins
+- No freeze
+
+Board:
+- Space 5 draws Wealth card
+- Other generic hard-coded spaces draw appropriate decks
+- Unique spaces remain unique
+- Space 1 remains Open Road
+- Space 2 remains Upgrade Token
+- Salary Gate remains Salary Gate
+
+Assets:
+- Every asset Level 1 WebP
+- Every asset Level 2 WebP
+- Every asset Level 3 WebP
+- Every asset Level 4 WebP
+- No SVG final asset artwork
+- Upgrade visibly changes artwork
+
+Responsive:
+- PC player cards above board
+- PC dice beside board
+- Phone player cards minimized above board
+- Phone dice above board
+- Board remains immediately accessible
+
+Endgame:
+- Final player crossing finish triggers attribute calculation
+- Highest AI Skill gets +$50K
+- Highest Fame gets +$50K
+- Highest Lifestyle gets +$50K
+- Highest Influence gets +$50K
+- Bonuses happen once
+- Existing finish/endgame flow continues
+
+Run:
+
+- TypeScript check
+- Existing regression tests
+- Production build
+- Preview/restart
+
+==================================================
+21. FINAL REPORT
+==================================================
+
+Report:
+
+1. CPU card freeze cause and fix
+2. CPU card timer behavior
+3. Board phase visual simplification
+4. Hard-coded spaces converted to deck draws
+5. Spaces preserved as unique mechanics
+6. Space 1 Open Road
+7. Space 2 Upgrade Token
+8. Complete asset artwork count
+9. Missing Level 2–4 artwork count
+10. SVG asset references removed
+11. WebP asset references verified
+12. Player card responsive changes
+13. Dice positioning changes
+14. Endgame attribute bonus implementation
+15. Tie handling
+16. Tests
+17. Build/preview validation
+18. Any remaining issues
+
+STOP AFTER THIS PHASE.
