@@ -1,4 +1,5 @@
 import type { AssetDefinition } from './assets';
+import { phase11Assets } from './assets-phase11';
 
 // Text-first expansions of the initial pools. All artwork uses the shared category
 // fallback until commissioned assets are available; no empty image URLs are shipped.
@@ -34,4 +35,5 @@ export const additionalAssets: readonly AssetDefinition[] = [
   { id: 'skyline-penthouse', name: 'Skyline Penthouse', category: 'property', visual: '◇', cost: 350000, description: 'The whole city in view.', effects: { lifestyle: 12, fame: 8 }, rarity: 'RARE' },
   { id: 'country-estate', name: 'Country Estate', category: 'property', visual: '◒', cost: 450000, description: 'A private escape with lasting presence.', effects: { lifestyle: 17, influence: 10 }, rarity: 'ELITE' },
   { id: 'landmark-residence', name: 'Landmark Residence', category: 'property', visual: '◇', cost: 600000, description: 'An unmistakable address.', effects: { lifestyle: 20, influence: 20 }, rarity: 'ELITE' },
+  ...phase11Assets,
 ];

@@ -18,6 +18,15 @@ try {
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { getAssetArtworkFilePath } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const {
+    calculateEndgameBaseValue,
+    getEndgameTokenTier,
+    cashOutValue,
+    doubleDownValue,
+    finalGambleValue,
+    createFinishSnapshot,
+  } = await vite.ssrLoadModule('/src/game/endgame.ts');
   const { availableUpgradeTokens, getEligibleRecoveryMilestones } = await vite.ssrLoadModule('/src/game/upgrade-tokens.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
@@ -61,6 +70,25 @@ try {
       stepsRemaining: 0,
       players: base.players.map((player, index) => index === playerIndex ? { ...player, ...updates } : player),
     };
+  }
+  function withoutAbilities(base, activePlayerIndex = -1, activeCharacterId = '__test_no_ability__') {
+    return {
+      ...base,
+      players: base.players.map((player, index) => ({
+        ...player,
+        characterId: index === activePlayerIndex ? activeCharacterId : '__test_no_ability__',
+        careerId: null,
+      })),
+    };
+  }
+  function withRandomValue(value, callback) {
+    const originalRandom = Math.random;
+    Math.random = () => value;
+    try {
+      return callback();
+    } finally {
+      Math.random = originalRandom;
+    }
   }
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
@@ -391,10 +419,7 @@ try {
   );
 
   const paydayStart = start(4);
-  const stablePaydayStart = {
-    ...paydayStart,
-    players: paydayStart.players.map((player, index) => index === 0 ? { ...player, characterId: 'frostbyte', careerId: 'doctor' } : player),
-  };
+  const stablePaydayStart = withoutAbilities(paydayStart);
   let match = move(stablePaydayStart, 3);
   assert.equal(match.players[0].wealth, 900000 + match.players[0].salaryAmount);
   assert.equal(match.wealthEvents.length, 1);
@@ -405,18 +430,12 @@ try {
   assert.equal(match.wealthEvents.length, 1);
   const salaryDebug = start(4);
   const originalSalary = salaryDebug.players[0].salaryAmount;
-  match = move({
-    ...salaryDebug,
-    players: salaryDebug.players.map((player, index) => index === 0 ? { ...player, characterId: 'alpha_prime' } : player),
-  }, 2);
+  match = move(withoutAbilities(salaryDebug, 0, 'alpha_prime'), 2);
   assert.equal(match.players[0].salaryAmount, originalSalary + 5000);
   assert.equal(match.players[0].wealth, 900000 + originalSalary + 5000);
   assert(eventTypes(match).includes('PLAYER_AFFECTED'));
   const secondPlayerStart = start(4, 1);
-  match = move({
-    ...secondPlayerStart,
-    players: secondPlayerStart.players.map((player, index) => index === 1 ? { ...player, characterId: 'frostbyte', careerId: 'doctor' } : player),
-  }, 2);
+  match = move(withoutAbilities(secondPlayerStart, 1), 2);
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
   match = advanceMatch(match, { type: 'NEXT_TURN' });
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
@@ -431,18 +450,24 @@ try {
   assert(eventTypes(match).includes('MILESTONE'));
   assert.equal(match.pending.offeredAssetIds.length, 3);
   assert.equal(new Set(match.pending.offeredAssetIds).size, 3);
+  assert.equal(assets.length, 100, 'the complete milestone catalog has 100 choices');
   for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
-    assert.equal(assets.filter(asset => asset.category === category).length, 10);
+    assert.equal(assets.filter(asset => asset.category === category).length, 20);
   }
+  const levelOneArtworkPaths = assets.map(asset => getAssetArtworkFilePath(asset.id));
+  assert(levelOneArtworkPaths.every(Boolean), 'all milestone choices map to Level 1 artwork');
+  assert.equal(new Set(levelOneArtworkPaths).size, 100, 'every milestone choice has a distinct Level 1 artwork path');
+  assert.equal(getAssetArtworkFilePath('budget-racer'), 'milestone-assets/cars/CAR_01.webp', 'legacy car artwork mapping remains stable');
+  assert.equal(getAssetArtworkFilePath('luxury-travel'), 'milestone-assets/lifestyles/LIFESTYLE_01.webp', 'legacy lifestyle artwork mapping remains stable');
   for (const asset of assets) {
     assert.equal(Object.keys(asset.visualVariants ?? {}).length, MAX_ASSET_LEVEL, `${asset.id} has a visual reference at every upgrade level`);
-    assert(asset.visualVariants[1].startsWith('factory:'), `${asset.id} keeps its original Level 1 artwork`);
     assert.deepEqual([2, 3, 4].map(level => asset.visualVariants[level]), [
       `${asset.category}:reinforcement`,
       `${asset.category}:expansion`,
       `${asset.category}:signature`,
     ], `${asset.id} has category-appropriate Level 2–4 visuals`);
   }
+  assert(levelOneArtworkPaths.every(path => existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 100 Level 1 artwork files exist');
   assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);
   assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
   assert(visualAssets.every(asset => existsSync(asset.filePath)));
@@ -590,7 +615,12 @@ try {
   match = advanceMatch(match, { type: 'STEP' });
   assert.equal(match.players[0].position, 36);
   const changedSalary = match.players[0].salaryAmount;
-  match = { ...match, players: match.players.map((player, index) => index ? player : { ...player, position: 40 }), phase: 'ready' };
+  match = withoutAbilities({
+    ...match,
+    players: match.players.map((player, index) => index ? player : { ...player, position: 40 }),
+    phase: 'ready',
+  }, 0);
+  assert.equal(match.players[0].salaryAmount, changedSalary);
   const beforeGate = match.players[0].wealth;
   match = move(match, 2);
   assert.equal(match.players[0].wealth, beforeGate + changedSalary);
@@ -663,9 +693,206 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });
   assert.equal(match.phase, 'moving');
   assert.equal(match.players[1].position, 35);
-  match = move(start(73), 2);
+  const finishLineStart = withoutAbilities(start(73), 0);
+  const finishLinePlayer = finishLineStart.players[0];
+  const finishLineFixture = {
+    ...finishLineStart,
+    players: finishLineStart.players.map((player, index) => index === 0 ? {
+      ...player,
+      wealth: 640000,
+      aiSkill: 3,
+      fame: 5,
+      lifestyle: 2,
+      influence: 4,
+      equipment: { ...player.equipment, car: 'budget-racer' },
+      assetLevels: { ...player.assetLevels, 'budget-racer': 3 },
+      upgradeTokens: 5,
+      heldUpgradeTokens: 3,
+      upgrades: ['finish-line-fixture'],
+    } : player),
+  };
+  match = move(finishLineFixture, 2);
   assert.equal(match.players[0].position, 75);
-  assert.equal(match.phase, 'landed');
+  assert.equal(match.phase, 'endgame');
+  assert.equal(match.players[0].status, 'FINISHED');
+  assert.equal(match.players[0].endgame.status, 'PENDING');
+  assert.equal(match.players[0].endgame.choice, undefined, 'the endgame requires an explicit player choice');
+  assert.equal(match.players[0].endgame.baseValue, calculateEndgameBaseValue(match.players[0]));
+  assert.equal(match.players[0].endgame.snapshot.position, 75);
+  assert.equal(match.players[0].endgame.snapshot.characterId, finishLinePlayer.characterId);
+  assert.equal(match.players[0].endgame.snapshot.careerId, finishLinePlayer.careerId);
+  assert.equal(match.players[0].endgame.snapshot.salaryAmount, finishLinePlayer.salaryAmount);
+  assert.equal(match.players[0].endgame.snapshot.assetLevels['budget-racer'], 3);
+  assert.equal(match.players[0].endgame.snapshot.equipment.car, 'budget-racer');
+  assert.equal(match.players[0].endgame.snapshot.heldUpgradeTokens, 3);
+  assert.equal(match.players[0].endgame.snapshot.upgradeTokens, 5);
+  assert.deepEqual(match.players[0].endgame.snapshot.upgrades, ['finish-line-fixture']);
+  assert.equal(match.players[0].endgame.tokenTier, 3);
+  assert(eventTypes(match).includes('FINISH_LINE_REACHED'));
+  assert(eventTypes(match).includes('ENDGAME_STARTED'));
+  assert(eventTypes(match).includes('TURN_END'), 'reaching the finish line closes that player’s normal turn');
+  assert(match.eventLog.some(entry => entry.eventType === 'LAND_ON_SPACE'), 'the finish-space landing resolves before the player is frozen');
+  assert.equal(
+    advanceMatch(match, { type: 'ROLL', result: { die1: 1, die2: 1, total: 2, doubles: true } }),
+    match,
+    'a finished player cannot roll while choosing an endgame path',
+  );
+  assert.equal(advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }).players[0].endgame.status, 'RESOLVED');
+  assert.deepEqual([0, 1, 2, 3, 4, 12].map(getEndgameTokenTier), [0, 1, 2, 3, 4, 4]);
+  assert(cashOutValue(100000, 4).finalGameValue > cashOutValue(100000, 0).finalGameValue, 'held tokens enhance Cash Out without becoming cash');
+  assert.equal(doubleDownValue(100000, 2, 0).multiplier, 0.25);
+  assert.equal(doubleDownValue(100000, 2, 4).effectiveRoll, 6, 'four held tokens add four points to the final roll');
+  assert.equal(doubleDownValue(100000, 2, 4).multiplier, 1.25);
+  assert.equal(finalGambleValue(100000, 10000, 0).adjustedDelta, 10000);
+  assert(finalGambleValue(100000, 10000, 4).adjustedDelta > 10000, 'held tokens amplify Final Gamble upside');
+  assert(finalGambleValue(100000, -10000, 4).adjustedDelta > -10000, 'held tokens reduce Final Gamble downside');
+  const cashResult = advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' });
+  assert.equal(cashResult.phase, 'landed');
+  assert.equal(cashResult.players[0].endgame.status, 'RESOLVED');
+  assert.equal(cashResult.players[0].endgame.choice, 'CASH_OUT');
+  assert.equal(
+    cashResult.players[0].endgame.finalGameValue,
+    cashOutValue(cashResult.players[0].endgame.baseValue, 3).finalGameValue,
+  );
+  assert.equal(cashResult.players[0].heldUpgradeTokens, 3, 'endgame modifiers do not spend held tokens');
+  assert.equal(cashResult.players[0].upgradeTokens, 5, 'endgame resolution does not mutate the unheld token pool');
+  assert(eventTypes(cashResult).includes('ENDGAME_CHOICE_SELECTED'));
+  assert(eventTypes(cashResult).includes('CASH_OUT_RESOLVED'));
+  assert(eventTypes(cashResult).includes('ENDGAME_COMPLETED'));
+  assert.equal(
+    cashResult.eventLog.find(entry => entry.eventType === 'ENDGAME_COMPLETED').amount,
+    cashResult.players[0].endgame.finalGameValue,
+    'the final value is retained in the event log',
+  );
+  const continued = advanceMatch(cashResult, { type: 'NEXT_TURN' });
+  assert.equal(continued.turnIndex, 1);
+  assert.equal(continued.phase, 'ready');
+  assert.equal(continued.players[0].status, 'FINISHED');
+  assert.equal(continued.players[1].status, 'ACTIVE', 'the remaining players continue after a finisher resolves');
+  assert.equal(continued.turnCounter, 2, 'the finishing player’s last normal turn is counted exactly once');
+  assert.equal(continued.round, 1);
+  const queuedEndgame = {
+    ...cashResult,
+    players: cashResult.players.map((player, index) => {
+      if (index !== 3) return player;
+      const finishedPlayer = { ...player, position: 75, status: 'FINISHED' };
+      return {
+        ...finishedPlayer,
+        endgame: {
+          status: 'PENDING',
+          snapshot: createFinishSnapshot(finishedPlayer, index, player.isCPU, cashResult.round, cashResult.turnCounter),
+          baseValue: 100000,
+          tokenTier: 0,
+        },
+      };
+    }),
+  };
+  const nextScheduledPlayer = advanceMatch(queuedEndgame, { type: 'NEXT_TURN' });
+  assert.equal(nextScheduledPlayer.turnIndex, 1, 'a distant pending endgame does not jump ahead of nearer active players');
+  assert.equal(nextScheduledPlayer.phase, 'ready');
+  assert.equal(nextScheduledPlayer.players[3].endgame.status, 'PENDING');
+
+  const doubleStartBase = withoutAbilities(start(73), 0);
+  const doubleStart = {
+    ...doubleStartBase,
+    players: doubleStartBase.players.map((player, index) => index === 0
+      ? { ...player, heldUpgradeTokens: 4, upgradeTokens: 4 }
+      : player),
+  };
+  const doublePending = move(doubleStart, 2);
+  const doubleResult = withRandomValue(0.999, () =>
+    advanceMatch(doublePending, { type: 'CHOOSE_ENDGAME', choice: 'DOUBLE_DOWN' }),
+  );
+  assert.equal(doubleResult.players[0].endgame.status, 'RESOLVED');
+  assert.deepEqual(doubleResult.players[0].endgame.dice, { die1: 4, die2: 4, total: 8, doubles: true });
+  assert.equal(doubleResult.players[0].endgame.effectiveRoll, 12);
+  assert.equal(doubleResult.players[0].endgame.multiplier, 3.6);
+  assert.equal(doubleResult.players[0].endgame.finalGameValue, Math.round(doubleResult.players[0].endgame.baseValue * 3.6));
+  assert(eventTypes(doubleResult).includes('DOUBLE_DOWN_RESOLVED'));
+  assert(eventTypes(doubleResult).includes('ENDGAME_COMPLETED'));
+
+  const gambleStartBase = withoutAbilities(start(73), 0);
+  const gambleDeck = gambleStartBase.cardPiles.gamble;
+  const gambleCardId = 'gamble-edge';
+  const gambleStart = {
+    ...gambleStartBase,
+    cardPiles: {
+      ...gambleStartBase.cardPiles,
+      gamble: {
+        ...gambleDeck,
+        drawPile: [gambleCardId, ...gambleDeck.drawPile.filter(cardId => cardId !== gambleCardId)],
+      },
+    },
+  };
+  const gamblePending = move(gambleStart, 2);
+  const gambleResult = advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' });
+  assert.equal(gambleResult.players[0].endgame.status, 'RESOLVED');
+  assert.equal(gambleResult.players[0].endgame.choice, 'FINAL_GAMBLE');
+  assert.equal(gambleResult.players[0].endgame.gambleCardId, gambleCardId);
+  assert(Number.isFinite(gambleResult.players[0].endgame.gambleRawDelta));
+  assert(Number.isFinite(gambleResult.players[0].endgame.gambleAdjustedDelta));
+  assert(gambleResult.players[0].endgame.finalGameValue >= 0);
+  assert(gambleResult.cardPiles.gamble.discardPile.includes(gambleCardId));
+  assert.equal(gambleResult.cardPiles.gamble.inFlight.length, 0);
+  assert(eventTypes(gambleResult).includes('CARD_DRAW'));
+  assert(eventTypes(gambleResult).includes('CARD_RESOLVED'));
+  assert(eventTypes(gambleResult).includes('FINAL_GAMBLE_RESOLVED'));
+  assert(eventTypes(gambleResult).includes('ENDGAME_COMPLETED'));
+  assertCompleteCardPiles(gambleResult.cardPiles);
+
+  const cpuFinishStart = withoutAbilities(start(73, 1), 1);
+  const cpuPending = move(cpuFinishStart, 2);
+  assert.equal(cpuPending.phase, 'endgame');
+  assert.equal(cpuPending.players[1].endgame.status, 'PENDING');
+  const cpuResult = advanceMatch(cpuPending, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuResult.phase, 'landed');
+  assert.equal(cpuResult.players[1].endgame.status, 'RESOLVED');
+  assert(['CASH_OUT', 'DOUBLE_DOWN', 'FINAL_GAMBLE'].includes(cpuResult.players[1].endgame.choice));
+  assert(eventTypes(cpuResult).includes('ENDGAME_COMPLETED'), 'CPU endgame choices resolve and log without human input');
+  const lastSlotPending = move(withoutAbilities(start(73, 3), 3), 2);
+  const lastSlotResolved = advanceMatch(lastSlotPending, { type: 'AUTO_DECIDE' });
+  const nextRound = advanceMatch(lastSlotResolved, { type: 'NEXT_TURN' });
+  assert.equal(nextRound.turnIndex, 0);
+  assert.equal(nextRound.round, 2, 'finishing in the final player slot advances the round');
+  assert.equal(nextRound.turnCounter, 2);
+  assert.equal(eventTypes(lastSlotResolved).filter(type => type === 'TURN_END').length, 1, 'finish resolution does not emit a duplicate turn end');
+  const lastSlotFinishedEarlier = {
+    ...lastSlotResolved,
+    turnCounter: 2,
+    players: lastSlotResolved.players.map((player, index) => index === 3 ? {
+      ...player,
+      endgame: {
+        ...player.endgame,
+        snapshot: { ...player.endgame.snapshot, capturedTurnCounter: 1 },
+      },
+    } : player),
+  };
+  const nextRoundAfterSkippedLastSlot = advanceMatch(lastSlotFinishedEarlier, { type: 'NEXT_TURN' });
+  assert.equal(nextRoundAfterSkippedLastSlot.round, 2, 'a previously finished final-slot player still closes the round');
+  assert.equal(nextRoundAfterSkippedLastSlot.turnCounter, 2, 'skipping a finished player does not count another normal turn');
+  const completeFixture = {
+    ...cashResult,
+    phase: 'landed',
+    turnIndex: 0,
+    players: cashResult.players.map((player, index) => {
+      if (index === 0) return player;
+      const finishedPlayer = { ...player, position: 75, status: 'FINISHED' };
+      return {
+        ...finishedPlayer,
+        endgame: {
+          status: 'RESOLVED',
+          snapshot: createFinishSnapshot(finishedPlayer, index, player.isCPU, cashResult.round, cashResult.turnCounter),
+          baseValue: 100000,
+          tokenTier: 0,
+          choice: 'CASH_OUT',
+          finalGameValue: 100000,
+        },
+      };
+    }),
+  };
+  const matchComplete = advanceMatch(completeFixture, { type: 'NEXT_TURN' });
+  assert.equal(matchComplete.phase, 'complete');
+  assert.equal(advanceMatch(matchComplete, { type: 'ROLL', result: { die1: 1, die2: 1, total: 2, doubles: true } }), matchComplete);
   assert.equal(getSpace(75).type, 'MILESTONE');
 
   match = start(5);
@@ -775,7 +1002,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   const rollBefore = rollStart.players[0].wealth;
   const rollLanding = move(rollStart, 3);
   assert.equal(rollLanding.players[0].wealth, rollBefore + 3000, 'roll-linked effects use the current roll total');
-  console.log('PASS: 96 cards, two token spaces, token upgrades/recovery/holding, career benefit, CPU use, finite piles and existing assets');
+  console.log('PASS: 96 cards, 100 unique milestone visuals, finish-line choices, held-token endgame tiers, CPU endgame, event logs and finite piles');
 } finally {
   await vite.close();
 }

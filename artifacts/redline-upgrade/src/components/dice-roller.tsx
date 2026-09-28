@@ -42,7 +42,7 @@ export function DiceRoller({ roll, phase, disabled, onRoll, onRollComplete, roll
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  const showingResult = phase === 'reveal' || phase === 'moving' || phase === 'decision' || phase === 'landed';
+  const showingResult = phase === 'reveal' || phase === 'moving' || phase === 'decision' || phase === 'landed' || phase === 'endgame' || phase === 'complete';
   const canRoll = isHuman && phase === 'ready' && !disabled;
   const phaseLabel: Record<TurnPhase, string> = {
     ready: 'Awaiting throw',
@@ -51,6 +51,8 @@ export function DiceRoller({ roll, phase, disabled, onRoll, onRollComplete, roll
     moving: 'Runner advancing',
     decision: 'Choice in progress',
     landed: 'Position secured',
+    endgame: 'Final decision',
+    complete: 'Match complete',
   };
 
   return (

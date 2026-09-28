@@ -19,9 +19,30 @@ const vite = await createServer({
 
 try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
+  const { assets } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { getAssetArtworkFilePath } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { careers } = await vite.ssrLoadModule('/src/game/careers.ts');
   const manifestIds = visualAssets.map((asset) => asset.id);
   assert.equal(new Set(manifestIds).size, manifestIds.length, 'visual asset IDs are unique');
+  assert.equal(assets.length, 100, 'milestone catalog has exactly 100 assets');
+  const artworkPaths = assets.map((asset) => getAssetArtworkFilePath(asset.id));
+  assert.equal(new Set(artworkPaths).size, artworkPaths.length, 'asset artwork paths are unique');
+  const phase11Assets = assets.filter((asset) => asset.id.includes('-') && ![
+    'budget-racer', 'flex-car', 'supercar', 'electric-hypercar', 'street-tuner', 'electric-coupe', 'executive-sedan',
+    'track-special', 'grand-tourer', 'prototype-one', 'luxury-travel', 'vip-life', 'low-key-life', 'creator-lifestyle',
+    'studio-life', 'city-weekends', 'wellness-club', 'art-collector', 'private-retreat', 'global-elite', 'cyber-dog',
+    'golden-retriever', 'robot-cat', 'chaos-monkey', 'rescue-pup', 'street-cat', 'drone-bird', 'fox-companion',
+    'holo-hound', 'legendary-companion', 'index-fund', 'tech-investment', 'degen-investment', 'savings-bond',
+    'community-fund', 'green-energy', 'venture-seed', 'creator-fund', 'deep-tech-fund', 'moonshot-portfolio',
+    'starter-condo', 'luxury-apartment', 'beach-house', 'mansion', 'shared-loft', 'townhouse', 'smart-home',
+    'skyline-penthouse', 'country-estate', 'landmark-residence',
+  ].includes(asset.id));
+  assert.equal(phase11Assets.length, 50, 'Phase 11 has exactly 50 new assets');
+  for (const asset of phase11Assets) {
+    const pathName = getAssetArtworkFilePath(asset.id);
+    assert(pathName?.endsWith('.svg'), `${asset.id} uses an SVG Phase 11 illustration`);
+    assert(pathName?.includes(`/phase11/${asset.id}.svg`), `${asset.id} has an ID-specific Phase 11 path`);
+  }
 
   for (const asset of visualAssets) {
     assert(existsSync(path.resolve(projectRoot, asset.filePath)), `asset path exists: ${asset.filePath}`);
@@ -57,7 +78,7 @@ try {
   assert.equal(catalog.collections.find((collection) => collection.id === 'milestone-states').items.length, 4, 'all four milestone states have a marker');
   assert.equal(catalog.collections.find((collection) => collection.id === 'endgame-support').items.length, 7, 'all seven endgame support symbols are mapped');
 
-  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, and ${visualAssets.length} valid manifest paths.`);
+  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} milestone assets, and ${visualAssets.length} valid manifest paths.`);
 } finally {
   await vite.close();
 }

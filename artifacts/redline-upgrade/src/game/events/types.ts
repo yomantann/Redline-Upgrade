@@ -36,7 +36,14 @@ export type GameEventType =
   | 'FAME_CHANGED'
   | 'LIFESTYLE_CHANGED'
   | 'INFLUENCE_CHANGED'
-  | 'PLAYER_AFFECTED';
+  | 'PLAYER_AFFECTED'
+  | 'FINISH_LINE_REACHED'
+  | 'ENDGAME_STARTED'
+  | 'ENDGAME_CHOICE_SELECTED'
+  | 'CASH_OUT_RESOLVED'
+  | 'DOUBLE_DOWN_RESOLVED'
+  | 'FINAL_GAMBLE_RESOLVED'
+  | 'ENDGAME_COMPLETED';
 
 export type EventSource = 'GAME' | 'ABILITY' | 'EFFECT';
 export type CareerEventStage = 'TRIGGERED' | 'RESOLVED';
@@ -89,6 +96,12 @@ export interface GameEvent {
   reason?: string;
   description?: string;
   effectType?: string;
+  endgameChoice?: 'CASH_OUT' | 'DOUBLE_DOWN' | 'FINAL_GAMBLE';
+  baseValue?: number;
+  finalGameValue?: number;
+  multiplier?: number;
+  tokenTier?: number;
+  effectiveRoll?: number;
 }
 
 export type AnyGameEvent = GameEvent;

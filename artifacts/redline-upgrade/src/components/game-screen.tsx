@@ -5,6 +5,7 @@ import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { getDeck } from '@/game/decks';
 import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
+import type { EndgameChoice } from '@/game/endgame';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { useGame } from '@/game/state';
 import { CareerGlyph } from './career-reveal';
@@ -15,6 +16,7 @@ import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
+import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
 import { SpaceIcon } from './space-icon';
 import './game-screen.css';
 
@@ -118,8 +120,12 @@ export function GameScreen() {
       delay = 1050;
       callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
     } else if (phase === 'landed') {
+      if (match.players[match.turnIndex].endgame?.status === 'RESOLVED' && !isCPU) return;
       delay = turnIndex === 0 ? 2300 : 1700;
       callback = () => dispatchMatch({ type: 'NEXT_TURN' });
+    } else if (phase === 'endgame' && isCPU) {
+      delay = 1150;
+      callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
@@ -140,6 +146,28 @@ export function GameScreen() {
   const roll = match.roll;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
+
+  if (match.phase === 'complete') {
+    return (
+      <main className="game-screen game-screen-finish-line">
+        <MatchResultsPanel players={match.players} />
+      </main>
+    );
+  }
+
+  if (match.phase === 'endgame' || (match.phase === 'landed' && active.endgame?.status === 'RESOLVED')) {
+    if (!active.endgame) return null;
+    return (
+      <main className="game-screen game-screen-finish-line">
+        <FinishLinePanel
+          player={active}
+          endgame={active.endgame}
+          onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
+          onContinue={() => dispatchMatch({ type: 'NEXT_TURN' })}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="game-screen">
@@ -177,7 +205,7 @@ export function GameScreen() {
           const change = visibleEvent?.playerIndex === index ? visibleEvent : null;
           return (
             <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${index === 0 ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-testid={`card-player-${index}`}>
-              <div className="game-player-top"><span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span><span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}</span></div>
+              <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}><span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span><span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{contestant.status === 'FINISHED' ? ' / FINISHED' : ''}</span></div>
                <div className="game-player-identity">
                  {character && <CharacterPortrait character={character} className="game-player-portrait" />}
                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name">{character?.name ?? contestant.displayName}</strong></div>
@@ -264,7 +292,7 @@ export function GameScreen() {
                 <div><strong>SPACE {String(landing.space.number).padStart(2, '0')}</strong><b>{landing.space.payday ? 'PAYDAY' : landing.space.type}</b></div>
                 <p>{landingEvent
                   ? `Salary Gate: +${formatMoney(landingEvent.amount)} Wealth for ${match.players[landing.playerIndex].displayName}.`
-                  : landing.space.number === 75 ? 'Finish boundary reached. End-game rules arrive in a later phase.'
+                  : landing.space.number === 75 ? 'Finish-line decision resolved. The final value is recorded.'
                   : landing.space.type === 'CAREER_CHANGE' ? `Career opportunity resolved. Current salary: ${formatMoney(match.players[landing.playerIndex].salaryAmount)}.`
                   : landing.space.type === 'MILESTONE' ? (() => {
                     const slot = ({ 10: 'car', 30: 'lifestyle', 45: 'companion', 60: 'property' } as const)[landing.space.number as 10 | 30 | 45 | 60];

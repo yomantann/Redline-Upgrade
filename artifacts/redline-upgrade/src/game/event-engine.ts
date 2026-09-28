@@ -68,6 +68,12 @@ export interface EventDraft {
   reason?: string;
   description?: string;
   effectType?: string;
+  endgameChoice?: 'CASH_OUT' | 'DOUBLE_DOWN' | 'FINAL_GAMBLE';
+  baseValue?: number;
+  finalGameValue?: number;
+  multiplier?: number;
+  tokenTier?: number;
+  effectiveRoll?: number;
 }
 
 function withEventCursor(match: Match): [Match, string] {
@@ -136,6 +142,13 @@ function eventLabel(event: AnyGameEvent): string {
     case 'TURN_END': return 'TURN END';
     case 'PLAYER_MOVED': return 'PLAYER MOVED';
     case 'PLAYER_AFFECTED': return event.effectType === 'MODIFY_SALARY' ? 'SALARY UPDATED' : 'PLAYER AFFECTED';
+    case 'FINISH_LINE_REACHED': return 'FINISH LINE REACHED';
+    case 'ENDGAME_STARTED': return 'ENDGAME STARTED';
+    case 'ENDGAME_CHOICE_SELECTED': return `${event.endgameChoice?.replaceAll('_', ' ') ?? 'ENDGAME'} SELECTED`;
+    case 'CASH_OUT_RESOLVED': return 'CASH OUT RESOLVED';
+    case 'DOUBLE_DOWN_RESOLVED': return 'DOUBLE DOWN RESOLVED';
+    case 'FINAL_GAMBLE_RESOLVED': return 'FINAL GAMBLE RESOLVED';
+    case 'ENDGAME_COMPLETED': return 'ENDGAME COMPLETED';
   }
 }
 
@@ -192,6 +205,16 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
     case 'LIFESTYLE_CHANGED':
     case 'INFLUENCE_CHANGED':
       return `${player.displayName} ${event.reason ?? 'changed'} ${event.delta && event.delta > 0 ? '+' : ''}${event.delta ?? 0}.`;
+    case 'FINISH_LINE_REACHED':
+    case 'ENDGAME_STARTED':
+    case 'ENDGAME_CHOICE_SELECTED':
+    case 'CASH_OUT_RESOLVED':
+    case 'DOUBLE_DOWN_RESOLVED':
+    case 'FINAL_GAMBLE_RESOLVED':
+      return event.description ?? `${player.displayName} ${eventLabel(event).toLowerCase()}.`;
+    case 'ENDGAME_COMPLETED':
+      return event.description
+        ?? `${player.displayName} completed the endgame at ${event.finalGameValue ?? 0} final value.`;
     default:
       return event.description ?? `${player.displayName} triggered ${event.type}.`;
   }
@@ -1090,7 +1113,7 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     const draft = queue.shift()!;
     if ((draft.depth ?? 0) > MAX_EVENT_DEPTH) continue;
     const [nextState, event] = createEvent(state, draft);
-    state = pushLog(nextState, event);
+    state = pushLog(nextState, event, undefined, undefined, event.finalGameValue ?? event.delta);
     if (event.type === 'CARD_RESOLVED' && event.cardId) {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);

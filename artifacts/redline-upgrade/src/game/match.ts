@@ -10,9 +10,26 @@ import type { EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
 import { createCardPiles, discardCardToPiles, drawCardFromPiles, type CardPileMap } from './card-piles';
 import { getCard } from './cards';
+import {
+  calculateEndgameBaseValue,
+  cashOutValue,
+  chooseCpuEndgameChoice,
+  createFinishSnapshot,
+  doubleDownValue,
+  finalGambleValue,
+  getEndgameTokenTier,
+  type EndgameChoice,
+  type EndgameState,
+  type PlayerMatchStatus,
+} from './endgame';
 
-export type MatchPlayer = ReturnType<typeof createPlayer> & { isCPU: boolean; slot: number };
-export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed';
+export type MatchPlayer = ReturnType<typeof createPlayer> & {
+  isCPU: boolean;
+  slot: number;
+  status: PlayerMatchStatus;
+  endgame: EndgameState | null;
+};
+export type TurnPhase = 'ready' | 'rolling' | 'reveal' | 'moving' | 'decision' | 'landed' | 'endgame' | 'complete';
 export interface DiceResult { die1: number; die2: number; total: number; doubles: boolean }
 export interface Landing { playerIndex: number; space: BoardSpace }
 export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE'; space: number }
@@ -50,8 +67,63 @@ function pickUnique<T>(items: readonly T[], count: number): T[] {
   return remaining.slice(0, count);
 }
 
+function finishPlayersAtLine(match: Match): Match {
+  const newlyFinished = match.players.flatMap((player, playerIndex) => {
+    // Allow the normal STEP transition to resolve its destination before freezing
+    // the player. This keeps finish-space landing events in the same turn.
+    if (match.phase === 'moving' && playerIndex === match.turnIndex) return [];
+    return player.status === 'ACTIVE' && player.position >= 75 ? [playerIndex] : [];
+  });
+  if (!newlyFinished.length) return match;
+
+  const drafts: EventDraft[] = [];
+  const players = match.players.map((player, playerIndex) => {
+    if (!newlyFinished.includes(playerIndex)) return player;
+    const snapshot = createFinishSnapshot(player, player.slot, player.isCPU, match.round, match.turnCounter);
+    const tokenTier = getEndgameTokenTier(player.heldUpgradeTokens);
+    const baseValue = calculateEndgameBaseValue(player);
+    drafts.push(
+      {
+        type: 'FINISH_LINE_REACHED',
+        playerIndex,
+        spaceNumber: player.position,
+        description: `${player.displayName} reached the finish line.`,
+      },
+      {
+        type: 'ENDGAME_STARTED',
+        playerIndex,
+        baseValue,
+        tokenTier,
+        description: `${player.displayName} locked a finish value of ${formatAssetValue(baseValue)} and entered the endgame.`,
+      },
+    );
+    return {
+      ...player,
+      status: 'FINISHED' as const,
+      endgame: { status: 'PENDING' as const, snapshot, baseValue, tokenTier },
+    };
+  });
+  const currentPlayerFinished = newlyFinished.includes(match.turnIndex);
+  const currentSpace = getSpace(75);
+  if (currentPlayerFinished) {
+    drafts.push({ type: 'TURN_END', playerIndex: match.turnIndex });
+  }
+  const nextMatch: Match = {
+    ...match,
+    players,
+    ...(currentPlayerFinished ? {
+      phase: 'endgame' as const,
+      stepsRemaining: 0,
+      pending: null,
+      lastLanding: currentSpace ? { playerIndex: match.turnIndex, space: currentSpace } : match.lastLanding,
+    } : {}),
+  };
+  return resolveEventQueue(nextMatch, drafts);
+}
+
 function emit(match: Match, drafts: EventDraft[]): Match {
-  return drafts.length ? resolveEventQueue(match, drafts) : match;
+  const resolved = drafts.length ? resolveEventQueue(match, drafts) : match;
+  return finishPlayersAtLine(resolved);
 }
 
 function resetTurnScopedState(match: Match): Match {
@@ -84,6 +156,8 @@ export function createMatch(characterId: string): Match {
         influence: career.statModifiers.influence ?? 0,
         isCPU: slot !== 0,
         slot,
+        status: 'ACTIVE' as const,
+        endgame: null,
       };
     }),
     turnIndex: 0,
@@ -138,6 +212,7 @@ export type MatchAction =
   | { type: 'RESOLVE_CARD' }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'AUTO_DECIDE' }
+  | { type: 'CHOOSE_ENDGAME'; choice: EndgameChoice }
   | { type: 'NEXT_TURN' };
 
 function milestoneSlot(space: number): AssetSlot | null {
@@ -409,7 +484,7 @@ function holdUpgradeToken(match: Match): Match {
 function autoUseUpgradeToken(match: Match): Match {
   if (match.phase !== 'ready') return match;
   const player = match.players[match.turnIndex];
-  if (!player.isCPU || availableUpgradeTokens(player) < 1) return match;
+  if (player.status !== 'ACTIVE' || !player.isCPU || availableUpgradeTokens(player) < 1) return match;
   const upgradeable = getOwnedUpgradeableAssets(player);
   const recoverable = getEligibleRecoveryMilestones(player);
   const decision = Math.random();
@@ -449,10 +524,187 @@ function acknowledgeCardDecision(match: Match): Match {
   return resume(match);
 }
 
+function resolvedEndgamePlayer(
+  match: Match,
+  playerIndex: number,
+  endgame: EndgameState,
+): Match {
+  return {
+    ...match,
+    turnIndex: playerIndex,
+    phase: 'landed',
+    stepsRemaining: 0,
+    pending: null,
+    players: match.players.map((player, index) =>
+      index === playerIndex ? { ...player, status: 'FINISHED', endgame } : player,
+    ),
+  };
+}
+
+function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
+  if (match.phase !== 'endgame') return match;
+  const playerIndex = match.turnIndex;
+  const player = match.players[playerIndex];
+  const endgame = player?.endgame;
+  if (!player || player.status !== 'FINISHED' || endgame?.status !== 'PENDING') return match;
+
+  const selected = emit(match, [{
+    type: 'ENDGAME_CHOICE_SELECTED',
+    playerIndex,
+    endgameChoice: choice,
+    baseValue: endgame.baseValue,
+    tokenTier: endgame.tokenTier,
+    description: `${player.displayName} selected ${choice.replaceAll('_', ' ')}.`,
+  }]);
+  const selectedPlayer = selected.players[playerIndex];
+  const selectedEndgame = selectedPlayer.endgame ?? endgame;
+
+  if (choice === 'CASH_OUT') {
+    const outcome = cashOutValue(selectedEndgame.baseValue, selectedEndgame.tokenTier);
+    const completed = resolvedEndgamePlayer(selected, playerIndex, {
+      ...selectedEndgame,
+      status: 'RESOLVED',
+      choice,
+      multiplier: outcome.multiplier,
+      finalGameValue: outcome.finalGameValue,
+    });
+    return emit(completed, [
+      {
+        type: 'CASH_OUT_RESOLVED',
+        playerIndex,
+        endgameChoice: choice,
+        baseValue: selectedEndgame.baseValue,
+        finalGameValue: outcome.finalGameValue,
+        multiplier: outcome.multiplier,
+        tokenTier: selectedEndgame.tokenTier,
+        description: `${player.displayName} cashed out at ${outcome.multiplier}× for ${formatAssetValue(outcome.finalGameValue)}.`,
+      },
+      {
+        type: 'ENDGAME_COMPLETED',
+        playerIndex,
+        endgameChoice: choice,
+        baseValue: selectedEndgame.baseValue,
+        finalGameValue: outcome.finalGameValue,
+        tokenTier: selectedEndgame.tokenTier,
+      },
+    ]);
+  }
+
+  if (choice === 'DOUBLE_DOWN') {
+    const dice = { die1: rollD4(), die2: rollD4() };
+    const total = dice.die1 + dice.die2;
+    const roll = { ...dice, total, doubles: dice.die1 === dice.die2 };
+    const outcome = doubleDownValue(selectedEndgame.baseValue, total, selectedEndgame.tokenTier);
+    const completed = resolvedEndgamePlayer({ ...selected, roll }, playerIndex, {
+      ...selectedEndgame,
+      status: 'RESOLVED',
+      choice,
+      dice: roll,
+      effectiveRoll: outcome.effectiveRoll,
+      multiplier: outcome.multiplier,
+      finalGameValue: outcome.finalGameValue,
+    });
+    return emit(completed, [
+      {
+        type: 'DOUBLE_DOWN_RESOLVED',
+        playerIndex,
+        endgameChoice: choice,
+        die1: roll.die1,
+        die2: roll.die2,
+        total: roll.total,
+        doubles: roll.doubles,
+        baseValue: selectedEndgame.baseValue,
+        finalGameValue: outcome.finalGameValue,
+        multiplier: outcome.multiplier,
+        tokenTier: selectedEndgame.tokenTier,
+        effectiveRoll: outcome.effectiveRoll,
+        description: `${player.displayName} rolled ${roll.die1}-${roll.die2}; held tokens raised the outcome to ${outcome.effectiveRoll} for ${outcome.multiplier}×.`,
+      },
+      {
+        type: 'ENDGAME_COMPLETED',
+        playerIndex,
+        endgameChoice: choice,
+        baseValue: selectedEndgame.baseValue,
+        finalGameValue: outcome.finalGameValue,
+        tokenTier: selectedEndgame.tokenTier,
+      },
+    ]);
+  }
+
+  const draw = drawCardFromPiles(selected.cardPiles, 'gamble');
+  const card = getCard(draw.cardId);
+  if (!card || card.deck !== 'gamble') throw new Error(`Invalid Final Gamble card ${draw.cardId}`);
+  let gambled = emit({ ...selected, cardPiles: draw.cardPiles }, [{
+    type: 'CARD_DRAW',
+    playerIndex,
+    spaceNumber: 75,
+    deck: 'gamble',
+    cardId: draw.cardId,
+    description: `${player.displayName} drew ${card.title} for Final Gamble.`,
+  }]);
+  gambled = {
+    ...gambled,
+    cardPiles: discardCardToPiles(gambled.cardPiles, 'gamble', draw.cardId),
+  };
+  gambled = emit(gambled, [{
+    type: 'CARD_RESOLVED',
+    playerIndex,
+    deck: 'gamble',
+    spaceNumber: 75,
+    cardId: draw.cardId,
+    description: `${card.title}: ${card.effect}`,
+  }]);
+  const finalPlayer = gambled.players[playerIndex];
+  const rawDelta = calculateEndgameBaseValue(finalPlayer) - selectedEndgame.baseValue;
+  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta, selectedEndgame.tokenTier);
+  const completed = resolvedEndgamePlayer(gambled, playerIndex, {
+    ...selectedEndgame,
+    status: 'RESOLVED',
+    choice,
+    gambleCardId: draw.cardId,
+    gambleRawDelta: rawDelta,
+    gambleAdjustedDelta: outcome.adjustedDelta,
+    multiplier: outcome.multiplier,
+    finalGameValue: outcome.finalGameValue,
+  });
+  return emit(completed, [
+    {
+      type: 'FINAL_GAMBLE_RESOLVED',
+      playerIndex,
+      endgameChoice: choice,
+      deck: 'gamble',
+      cardId: draw.cardId,
+      baseValue: selectedEndgame.baseValue,
+      finalGameValue: outcome.finalGameValue,
+      delta: outcome.adjustedDelta,
+      multiplier: outcome.multiplier,
+      tokenTier: selectedEndgame.tokenTier,
+      description: `${player.displayName} resolved ${card.title}: ${outcome.adjustedDelta >= 0 ? '+' : ''}${formatAssetValue(outcome.adjustedDelta)} adjusted value.`,
+    },
+    {
+      type: 'ENDGAME_COMPLETED',
+      playerIndex,
+      endgameChoice: choice,
+      baseValue: selectedEndgame.baseValue,
+      finalGameValue: outcome.finalGameValue,
+      tokenTier: selectedEndgame.tokenTier,
+    },
+  ]);
+}
+
 function autoDecide(match: Match): Match {
   const pending = match.pending;
-  if (match.phase !== 'decision' || !match.players[match.turnIndex].isCPU || !pending) return match;
   const player = match.players[match.turnIndex];
+  if (!player?.isCPU) return match;
+  if (match.phase === 'endgame' && player.endgame?.status === 'PENDING') {
+    const choice = chooseCpuEndgameChoice(
+      player.wealth,
+      player.endgame.baseValue,
+      player.endgame.tokenTier,
+    );
+    return resolveEndgameChoice(match, choice);
+  }
+  if (match.phase !== 'decision' || !pending) return match;
   if (pending.kind === 'CARD') return acknowledgeCardDecision(resolveCardDecision(match));
   if (pending.kind === 'ASSET') {
     const categories: AssetCategory[] = pending.slot === 'companion'
@@ -538,7 +790,7 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
 export function advanceMatch(match: Match, action: MatchAction): Match {
   switch (action.type) {
     case 'ROLL': {
-      if (match.phase !== 'ready') return match;
+      if (match.phase !== 'ready' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       const { die1, die2, total, doubles } = action.result;
       if (![die1, die2].every((n) => Number.isInteger(n) && n >= 1 && n <= 4) || total !== die1 + die2) {
         throw new Error('Invalid 2d4 roll');
@@ -551,14 +803,14 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'REVEAL':
       return match.phase === 'rolling' ? { ...match, phase: 'reveal' } : match;
     case 'MOVE': {
-      if (match.phase !== 'reveal') return match;
+      if (match.phase !== 'reveal' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       if (match.players[match.turnIndex].position < 75) return { ...match, phase: 'moving' };
       const space = getSpace(75);
       if (!space) throw new Error('Missing finish space');
       return land(match, space, 75);
     }
     case 'STEP': {
-      if (match.phase !== 'moving') return match;
+      if (match.phase !== 'moving' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       const current = match.players[match.turnIndex];
       const previousPosition = current.position;
       const position = Math.min(75, current.position + 1);
@@ -641,20 +893,67 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return acknowledgeCardDecision(match);
     case 'AUTO_DECIDE':
       return autoDecide(match);
-    case 'NEXT_TURN':
+    case 'CHOOSE_ENDGAME':
+      if (match.players[match.turnIndex]?.isCPU) return match;
+      return resolveEndgameChoice(match, action.choice);
+    case 'NEXT_TURN': {
       if (match.phase !== 'landed') return match;
-      const nextTurnCounter = match.turnCounter + 1;
-      const endedTurn = emit(resetTurnScopedState(match), [{ type: 'TURN_END', playerIndex: match.turnIndex }]);
-      const nextTurnIndex = (endedTurn.turnIndex + 1) % 4;
-      const nextRound = endedTurn.turnIndex === 3 ? endedTurn.round + 1 : endedTurn.round;
+      const currentPlayer = match.players[match.turnIndex];
+      const normalTurnEnded = currentPlayer.status === 'ACTIVE';
+      const finishedPlayerTurnEnded = currentPlayer.status === 'FINISHED'
+        && currentPlayer.endgame?.snapshot.capturedTurnCounter === match.turnCounter;
+      const turnEnded = normalTurnEnded || finishedPlayerTurnEnded;
+      const nextTurnCounter = match.turnCounter + (turnEnded ? 1 : 0);
+      const endedTurn = emit(
+        resetTurnScopedState(match),
+        normalTurnEnded ? [{ type: 'TURN_END', playerIndex: match.turnIndex }] : [],
+      );
+      const playerCount = endedTurn.players.length;
+      let nextIndex = -1;
+      let nextIsEndgame = false;
+      for (let offset = 1; offset <= playerCount; offset += 1) {
+        const candidateIndex = (endedTurn.turnIndex + offset) % playerCount;
+        const candidate = endedTurn.players[candidateIndex];
+        if (candidate.endgame?.status === 'PENDING') {
+          nextIndex = candidateIndex;
+          nextIsEndgame = true;
+          break;
+        }
+        if (candidate.status === 'ACTIVE') {
+          nextIndex = candidateIndex;
+          break;
+        }
+      }
+      if (nextIndex < 0) {
+        return {
+          ...endedTurn,
+          turnCounter: nextTurnCounter,
+          phase: 'complete',
+          roll: null,
+          stepsRemaining: 0,
+          pending: null,
+        };
+      }
+      const nextRound = nextIndex <= endedTurn.turnIndex ? endedTurn.round + 1 : endedTurn.round;
+      const withUpdatedClock = { ...endedTurn, round: nextRound, turnCounter: nextTurnCounter };
+      if (nextIsEndgame) {
+        return {
+          ...withUpdatedClock,
+          turnIndex: nextIndex,
+          phase: 'endgame',
+          roll: null,
+          stepsRemaining: 0,
+          pending: null,
+        };
+      }
       return autoUseUpgradeToken(emit({
-        ...endedTurn,
-        turnIndex: nextTurnIndex,
-        round: nextRound,
+        ...withUpdatedClock,
+        turnIndex: nextIndex,
         phase: 'ready',
         roll: null,
         stepsRemaining: 0,
-        turnCounter: nextTurnCounter,
-      }, [{ type: 'TURN_START', playerIndex: nextTurnIndex }]));
+        pending: null,
+      }, [{ type: 'TURN_START', playerIndex: nextIndex }]));
+    }
   }
 }
