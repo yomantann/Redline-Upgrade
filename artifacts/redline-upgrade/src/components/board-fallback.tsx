@@ -24,7 +24,7 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
@@ -109,18 +109,34 @@ export function BoardFallback({ players, activePlayerId, zoom = 1, pan = { x: 0,
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </g>;
       })}
-      {(() => { const p = project(finish.x,finish.z,1.6); return <g><path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" /><rect x={p.x-19} y={p.y-42} width="116" height="24" fill="#f96346" /><text x={p.x+39} y={p.y-25} textAnchor="middle" fill="#18241d" fontFamily="Barlow Condensed, sans-serif" fontSize="18" fontWeight="900">FINISH / ENDGAME SOON</text></g>; })()}
-      {players.map((player) => {
+      {(() => {
+        const p = project(finish.x, finish.z, 1.6);
+        const entries = finishOrder.slice(0, 4).map((playerIndex, place) => ({
+          player: players[playerIndex],
+          place: `${place + 1}${place === 0 ? 'ST' : place === 1 ? 'ND' : place === 2 ? 'RD' : 'TH'}`,
+        })).filter((entry) => entry.player);
+        return <g>
+          <path d={`M${p.x-24} ${p.y+40}v-55h48v55`} fill="none" stroke="#f96346" strokeWidth="5" />
+          <rect x={p.x-62} y={p.y-42} width="124" height={entries.length ? 28 + entries.length * 13 : 24} fill="#0d1b16" stroke="#f96346" strokeWidth="2" />
+          <text x={p.x} y={p.y-27} textAnchor="middle" fill="#f96346" fontFamily="Barlow Condensed, sans-serif" fontSize="14" fontWeight="900">FINISH ORDER</text>
+          {entries.map(({ player, place }, index) => <text key={player!.playerId} x={p.x} y={p.y-11 + index * 13} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="7" fontWeight="700">{`${place} / ${player!.displayName}`}</text>)}
+        </g>;
+      })()}
+      {players.map((player, playerIndex) => {
         const colocated = players.filter(p => p.position === player.position).sort((a,b) => a.slot-b.slot);
         const index = colocated.findIndex(p => p.playerId === player.playerId);
         const pos = ROUTE[Math.max(0,Math.min(75,player.position))];
         const x = pos.x + (colocated.length > 1 ? (index%2 ? .43 : -.43) : 0);
         const z = pos.z + (colocated.length > 1 ? (index<2 ? -.43 : .43) : 0);
         const p = project(x,z,player.position === 0 ? 1.07 : 1.1);
+        const finishIndex = finishOrder.indexOf(playerIndex);
+        const place = finishIndex >= 0 && finishIndex < 4 ? finishIndex + 1 : undefined;
+        const placeLabel = place === undefined ? '' : `${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`;
         return <g key={player.playerId}><title>{`${player.displayName} at ${player.position === 0 ? 'start' : `space ${player.position}`}`}</title>
           <ellipse cx={p.x+2} cy={p.y+10} rx="12" ry="5" fill="#050d0b" opacity=".7" />
           <path d={`M${p.x-10} ${p.y+7}l3-24 7-7 7 7 3 24z`} fill={playerColors[player.slot%4]} stroke={player.playerId === activePlayerId ? '#fff4d7' : '#14221b'} strokeWidth={player.playerId === activePlayerId ? 3 : 2} />
           <circle cx={p.x} cy={p.y-17} r="5" fill="#17241f" /><text x={p.x} y={p.y-14} textAnchor="middle" fill="#e9e7dc" fontFamily="Space Mono, monospace" fontSize="7" fontWeight="700">{player.slot+1}</text>
+          {placeLabel && <g aria-label={`${placeLabel} place`}><rect x={p.x-17} y={p.y-42} width="34" height="12" rx="2" fill="#d4e981" /><text x={p.x} y={p.y-33} textAnchor="middle" fill="#14211c" fontFamily="Space Mono, monospace" fontSize="7" fontWeight="900">{placeLabel}</text></g>}
         </g>;
       })}
     </svg>

@@ -59,6 +59,8 @@ export interface EventDraft {
   assetId?: string;
   assetName?: string;
   assetLevel?: number;
+  previousAssetValue?: number;
+  newAssetValue?: number;
   category?: 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
   cost?: number;
   stat?: PlayerStat;
@@ -221,6 +223,14 @@ function eventDetail(match: Match, event: AnyGameEvent): string {
 }
 
 function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), detail = eventDetail(match, event), amount?: number, blocked = false): Match {
+  const player = match.players[event.playerIndex];
+  const isTokenCountEvent = event.type === 'UPGRADE_TOKEN_GAINED' || event.type === 'UPGRADE_TOKEN_SPENT' || event.type === 'UPGRADE_TOKEN_HELD';
+  const currentTokenValue = event.type === 'UPGRADE_TOKEN_HELD' ? player?.heldUpgradeTokens : player?.upgradeTokens;
+  const tokenDelta = isTokenCountEvent ? event.delta ?? amount ?? 0 : 0;
+  const previousValue = event.previousValue
+    ?? (isTokenCountEvent && typeof currentTokenValue === 'number' ? currentTokenValue - tokenDelta : undefined);
+  const newValue = event.newValue
+    ?? (isTokenCountEvent && typeof currentTokenValue === 'number' ? currentTokenValue : undefined);
   const entry: EventLogEntry = {
     id: event.id,
     kind: 'EVENT',
@@ -231,7 +241,23 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     abilityId: event.abilityId,
     label,
     detail,
-    amount,
+    amount: amount ?? event.delta,
+    assetName: event.assetName,
+    assetLevel: event.assetLevel,
+    previousAssetValue: event.previousAssetValue,
+    newAssetValue: event.newAssetValue,
+    salaryAmount: event.salaryAmount,
+    previousWealth: event.previousWealth,
+    newWealth: event.newWealth,
+    previousSalary: event.previousSalary,
+    newSalary: event.newSalary,
+    stat: event.stat,
+    previousValue,
+    newValue,
+    delta: event.delta ?? (previousValue !== undefined && newValue !== undefined ? newValue - previousValue : undefined),
+    baseValue: event.baseValue,
+    finalGameValue: event.finalGameValue,
+    reason: event.reason,
     blocked,
     round: event.round,
     turnIndex: event.turnIndex,

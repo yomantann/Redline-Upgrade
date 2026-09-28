@@ -1,0 +1,40 @@
+.career-deck-badges {
+  min-width: 0;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--career-deck-primary);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--career-deck-primary) 9%, transparent), color-mix(in srgb, var(--career-deck-secondary) 5%, transparent) 65%, transparent);
+}
+.career-deck-heading {
+  display: block;
+  margin-bottom: 5px;
+  color: #aebdad;
+  font-size: 7px;
+  letter-spacing: .1em;
+}
+.career-deck-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.career-deck-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--deck-color) 55%, #34453b);
+  color: var(--deck-color);
+  background: color-mix(in srgb, var(--deck-color) 9%, #17211d);
+  font: 700 8px/1.15 'Space Mono', monospace;
+  white-space: nowrap;
+}
+.career-deck-badge svg { flex: 0 0 auto; }
+.career-deck-badges > small {
+  display: block;
+  margin-top: 5px;
+  color: #a8b6a8;
+  font: 8px/1.35 'Space Mono', monospace;
+}
+.career-deck-badges.compact { margin-top: 6px; padding: 6px 8px; }
+.career-deck-badges.compact > small { margin-top: 4px; }

@@ -117,14 +117,15 @@ try {
         activeCard: card,
         cardStage,
         actorName: 'Frostbyte',
+        actorLabel: 'CPU 1',
         isCPU: true,
         resultSummary: 'Frostbyte received the recorded card result.',
       }));
       assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
       assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
-      assert(cardMarkup.includes('Frostbyte landed on'), `${deck.name} draw identifies its player`);
+      assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
       assert(cardStage === 'draw'
-        ? cardMarkup.includes('face-up for the table')
+        ? cardMarkup.includes('card is revealed to the table')
         : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
     }
   }
@@ -581,7 +582,7 @@ try {
       }));
       assert(artworkMarkup.includes(getAssetArtworkUrl(representative.id)), `${category} level ${level} renders its shared artwork`);
       assert(artworkMarkup.includes(`data-visual-variant="${representative.visualVariants[level]}"`), `${category} level ${level} identifies its visual variant`);
-      assert.equal(artworkMarkup.includes('asset-upgrade-overlay'), level > 1, `${category} level ${level} uses the correct upgrade overlay state`);
+      assert(artworkMarkup.includes('asset-upgrade-overlay') && artworkMarkup.includes(`LEVEL ${level}`), `${category} level ${level} displays its level marker over the correct asset art`);
     }
   }
   const playerAssetFixture = Object.fromEntries(
@@ -614,10 +615,10 @@ try {
   for (const asset of assets) {
     assert.equal(Object.keys(asset.visualVariants ?? {}).length, MAX_ASSET_LEVEL, `${asset.id} has a visual reference at every upgrade level`);
     assert.deepEqual([2, 3, 4].map(level => asset.visualVariants[level]), [
-      `${asset.category}:reinforcement`,
-      `${asset.category}:expansion`,
-      `${asset.category}:signature`,
-    ], `${asset.id} has category-appropriate Level 2–4 visuals`);
+      `${asset.id}:level-2`,
+      `${asset.id}:level-3`,
+      `${asset.id}:level-4`,
+    ], `${asset.id} has asset-specific Level 2–4 references`);
   }
   assert(levelOneArtworkPaths.every(path => existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 100 Level 1 artwork files exist');
   assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);

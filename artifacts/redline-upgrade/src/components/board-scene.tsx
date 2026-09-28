@@ -256,7 +256,7 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
     {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
     {visual.deckCode && <PrintedLabel lines={[visual.deckCode]} x={0.59} y={topY + 0.045} z={0.64} w={0.88} h={0.18} color={visual.accent} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
-    {finish && <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.62} color={COLORS.orange} />}
+    {finish && <PrintedLabel lines={['FINISH']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.46} color={COLORS.orange} />}
   </group>;
 }
 
@@ -371,7 +371,7 @@ function StartGate() {
   </group>;
 }
 
-function FinishGate() {
+function FinishGate({ players, finishOrder }: { players: MatchPlayer[]; finishOrder: number[] }) {
   const p = ROUTE[75];
   return <group position={[p.x, 0, p.z]}>
     <mesh position={[0, 0.38, 0]} castShadow receiveShadow>
@@ -384,12 +384,18 @@ function FinishGate() {
       <boxGeometry args={[0.18, 1.85, 0.22]} /><primitive object={mats.accent} attach="material" />
     </mesh>)}
     <mesh position={[0, 2.7, -0.25]} castShadow><boxGeometry args={[2.9, 0.23, 0.25]} /><primitive object={mats.accent} attach="material" /></mesh>
-    <PrintedLabel lines={['FINISH', 'ENDGAME SOON']} x={0} y={0.84} z={0.98} w={2.25} h={0.66} color={COLORS.orange} />
+    <PrintedLabel lines={['FINISH']} x={0} y={0.84} z={0.98} w={2.25} h={0.42} color={COLORS.orange} />
+    {finishOrder.slice(0, 4).map((playerIndex, place) => {
+      const player = players[playerIndex];
+      if (!player) return null;
+      const ordinal = `${place + 1}${place === 0 ? 'ST' : place === 1 ? 'ND' : place === 2 ? 'RD' : 'TH'}`;
+      return <PrintedLabel key={player.playerId} lines={[`${ordinal} / ${player.displayName}`]} x={0} y={0.86} z={1.62 + place * 0.43} w={2.35} h={0.3} color={COLORS.lime} />;
+    })}
   </group>;
 }
 
-function Miniature({ player, index, count, active, reduceMotion }: {
-  player: MatchPlayer; index: number; count: number; active: boolean; reduceMotion: boolean;
+function Miniature({ player, index, count, active, reduceMotion, place }: {
+  player: MatchPlayer; index: number; count: number; active: boolean; reduceMotion: boolean; place?: number;
 }) {
   const group = useRef<THREE.Group>(null);
   const travel = useRef({ from: Math.max(0, Math.min(75, player.position)), to: Math.max(0, Math.min(75, player.position)), elapsed: 1 });
@@ -421,6 +427,7 @@ function Miniature({ player, index, count, active, reduceMotion }: {
   });
   return <group ref={group} scale={0.48} rotation={[0, -0.5, 0]}>
     <PawnModel characterId={player.characterId} selected={active} />
+    {place !== undefined && <PrintedLabel lines={[`${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`]} x={0} y={2.25} z={0} w={1.15} h={0.42} color={COLORS.lime} />}
   </group>;
 }
 
@@ -448,8 +455,8 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
   return null;
 }
 
-export function BoardScene({ players, activePlayerId, landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover }: {
-  players: MatchPlayer[]; activePlayerId: string; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point; onSpaceSelect: (n: number) => void; onSpaceHover: (n: number | null) => void;
+export function BoardScene({ players, activePlayerId, finishOrder = [], landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover }: {
+  players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point; onSpaceSelect: (n: number) => void; onSpaceHover: (n: number | null) => void;
 }) {
   const activePosition = players.find(p => p.playerId === activePlayerId)?.position ?? 0;
   return <>
@@ -465,11 +472,13 @@ export function BoardScene({ players, activePlayerId, landingPosition, overview,
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i % 15 === 14} zoneColor={ZONE_COLORS[Math.floor(i / 15)]} />)}
     {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     <StartGate />
-    <FinishGate />
+    <FinishGate players={players} finishOrder={finishOrder} />
     {ZONES.map((name, i) => <StandingLabel key={name} name={name} index={i} x={ZONE_ANCHORS[i].x} z={ZONE_ANCHORS[i].z} color={ZONE_COLORS[i]} />)}
-    {players.map(player => {
+    {players.map((player, playerIndex) => {
       const colocated = players.filter(p => p.position === player.position).sort((a, b) => a.slot - b.slot);
-      return <Miniature key={player.playerId} player={player} index={colocated.findIndex(p => p.playerId === player.playerId)} count={colocated.length} active={player.playerId === activePlayerId} reduceMotion={reduceMotion} />;
+      const finishIndex = finishOrder.indexOf(playerIndex);
+      const place = finishIndex >= 0 && finishIndex < 4 ? finishIndex + 1 : undefined;
+      return <Miniature key={player.playerId} player={player} index={colocated.findIndex(p => p.playerId === player.playerId)} count={colocated.length} active={player.playerId === activePlayerId} reduceMotion={reduceMotion} place={place} />;
     })}
   </>;
 }

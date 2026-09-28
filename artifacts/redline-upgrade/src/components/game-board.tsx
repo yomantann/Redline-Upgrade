@@ -14,11 +14,12 @@ export interface GameBoardProps {
   activePlayerId: string;
   landingPosition: number | null;
   movingPlayerId: string | null;
+  finishOrder?: number[];
 }
 
 const zones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 
-export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId }: GameBoardProps) {
+export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [] }: GameBoardProps) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(true);
   const [zoom, setZoom] = useState(1);
@@ -100,8 +101,8 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
-      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
-      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
+      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
+      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
         <Canvas
           aria-hidden="true"
           data-testid="board-canvas"
@@ -112,7 +113,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           dpr={[1, 1.6]}
           onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
         >
-          <BoardScene players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />
+          <BoardScene players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />
         </Canvas>
       </ErrorBoundary>}
       <div className="ru-board__telemetry" aria-live="polite">
@@ -155,9 +156,13 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           Space {space.number}: {space.payday ? 'PAYDAY + ' : ''}{space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
         </button>;
       })}
-      {players.map(p => <div key={p.playerId} data-testid={`board-pawn-${p.playerId}`} aria-label={`${p.displayName}, ${p.position === 0 ? 'start pad' : `space ${p.position}`}`}>
-        {p.displayName} at {p.position === 0 ? 'start' : `space ${p.position}`}
-      </div>)}
+      {players.map((p, playerIndex) => {
+        const place = finishOrder.indexOf(playerIndex);
+        const placeLabel = place >= 0 && place < 4 ? `, ${place + 1}${place === 0 ? 'ST' : place === 1 ? 'ND' : place === 2 ? 'RD' : 'TH'} PLACE` : '';
+        return <div key={p.playerId} data-testid={`board-pawn-${p.playerId}`} aria-label={`${p.displayName}${placeLabel}, ${p.position === 0 ? 'start pad' : `space ${p.position}`}`}>
+        {p.displayName}{placeLabel} at {p.position === 0 ? 'start' : `space ${p.position}`}
+        </div>;
+      })}
     </div>
     <span hidden data-testid="board-webgl-status">{webgl === null ? 'Checking WebGL2' : webgl ? 'WebGL2 ready' : 'WebGL2 unavailable'}</span>
   </section>;

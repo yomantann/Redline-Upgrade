@@ -62,6 +62,7 @@ export function UpgradeTokenControls({
           type="button"
           className="upgrade-token-action"
           disabled={!recoverable.length}
+          aria-describedby={!recoverable.length ? 'upgrade-recovery-disabled-reason' : undefined}
           data-testid="recover-missed-milestone"
           onClick={() => onAction({ type: 'RECOVER_MILESTONE' })}
         >
@@ -69,7 +70,7 @@ export function UpgradeTokenControls({
           <strong>Recover a missed milestone</strong>
           <small>{recoverable.length
             ? `Random category and asset from ${recoverable.length} passed, empty milestone slot${recoverable.length === 1 ? '' : 's'}.`
-            : 'No passed milestone with an empty asset slot is eligible.'}</small>
+            : <span id="upgrade-recovery-disabled-reason">No passed milestone with an empty asset slot is eligible.</span>}</small>
         </button>
 
         <button
@@ -80,7 +81,7 @@ export function UpgradeTokenControls({
         >
           <span className="upgrade-token-option-title mono">03 / SAVE FOR LATER</span>
           <strong>Hold for the endgame</strong>
-          <small>Reserve 1 token without spending it. It stays on your match record for future endgame rules.</small>
+          <small>Reserve 1 Upgrade Token for the endgame. It stays held on your player record until the closing choice.</small>
         </button>
       </div>
       <p className="upgrade-token-note">Upgrades repeat the asset’s listed effects and add one base cost to its displayed value. Recovery is random; no asset choice screen is used.</p>

@@ -1,6 +1,9 @@
+import type { CSSProperties } from 'react';
 import { useLocation } from 'wouter';
 import { getCareer, getCategory, formatMoney, SALARY_TIERS } from '@/game/careers';
+import { getDeck } from '@/game/decks';
 import { useGame } from '@/game/state';
+import { SpaceIcon } from './space-icon';
 import './career-reveal.css';
 
 export function CareerGlyph({ icon, className = '' }: { icon: string; className?: string }) {
@@ -29,6 +32,9 @@ export function CareerReveal() {
 
   const tierIndex = Math.max(0, Math.min(3, player.salaryTier - 1));
   const icon = career.icon || career.name;
+  const careerDecks = [career.deckAffinity.primary, career.deckAffinity.secondary].filter(
+    (deck): deck is NonNullable<typeof deck> => Boolean(deck),
+  ).map(getDeck);
   return (
     <main className="career-reveal">
       <div className="career-reveal-top">
@@ -66,6 +72,20 @@ export function CareerReveal() {
             <strong data-testid="text-career-ability">{career.abilityName}</strong>
             <p>{career.abilityDescription}</p>
           </div>
+          <section className="career-decks" aria-label="Career decks">
+            <div className="career-decks-header">
+              <span className="mono">CAREER DECKS</span>
+              <p>Match either deck to trigger your career bonus.</p>
+            </div>
+            <div className="career-decks-list">
+              {careerDecks.map(deck => (
+                <div className="career-deck" key={deck.id} style={{ '--deck-color': deck.color } as CSSProperties}>
+                  <span className="career-deck-icon"><SpaceIcon name={deck.icon} size={20} /></span>
+                  <strong>{deck.name}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
           <div className="salary-panel">
             <div className="salary-header"><span className="mono">SALARY RESULT // FOUR POSSIBLE TIERS</span><strong>YOUR DRAW: {SALARY_TIERS[tierIndex]}</strong></div>
             <div className="salary-list">

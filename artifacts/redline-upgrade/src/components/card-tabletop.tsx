@@ -13,7 +13,9 @@ type Props = {
   onAcknowledge?: () => void;
   isCPU?: boolean;
   actorName?: string;
+  actorLabel?: string;
   resultSummary?: string;
+  showDeckBay?: boolean;
 };
 
 export function CardTabletop({
@@ -25,39 +27,66 @@ export function CardTabletop({
   onAcknowledge,
   isCPU = false,
   actorName = isCPU ? 'CPU' : 'You',
+  actorLabel = isCPU ? 'CPU' : 'YOU',
   resultSummary,
+  showDeckBay = true,
 }: Props) {
   const [preview, setPreview] = useState<DeckId | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [minimumReadTimeComplete, setMinimumReadTimeComplete] = useState(false);
 
   useEffect(() => { setPreview(null); }, [activeDeck]);
+  useEffect(() => {
+    setMinimumReadTimeComplete(false);
+    if (!activeDeck) return;
+    const timer = window.setTimeout(() => setMinimumReadTimeComplete(true), 2200);
+    return () => window.clearTimeout(timer);
+  }, [activeDeck, activeCard?.id, cardStage]);
 
   const previewCards = preview ? cardsForDeck(preview) : [];
   const previewedCard = previewCards.length ? previewCards[previewIndex % previewCards.length] : null;
   const displayed = preview ? getDeck(preview) : null;
   const activeCardResolved = cardStage === 'resolved' && activeCard;
+  const presentationStep = activeCardResolved ? 3 : activeCard ? 2 : 0;
   return (
     <>
       {activeDeck && (
-        <section className="card-draw-panel" aria-label={`${getDeck(activeDeck).name} card draw`} data-testid="section-card-draw">
+        <section
+          className="card-draw-panel"
+          aria-label={`${getDeck(activeDeck).name} card drawn by ${actorLabel}`}
+          aria-modal="true"
+          role="dialog"
+          data-testid="section-card-draw"
+          data-card-stage={activeCardResolved ? 'result' : 'reveal'}
+        >
+          <div className="card-draw-modal-card">
+            <ol className="card-presentation-sequence" aria-label="Card resolution sequence">
+              {[isCPU ? 'CPU ACTION' : 'PLAYER ACTION', 'CARD REVEAL', 'CARD EFFECT', 'RESULT'].map((step, index) => (
+                <li className={index < presentationStep ? 'complete' : index === presentationStep ? 'current' : ''} key={step}>{step}</li>
+              ))}
+            </ol>
           <div className="card-draw-copy">
             <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
             <h2>{activeCard?.title ?? 'Draw your card.'}</h2>
-            <p>{actorName} landed on a {getDeck(activeDeck).name} space.</p>
-            <p>{activeCardResolved ? (resultSummary || activeCard.description) : `The card is face-up for the table. ${actorName} will resolve its effect.`}</p>
+            <p><b>{actorLabel}</b> / {actorName} drew this card.</p>
+            <p>{activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.'}</p>
           </div>
-          <div className={`card-draw-stage ${activeCardResolved ? 'revealed' : ''}`} key={activeCardResolved ? activeCard.id : activeDeck}>
+          <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}>
             <RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} />
           </div>
           <div className="card-draw-action">
-            {isCPU ? <p>CPU CARD IN PROGRESS // BOARD PAUSED</p> : activeCardResolved
-              ? <button type="button" className="action lime-action" onClick={onAcknowledge} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
-              : <button type="button" className="action" onClick={onResolveCard} data-testid="button-draw-card">DRAW & RESOLVE <span aria-hidden="true">↗</span></button>}
-            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b> // {activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'}</p>
+            {isCPU ? <p className="mono">{activeCardResolved ? 'RESULT RECORDED // CPU CONTINUES AFTER THE TABLE READS IT' : 'CPU ACTION // REVIEWING CARD EFFECT'}</p> : activeCardResolved
+              ? <button type="button" className="action lime-action" onClick={onAcknowledge} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
+              : onResolveCard
+                ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>
+                : <p className="mono">FINAL GAMBLE // CARD REVEALED, RESULT NEXT</p>}
+            {!isCPU && !minimumReadTimeComplete && <small className="card-read-time-reason" id="card-read-time-reason">CARD ON TABLE / TAKE A MOMENT TO READ IT</small>}
+            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b><br />{activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'}</p>
+          </div>
           </div>
         </section>
       )}
-      <aside className="tabletop-decks" aria-label="Card decks beside the board">
+      {showDeckBay && <aside className="tabletop-decks" aria-label="Card decks beside the board">
         <div className="tabletop-decks-head"><div><span className="eyebrow">TABLETOP / DECK BAY</span><h2>Six ways forward.</h2></div><span className="mono">06 DECKS</span></div>
         <div className="tabletop-decks-grid">
           {decks.map(deck => (
@@ -81,7 +110,7 @@ export function CardTabletop({
             </div>
           </div>
         )}
-      </aside>
+      </aside>}
     </>
   );
 }

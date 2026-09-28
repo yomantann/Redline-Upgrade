@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const vite = await createServer({
   root: projectRoot,
   configFile: false,
+  resolve: { alias: { '@': path.join(projectRoot, 'src') } },
   optimizeDeps: { noDiscovery: true },
   server: { middlewareMode: true },
   appType: 'custom',
@@ -27,6 +29,39 @@ try {
   assert.equal(assets.length, 100, 'milestone catalog has exactly 100 assets');
   const artworkPaths = assets.map((asset) => getAssetArtworkFilePath(asset.id));
   assert.equal(new Set(artworkPaths).size, artworkPaths.length, 'asset artwork paths are unique');
+  const categoryGroups = new Map();
+  const artworkHashes = [];
+  for (const asset of assets) {
+    const categoryAssets = categoryGroups.get(asset.category) ?? [];
+    categoryAssets.push(asset);
+    categoryGroups.set(asset.category, categoryAssets);
+
+    const artworkPath = getAssetArtworkFilePath(asset.id);
+    assert(artworkPath, `${asset.id} has an artwork path`);
+    assert.match(artworkPath, /\.(?:svg|webp|png|jpe?g)$/i, `${asset.id} points to an image file`);
+    assert(!/\/(?:generic|placeholders?)\//i.test(artworkPath), `${asset.id} does not use a generic placeholder path`);
+    const artworkFile = path.join(publicRoot, artworkPath.replace(/^\/+/, ''));
+    assert(existsSync(artworkFile), `${asset.id} artwork file exists: ${artworkPath}`);
+    artworkHashes.push(createHash('sha256').update(readFileSync(artworkFile)).digest('hex'));
+    for (const level of [1, 2, 3, 4]) {
+      assert.equal(asset.visualVariants?.[level], `${asset.id}:level-${level}`, `${asset.id} has an asset-specific level ${level} visual reference`);
+    }
+  }
+  assert.equal(categoryGroups.size, 5, 'the catalog has all five milestone categories');
+  for (const [category, categoryAssets] of categoryGroups) {
+    assert.equal(categoryAssets.length, 20, `${category} contains exactly 20 assets`);
+  }
+  assert.equal(new Set(artworkHashes).size, assets.length, 'every asset artwork file has distinct image content');
+
+  for (const file of [
+    'components/milestone-choice.tsx',
+    'components/player-assets.tsx',
+    'components/upgrade-token-controls.tsx',
+    'components/finish-line-panel.tsx',
+  ]) {
+    const source = readFileSync(path.join(projectRoot, 'src', file), 'utf8');
+    assert.match(source, /AssetArtwork/, `${file} renders asset-specific artwork`);
+  }
   const phase11Assets = assets.filter((asset) => asset.id.includes('-') && ![
     'budget-racer', 'flex-car', 'supercar', 'electric-hypercar', 'street-tuner', 'electric-coupe', 'executive-sedan',
     'track-special', 'grand-tourer', 'prototype-one', 'luxury-travel', 'vip-life', 'low-key-life', 'creator-lifestyle',
@@ -78,7 +113,7 @@ try {
   assert.equal(catalog.collections.find((collection) => collection.id === 'milestone-states').items.length, 4, 'all four milestone states have a marker');
   assert.equal(catalog.collections.find((collection) => collection.id === 'endgame-support').items.length, 7, 'all seven endgame support symbols are mapped');
 
-  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} milestone assets, and ${visualAssets.length} valid manifest paths.`);
+  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct milestone artworks (20 per category), all four level references, four artwork display surfaces, and ${visualAssets.length} valid manifest paths.`);
 } finally {
   await vite.close();
 }

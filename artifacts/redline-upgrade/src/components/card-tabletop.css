@@ -16,6 +16,8 @@
 .redline-card-art.has-artwork > svg { visibility:hidden; }
 .redline-card-art-image { position:absolute; z-index:0; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; }
 .redline-card-art svg { z-index:1; width:25%; height:25%; }
+.redline-card-art-missing { position:relative; z-index:2; display:none; padding:9px; color:var(--deck-color); font:700 8px/1.4 'Space Mono',monospace; letter-spacing:.08em; text-align:center; }
+.redline-card-art:not(.has-artwork) .redline-card-art-missing { display:grid; place-items:center; }
 .redline-card-content { display:flex; flex-direction:column; flex:1; min-height:0; padding:13px; }
 .redline-card-content h3 { margin:2px 0 8px; font:800 clamp(23px,2.5vw,37px)/.89 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .redline-card-content p { margin:0; color:#b9c6ba; font-size:11px; line-height:1.4; }
@@ -65,3 +67,41 @@
 @media(max-width:650px) { .card-draw-panel { grid-template-columns:1fr 145px; gap:15px; } .card-draw-copy { grid-column:1/-1; } .card-draw-action .action { padding:10px; } }
 @media(max-width:390px) { .card-draw-panel { grid-template-columns:1fr; } .card-draw-stage { width:160px; margin:auto; } .tabletop-decks { padding:12px; } .tabletop-decks-grid { gap:8px 5px; } .tabletop-deck .redline-card-back-core b { font-size:11px; } }
 @media(prefers-reduced-motion:reduce) { .tabletop-deck { transition:none; } .card-draw-stage.revealed .redline-card { animation:none; } }
+.card-draw-panel { position:fixed; inset:0; z-index:500; width:100vw; height:100dvh; margin:0; padding:clamp(10px,3vw,30px); display:grid; place-items:center; overflow:auto; border:0; background:rgba(5,11,8,.82); backdrop-filter:blur(9px); }
+.card-draw-modal-card { width:min(900px,100%); max-height:100%; overflow:auto; padding:clamp(14px,2.5vw,28px); display:grid; grid-template-columns:minmax(230px,340px) minmax(240px,1fr); grid-template-rows:auto 1fr auto; align-items:center; gap:16px clamp(18px,4vw,38px); border:1px solid #71856d; border-top:4px solid var(--deck-color,#d8e78b); background:radial-gradient(circle at 10% 8%,color-mix(in srgb,var(--deck-color,#d8e78b) 12%,#17211d),#17211d 58%); box-shadow:0 24px 80px rgba(0,0,0,.65); }
+.card-presentation-sequence { grid-column:1/-1; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin:0; padding:0; list-style:none; }
+.card-presentation-sequence li { padding:8px 5px; border-bottom:2px solid #34443b; color:#84968a; font:700 7px/1.2 'Space Mono',monospace; text-align:center; letter-spacing:.06em; }
+.card-presentation-sequence li.complete { color:#b9c8b6; border-color:#627566; }
+.card-presentation-sequence li.current { color:var(--deck-color,#d8e78b); border-color:var(--deck-color,#d8e78b); background:color-mix(in srgb,var(--deck-color,#d8e78b) 8%,transparent); }
+.card-draw-stage { grid-column:1; grid-row:2/4; width:min(100%,340px); margin-inline:auto; }
+.card-draw-stage .redline-card { width:100%; max-width:340px; }
+.card-draw-stage .redline-card-content h3 { font-size:clamp(25px,3vw,38px); }
+.card-draw-stage .redline-card-content p { font-size:clamp(10px,1.1vw,13px); }
+.card-draw-copy { grid-column:2; grid-row:2; min-width:0; align-self:end; }
+.card-draw-copy .eyebrow { color:var(--deck-color,#d8e78b); }
+.card-draw-copy h2 { overflow-wrap:anywhere; }
+.card-draw-copy p b { color:var(--deck-color,#d8e78b); }
+.card-draw-action { grid-column:2; grid-row:3; min-width:0; align-self:start; }
+.card-draw-action .action { min-height:48px; }
+.card-draw-action p { margin:12px 0 0; font-size:clamp(10px,1.05vw,13px); }
+.card-draw-action p b { display:inline-block; margin-bottom:4px; color:var(--deck-color,#d8e78b); }
+.card-draw-action .mono { color:#c6d0c4; font:700 9px/1.55 'Space Mono',monospace; }
+.card-read-time-reason { display:block; margin-top:8px; color:#c5d3c3; font:700 8px/1.45 'Space Mono',monospace; text-align:center; }
+@media(max-width:720px) {
+  .card-draw-panel { padding:8px; }
+  .card-draw-modal-card { width:min(560px,100%); grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto auto; gap:10px; padding:14px; }
+  .card-presentation-sequence { grid-column:1; }
+  .card-presentation-sequence li { font-size:6px; padding:7px 2px; }
+  .card-draw-stage { grid-column:1; grid-row:2; width:min(58vw,250px); }
+  .card-draw-stage .redline-card { max-width:250px; }
+  .card-draw-copy { grid-column:1; grid-row:3; align-self:auto; text-align:center; }
+  .card-draw-copy h2 { font-size:clamp(32px,10vw,50px); }
+  .card-draw-copy p { margin:6px 0; }
+  .card-draw-action { grid-column:1; grid-row:4; align-self:auto; text-align:center; }
+}
+@media(max-height:720px) and (min-width:721px) {
+  .card-draw-modal-card { grid-template-columns:minmax(200px,270px) minmax(220px,1fr); gap:10px 20px; padding:15px; }
+  .card-draw-stage { width:min(100%,270px); }
+  .card-draw-stage .redline-card { max-width:270px; }
+}
+@media(prefers-reduced-motion:reduce) { .card-draw-stage.revealed .redline-card { animation:none; } }

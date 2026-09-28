@@ -4,10 +4,10 @@
 .player-assets-count { font-size:14px; }
 .player-asset-art .asset-upgrade-overlay { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; }
 .player-asset-level { display:block; margin-top:3px; color:#d4e981; font:700 8px/1.2 'Space Mono',monospace; letter-spacing:.03em; }
-.player-token-count { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:9px 4px 0; padding-top:8px; border-top:1px solid #334039; color:#d4c5ff; font:700 9px/1.2 'Space Mono',monospace; }
+.player-token-count { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:9px 4px 0; padding-top:8px; border-top:1px solid #334039; color:#75d8c8; font:700 9px/1.2 'Space Mono',monospace; }
 .player-token-count span { display:flex; align-items:center; gap:5px; }
-.player-token-count b { color:#e9e5ff; white-space:nowrap; }
-.player-token-count i { color:#7d759c; font-style:normal; }
+.player-token-count b { color:#d8fff4; white-space:nowrap; }
+.player-token-count i { color:#6d978b; font-style:normal; }
 .player-assets-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; }
 .player-asset { min-width:0; border:1px solid #445747; background:#23342a; }
 .player-asset { border-radius:4px 4px 7px 7px; overflow:hidden; box-shadow:2px 3px 0 rgba(0,0,0,.18); }

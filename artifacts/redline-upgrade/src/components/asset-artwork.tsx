@@ -1,6 +1,7 @@
 import { getAsset } from '@/game/assets';
 import { getAssetArtworkUrl } from '@/game/asset-artwork';
 import type { AssetLevel } from '@/game/assets';
+import './asset-artwork.css';
 
 const CATEGORY_ACCENTS = {
   car: '#d4e981',
@@ -10,10 +11,14 @@ const CATEGORY_ACCENTS = {
   property: '#f5a67e',
 } as const;
 
-function UpgradeDetails({ category, level }: { category: keyof typeof CATEGORY_ACCENTS; level: AssetLevel }) {
+function UpgradeDetails({ assetId, category, level }: { assetId: string; category: keyof typeof CATEGORY_ACCENTS; level: AssetLevel }) {
   const accent = CATEGORY_ACCENTS[category];
   return (
-    <svg className="asset-upgrade-overlay" viewBox="0 0 640 640" aria-hidden="true" focusable="false">
+    <svg className="asset-upgrade-overlay" viewBox="0 0 640 640" aria-hidden="true" focusable="false" data-asset-id={assetId} data-asset-level={level}>
+      <g className="asset-level-marker">
+        <rect x="26" y="24" width="136" height="44" rx="6" fill="#111b17" stroke={accent} strokeWidth="4" />
+        <text x="94" y="53" textAnchor="middle" fill={accent} fontFamily="Space Mono, monospace" fontSize="17" fontWeight="900">LEVEL {level}</text>
+      </g>
       {level >= 2 && category === 'car' && (
         <g fill="none" stroke={accent} strokeWidth="12" strokeLinejoin="round">
           <path d="M454 173h104l-9 27H463l-18 19" />
@@ -141,11 +146,28 @@ export function AssetArtwork({
   const asset = getAsset(assetId);
   const artwork = getAssetArtworkUrl(assetId);
   if (!asset || !artwork) return null;
-  const visualVariant = asset.visualVariants?.[level] ?? `factory:${asset.id}`;
+  const visualVariant = asset.visualVariants?.[level] ?? `${asset.id}:level-${level}`;
   return (
     <>
-      <img className={className} src={artwork} alt={alt} data-visual-variant={visualVariant} loading="lazy" />
-      {level > 1 && <UpgradeDetails category={asset.category} level={level} />}
+      <img
+        className={className}
+        src={artwork}
+        alt={alt}
+        data-asset-id={asset.id}
+        data-asset-level={level}
+        data-visual-variant={visualVariant}
+        loading="lazy"
+        onLoad={event => {
+          event.currentTarget.style.display = '';
+          event.currentTarget.parentElement?.classList.remove('asset-artwork-failed');
+        }}
+        onError={event => {
+          event.currentTarget.style.display = 'none';
+          event.currentTarget.parentElement?.classList.add('asset-artwork-failed');
+        }}
+      />
+      <span className="asset-artwork-unavailable" role="status">ARTWORK UNAVAILABLE</span>
+      <UpgradeDetails assetId={asset.id} category={asset.category} level={level} />
     </>
   );
 }

@@ -44,6 +44,14 @@
 .career-ability { padding:22px 28px; border-bottom:1px solid #435047; }
 .career-ability strong { display:block; font:700 27px 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .career-ability p { color:#abb9a9; line-height:1.5; font-size:12px; margin:5px 0 0; }
+.career-decks { padding:18px 28px 20px; border-bottom:1px solid #435047; }
+.career-decks-header { display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
+.career-decks-header .mono { display:block; color:#8c9c8d; }
+.career-decks-header p { margin:0; color:#aab8aa; font-size:11px; line-height:1.4; text-align:right; }
+.career-decks-list { display:flex; flex-wrap:wrap; gap:9px; margin-top:13px; }
+.career-deck { display:flex; align-items:center; gap:8px; min-width:0; padding:7px 11px 7px 7px; border:1px solid color-mix(in srgb,var(--deck-color) 65%,#435047); background:color-mix(in srgb,var(--deck-color) 9%,#17211f); color:var(--deck-color); }
+.career-deck-icon { width:26px; height:26px; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--deck-color) 70%,transparent); }
+.career-deck strong { font:700 14px 'Barlow Condensed',sans-serif; letter-spacing:.04em; }
 .salary-panel { padding:23px 28px 25px; flex:1; }
 .salary-header { display:flex; justify-content:space-between; gap:16px; align-items:start; }
 .salary-header strong { color:#f96346; font:700 10px 'Space Mono',monospace; letter-spacing:.12em; }
@@ -54,14 +62,14 @@
 .salary-row strong { font:700 16px 'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:.03em; }
 .salary-row b { font:700 18px 'Barlow Condensed',sans-serif; font-variant-numeric:tabular-nums; color:inherit; }
 .salary-row:not(.active) b { color:#aab9a8; }
-.salary-row.salary-tier-1 { border-left:5px solid #62796b; }
-.salary-row.salary-tier-2 { border-left:5px solid #94b09a; }
-.salary-row.salary-tier-3 { border-left:5px solid #c6df8e; }
-.salary-row.salary-tier-4 { border-left:5px solid #f9a66d; }
-.salary-row.salary-tier-1.active { background:#7e9a86; border-color:#7e9a86; }
-.salary-row.salary-tier-2.active { background:#a8c5ab; border-color:#a8c5ab; }
-.salary-row.salary-tier-3.active { background:#d4e981; border-color:#d4e981; }
-.salary-row.salary-tier-4.active { background:#f9a66d; border-color:#f9a66d; }
+.salary-row.salary-tier-1 { border-left:5px solid #f57970; }
+.salary-row.salary-tier-2 { border-left:5px solid #56645b; }
+.salary-row.salary-tier-3 { border-left:5px solid #d5aa55; }
+.salary-row.salary-tier-4 { border-left:5px solid #f5d27a; }
+.salary-row.salary-tier-1.active { background:#f57970; border-color:#f57970; }
+.salary-row.salary-tier-2.active { background:#56645b; border-color:#56645b; color:#e9e7dc; }
+.salary-row.salary-tier-3.active { background:#d5aa55; border-color:#d5aa55; }
+.salary-row.salary-tier-4.active { background:#f5d27a; border-color:#f5d27a; }
 .career-bank { display:flex; justify-content:space-between; align-items:end; gap:15px; padding:24px 28px; border-top:1px solid #435047; }
 .career-bank strong { font:800 clamp(32px,4vw,54px)/1 'Barlow Condensed',sans-serif; color:#d4e981; font-variant-numeric:tabular-nums; }
 .career-bank small { display:block; color:#7f9383; font-size:10px; margin-top:5px; }
@@ -93,6 +101,9 @@
   .career-feature { min-height:395px; padding:22px 22px 30px; }
   .career-feature-bottom h2 { font-size:clamp(58px,15vw,85px); }
   .career-category,.career-ability,.salary-panel,.career-bank { padding-left:19px; padding-right:19px; }
+  .career-decks { padding-left:19px; padding-right:19px; }
+  .career-decks-header { display:block; }
+  .career-decks-header p { margin-top:7px; text-align:left; }
   .career-actions .action { width:100%; }
 }
 @media (prefers-reduced-motion:reduce) {

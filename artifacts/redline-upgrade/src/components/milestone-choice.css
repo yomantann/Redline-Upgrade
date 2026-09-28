@@ -1,11 +1,11 @@
-.milestone-salary-details.salary-tier-1 { box-shadow: inset 5px 0 #62796b; }
-.milestone-salary-details.salary-tier-2 { box-shadow: inset 5px 0 #94b09a; }
-.milestone-salary-details.salary-tier-3 { box-shadow: inset 5px 0 #c6df8e; }
-.milestone-salary-details.salary-tier-4 { box-shadow: inset 5px 0 #f9a66d; }
-.milestone-salary-details.salary-tier-1 > strong,.milestone-salary-details.salary-tier-1 > b { color: #95ad9d; }
-.milestone-salary-details.salary-tier-2 > strong,.milestone-salary-details.salary-tier-2 > b { color: #b6ccbb; }
-.milestone-salary-details.salary-tier-3 > strong,.milestone-salary-details.salary-tier-3 > b { color: #d4e981; }
-.milestone-salary-details.salary-tier-4 > strong,.milestone-salary-details.salary-tier-4 > b { color: #f9a66d; }
+.milestone-salary-details.salary-tier-1 { box-shadow: inset 5px 0 #f57970; }
+.milestone-salary-details.salary-tier-2 { box-shadow: inset 5px 0 #56645b; }
+.milestone-salary-details.salary-tier-3 { box-shadow: inset 5px 0 #d5aa55; }
+.milestone-salary-details.salary-tier-4 { box-shadow: inset 5px 0 #f5d27a; }
+.milestone-salary-details.salary-tier-1 > strong,.milestone-salary-details.salary-tier-1 > b { color: #f57970; }
+.milestone-salary-details.salary-tier-2 > strong,.milestone-salary-details.salary-tier-2 > b { color: #aab7ad; }
+.milestone-salary-details.salary-tier-3 > strong,.milestone-salary-details.salary-tier-3 > b { color: #d5aa55; }
+.milestone-salary-details.salary-tier-4 > strong,.milestone-salary-details.salary-tier-4 > b { color: #f5d27a; }
 .milestone-choice { --edge:#435346; --muted:#aab8a8; margin:0 0 23px; border:1px solid #647666; background:#142019; color:#e9e7dc; position:relative; overflow:hidden; }
 .milestone-choice::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.22; background:repeating-linear-gradient(90deg,transparent 0 63px,#435c4b 64px,transparent 65px); mask-image:linear-gradient(to bottom,#000,transparent 420px); }
 .milestone-heading { position:relative; padding:24px clamp(20px,3vw,44px) 30px; border-bottom:1px solid var(--edge); display:flex; justify-content:space-between; gap:25px; align-items:end; }
@@ -37,12 +37,13 @@
 .career-kicker-glyph { width:20px; height:20px; font-size:12px; border-width:1px; }
 .milestone-career-card { box-shadow:4px 6px 0 #101915,12px 17px 27px rgba(0,0,0,.23); border-radius:8px 8px 12px 12px; overflow:hidden; }
 .career-tier-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; margin:-2px 0 14px; }
-.career-tier-strip span { min-width:0; padding:8px 4px; background:#314137; border-top:3px solid #62796b; }
-.career-tier-strip .salary-tier-2 { border-color:#94b09a; background:#35483b; }
-.career-tier-strip .salary-tier-3 { border-color:#c6df8e; background:#3e5039; }
-.career-tier-strip .salary-tier-4 { border-color:#f9a66d; background:#54493a; }
+.career-tier-strip span { min-width:0; padding:8px 4px; background:#332725; border-top:3px solid #f57970; }
+.career-tier-strip .salary-tier-2 { border-color:#56645b; background:#29312d; }
+.career-tier-strip .salary-tier-3 { border-color:#d5aa55; background:#3e3626; }
+.career-tier-strip .salary-tier-4 { border-color:#f5d27a; background:#4a3e28; }
 .career-tier-strip small { display:block; color:#c2d1be; font:700 7px 'Space Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .career-tier-strip b { display:block; font:700 15px 'Barlow Condensed',sans-serif; color:#e9e7dc; }
+.milestone-card .career-deck-badges { margin:0 0 13px; }
 .milestone-card:hover { transform:translateY(-4px); border-color:#d4e981; }
 .milestone-card:has(button:disabled) { border-color:#405047; }
 .milestone-art { position:relative; isolation:isolate; min-height:170px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 52% 48%,#3e5844,#23372e 55%,#17261e 100%); border-bottom:1px solid #5a6e5d; }

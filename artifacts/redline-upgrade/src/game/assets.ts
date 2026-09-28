@@ -17,7 +17,7 @@ export interface AssetDefinition {
   effects: Partial<Record<AssetStat, number>>;
   passiveEffect?: string;
   rarity: 'STANDARD' | 'RARE' | 'ELITE';
-  /** Data keys for the factory art and its three category-specific upgrade treatments. */
+  /** Asset-specific level references; the base artwork stays tied to this exact asset. */
   visualVariants?: Partial<Record<AssetLevel, string>>;
 }
 
@@ -49,10 +49,10 @@ const assetRecords: readonly AssetDefinition[] = [
 export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({
   ...asset,
   visualVariants: {
-    1: `factory:${asset.id}`,
-    2: `${asset.category}:reinforcement`,
-    3: `${asset.category}:expansion`,
-    4: `${asset.category}:signature`,
+    1: `${asset.id}:level-1`,
+    2: `${asset.id}:level-2`,
+    3: `${asset.id}:level-3`,
+    4: `${asset.id}:level-4`,
   },
 }));
 

@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { assetOptions, type AssetCategory, type AssetDefinition } from '@/game/assets';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
-import { getCategoryArtworkUrl } from '@/game/asset-artwork';
 import { CareerGlyph } from './career-reveal';
+import { CareerDeckBadges } from './career-deck-badges';
 import { SpaceIcon } from './space-icon';
 import { AssetArtwork } from './asset-artwork';
 import './milestone-choice.css';
 
 type Props = { pending: PendingDecision; player: MatchPlayer; onAction: (action: MatchAction) => void };
 const statLabels: Record<string, string> = { aiSkill: 'AI SKILL', fame: 'FAME', lifestyle: 'LIFESTYLE', influence: 'INFLUENCE', wealth: 'WEALTH' };
-const titles: Record<string, string> = { car: 'Choose your car.', lifestyle: 'Choose your lifestyle.', pet: 'Choose your companion.', investment: 'Back your future.', property: 'Choose your property.' };
+const titles: Record<string, string> = { car: 'Choose your car.', lifestyle: 'Choose your lifestyle.', pet: 'Choose your companion.', investment: 'Choose your investment.', property: 'Choose your property.' };
 
 function Header({ space, eyebrow, title, highlighted, description }: { space: number; eyebrow: string; title: string; highlighted?: string; description: string }) {
   return (
@@ -64,6 +64,7 @@ function CareerCard({ career, index, onSelect }: { career: Career; index: number
         <p className="milestone-card-desc">{career.description}</p>
         <div className="milestone-card-price"><span className="mono">SALARY RANGE</span><strong>{formatMoney(career.salaryTiers[0])}–{formatMoney(career.salaryTiers[3])}</strong></div>
         <div className="career-tier-strip" aria-label="Four salary tiers">{career.salaryTiers.map((salary, tier) => <span className={`salary-tier-${tier + 1}`} key={tier}><small>{SALARY_TIERS[tier]}</small><b>{formatMoney(salary)}</b></span>)}</div>
+        <CareerDeckBadges career={career} />
         <div className="milestone-effects"><span>ABILITY / {career.abilityName}</span></div>
         <p className="milestone-passive">{career.abilityDescription}</p>
         <button className="milestone-buy" type="button" onClick={onSelect} data-testid={`button-select-career-${career.id}`}><span>SELECT CAREER</span><span aria-hidden="true">↗</span></button>
@@ -97,16 +98,14 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
         <div className="milestone-meta mono"><span>AVAILABLE WEALTH / <b>{formatMoney(player.wealth)}</b></span><span>PET OR INVESTMENT // CHOOSE ONE PATH</span></div>
         <div className="milestone-grid two">
           {(['pet', 'investment'] as const).map((choice, index) => {
-            const artwork = getCategoryArtworkUrl(choice);
             return (
               <button className="milestone-card milestone-option" key={choice} type="button" onClick={() => onAction({ type: 'CHOOSE_ASSET_CATEGORY', category: choice })} data-testid={`button-choose-category-${choice}`}>
-                <div className={`milestone-art ${artwork ? 'has-artwork' : ''}`} data-category={choice}>
+                 <div className="milestone-art" data-category={choice}>
                   <span className="milestone-art-index">PATH / 0{index + 1}</span>
-                  <span className="milestone-art-symbol">{choice === 'pet' ? 'P' : 'I'}</span>
-                  {artwork && <img className="milestone-art-image" src={artwork} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
+                   <span className="milestone-art-symbol" aria-label={`${choice} category mark`}><SpaceIcon name={choice} size={58} /></span>
                   <span className="milestone-art-caption">SPACE 45 / CHOICE</span>
                 </div>
-                <div className="milestone-card-body"><span className="mono milestone-card-kicker">COMPANION SLOT</span><h3>{choice === 'pet' ? 'PET' : 'INVESTMENT'}</h3><span className="milestone-card-desc">{choice === 'pet' ? 'Bring someone along. Build your Lifestyle, Fame or AI Skill.' : 'Put capital in play. Choose an asset with future potential.'}</span><span className="milestone-buy">VIEW {choice.toUpperCase()} CARDS <span aria-hidden="true">↗</span></span></div>
+                <div className="milestone-card-body"><span className="mono milestone-card-kicker">COMPANION SLOT</span><h3>{choice === 'pet' ? 'PET' : 'INVESTMENT'}</h3><span className="milestone-card-desc">{choice === 'pet' ? 'Bring someone along. Build your Lifestyle, Fame or AI Skill.' : 'Investment value counts toward your final score; this asset has no active return effect.'}</span><span className="milestone-buy">VIEW {choice.toUpperCase()} CARDS <span aria-hidden="true">↗</span></span></div>
               </button>
             );
           })}

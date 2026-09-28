@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
-import { getDeck } from '@/game/decks';
 import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
 import type { EndgameChoice } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
@@ -16,11 +15,12 @@ import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
 import { PlayerAbilityDetails } from './player-ability-details';
-import { AbilityActivationBanner, formatSpaceFeedbackOutcome, SpaceRewardBanner, type AbilityFeedback } from './game-event-feedback';
+import { AbilityActivationBanner, formatEventTransition, formatSpaceFeedbackOutcome, NumberChangeBanner, SpaceRewardBanner, type AbilityFeedback } from './game-event-feedback';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
 import { SpaceIcon } from './space-icon';
+import { CareerDeckBadges } from './career-deck-badges';
 import './game-screen.css';
 
 function WealthCounter({ amount, compact = false }: { amount: number; compact?: boolean }) {
@@ -55,9 +55,38 @@ const spaceFeedbackTypes = new Set([
   'LIFESTYLE_CHANGED',
   'INFLUENCE_CHANGED',
   'UPGRADE_TOKEN_GAINED',
+  'UPGRADE_TOKEN_SPENT',
+  'UPGRADE_TOKEN_HELD',
+  'ASSET_UPGRADED',
   'MILESTONE',
   'CAREER_CHANGE',
+  'SALARY_GATE',
 ]);
+
+function ordinal(place: number): string {
+  return `${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`;
+}
+
+function summarizeCardResolution(events: EventLogEntry[], playerId: string): string | undefined {
+  let drawIndex = -1;
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index].eventType === 'CARD_DRAW' && events[index].playerId === playerId) {
+      drawIndex = index;
+      break;
+    }
+  }
+  if (drawIndex < 0) return undefined;
+  const results = events.slice(drawIndex + 1)
+    .filter(event => event.eventType === 'CARD_RESOLVED' || Boolean(formatEventTransition(event)) || event.source === 'ABILITY')
+    .map(event => {
+      const transition = formatEventTransition(event);
+      if (event.eventType === 'CARD_RESOLVED') return event.detail;
+      if (event.source === 'ABILITY') return `${event.label}: ${transition ?? event.detail}`;
+      return transition ?? '';
+    })
+    .filter(Boolean);
+  return [...new Set(results)].slice(-6).join(' · ') || undefined;
+}
 
 export function GameScreen() {
   const [, navigate] = useLocation();
@@ -84,8 +113,11 @@ export function GameScreen() {
   const lastSeenEvent = useRef(latestEvent?.id);
   const lastSeenAbilityEvent = useRef(latestAbilityEvent?.id);
   const lastSeenSpaceEvent = useRef(latestSpaceEvent?.id);
+  const numericEventCursor = useRef(match?.eventLog.at(-1)?.id ?? null);
+  const numericEventCursorReady = useRef(Boolean(match));
   const [visibleEvent, setVisibleEvent] = useState<WealthEvent | null>(null);
   const [abilityNotice, setAbilityNotice] = useState<AbilityFeedback | null>(null);
+  const [numericChanges, setNumericChanges] = useState<EventLogEntry[]>([]);
   const [spaceNotice, setSpaceNotice] = useState<{
     event: EventLogEntry;
     playerName: string;
@@ -93,9 +125,14 @@ export function GameScreen() {
     outcome: string;
   } | null>(null);
   const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
-  const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; amount: number; player: string } | null>(null);
+  const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; player: string; wealthBefore?: number; wealthAfter?: number } | null>(null);
   const previousDecision = useRef<PendingDecision | null>(pending ?? null);
   const [careerLocked, setCareerLocked] = useState(false);
+  const currentPlayerId = match?.players[match.turnIndex]?.playerId ?? null;
+  const currentGambleCardId = match?.players[match.turnIndex]?.endgame?.gambleCardId ?? null;
+  const gambleCardKey = currentPlayerId && currentGambleCardId ? `${currentPlayerId}:${currentGambleCardId}` : null;
+  const lastGambleCardKey = useRef<string | null>(null);
+  const [gambleCardStage, setGambleCardStage] = useState<'draw' | 'resolved'>('draw');
 
   useEffect(() => {
     if (previousDecision.current?.kind === 'CAREER' && previousDecision.current.stage === 'choice' && !pending && phase !== 'decision') setCareerLocked(true);
@@ -109,6 +146,18 @@ export function GameScreen() {
   }, [careerLocked]);
 
   useEffect(() => {
+    if (!gambleCardKey) {
+      lastGambleCardKey.current = null;
+      return;
+    }
+    if (lastGambleCardKey.current === gambleCardKey) return;
+    lastGambleCardKey.current = gambleCardKey;
+    setGambleCardStage('draw');
+    const timer = window.setTimeout(() => setGambleCardStage('resolved'), 2600);
+    return () => window.clearTimeout(timer);
+  }, [gambleCardKey]);
+
+  useEffect(() => {
     if (!match) return;
     const slots: AssetSlot[] = ['car', 'lifestyle', 'companion', 'property'];
     let notice: typeof purchaseNotice = null;
@@ -117,7 +166,16 @@ export function GameScreen() {
         const id = player.equipment[slot];
         if (id && id !== previousEquipment.current[index]?.[slot]) {
           const asset = getAsset(id);
-          if (asset) notice = { id: `${player.playerId}-${id}`, name: asset.name, amount: asset.cost, player: player.isCPU ? `CPU ${player.slot}` : 'YOU' };
+          const wealthChange = match.eventLog.slice().reverse().find(event =>
+            event.playerId === player.playerId && event.eventType === 'WEALTH_CHANGED',
+          );
+          if (asset) notice = {
+            id: `${player.playerId}-${id}`,
+            name: asset.name,
+            player: player.isCPU ? `CPU ${player.slot}` : 'YOU',
+            wealthBefore: wealthChange?.previousWealth ?? wealthChange?.previousValue,
+            wealthAfter: wealthChange?.newWealth ?? wealthChange?.newValue,
+          };
         }
       }
     });
@@ -175,6 +233,37 @@ export function GameScreen() {
   }, [latestSpaceEvent?.id]);
 
   useEffect(() => {
+    if (!match) {
+      numericEventCursor.current = null;
+      numericEventCursorReady.current = false;
+      return;
+    }
+    const latestId = match.eventLog.at(-1)?.id ?? null;
+    if (!numericEventCursorReady.current) {
+      numericEventCursor.current = latestId;
+      numericEventCursorReady.current = true;
+      return;
+    }
+    if (!latestId || latestId === numericEventCursor.current) return;
+    const cursorIndex = numericEventCursor.current
+      ? match.eventLog.findIndex((event) => event.id === numericEventCursor.current)
+      : -1;
+    const newEvents = cursorIndex >= 0 ? match.eventLog.slice(cursorIndex + 1) : match.eventLog;
+    numericEventCursor.current = latestId;
+    const changedNumbers = newEvents.filter((event) => Boolean(formatEventTransition(event)));
+    if (changedNumbers.length) setNumericChanges(changedNumbers);
+  }, [match?.eventLog.at(-1)?.id, Boolean(match)]);
+
+  useEffect(() => {
+    if (!numericChanges.length) return;
+    const noticeId = numericChanges.at(-1)?.id;
+    const timer = window.setTimeout(() => {
+      setNumericChanges((current) => current.at(-1)?.id === noticeId ? [] : current);
+    }, 5200);
+    return () => window.clearTimeout(timer);
+  }, [numericChanges.at(-1)?.id]);
+
+  useEffect(() => {
     if (!match) return;
     let delay: number;
     let callback: () => void;
@@ -188,11 +277,17 @@ export function GameScreen() {
       delay = 360;
       callback = () => dispatchMatch({ type: 'STEP' });
     } else if (phase === 'decision' && isCPU && pending) {
-      delay = 1050;
-      callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
+      if (pending.kind === 'CARD') {
+        delay = pending.stage === 'draw' ? 2600 : 3600;
+        callback = () => dispatchMatch({ type: pending.stage === 'draw' ? 'RESOLVE_CARD' : 'ACKNOWLEDGE_CARD' });
+      } else {
+        delay = 1050;
+        callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
+      }
     } else if (phase === 'landed') {
       if (match.players[match.turnIndex].endgame?.status === 'RESOLVED' && !isCPU) return;
-      delay = turnIndex === 0 ? 2300 : 1700;
+      const resolvedGamble = match.players[match.turnIndex].endgame?.gambleCardId;
+      delay = isCPU && resolvedGamble ? 5200 : turnIndex === 0 ? 2300 : 1700;
       callback = () => dispatchMatch({ type: 'NEXT_TURN' });
     } else if (phase === 'endgame' && isCPU) {
       delay = 1150;
@@ -200,7 +295,7 @@ export function GameScreen() {
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : undefined, rollDice, dispatchMatch]);
+  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : undefined, rollDice, dispatchMatch]);
 
   if (!match) return (
     <main className="game-gate">
@@ -215,6 +310,14 @@ export function GameScreen() {
   const currentCareer = active.careerId ? getCareer(active.careerId) : undefined;
   const landing = match.lastLanding;
   const roll = match.roll;
+  const rollDisabledReason = active.isCPU
+    ? 'CPU turn'
+    : match.phase !== 'ready'
+      ? 'Available when your turn is ready'
+      : undefined;
+  const cardResultSummary = pending?.kind === 'CARD' && pending.stage === 'resolved'
+    ? summarizeCardResolution(match.eventLog, active.playerId)
+    : undefined;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
 
@@ -228,6 +331,13 @@ export function GameScreen() {
 
   if (match.phase === 'endgame' || (match.phase === 'landed' && active.endgame?.status === 'RESOLVED')) {
     if (!active.endgame) return null;
+    const endgameCard = active.endgame.gambleCardId ? getCard(active.endgame.gambleCardId) : undefined;
+    const gambleEvent = endgameCard
+      ? match.eventLog.slice().reverse().find((event) => event.eventType === 'FINAL_GAMBLE_RESOLVED')
+      : undefined;
+    const gambleResult = gambleEvent
+      ? [gambleEvent.detail, formatEventTransition(gambleEvent)].filter(Boolean).join(' · ')
+      : undefined;
     return (
       <main className="game-screen game-screen-finish-line">
         <FinishLinePanel
@@ -239,6 +349,20 @@ export function GameScreen() {
           onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
           onContinue={() => dispatchMatch({ type: 'NEXT_TURN' })}
         />
+        {endgameCard && (
+          <CardTabletop
+            activeDeck="gamble"
+            activeCard={endgameCard}
+            cardStage={gambleCardStage}
+            cardPiles={match.cardPiles}
+            isCPU={active.isCPU}
+            actorName={currentCharacter?.name ?? active.displayName}
+            actorLabel={active.isCPU ? `CPU ${active.slot}` : 'YOU'}
+            resultSummary={gambleResult}
+            showDeckBay={false}
+            onAcknowledge={() => dispatchMatch({ type: 'NEXT_TURN' })}
+          />
+        )}
       </main>
     );
   }
@@ -254,7 +378,8 @@ export function GameScreen() {
           <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
           <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
            <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? pending?.kind === 'CARD' ? 'Card draw in progress' : 'Milestone decision in progress' : 'Space reached'}</small>
-          <button className="action turn-roll" type="button" onClick={rollDice} disabled={active.isCPU || match.phase !== 'ready'} data-testid="button-roll-top">ROLL DICE <span aria-hidden="true">↗</span></button>
+          <button className="action turn-roll" type="button" onClick={rollDice} disabled={Boolean(rollDisabledReason)} aria-describedby={rollDisabledReason ? 'top-roll-disabled-reason' : undefined} data-testid="button-roll-top">ROLL DICE <span aria-hidden="true">↗</span></button>
+          {rollDisabledReason && <small className="roll-disabled-reason" id="top-roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
         </div>
       </section>
 
@@ -265,9 +390,10 @@ export function GameScreen() {
           <span className="mono">WEALTH {visibleEvent.amount >= 0 ? 'INCREASED' : 'DECREASED'}</span>
         </div>
       )}
+      {numericChanges.length > 0 && <NumberChangeBanner events={numericChanges} players={match.players} />}
       {spaceNotice && <SpaceRewardBanner {...spaceNotice} />}
       {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
-      {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong><span className="mono">−{formatMoney(purchaseNotice.amount)} WEALTH // ADDED TO PLAYER SHEET</span></div>}
+      {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong>{purchaseNotice.wealthBefore !== undefined && purchaseNotice.wealthAfter !== undefined && <span className="mono">WEALTH {formatMoney(purchaseNotice.wealthBefore)} → {formatMoney(purchaseNotice.wealthAfter)} // {purchaseNotice.wealthAfter >= purchaseNotice.wealthBefore ? '+' : '−'}{formatMoney(Math.abs(purchaseNotice.wealthAfter - purchaseNotice.wealthBefore))}</span>}</div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 
        {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={active} onAction={dispatchMatch} />}
@@ -278,12 +404,15 @@ export function GameScreen() {
           const career = contestant.careerId ? getCareer(contestant.careerId) : undefined;
           const category = career ? getCategory(career.categoryId) : undefined;
           const tier = contestant.salaryTier >= 1 && contestant.salaryTier <= 4 ? SALARY_TIERS[contestant.salaryTier - 1] : 'UNASSIGNED';
+          const finishPlaceIndex = match.finishOrder.indexOf(index);
+          const finishPlace = finishPlaceIndex >= 0 ? finishPlaceIndex + 1 : null;
+          const finishBonus = finishPlace ? FINISH_ORDER_WEALTH_REWARDS[finishPlaceIndex] ?? 0 : 0;
           const change = visibleEvent?.playerIndex === index ? visibleEvent : null;
           return (
              <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${index === 0 ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? `CPU ${contestant.slot}` : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
                <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}>
                  <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span>
-                 <span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{contestant.status === 'FINISHED' ? ' / FINISHED' : ''}</span>
+                  <span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{contestant.status === 'FINISHED' ? ' / FINISHED' : ''}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                </div>
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
@@ -296,14 +425,16 @@ export function GameScreen() {
                     <span className="mono">{category?.name ?? 'CAREER'}</span>
                     <b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b>
                     {career?.startingBenefitDescription && <small className="mono" title="Career benefit granted only at match start">START BENEFIT / {career.startingBenefitDescription}</small>}
-                    {career && (
-                      <small className="mono" title="Primary and secondary card-deck affinity">
-                        DECK AFFINITY / {getDeck(career.deckAffinity.primary).name}
-                        {career.deckAffinity.secondary ? ` · ${getDeck(career.deckAffinity.secondary).name}` : ''}
-                      </small>
-                    )}
+                    {career && <CareerDeckBadges career={career} compact />}
                   </div>
               </div>
+              {finishPlace && (
+                <div className="game-player-finish" aria-label={`${ordinal(finishPlace)} to finish, bonus ${formatMoney(finishBonus)}`}>
+                  <b>{ordinal(finishPlace)}</b>
+                  <div><strong>TO FINISH</strong><small>FINISH BONUS / +{formatMoney(finishBonus)}</small></div>
+                  <small className="finish-wealth-change">WEALTH {formatMoney(Math.max(0, contestant.wealth - finishBonus))} → {formatMoney(contestant.wealth)}</small>
+                </div>
+              )}
               <PlayerAbilityDetails career={career} character={character} />
                <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY TIER / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}<small> / PAYDAY</small></b></div>
               <div className="game-player-wealth">
@@ -328,6 +459,7 @@ export function GameScreen() {
         activePlayerId={active.playerId}
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
+        finishOrder={match.finishOrder}
        /></div>
        <CardTabletop
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
@@ -336,7 +468,8 @@ export function GameScreen() {
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
           actorName={currentCharacter?.name ?? active.displayName}
-          resultSummary={match.eventLog.slice().reverse().find(event => event.eventType === 'CARD_RESOLVED')?.detail}
+         actorLabel={active.isCPU ? `CPU ${active.slot}` : 'YOU'}
+          resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />
@@ -349,6 +482,7 @@ export function GameScreen() {
           roll={roll}
           phase={match.phase}
           disabled={active.isCPU || match.phase !== 'ready'}
+                  disabledReason={rollDisabledReason}
           onRoll={rollDice}
           onRollComplete={onRollComplete}
           rollerName={active.displayName}
@@ -382,7 +516,9 @@ export function GameScreen() {
                     return item ? `${getAsset(item)?.name ?? 'Asset'} acquired and added to the player card.` : 'Milestone passed without a purchase.';
                   })()
                   : landing.space.type === 'NORMAL' ? 'No effect on this space.'
-                  : `Placeholder ${landing.space.type.toLowerCase()} space. Effects unlock in a later phase.`}</p>
+                  : landing.space.type === 'GAMBLE' ? 'Gamble card resolved. Review the result before continuing.'
+                  : landing.space.type === 'UPGRADE_TOKEN' ? 'Upgrade Token awarded and added to the player sheet.'
+                  : 'Space effect resolved. See the event log for the result.'}</p>
               </>
             ) : (
               <><span className="mono">LANDING REPORT</span><p>Roll the dice to reveal your first destination.</p></>

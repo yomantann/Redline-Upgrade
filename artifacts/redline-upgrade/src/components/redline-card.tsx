@@ -27,15 +27,19 @@ export function RedlineCard({ deck, face = 'back', card, artwork, action, classN
         </>
       ) : (
         <>
-          <div className={`redline-card-art ${!artwork && artworkUrl ? 'has-artwork' : ''}`} aria-hidden="true">
-            {artwork ?? <SpaceIcon name={config.icon} size={48} />}
-            {!artwork && artworkUrl && <img className="redline-card-art-image" src={artworkUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.remove('has-artwork'); }} />}
+          <div className={`redline-card-art ${!artwork && artworkUrl ? 'has-artwork' : !artwork ? 'artwork-missing' : ''}`} aria-hidden="true">
+            {artwork ?? (
+              <>
+                {artworkUrl && <img className="redline-card-art-image" src={artworkUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; const parent = event.currentTarget.parentElement; parent?.classList.remove('has-artwork'); parent?.classList.add('artwork-missing'); }} />}
+                <span className="redline-card-art-missing">ARTWORK UNAVAILABLE</span>
+              </>
+            )}
           </div>
           <div className="redline-card-content">
-            <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card?.rarity ?? 'EXAMPLE'} / NON-ACTIVE</span>
+            <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card ? `${card.rarity} / ${card.id}` : 'DECK PROFILE'}</span>
             <h3>{card?.title ?? config.name}</h3>
             <p>{card?.description ?? config.description}</p>
-            <div className="redline-card-effect"><span>{card?.effect ?? 'Example card'}</span><b>{card?.value ?? '—'}</b></div>
+            <div className="redline-card-effect"><span>{card?.effect ?? 'Deck description'}</span><b>{card?.value ?? '—'}</b></div>
             {action}
           </div>
         </>

@@ -9,11 +9,10 @@ import { CharacterPortrait } from '@/components/character-portrait';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
-import { EndgamePresentation } from '@/components/endgame-presentation';
 
 function Artwork({
   index = 0,
-  label = 'VISUAL ID / PENDING',
+  label = 'PLAYER / EMPTY',
   className = '',
 }: {
   index?: number;
@@ -21,7 +20,7 @@ function Artwork({
   className?: string;
 }) {
   return (
-    <div className={`artwork variant-${index % 6} ${className}`} aria-label="Abstract character art placeholder">
+    <div className={`artwork variant-${index % 6} ${className}`} aria-label="No character selected">
       <span className="artwork-index">{String(index + 1).padStart(2, '0')} / 21</span>
       <span className="artwork-cross" />
       <span className="artwork-ring" />
@@ -43,13 +42,12 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">PHASE 07A // TABLETOP</span>
+        <span className="header-phase">REDLINE // TABLETOP</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
         <button className={`header-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>{match ? 'BOARD' : 'BOARD PREVIEW'}</button>
-        <button className={`header-link ${location === '/endgame-preview' ? 'active' : ''}`} type="button" onClick={() => navigate('/endgame-preview')} aria-label="Open endgame visual preview" title="Visual foundation only; no endgame rules are active">ENDGAME</button>
-        <span className="header-index"><i /> LOCAL BUILD</span>
+        <span className="header-index"><i /> LOCAL MATCH</span>
       </div>
     </header>
   );
@@ -58,7 +56,7 @@ function Header() {
 function Footer() {
   return (
     <footer className="page-footer mono">
-      <span>REDLINE UPGRADE // INTERNAL BUILD</span>
+      <span>REDLINE UPGRADE // LOCAL MATCH</span>
       <span>21 IDENTITIES // 75 SPACES // 2 × D4</span>
     </footer>
   );
@@ -365,28 +363,6 @@ function BoardVisualPreview() {
   );
 }
 
-function EndgamePreview() {
-  const { match } = useGame();
-  const previewMatch = useMemo(() => match ?? createMatch(characters[0].id), [match]);
-  const player = previewMatch.players.find((entry) => !entry.isCPU) ?? previewMatch.players[0];
-
-  return (
-    <AppShell>
-      <div className="endgame-preview-banner mono" role="note" data-testid="text-endgame-preview">
-        VISUAL FOUNDATION ONLY / {match ? 'CURRENT MATCH DATA' : 'SAMPLE SESSION DATA'} / NO SCORING OR CHOICES ACTIVE
-      </div>
-      <EndgamePresentation
-        player={player}
-        match={previewMatch}
-        finalTitle={null}
-        redlineCredits={null}
-        achievements={null}
-        finalGamble={null}
-      />
-    </AppShell>
-  );
-}
-
 function Router() {
   const [location] = useLocation();
   const { match, careerRevealed } = useGame();
@@ -398,8 +374,7 @@ function Router() {
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
       {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
       {location === '/board-preview' && <BoardVisualPreview />}
-      {location === '/endgame-preview' && <EndgamePreview />}
-      {!['/', '/characters', '/setup', '/career', '/board', '/board-preview', '/endgame-preview'].includes(location) && <NotFound />}
+      {!['/', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
   );
 }
