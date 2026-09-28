@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <symbol id="career-ai-engineer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="13" y="13" width="22" height="22" rx="4"/>
+        <path d="M18 7v6m6-6v6m6-6v6M18 35v6m6-6v6m6-6v6M7 18h6m-6 6h6m-6 6h6m22-12h6m-6 6h6m-6 6h6"/>
+        <circle cx="24" cy="24" r="5"/>
+        <path d="M22 24h4m-2-2v4"/>
+      </g>
+    </symbol>
+    <symbol id="career-race-driver" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 33a16 16 0 0 1 32 0M13 33a11 11 0 0 1 22 0"/>
+        <path d="m24 29 9-10M24 29v-5M8 37h32M12 41h8m8 0h8"/>
+        <circle cx="24" cy="29" r="2.4"/>
+      </g>
+    </symbol>
+    <symbol id="career-content-creator" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 15h8l4-5h10l4 5h6v23H8z"/>
+        <circle cx="25" cy="26" r="8"/>
+        <circle cx="25" cy="26" r="3.2"/>
+        <path d="M12 20h2m22-13 2-3m-2 35 2 3M5 8l-2-2"/>
+      </g>
+    </symbol>
+    <symbol id="career-gig-worker" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 16h18v17H8zM22 22h11l7 7v4H22z"/>
+        <circle cx="15" cy="36" r="3.2"/><circle cx="34" cy="36" r="3.2"/>
+        <path d="m26 7-5 8h6l-3 7 9-11h-6l3-4z"/>
+      </g>
+    </symbol>
+    <symbol id="career-lawyer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 9v28M15 40h18M11 17h26M24 12l-11 5m11-5 11 5"/>
+        <path d="m13 17-7 12h14zm22 0-7 12h14z"/>
+        <circle cx="24" cy="9" r="2.5"/>
+      </g>
+    </symbol>
+    <symbol id="career-pro-gamer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 17h22l7 16-2 5h-7l-5-5h-8l-5 5H8l-2-5z"/>
+        <path d="M15 24v8m-4-4h8"/>
+        <circle cx="31" cy="25" r="1.2"/><circle cx="36" cy="30" r="1.2"/>
+        <path d="M21 17v-4h6v4"/>
+      </g>
+    </symbol>
+    <symbol id="career-doctor" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 8h28v32H10zM16 24h5l3-7 5 14 3-7h4"/>
+        <path d="M21 12v6m-3-3h6"/>
+      </g>
+    </symbol>
+    <symbol id="career-personal-trainer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 20v8m5-12v16m24-16v16m5-12v8M12 24h24"/>
+        <path d="M18 17c2-3 4-4 6-4s4 1 6 4m-12 14c2 3 4 4 6 4s4-1 6-4"/>
+        <circle cx="24" cy="24" r="3"/>
+      </g>
+    </symbol>
+    <symbol id="career-degen-trader" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 39h32M11 33V22h5v11m7 0V14h5v19m7 0V19h5v14"/>
+        <path d="m9 17 9-6 7 5 8-8 7 3M34 7h6v6"/>
+        <circle cx="13.5" cy="27.5" r="1.2"/><circle cx="25.5" cy="20" r="1.2"/>
+      </g>
+    </symbol>
+    <symbol id="career-startup-founder" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M27 7c7 3 11 9 11 17L26 36l-13-13C13 15 19 10 27 7z"/>
+        <circle cx="27" cy="20" r="3.5"/>
+        <path d="m13 23-6 2-2 7 10-3m11 7-2 6-7 2 3-10M20 38l-4 5m15-12 5 5"/>
+      </g>
+    </symbol>
+    <symbol id="career-influencer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="14" y="7" width="20" height="34" rx="4"/>
+        <path d="M21 12h6M21 36h6"/>
+        <circle cx="24" cy="24" r="6"/>
+        <path d="m24 15 1.8 5.2L31 22l-5.2 1.8L24 29l-1.8-5.2L17 22l5.2-1.8z"/>
+        <path d="M7 13a21 21 0 0 0 0 22m34-22a21 21 0 0 1 0 22"/>
+      </g>
+    </symbol>
+    <symbol id="career-corporate-executive" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="7" y="18" width="34" height="22" rx="3"/>
+        <path d="M17 18v-5h14v5M7 26h34m-21 0v4h8v-4"/>
+        <path d="m20 7 4 4 4-4m-4 4v4"/>
+      </g>
+    </symbol>
+    <symbol id="career-cybersecurity-specialist" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 5 39 11v11c0 10-6 16-15 21C15 38 9 32 9 22V11z"/>
+        <rect x="18" y="21" width="12" height="10" rx="2"/>
+        <path d="M21 21v-4a3 3 0 0 1 6 0v4m-3 4v2"/>
+        <circle cx="24" cy="27" r=".8"/>
+      </g>
+    </symbol>
+    <symbol id="career-entertainer" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="19" y="7" width="10" height="22" rx="5"/>
+        <path d="M13 22v3a11 11 0 0 0 22 0v-3M24 36v6m-7 0h14"/>
+        <path d="m7 9 4 4m30-4-4 4M5 20l5 1m33-1-5 1"/>
+      </g>
+    </symbol>
+    <symbol id="career-real-estate-investor" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 40V18h11v22m2 0V9h12v31m2 0V23h7v17z"/>
+        <path d="M11 23h3m-3 6h3m10-14h3m-3 6h3m-3 6h3m-3 6h3m11-5h2m-2 6h2"/>
+        <path d="m8 13 10-6 8 2 13-6m-6 0h6v6"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>

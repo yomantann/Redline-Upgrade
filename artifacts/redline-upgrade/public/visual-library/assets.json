@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "sprites": {
+    "support": "support.svg",
+    "careers": "careers.svg"
+  },
+  "collections": [
+    {
+      "id": "deck-motifs",
+      "title": "Deck motifs",
+      "sprite": "support",
+      "items": [
+        { "id": "wealth", "label": "Wealth", "symbol": "deck-wealth", "accent": "#d8e78b", "usage": "Deck marker, stat icon, card-back motif" },
+        { "id": "ai-skill", "label": "AI Skill", "symbol": "deck-ai", "accent": "#88c6c2", "usage": "Deck marker, stat icon, card-back motif" },
+        { "id": "fame", "label": "Fame", "symbol": "deck-fame", "accent": "#f5a67e", "usage": "Deck marker, stat icon, card-back motif" },
+        { "id": "lifestyle", "label": "Lifestyle", "symbol": "deck-lifestyle", "accent": "#dbbbdc", "usage": "Deck marker, stat icon, card-back motif" },
+        { "id": "influence", "label": "Influence", "symbol": "deck-influence", "accent": "#e9c477", "usage": "Deck marker, stat icon, card-back motif" },
+        { "id": "gamble", "label": "Gamble", "symbol": "deck-gamble", "accent": "#f57970", "usage": "Deck marker and final Gamble presentation" }
+      ]
+    },
+    {
+      "id": "career-insignia",
+      "title": "Career insignia",
+      "sprite": "careers",
+      "items": [
+        { "id": "ai-engineer", "label": "AI Engineer", "symbol": "career-ai-engineer", "categoryId": "digital-risk", "accent": "#8fcbd2" },
+        { "id": "race-driver", "label": "Race Driver", "symbol": "career-race-driver", "categoryId": "performance", "accent": "#f99a74" },
+        { "id": "content-creator", "label": "Content Creator", "symbol": "career-content-creator", "categoryId": "media-fame", "accent": "#f0cf78" },
+        { "id": "gig-worker", "label": "Gig Worker", "symbol": "career-gig-worker", "categoryId": "flex-gig", "accent": "#d4e981" },
+        { "id": "lawyer", "label": "Lawyer", "symbol": "career-lawyer", "categoryId": "professional", "accent": "#c5d6c0" },
+        { "id": "pro-gamer", "label": "Pro Gamer", "symbol": "career-pro-gamer", "categoryId": "digital-risk", "accent": "#8fcbd2" },
+        { "id": "doctor", "label": "Doctor", "symbol": "career-doctor", "categoryId": "professional", "accent": "#c5d6c0" },
+        { "id": "personal-trainer", "label": "Personal Trainer", "symbol": "career-personal-trainer", "categoryId": "performance", "accent": "#f99a74" },
+        { "id": "degen-trader", "label": "Degen Trader", "symbol": "career-degen-trader", "categoryId": "digital-risk", "accent": "#8fcbd2" },
+        { "id": "startup-founder", "label": "Startup Founder", "symbol": "career-startup-founder", "categoryId": "business-entrepreneur", "accent": "#dba77f" },
+        { "id": "influencer", "label": "Influencer", "symbol": "career-influencer", "categoryId": "media-fame", "accent": "#f0cf78" },
+        { "id": "corporate-executive", "label": "Corporate Executive", "symbol": "career-corporate-executive", "categoryId": "business-entrepreneur", "accent": "#dba77f" },
+        { "id": "cybersecurity-specialist", "label": "Cybersecurity Specialist", "symbol": "career-cybersecurity-specialist", "categoryId": "digital-risk", "accent": "#8fcbd2" },
+        { "id": "entertainer", "label": "Entertainer", "symbol": "career-entertainer", "categoryId": "media-fame", "accent": "#f0cf78" },
+        { "id": "real-estate-investor", "label": "Real Estate Investor", "symbol": "career-real-estate-investor", "categoryId": "business-entrepreneur", "accent": "#dba77f" }
+      ]
+    },
+    {
+      "id": "career-categories",
+      "title": "Career category marks",
+      "sprite": "support",
+      "items": [
+        { "id": "digital-risk", "label": "Digital / Risk", "symbol": "category-digital-risk", "accent": "#8fcbd2" },
+        { "id": "performance", "label": "Performance", "symbol": "category-performance", "accent": "#f99a74" },
+        { "id": "media-fame", "label": "Media / Fame", "symbol": "category-media-fame", "accent": "#f0cf78" },
+        { "id": "professional", "label": "Professional", "symbol": "category-professional", "accent": "#c5d6c0" },
+        { "id": "business-entrepreneur", "label": "Business / Entrepreneur", "symbol": "category-business-entrepreneur", "accent": "#dba77f" },
+        { "id": "flex-gig", "label": "Flex / Gig", "symbol": "category-flex-gig", "accent": "#d4e981" }
+      ]
+    },
+    {
+      "id": "milestone-states",
+      "title": "Milestone and asset states",
+      "sprite": "support",
+      "items": [
+        { "id": "selected", "label": "Selected", "symbol": "state-selected", "accent": "#f96346" },
+        { "id": "acquired", "label": "Acquired", "symbol": "state-acquired", "accent": "#d4e981" },
+        { "id": "locked", "label": "Locked", "symbol": "state-locked", "accent": "#9ba69b" },
+        { "id": "open-slot", "label": "Open slot", "symbol": "state-open", "accent": "#8ea69a" }
+      ]
+    },
+    {
+      "id": "endgame-support",
+      "title": "Endgame support",
+      "sprite": "support",
+      "items": [
+        { "id": "cash-out", "label": "Cash Out", "symbol": "ending-cash-out", "accent": "#d4e981" },
+        { "id": "double-down", "label": "Double Down", "symbol": "ending-double-down", "accent": "#f96346" },
+        { "id": "final-gamble", "label": "Final Gamble", "symbol": "ending-gamble", "accent": "#f57970" },
+        { "id": "redline-credits", "label": "Redline Credits", "symbol": "ending-redline-credits", "accent": "#d4e981" },
+        { "id": "achievement", "label": "Achievement", "symbol": "ending-achievement", "accent": "#e9c477" },
+        { "id": "final-title", "label": "Final title", "symbol": "ending-final-title", "accent": "#f96346" },
+        { "id": "player-record", "label": "Player record", "symbol": "ending-player-record", "accent": "#8fcbd2" }
+      ]
+    },
+    {
+      "id": "presentation-details",
+      "title": "Presentation details",
+      "sprite": "support",
+      "items": [
+        { "id": "section-divider", "label": "Trace divider", "symbol": "ui-divider-trace", "accent": "#8ea69a", "viewBox": "0 0 120 12" },
+        { "id": "corner-frame", "label": "Corner frame", "symbol": "ui-corner-frame", "accent": "#9ba69b" }
+      ]
+    }
+  ],
+  "reused": {
+    "characters": "21 portraits and 21 code-authored pawn models: src/game/characters.ts, public/characters/, src/components/pawns/PawnModel.tsx",
+    "cards": "All 90 card illustrations and six existing CSS card backs: public/cards/, src/game/card-artwork.ts, src/components/card-tabletop.css",
+    "milestones": "All 50 category illustrations remain primary: public/milestone-assets/, src/game/asset-artwork.ts",
+    "boardIcons": "Use the shared safe, wealth, salary, AI, fame, lifestyle, influence, car, career, pet, investment, property, Gamble, event, start, finish, and milestone paths in src/game/icon-paths.ts",
+    "assetCategories": "Car, lifestyle, pet, investment, and property symbols reuse src/game/icon-paths.ts and existing milestone art.",
+    "board": "The physical board and fallback remain code-rendered in src/components/board-scene.tsx and src/components/board-fallback.tsx.",
+    "career": "Career IDs, names, and category colors remain sourced from src/game/careers.ts and src/components/milestone-choice.css. New insignia supplement the existing CareerGlyph.",
+    "endgame": "The existing visual foundation remains in src/components/endgame-presentation.tsx; new symbols support it without adding endgame rules."
+  }
+}

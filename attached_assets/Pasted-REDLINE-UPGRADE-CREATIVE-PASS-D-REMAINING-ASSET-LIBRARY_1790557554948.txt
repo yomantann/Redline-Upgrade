@@ -1,0 +1,270 @@
+REDLINE UPGRADE — CREATIVE PASS D
+REMAINING ASSET LIBRARY
+
+This is a CREATIVE/ASSET-ONLY pass.
+
+Do NOT change gameplay rules, event logic, card effects, character abilities, careers, movement, board layout, or game state.
+
+The goal is to complete the remaining visual asset library for Redline Upgrade so future GitHub implementation can use polished assets without needing another large image-generation pass.
+
+==================================================
+1. AUDIT EXISTING ASSETS FIRST
+==================================================
+
+Before creating anything, inspect the current project and identify:
+
+- existing character artwork
+- existing 21 character game-piece artwork
+- existing 90 card artwork
+- existing six deck artwork
+- existing milestone artwork
+- career artwork
+- board artwork
+- space icons
+- Gamble artwork
+- endgame artwork/components
+- any existing UI/background assets
+
+DO NOT recreate assets that already exist and are working.
+
+Reuse the existing visual language.
+
+==================================================
+2. BOARD SPACE ICON LIBRARY
+==================================================
+
+Complete/polish the visual icon library used by board spaces.
+
+Include consistent icons for:
+
+- Safe
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Gamble
+- Payday
+- Car
+- Career/Lifestyle
+- Investment/Pet
+- Property
+- Career Change
+- any other existing special-space type
+
+Icons should be:
+
+- recognizable at board scale
+- clean
+- futuristic
+- physical-board-game appropriate
+- visually consistent
+
+Do not change the actual space mechanics.
+
+==================================================
+3. CAREER VISUAL LIBRARY
+==================================================
+
+Create or complete supporting visuals for the existing careers.
+
+Each career should have a distinctive visual identity that works on:
+
+- career cards
+- career reveal
+- career change
+- player information
+- future endgame presentation
+
+Use the existing career names and definitions.
+
+Do NOT invent new careers.
+
+Do NOT change career rules.
+
+==================================================
+4. DECK VISUAL SUPPORT
+==================================================
+
+The six existing decks should have reusable supporting visual assets:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+GAMBLE
+
+Create supporting:
+
+- deck icons
+- small symbols
+- decorative motifs
+- card-back elements if needed
+- UI-scale versions where useful
+
+Keep each deck visually distinct.
+
+Do not replace the existing 90 card artwork unless an existing asset is missing or unusable.
+
+==================================================
+5. MILESTONE SUPPORT ASSETS
+==================================================
+
+The 50 milestone illustrations already exist.
+
+Do NOT regenerate them.
+
+Create only missing supporting assets needed to display them cleanly.
+
+This includes, where useful:
+
+- category icons
+- selection indicators
+- acquired-state badges
+- small thumbnail versions
+- locked/unselected states
+- visual framing elements
+
+The existing milestone artwork should remain the primary visual.
+
+==================================================
+6. PURCHASE / ASSET VISUALS
+==================================================
+
+Complete reusable visual support for the four milestone categories:
+
+CAR
+LIFESTYLE / CAREER
+INVESTMENT / PET
+PROPERTY
+
+These should work in:
+
+- milestone selection
+- player card
+- acquired asset display
+- future endgame screen
+
+Do not create new gameplay choices.
+
+Use the existing 10-per-category milestone artwork.
+
+==================================================
+7. ENDGAME SUPPORT ASSETS
+==================================================
+
+Prepare reusable visual assets for the eventual endgame.
+
+Do NOT implement endgame mechanics.
+
+Create supporting visuals for:
+
+- Cash Out
+- Double Down
+- Gamble
+- final Wealth
+- final stats
+- final assets
+- achievements
+- Redline Credits
+- final player/title presentation
+
+These should complement the future Endgame Visual Foundation rather than replacing it.
+
+==================================================
+8. UI / PRESENTATION DETAILS
+==================================================
+
+Where appropriate, create small reusable assets such as:
+
+- badges
+- borders
+- dividers
+- deck markers
+- achievement icons
+- stat icons
+- selection markers
+- acquired markers
+- locked markers
+
+Keep these restrained.
+
+Avoid unnecessary decorative clutter.
+
+==================================================
+9. ART DIRECTION
+==================================================
+
+Everything should fit the existing Redline Upgrade identity:
+
+- dark futuristic
+- edgy
+- premium board game
+- slightly chaotic
+- AI-focused
+- gambling/high-stakes feel
+- physical tabletop aesthetic
+
+Do NOT make the game look like a generic mobile game UI.
+
+Assets should feel like they belong to the same physical game universe as the existing character pieces and board.
+
+==================================================
+10. FILE ORGANIZATION
+==================================================
+
+Keep assets organized by purpose.
+
+Use the existing project conventions where possible.
+
+Do not create duplicate assets with confusing names.
+
+Create a clear asset mapping/reference if one does not already exist.
+
+==================================================
+11. IMPORTANT — DO NOT CHANGE
+==================================================
+
+Do NOT modify:
+
+- game rules
+- 75-space board
+- movement
+- 2d4
+- salary
+- careers
+- character abilities
+- card effects
+- event engine
+- CPU
+- milestone rules
+- 90-card deck
+- player pieces
+
+This pass is strictly for the asset library and visual support.
+
+==================================================
+12. VALIDATION
+==================================================
+
+Verify:
+
+- no broken asset paths
+- no duplicate/conflicting asset mappings
+- existing artwork still loads
+- new assets load correctly
+- transparent assets have clean backgrounds where appropriate
+- typecheck passes
+- production build passes
+
+Provide a final report showing:
+
+1. Existing assets reused
+2. New assets created
+3. Assets intentionally NOT recreated
+4. Asset folders/mappings changed
+5. Validation results
+6. Any remaining visual gaps
+
+STOP after Creative Pass D.
