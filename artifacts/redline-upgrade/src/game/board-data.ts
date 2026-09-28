@@ -1,7 +1,7 @@
 import type { DeckId } from './decks';
 import { BOARD_EFFECTS_BY_SPACE } from './board-effects';
 
-export type SpaceType = 'NORMAL' | 'EVENT' | 'CARD' | 'MILESTONE' | 'GAMBLE' | 'SALARY_GATE' | 'CAREER_CHANGE';
+export type SpaceType = 'NORMAL' | 'EVENT' | 'CARD' | 'MILESTONE' | 'GAMBLE' | 'SALARY_GATE' | 'CAREER_CHANGE' | 'UPGRADE_TOKEN';
 export type SpaceTrigger = 'NONE' | 'LAND' | 'LAND_OR_PASS';
 
 export interface BoardSpace {
@@ -19,6 +19,8 @@ export interface BoardSpace {
 
 const milestones = new Set([10, 30, 45, 60, 75]);
 const gambles = new Set([15, 50, 70]);
+// These two existing NORMAL spaces become the only board sources for tokens.
+const upgradeTokenSpaces = new Set([14, 55]);
 // Deck assignments preserve the existing board route; landing triggers the live deck draw.
 const cardSpaces: Partial<Record<number, DeckId>> = {
   3: 'wealth', 7: 'ai', 12: 'fame', 17: 'lifestyle', 22: 'influence',
@@ -32,7 +34,7 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
   const deck = cardSpaces[number] ?? (gambles.has(number) ? 'gamble' : undefined);
   const effect = BOARD_EFFECTS_BY_SPACE.get(number);
   const type: SpaceType = number === 35 ? 'CAREER_CHANGE' : PAYDAY_SPACES.has(number) ? 'SALARY_GATE'
-    : milestones.has(number) ? 'MILESTONE' : gambles.has(number) ? 'GAMBLE'
+    : milestones.has(number) ? 'MILESTONE' : upgradeTokenSpaces.has(number) ? 'UPGRADE_TOKEN' : gambles.has(number) ? 'GAMBLE'
     : deck ? 'CARD' : effect ? 'EVENT' : 'NORMAL';
   const details: Record<SpaceType, [string, string, string, SpaceTrigger]> = {
     NORMAL: ['normal', 'Open Road', 'A regular space. No effect is active here.', 'NONE'],
@@ -42,6 +44,7 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
     SALARY_GATE: ['salary', 'Salary Gate', 'Pass through or land here to receive your exact current salary once.', 'LAND_OR_PASS'],
     CAREER_CHANGE: ['career', 'Career Change', 'Pass through or land here to keep your career or choose between two new opportunities.', 'LAND_OR_PASS'],
     MILESTONE: ['milestone', 'Milestone', 'A special destination on the circuit.', 'LAND'],
+    UPGRADE_TOKEN: ['upgrade-token', 'Upgrade Token', 'Land here to gain 1 match-only Upgrade Token.', 'LAND'],
   };
   const [defaultIcon, defaultLabel, defaultDescription, defaultTrigger] = details[type];
   const milestone: Partial<Record<number, [string, string, string, SpaceTrigger]>> = {

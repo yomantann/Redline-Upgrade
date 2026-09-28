@@ -4,6 +4,8 @@ import { additionalAssets } from './assets-extra';
 export type AssetCategory = 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
 export type AssetSlot = 'car' | 'lifestyle' | 'companion' | 'property';
 export type AssetStat = CareerStat | 'wealth';
+export type AssetLevel = 1 | 2 | 3 | 4;
+export const MAX_ASSET_LEVEL: AssetLevel = 4;
 
 export interface AssetDefinition {
   id: string;
@@ -15,11 +17,13 @@ export interface AssetDefinition {
   effects: Partial<Record<AssetStat, number>>;
   passiveEffect?: string;
   rarity: 'STANDARD' | 'RARE' | 'ELITE';
+  /** Data keys for the factory art and its three category-specific upgrade treatments. */
+  visualVariants?: Partial<Record<AssetLevel, string>>;
 }
 
 // Balancing and descriptive effects live here, never in the purchase UI.
 // Investment passives are descriptive only until a later investment phase.
-export const assets: readonly AssetDefinition[] = [
+const assetRecords: readonly AssetDefinition[] = [
   { id: 'budget-racer', name: 'Budget Racer', category: 'car', visual: '↗', cost: 50000, description: 'A nimble first set of wheels.', effects: { fame: 3 }, rarity: 'STANDARD' },
   { id: 'flex-car', name: 'Flex Car', category: 'car', visual: '◈', cost: 150000, description: 'Makes an entrance wherever you pull up.', effects: { fame: 10, influence: 5 }, rarity: 'RARE' },
   { id: 'supercar', name: 'Supercar', category: 'car', visual: '◆', cost: 300000, description: 'Built to command every lane.', effects: { fame: 20, influence: 10 }, rarity: 'ELITE' },
@@ -41,6 +45,16 @@ export const assets: readonly AssetDefinition[] = [
   { id: 'mansion', name: 'Mansion', category: 'property', visual: '◇', cost: 500000, description: 'An address everyone knows.', effects: { influence: 20, lifestyle: 15 }, rarity: 'ELITE' },
   ...additionalAssets,
 ];
+
+export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({
+  ...asset,
+  visualVariants: {
+    1: `factory:${asset.id}`,
+    2: `${asset.category}:reinforcement`,
+    3: `${asset.category}:expansion`,
+    4: `${asset.category}:signature`,
+  },
+}));
 
 export const getAsset = (id: string): AssetDefinition | undefined => assets.find(asset => asset.id === id);
 export const assetOptions = (category: AssetCategory): readonly AssetDefinition[] => assets.filter(asset => asset.category === category);

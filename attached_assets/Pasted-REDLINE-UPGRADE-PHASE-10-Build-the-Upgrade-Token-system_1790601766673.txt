@@ -1,0 +1,632 @@
+REDLINE UPGRADE — PHASE 10
+
+Build the Upgrade Token system and expand the existing milestone asset system.
+
+Use the existing Phase 8/9/9.5 event architecture, card system, career system, milestone system, player cards, and UI.
+
+Do NOT redesign or replace existing systems.
+
+==================================================
+1. UPGRADE TOKEN PURPOSE
+==================================================
+
+Upgrade Tokens are a simple, scarce resource with exactly 3 possible uses:
+
+1. UPGRADE an existing milestone asset
+2. RECOVER a missed milestone asset
+3. HOLD the token for the endgame
+
+Do NOT create new stats, currencies, complicated passive abilities, or another progression system.
+
+Upgrade Tokens should be temporary to the current game.
+
+They are NOT persistent profile inventory.
+
+==================================================
+2. UPGRADE TOKEN ACQUISITION
+==================================================
+
+Create 3 acquisition methods.
+
+A. CARD DECKS
+
+Add exactly ONE unique Upgrade Token card to each of the 6 existing decks:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Each card should:
+
+- Have unique artwork
+- Have unique flavor/bio text
+- Clearly identify that it grants 1 Upgrade Token
+- Use the existing card UI
+- Have the same core mechanical result:
+
+GAIN 1 UPGRADE TOKEN
+
+Do not create six different token mechanics.
+
+The cards should feel different thematically based on their deck.
+
+B. CAREER
+
+Assign exactly ONE existing career a starting benefit:
+
+START WITH 1 UPGRADE TOKEN
+
+Use the existing career ability/starting-benefit architecture.
+
+Do not create a new career system.
+
+C. BOARD
+
+Add exactly TWO Upgrade Token spaces to the 75-space board.
+
+They should:
+
+- Have a unique color
+- Have a clear Upgrade Token icon
+- Be visually distinct from other space types
+- Fit the existing board visual style
+
+Landing on an Upgrade Token space:
+
+GAIN 1 UPGRADE TOKEN
+
+Do not create a special penalty or additional effect.
+
+==================================================
+3. PLAYER STATE
+==================================================
+
+Add a clear upgrade-token count to the player state.
+
+Example:
+
+upgradeTokens: number
+
+This should be included in the existing Player/Game state architecture.
+
+It must work for:
+
+- Human players
+- CPU players
+- Future multiplayer
+
+Do not create a separate resource system.
+
+==================================================
+4. PLAYER CARD UI
+==================================================
+
+Clearly display Upgrade Tokens on every player's player card.
+
+Example:
+
+UPGRADE TOKENS
+🔧 🔧 🔧
+3 HELD
+
+The count should update immediately when tokens are gained or spent.
+
+Other players should be able to see the number of Upgrade Tokens a player is holding.
+
+This is intentional because holding tokens for the endgame should create visible tension.
+
+==================================================
+5. BEGINNING-OF-TURN UI
+==================================================
+
+Players can use Upgrade Tokens ONLY at the beginning of their own turn.
+
+Place an Upgrade button near the existing dice roll button.
+
+Example:
+
+🔧 USE UPGRADE (3)
+
+🎲 ROLL 2D4
+
+If the player has 0 Upgrade Tokens:
+
+🔧 USE UPGRADE (0)
+
+The Upgrade button should be disabled.
+
+The player must be able to clearly see that they have Upgrade Tokens before rolling.
+
+Do not allow Upgrade Tokens to be used in the middle of movement, card resolution, milestone resolution, or another player's turn.
+
+==================================================
+6. UPGRADE MENU
+==================================================
+
+When the player chooses USE UPGRADE, present exactly these options:
+
+A. UPGRADE ASSET
+
+B. RECOVER MILESTONE
+
+C. HOLD
+
+The menu should clearly explain each option.
+
+==================================================
+7. UPGRADE ASSET
+==================================================
+
+If the player chooses UPGRADE ASSET:
+
+Show only milestone assets that the player currently owns and that are eligible for upgrading.
+
+Each asset has:
+
+LEVEL 1
+LEVEL 2
+LEVEL 3
+LEVEL 4
+
+Level 1 is the original milestone asset.
+
+Each Upgrade Token increases the selected asset by exactly 1 level.
+
+The upgrade is FREE.
+
+No Wealth cost.
+
+Maximum level is Level 4.
+
+Example:
+
+HoloDog
+Level 1
+↓ Upgrade Token
+Level 2
+↓ Upgrade Token
+Level 3
+↓ Upgrade Token
+Level 4
+
+Each upgrade should update:
+
+- Asset level in game state
+- Player card visual
+- Asset description/effect where applicable
+- Any existing milestone/asset calculations
+
+Do not create complicated new abilities for each level.
+
+The primary purpose is to make the existing asset progressively better/more valuable.
+
+==================================================
+8. RECOVER MILESTONE
+==================================================
+
+IMPORTANT:
+
+The player does NOT get to choose the recovered asset.
+
+If the player chooses RECOVER MILESTONE:
+
+1. Determine which milestone categories the player has already PASSED.
+2. Exclude any milestone that the player has not yet reached.
+3. Exclude milestone assets/categories that cannot legally be recovered.
+4. Randomly select ONE eligible milestone category.
+5. Randomly assign ONE eligible asset from that milestone category to the player.
+6. The asset is FREE.
+7. Consume exactly 1 Upgrade Token.
+
+There is NO choice screen for the player.
+
+The player should see a reveal animation/UI showing what they randomly recovered.
+
+Example:
+
+UPGRADE TOKEN USED
+
+RECOVERED MILESTONE:
+PET
+
+YOUR RANDOM ASSET:
+
+🐕 HOLODOG
+LEVEL 1
+
+ACQUIRED FREE
+
+The player should not be able to select between multiple assets.
+
+This is intentionally a random second chance.
+
+==================================================
+9. MILESTONE ELIGIBILITY
+==================================================
+
+A player can only recover a milestone AFTER they have passed that milestone on the board.
+
+Example:
+
+If the player has passed:
+
+CAR
+LIFESTYLE
+
+but has not yet passed:
+
+PROPERTY
+
+Then Recover Milestone can only randomly recover:
+
+CAR
+or
+LIFESTYLE
+
+It cannot give PROPERTY.
+
+Do not allow Upgrade Tokens to provide future milestones early.
+
+Existing milestone ownership rules should be preserved.
+
+==================================================
+10. RECOVERED ASSETS
+==================================================
+
+A recovered asset begins at LEVEL 1.
+
+The player may later use additional Upgrade Tokens to upgrade it normally.
+
+Example:
+
+Player passes Pet milestone without getting a pet.
+
+Later:
+
+Upgrade Token → Recover Milestone
+
+Random result:
+
+HoloDog Level 1
+
+Later:
+
+Upgrade Token → Upgrade Asset
+
+HoloDog Level 2
+
+==================================================
+11. HOLDING TOKENS
+==================================================
+
+If the player chooses HOLD:
+
+Do nothing.
+
+Do not consume a token.
+
+The player continues their turn normally.
+
+Held Upgrade Tokens must remain visible on the player card.
+
+The game must track how many Upgrade Tokens remain unused at all times.
+
+==================================================
+12. ENDGAME PREPARATION
+==================================================
+
+DO NOT implement the complete endgame gambling system yet.
+
+However, prepare the game state so the future endgame can read:
+
+upgradeTokens
+
+and specifically:
+
+unused/held Upgrade Tokens at the moment the player enters the endgame.
+
+The future endgame will use the number of held Upgrade Tokens to significantly enhance the player's selected:
+
+- CASH OUT
+- DOUBLE DOWN
+- GAMBLE
+
+choice.
+
+For Phase 10, only make sure the information is preserved and available.
+
+Do not invent final endgame formulas yet.
+
+==================================================
+13. MILESTONE EXPANSION
+==================================================
+
+Expand each existing milestone category to contain 10 total unique asset choices.
+
+Preserve the existing milestone categories and system.
+
+The existing milestone categories include:
+
+- CAR
+- LIFESTYLE / CAREER CHANGE where applicable
+- INVESTMENT / PET
+- PROPERTY
+
+Use the current game's exact milestone structure and naming.
+
+The existing milestone UI should continue randomly presenting 3 choices to the player.
+
+Add enough new choices so each applicable milestone category has 10 total possible choices.
+
+Do not remove existing choices.
+
+Do not replace existing approved artwork.
+
+==================================================
+14. LEVEL 2–4 ASSET VISUALS
+==================================================
+
+Every milestone asset that can be upgraded should have visual variants for:
+
+LEVEL 1
+LEVEL 2
+LEVEL 3
+LEVEL 4
+
+Level 1 must preserve the existing original artwork.
+
+Create new/modified artwork for Levels 2–4.
+
+The visual progression should clearly communicate that the SAME asset is being upgraded.
+
+Example:
+
+HoloDog:
+
+Level 1:
+Existing HoloDog artwork
+
+Level 2:
+Recognizably the same HoloDog, visibly upgraded
+
+Level 3:
+Further upgraded version
+
+Level 4:
+Highest/ultimate version
+
+Do not simply recolor the asset.
+
+Modify the artwork enough that each level visibly represents an upgrade while maintaining the identity of the original asset.
+
+Apply the same concept to:
+
+- Cars
+- Lifestyle choices
+- Investments
+- Pets
+- Properties
+
+Use the existing project's visual style.
+
+==================================================
+15. MILESTONE ASSET DATA
+==================================================
+
+Make milestone assets data-driven.
+
+Each asset should be capable of storing:
+
+- id
+- name
+- category
+- description
+- level
+- maxLevel
+- level-specific visual/asset references
+- existing cost/effect data
+- upgrade behavior
+
+Avoid hard-coding individual asset upgrades inside UI components.
+
+The player should reference the asset and current level rather than storing four unrelated assets.
+
+==================================================
+16. ASSET UPGRADE EFFECTS
+==================================================
+
+Keep effects simple.
+
+An upgraded asset may:
+
+- Increase an existing benefit
+- Improve its existing value
+- Improve an existing stat contribution
+- Improve its endgame value
+
+Do NOT create complicated new triggered abilities for every asset level.
+
+The Upgrade Token system should remain easy to understand.
+
+==================================================
+17. CPU PLAYERS
+==================================================
+
+CPU players must support Upgrade Tokens.
+
+CPU behavior can be simple.
+
+At the beginning of a CPU turn:
+
+If the CPU has an Upgrade Token, allow a basic deterministic decision such as:
+
+- Upgrade an owned eligible asset if one exists
+- Otherwise recover a previously passed milestone if eligible
+- Otherwise hold
+
+Do not create complex AI strategy.
+
+The important requirement is that CPU players correctly maintain and spend Upgrade Tokens without breaking the game.
+
+==================================================
+18. EVENT ENGINE INTEGRATION
+==================================================
+
+Use the existing Phase 8/9 event and effect architecture.
+
+Create appropriate events/effects for:
+
+- UPGRADE_TOKEN_GAINED
+- UPGRADE_TOKEN_SPENT
+- ASSET_UPGRADED
+- MILESTONE_RECOVERED
+
+Use the existing event logging architecture.
+
+The event log should clearly explain what happened.
+
+Examples:
+
+"Alpha Prime gained an Upgrade Token."
+
+"Alpha Prime upgraded HoloDog to Level 2."
+
+"Alpha Prime used an Upgrade Token to recover a missed Pet milestone."
+
+"Alpha Prime randomly recovered HoloDog."
+
+==================================================
+19. CARD INTEGRATION
+==================================================
+
+The six new Upgrade Token cards must use the existing card/deck architecture.
+
+They should be valid cards in their respective deck.
+
+They should not bypass the event engine.
+
+Drawing one should:
+
+- Show the card
+- Resolve the card
+- Grant exactly 1 Upgrade Token
+- Log the result
+
+Do not create a separate Upgrade deck.
+
+==================================================
+20. IMPORTANT GAMEPLAY RULES
+==================================================
+
+Upgrade Tokens:
+
+- Are temporary to the current game
+- Are NOT persistent profile inventory
+- Do NOT become another stat
+- Do NOT become Redline Credits
+- Do NOT create permanent player power
+- Can only be used at the beginning of the owner's turn
+- Are visible to other players
+- Can be held for the endgame
+- Can upgrade existing milestone assets
+- Can recover a randomly selected eligible missed milestone asset
+- Can be saved
+
+==================================================
+21. DO NOT CHANGE
+==================================================
+
+Preserve:
+
+- 75-space board
+- 2d4 movement
+- Dice animation
+- CPU players
+- Salary system
+- Payday/pass-through behavior
+- Career Change at Space 35
+- Career/deck affinity system
+- Six card decks
+- Character abilities
+- Career abilities
+- Event engine
+- Existing milestone order
+- Existing milestone UI
+- Existing approved Level 1 milestone artwork
+- Existing player-card layout
+- Board zoom/pan
+- Existing character pieces
+
+Do not begin multiplayer/auth work.
+
+Do not implement Redline Credits yet.
+
+Do not implement the final endgame formulas yet.
+
+==================================================
+22. VALIDATION
+==================================================
+
+Add tests for:
+
+1. Player starts with 0 Upgrade Tokens unless their career grants one.
+2. Correct career starts with 1 Upgrade Token.
+3. Each of the six decks contains exactly one Upgrade Token card.
+4. Upgrade Token cards grant exactly 1 token.
+5. Upgrade spaces grant exactly 1 token.
+6. Tokens are visible on player cards.
+7. Upgrade button appears near dice roll.
+8. Upgrade button is disabled at 0.
+9. Upgrade can only be used at beginning of turn.
+10. Asset upgrade consumes exactly 1 token.
+11. Asset upgrade increases level by exactly 1.
+12. Asset cannot exceed Level 4.
+13. Asset upgrade is free.
+14. Recover consumes exactly 1 token.
+15. Recover only considers milestones already passed.
+16. Recover never gives a future milestone.
+17. Recover randomly selects an eligible milestone category.
+18. Recover randomly selects an eligible asset.
+19. Player cannot choose the recovered asset.
+20. Recovered asset starts at Level 1.
+21. Recovered assets can subsequently be upgraded.
+22. Holding a token does not consume it.
+23. Held tokens remain available for the endgame.
+24. CPU players correctly handle Upgrade Tokens.
+25. Existing Phase 8/9/9.5 tests continue passing.
+
+==================================================
+23. VALIDATION COMMANDS
+==================================================
+
+Run:
+
+- TypeScript typecheck
+- Existing game regression tests
+- New Phase 10 tests
+- Production build
+- Preview/restart validation
+- Secret scan if available
+
+At completion report:
+
+1. Upgrade Token architecture
+2. Acquisition sources
+3. Upgrade Asset implementation
+4. Recover Milestone implementation
+5. Holding/endgame preparation
+6. Milestone expansion
+7. Level 2–4 artwork created
+8. UI changes
+9. CPU behavior
+10. Files created/modified
+11. Tests added
+12. Validation results
+13. Any limitations
+
+STOP after Phase 10.
+
+Do not automatically begin Phase 11.

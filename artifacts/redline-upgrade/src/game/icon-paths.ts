@@ -1,5 +1,6 @@
 // A shared 24×24 stroke vocabulary for DOM, SVG fallback and 3D board textures.
 export const ICON_PATHS: Record<string, string> = {
+  'upgrade-token': 'M12 2 20 6.5v11L12 22 4 17.5v-11L12 2Zm0 4.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Zm0 5.6v4.4m-3.2-2.2h6.4',
   normal: 'M7 12h10',
   wealth: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1',
   salary: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1 M3 3h18v18H3z',

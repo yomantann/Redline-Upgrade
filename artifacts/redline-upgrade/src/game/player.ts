@@ -1,5 +1,5 @@
 import { getCharacter } from './characters';
-import type { AssetSlot } from './assets';
+import type { AssetLevel, AssetSlot } from './assets';
 
 export interface Player {
   playerId: string;
@@ -15,6 +15,11 @@ export interface Player {
   salaryTier: number;
   salaryAmount: number;
   equipment: Record<AssetSlot, string | null>;
+  assetLevels: Record<string, AssetLevel>;
+  /** Total match-only Upgrade Tokens, including any reserved for the endgame. */
+  upgradeTokens: number;
+  /** Tokens reserved for the future endgame; these cannot be spent mid-match. */
+  heldUpgradeTokens: number;
   upgrades: string[];
 }
 
@@ -39,6 +44,9 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
     salaryTier: 0,
     salaryAmount: 0,
     equipment: { car: null, lifestyle: null, companion: null, property: null },
+    assetLevels: {},
+    upgradeTokens: 0,
+    heldUpgradeTokens: 0,
     upgrades: [],
   };
 }

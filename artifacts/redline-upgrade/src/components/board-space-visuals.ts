@@ -2,7 +2,7 @@ import type { BoardSpace } from '../game/board-data';
 import { getBoardEffect } from '../game/board-effects';
 import type { DeckId } from '../game/decks';
 
-export type BoardVisualClass = 'safe' | 'deck' | 'salary' | 'major' | 'gamble' | 'effect';
+export type BoardVisualClass = 'safe' | 'deck' | 'salary' | 'major' | 'gamble' | 'effect' | 'upgrade';
 
 export interface BoardSpaceVisual {
   className: BoardVisualClass;
@@ -46,6 +46,8 @@ export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
       return { className: 'gamble', ...DECK_VISUALS.gamble };
     case 'SALARY_GATE':
       return { className: 'salary', accent: '#d4e981', tile: '#496752' };
+    case 'UPGRADE_TOKEN':
+      return { className: 'upgrade', accent: '#d4c5ff', tile: '#433b5a' };
     case 'CAREER_CHANGE':
     case 'MILESTONE':
       return { className: 'major', accent: '#f96346', tile: '#603b32' };
