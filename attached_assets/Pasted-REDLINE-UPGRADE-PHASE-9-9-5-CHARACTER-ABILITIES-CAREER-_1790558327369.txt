@@ -1,0 +1,536 @@
+REDLINE UPGRADE — PHASE 9 + 9.5
+CHARACTER ABILITIES + CAREER ABILITIES + CAREER/DECK AFFINITY
+
+This project has progressed significantly since the original Phase 9 plan.
+
+Implement Phase 9 and Phase 9.5 together using the CURRENT project as the source of truth.
+
+IMPORTANT:
+Do NOT rebuild systems that already exist.
+Extend the current architecture.
+
+==================================================
+CURRENT SYSTEMS THAT ALREADY EXIST
+==================================================
+
+The project already has:
+
+- 75-space board
+- 2d4 movement
+- CPU players
+- human/local play
+- board zoom/pan
+- salary system
+- salary tiers
+- Payday spaces
+- Career Change at space 35
+- milestone system
+- Car milestone
+- Lifestyle/Career milestone
+- Investment/Pet milestone
+- Property milestone
+- six card decks
+- 90 unique cards
+- card artwork
+- event engine
+- effect engine
+- character definitions
+- career definitions
+- career categories
+- player collision events
+- roll events
+- card events
+- purchase events
+- salary events
+- existing character/career ability framework
+
+The six decks are:
+
+WEALTH
+AI SKILL
+FAME
+LIFESTYLE
+INFLUENCE
+GAMBLE
+
+There are 15 unique cards in each deck.
+
+TOTAL: 90 cards.
+
+DO NOT recreate the card system.
+
+DO NOT replace the existing 90 cards.
+
+DO NOT remove existing artwork.
+
+==================================================
+PHASE 9
+UNIQUE CHARACTER + CAREER ABILITIES
+==================================================
+
+All 21 characters need meaningful, distinct abilities.
+
+Do NOT give every character a simple stat bonus.
+
+Use the existing event/ability architecture.
+
+Character abilities should use triggers such as:
+
+- ROLL_8
+- ROLL_2
+- ROLL_DOUBLE
+- LAND_ON_PLAYER
+- OTHER_PLAYER_LANDS_ON_YOU
+- PASS_PLAYER
+- PASS_PAYDAY
+- LAND_ON_SPACE
+- DRAW_CARD
+- PURCHASE
+- CAREER_MATCH
+- OTHER_PLAYER_STAT_CHANGE
+- ALL_PLAYER_EVENT
+- ONCE_PER_GAME
+- ONCE_PER_ROUND
+
+Use existing triggers where available.
+
+If an existing trigger is not currently supported, extend the existing event system cleanly rather than creating a second ability system.
+
+==================================================
+CHARACTER ABILITY DESIGN
+==================================================
+
+The characters should feel genuinely different.
+
+Examples of the TYPE of abilities we want:
+
+LAND ON PLAYER:
+- steal a small amount of Wealth
+- exchange a stat
+- gain Influence
+- trigger a character-specific interaction
+
+OTHER PLAYER LANDS ON YOU:
+- receive a benefit
+- protect yourself
+- gain Wealth/Influence/Fame
+- trigger a reaction
+
+ROLL 8:
+- gain Wealth
+- gain Fame
+- gain AI Skill
+- trigger another limited effect
+
+ROLL DOUBLE:
+- gain a bonus
+- modify the result of an event
+- trigger a special character effect
+
+ANOTHER PLAYER ROLLS DOUBLE:
+- react to their roll
+- gain a small benefit
+- affect that player
+- gain protection
+
+PASS PLAYER:
+- gain a benefit
+- affect the player passed
+
+PASS PAYDAY:
+- receive an additional bonus
+
+DRAW CARD:
+- modify a card outcome
+- gain a bonus from a specific deck
+- protect against a negative effect
+
+PURCHASE:
+- receive a bonus from a Car/Property/Lifestyle/Investment purchase
+
+These are examples of mechanics.
+
+Do NOT assign the same type of ability to every character.
+
+Use the existing character identity, name, artwork, and theme when designing abilities.
+
+==================================================
+CHARACTER BALANCE
+==================================================
+
+Mix:
+
+- passive abilities
+- triggered abilities
+- conditional abilities
+- limited-use abilities
+- reactive abilities
+
+Some characters should be:
+
+- aggressive
+- defensive
+- lucky
+- risky
+- wealthy
+- social
+- AI-focused
+- career-focused
+- interaction-focused
+
+Do not make one ability so strong that it dominates the game.
+
+Abilities should be understandable quickly.
+
+==================================================
+CAREER ABILITIES
+==================================================
+
+Every existing career should have a meaningful persistent ability.
+
+Use existing career categories:
+
+DIGITAL
+RISK
+CREATIVE
+BUSINESS
+PERFORMANCE
+MEDICAL
+LEGAL
+SERVICE
+HUSTLE
+SCIENCE
+
+Career abilities may interact with:
+
+- salary
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- cards
+- purchases
+- movement
+- player interaction
+- space types
+
+Do not create a new resource.
+
+Do not create a new currency.
+
+==================================================
+PHASE 9.5
+CAREER ↔ DECK AFFINITY
+==================================================
+
+Now connect careers to the existing six decks.
+
+Each career should have one or more natural deck affinities based on its category/theme.
+
+A career may have:
+
+- primary deck
+- secondary deck
+
+or another simple equivalent already supported by the current architecture.
+
+Examples of the type of relationship:
+
+DIGITAL careers:
+AI SKILL
+possibly WEALTH
+
+RISK careers:
+GAMBLE
+possibly WEALTH
+
+CREATIVE careers:
+FAME
+possibly LIFESTYLE
+
+BUSINESS careers:
+WEALTH
+possibly INFLUENCE
+
+PERFORMANCE careers:
+FAME
+possibly LIFESTYLE
+
+MEDICAL careers:
+LIFESTYLE
+possibly AI SKILL
+
+LEGAL careers:
+INFLUENCE
+possibly WEALTH
+
+SERVICE careers:
+LIFESTYLE
+possibly INFLUENCE
+
+HUSTLE careers:
+GAMBLE
+possibly WEALTH
+
+SCIENCE careers:
+AI SKILL
+possibly WEALTH
+
+These are design guidelines, not rigid assignments.
+
+Review the actual career definitions and assign the most appropriate affinity.
+
+==================================================
+CAREER/DECK INTERACTION
+==================================================
+
+Career affinity should matter when the player draws from a matching deck.
+
+Examples:
+
+A matching career may:
+
+- gain an additional small benefit
+- receive a modified card outcome
+- gain protection from a negative card
+- gain a bonus stat
+- trigger a career-specific effect
+
+Do NOT make every matching card dramatically stronger.
+
+The affinity should feel like a useful career advantage, not an automatic win.
+
+==================================================
+CHARACTER + CAREER + DECK INTERACTION
+==================================================
+
+These systems should work together.
+
+Example structure:
+
+CHARACTER
+provides unique personal ability.
+
+CAREER
+provides persistent career ability.
+
+CAREER CATEGORY
+determines deck affinity.
+
+CARD
+provides unpredictable event.
+
+BOARD
+provides predictable event.
+
+This should create meaningful combinations without requiring complicated rules.
+
+==================================================
+CARD SYSTEM — DO NOT BREAK
+==================================================
+
+The 90 cards already exist.
+
+Do NOT regenerate them.
+
+Do NOT replace their effects.
+
+Do NOT create a second card engine.
+
+You may add hooks so characters/careers can react to existing card events.
+
+Every existing card must continue to resolve through the current event/effect system.
+
+==================================================
+PLAYER INTERACTION
+==================================================
+
+Use existing movement/collision events.
+
+Support abilities such as:
+
+- landing on another player
+- another player landing on you
+- passing another player
+- affecting the highest/lowest Wealth player
+- affecting a selected player
+- affecting a player with a matching career category
+
+Interaction should be occasional and memorable.
+
+Do not make every character dependent on player interaction.
+
+==================================================
+ROLL INTERACTION
+==================================================
+
+Use the existing 2d4 roll system.
+
+Do NOT change dice.
+
+Support:
+
+- total 8
+- total 2
+- doubles
+- existing roll events
+
+Character/career abilities can react to these events.
+
+==================================================
+BOARD INTERACTION
+==================================================
+
+Use the existing board.
+
+Do not move spaces.
+
+Abilities may react to:
+
+- Payday
+- Gamble spaces
+- card spaces
+- milestone purchases
+- Career Change
+- other existing special spaces
+
+Do not create a new board layout.
+
+==================================================
+CPU
+==================================================
+
+CPU players must use the same character and career abilities as human players.
+
+Triggered passive abilities should resolve automatically.
+
+If a decision is required, CPU should make a simple deterministic/appropriate choice.
+
+Do not create separate CPU rules.
+
+==================================================
+UI
+==================================================
+
+Players need to understand when an ability activates.
+
+Use the existing recent-event/event log system.
+
+When an ability triggers, show:
+
+- character/career ability name
+- what triggered it
+- what happened
+- resulting stat/resource change
+
+The player should be able to understand WHY something happened.
+
+Do not create a completely separate notification architecture.
+
+==================================================
+IMPORTANT — DO NOT CHANGE
+==================================================
+
+Do NOT change:
+
+- 75-space board
+- board route
+- 2d4
+- salary values
+- salary tiers
+- Payday behavior
+- Career Change at 35
+- milestone positions
+- 90-card deck
+- existing card artwork
+- existing card effects
+- board zoom/pan
+- player pieces
+- authentication
+- multiplayer
+- Redline Credits
+- endgame scoring
+
+Do not implement the final endgame system.
+
+Do not implement upgrades yet.
+
+==================================================
+TESTING
+==================================================
+
+Expand existing tests to verify:
+
+CHARACTERS
+- all 21 characters have unique abilities
+- valid triggers
+- valid effects
+
+ROLLS
+- roll 8
+- roll 2
+- doubles
+
+PLAYER INTERACTION
+- land on player
+- pass player
+- other player lands on you
+
+CAREER
+- every career has an ability
+- career categories are valid
+- career affinity is valid
+
+CARDS
+- existing 90 cards still resolve
+- character reactions work
+- career affinity works
+
+PURCHASES
+- milestone purchases can trigger appropriate abilities
+
+CPU
+- CPU and human players use the same ability rules
+
+Run:
+
+- TypeScript typecheck
+- existing game tests
+- production build
+
+==================================================
+FINAL REPORT
+==================================================
+
+Report:
+
+1. All 21 character abilities
+2. All career abilities
+3. Career categories
+4. Career → primary deck affinity
+5. Career → secondary deck affinity where applicable
+6. Character roll-triggered abilities
+7. Character player-interaction abilities
+8. Character card-triggered abilities
+9. Career/card interactions
+10. New event/effect types, if any
+11. Tests added
+12. Build/typecheck results
+13. Any unresolved limitations
+
+IMPORTANT:
+
+This is a combined Phase 9 + 9.5 implementation.
+
+The goal is for:
+
+CHARACTER + CAREER + CAREER CATEGORY + DECK + CARD + EVENT ENGINE
+
+to work together using the systems already present in the project.
+
+Do not rebuild completed systems.
+Do not replace the 90-card deck.
+Do not redesign the board.
+
+STOP after this implementation.
