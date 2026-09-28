@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useLocation } from 'wouter';
-import { getCareer, getCategory, formatMoney, SALARY_TIERS } from '@/game/careers';
+import { getCareer, formatMoney, SALARY_TIERS } from '@/game/careers';
 import { getDeck } from '@/game/decks';
 import { useGame } from '@/game/state';
 import { SpaceIcon } from './space-icon';
@@ -15,7 +15,6 @@ export function CareerReveal() {
   const { match, acknowledgeCareer } = useGame();
   const player = match?.players[0];
   const career = player?.careerId ? getCareer(player.careerId) : undefined;
-  const category = career ? getCategory(career.categoryId) : undefined;
 
   if (!match || !player || !career) {
     return (
@@ -63,10 +62,6 @@ export function CareerReveal() {
           </div>
         </div>
         <div className="career-details">
-          <div className="career-category">
-            <CareerGlyph icon={category?.icon || category?.name || career.categoryId} />
-            <div><span className="mono">CAREER CATEGORY</span><strong data-testid="text-career-category">{category?.name ?? career.categoryId}</strong><p>{category?.description}</p></div>
-          </div>
           <div className="career-ability">
             <span className="mono">CAREER ABILITY / ON FILE</span>
             <strong data-testid="text-career-ability">{career.abilityName}</strong>

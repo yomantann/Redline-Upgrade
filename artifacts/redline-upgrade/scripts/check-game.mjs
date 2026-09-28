@@ -17,6 +17,7 @@ const vite = await createServer({
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
   const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
+  const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
   const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
@@ -36,7 +37,7 @@ try {
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
   const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
-  const { getAssetArtworkFilePath, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
     calculateEndgameBaseValue,
@@ -93,7 +94,8 @@ try {
   const abilityBannerMarkup = renderToStaticMarkup(React.createElement(AbilityActivationBanner, {
     notice: { event: feedbackEvent, playerName: 'Guardian H', abilityType: 'CHARACTER' },
   }));
-  assert(abilityBannerMarkup.includes('CHARACTER ABILITY ACTIVATED'));
+  assert(abilityBannerMarkup.includes('ABILITY ACTIVATED'));
+  assert(abilityBannerMarkup.includes('Guardian H / CHARACTER'));
   assert(abilityBannerMarkup.includes('ROLL OF 8') && abilityBannerMarkup.includes('Protected from penalty.'));
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'AI_SKILL_CHANGED', amount: 2 }), /\+2 AI SKILL/);
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'UPGRADE_TOKEN_GAINED', amount: 1 }), /\+1 UPGRADE TOKEN/);
@@ -105,6 +107,8 @@ try {
     outcome: '+1 UPGRADE TOKEN',
   }));
   assert(rewardBannerMarkup.includes('+1 UPGRADE TOKEN') && rewardBannerMarkup.includes('UPGRADE TOKEN'));
+  assert.equal(CPU_CARD_AUTO_CONTINUE_MS, 4600, 'CPU card reveal and result stages fit within the five-second target');
+  assert(CPU_CARD_AUTO_CONTINUE_MS <= 5000, 'CPU card reveal cannot block gameplay beyond five seconds');
 
   for (const deck of decks) {
     const deckCards = cardsForDeck(deck.id);
@@ -124,6 +128,8 @@ try {
       assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
       assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
       assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
+      assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CARD_READ_MINIMUM_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
+      if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);
       assert(cardStage === 'draw'
         ? cardMarkup.includes('card is revealed to the table')
         : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
@@ -193,11 +199,15 @@ try {
   }
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
-  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number), [3, 7, 12, 17, 22, 32, 42, 52, 62]);
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'CARD').map(space => space.number), [3, 7, 12, 17, 22, 26, 32, 36, 42, 48, 52, 58, 62, 69]);
+  assert.equal(BOARD_SPACES[0].label, 'OPEN ROAD', 'Space 1 clearly identifies the start of the route');
+  assert.equal(BOARD_SPACES[0].effectId, 'quick-contract', 'Space 1 retains its existing Quick Contract effect');
+  assert.equal(BOARD_SPACES[1].type, 'UPGRADE_TOKEN', 'Space 2 uses the existing Upgrade Token space mechanic');
+  assert.equal(BOARD_SPACES[1].trigger, 'LAND', 'Space 2 awards its token only when a player lands there');
   assert.deepEqual([...PAYDAY_SPACES], [6, 18, 29, 41, 54, 66, 73]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE').map(space => space.number), [10, 30, 35, 45, 60, 75]);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'GAMBLE').map(space => space.number), [15, 50, 70]);
-  const expectedDeckCodes = new Map([[3, 'W'], [7, 'AI'], [12, 'FM'], [17, 'LS'], [22, 'IN'], [32, 'W'], [42, 'AI'], [52, 'FM'], [62, 'IN']]);
+  const expectedDeckCodes = new Map([[3, 'W'], [7, 'AI'], [12, 'FM'], [17, 'LS'], [22, 'IN'], [26, 'LS'], [32, 'W'], [36, 'IN'], [42, 'AI'], [48, 'W'], [52, 'FM'], [58, 'FM'], [62, 'IN'], [69, 'AI']]);
   for (const [number, code] of expectedDeckCodes) {
     const visual = getSpaceVisual(BOARD_SPACES[number - 1]);
     assert.equal(visual.className, 'deck', `space ${number} is visually identified as a draw space`);
@@ -210,9 +220,9 @@ try {
   assert.equal(new Set([...expectedDeckCodes.values(), gambleVisual.deckCode]).size, 6, 'all six deck identities have a visible short code');
   assert.equal(BOARD_EFFECTS.length, 15, 'the board has 15 active predictable effects');
   assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1, 5, 13, 20, 24, 27, 33, 37, 39, 47, 49, 57, 64, 67, 72]);
-  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').map(space => space.number), [14, 55], 'exactly two existing board spaces award Upgrade Tokens');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').map(space => space.number), [2, 14, 55], 'Space 2 joins the existing Upgrade Token spaces');
   assert(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').every(space => space.trigger === 'LAND' && getSpaceVisual(space).className === 'upgrade'), 'token spaces award only on landing and have a distinct visual');
-  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 33, 'the two token spaces replace NORMAL spaces without changing route length');
+  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 27, 'Space 2 and five ordinary spaces are replaced without changing route length');
 
   assert.equal(cards.length, 96, 'the full card set has 96 cards');
   assert.equal(new Set(cards.map(card => card.id)).size, 96, 'card IDs are unique');
@@ -566,6 +576,10 @@ try {
     assert.equal(assets.filter(asset => asset.category === category).length, 20);
   }
   const levelOneArtworkPaths = assets.map(asset => getAssetArtworkFilePath(asset.id));
+  const allLevelArtworkPaths = assets.flatMap(asset => [1, 2, 3, 4].map(level => getAssetArtworkFilePathForLevel(asset.id, level)));
+  assert.equal(allLevelArtworkPaths.length, 400, 'the complete catalog has 400 level-specific artwork paths');
+  assert.equal(new Set(allLevelArtworkPaths).size, 400, 'each asset level resolves to its own artwork file');
+  assert(allLevelArtworkPaths.every(path => path && existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 400 L1–L4 artwork files exist');
   assert(levelOneArtworkPaths.every(Boolean), 'all milestone choices map to Level 1 artwork');
   assert.equal(new Set(levelOneArtworkPaths).size, 100, 'every milestone choice has a distinct Level 1 artwork path');
   assert.equal(getAssetArtworkFilePath('budget-racer'), 'milestone-assets/cars/CAR_01.webp', 'legacy car artwork mapping remains stable');
@@ -580,7 +594,7 @@ try {
         className: 'test-asset-artwork',
         alt: `${representative.name} level ${level}`,
       }));
-      assert(artworkMarkup.includes(getAssetArtworkUrl(representative.id)), `${category} level ${level} renders its shared artwork`);
+      assert(artworkMarkup.includes(getAssetArtworkUrl(representative.id, level)), `${category} level ${level} renders its level-specific artwork`);
       assert(artworkMarkup.includes(`data-visual-variant="${representative.visualVariants[level]}"`), `${category} level ${level} identifies its visual variant`);
       assert(artworkMarkup.includes('asset-upgrade-overlay') && artworkMarkup.includes(`LEVEL ${level}`), `${category} level ${level} displays its level marker over the correct asset art`);
     }
@@ -1227,8 +1241,9 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   const cpuLanding = move(cpuMatch, 3);
   assert.equal(cpuLanding.players[0].wealth, 897000, 'CPU landings resolve the same board effect');
 
-  const protectedStart = startWithoutProtection(2);
+  const protectedStart = isolatedEffectStart(2);
   const protectedPlayerId = protectedStart.players[0].playerId;
+  const protectedWealthBefore = protectedStart.players[0].wealth;
   const protectedMatch = move({
     ...protectedStart,
     effectProtections: {
@@ -1236,7 +1251,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
       [protectedPlayerId]: [{ remaining: 1, blockedEffectTypes: ['REMOVE_WEALTH'] }],
     },
   }, 3);
-  assert.equal(protectedMatch.players[0].wealth, 900000, 'existing protection blocks a matching board penalty');
+  assert.equal(protectedMatch.players[0].wealth, protectedWealthBefore, 'existing protection blocks a matching board penalty');
   assert.equal(protectedMatch.effectProtections[protectedPlayerId].length, 0, 'blocked effect consumes its protection');
 
   const digitalCareer = careers.find(career => career.tags.includes('digital'));

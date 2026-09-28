@@ -2,7 +2,7 @@ import type { BoardSpace } from '../game/board-data';
 import { getBoardEffect } from '../game/board-effects';
 import type { DeckId } from '../game/decks';
 
-export type BoardVisualClass = 'safe' | 'deck' | 'salary' | 'major' | 'gamble' | 'effect' | 'upgrade';
+export type BoardVisualClass = 'safe' | 'deck' | 'salary' | 'major' | 'gamble' | 'effect' | 'upgrade' | 'start';
 
 export interface BoardSpaceVisual {
   className: BoardVisualClass;
@@ -55,6 +55,7 @@ export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
       if (!space.effectId) return { className: 'safe', accent: '#8ea69a', tile: '#30423b' };
       const effect = getBoardEffect(space.effectId);
       if (!effect) throw new Error(`Board space ${space.number} references unknown effect ${space.effectId}.`);
+      if (space.number === 1) return { className: 'start', accent: '#d4e981', tile: '#3b543f' };
       return { className: 'effect', accent: EFFECT_ACCENTS[effect.tone], tile: '#35483e' };
     }
     case 'NORMAL':

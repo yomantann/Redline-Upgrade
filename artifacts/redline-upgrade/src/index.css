@@ -255,6 +255,9 @@ a { color: inherit; text-decoration: none; }
 .preview-info { padding: 23px 0 0; }
 .preview-number { color: #f96346; }
 .preview-name { font-size: clamp(63px,6.6vw,106px); margin: 14px 0 19px -3px; overflow-wrap: anywhere; }
+.preview-selection-confirmation { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 0 15px; border-block:1px solid #556058; }
+.preview-selection-confirmation > .mono { font-size:8px; }
+.preview-selection-confirmation .action { min-height:44px; padding-inline:15px; font-size:9px; }
 .preview-description { color: #bbc4b9; line-height: 1.65; font-size: 14px; max-width: 470px; margin: 0 0 25px; }
 .ability-panel { border-top: 1px solid #556058; border-bottom: 1px solid #556058; padding: 19px 0 21px; }
 .ability-title { font: 700 26px/1 'Barlow Condensed',sans-serif; text-transform: uppercase; margin: 9px 0 7px; }
@@ -311,6 +314,8 @@ a { color: inherit; text-decoration: none; }
   .preview-inner { position: static; }
   .preview-visual { height: 280px; }
   .preview-name { font-size: clamp(72px,16vw,105px); }
+  .preview-selection-confirmation { align-items:flex-start; flex-direction:column; }
+  .preview-selection-confirmation .action { width:100%; }
   .roster-list { padding-top: 26px; }
   .tile-portrait { height: clamp(145px,31vw,205px); }
   .tile-name { font-size: clamp(23px,5vw,34px); }

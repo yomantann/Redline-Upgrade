@@ -22,7 +22,7 @@ const vite = await createServer({
 try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { assets } = await vite.ssrLoadModule('/src/game/assets.ts');
-  const { getAssetArtworkFilePath } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { careers } = await vite.ssrLoadModule('/src/game/careers.ts');
   const manifestIds = visualAssets.map((asset) => asset.id);
   assert.equal(new Set(manifestIds).size, manifestIds.length, 'visual asset IDs are unique');
@@ -31,6 +31,7 @@ try {
   assert.equal(new Set(artworkPaths).size, artworkPaths.length, 'asset artwork paths are unique');
   const categoryGroups = new Map();
   const artworkHashes = [];
+  const levelHashes = [];
   for (const asset of assets) {
     const categoryAssets = categoryGroups.get(asset.category) ?? [];
     categoryAssets.push(asset);
@@ -45,6 +46,17 @@ try {
     artworkHashes.push(createHash('sha256').update(readFileSync(artworkFile)).digest('hex'));
     for (const level of [1, 2, 3, 4]) {
       assert.equal(asset.visualVariants?.[level], `${asset.id}:level-${level}`, `${asset.id} has an asset-specific level ${level} visual reference`);
+      const levelPath = getAssetArtworkFilePathForLevel(asset.id, level);
+      assert(levelPath, `${asset.id} level ${level} has an artwork path`);
+      const levelFile = path.join(publicRoot, levelPath);
+      assert(existsSync(levelFile), `${asset.id} level ${level} artwork exists: ${levelPath}`);
+      const levelContents = readFileSync(levelFile);
+      if (level > 1) {
+        const embeddedImage = levelContents.toString('utf8').match(/<image[^>]+href="([^"]+)"/)?.[1];
+        assert(embeddedImage, `${asset.id} level ${level} includes its underlying asset artwork`);
+        assert(existsSync(path.resolve(path.dirname(levelFile), embeddedImage)), `${asset.id} level ${level} underlying artwork resolves: ${embeddedImage}`);
+      }
+      levelHashes.push({ assetId: asset.id, level, hash: createHash('sha256').update(levelContents).digest('hex') });
     }
   }
   assert.equal(categoryGroups.size, 5, 'the catalog has all five milestone categories');
@@ -52,12 +64,19 @@ try {
     assert.equal(categoryAssets.length, 20, `${category} contains exactly 20 assets`);
   }
   assert.equal(new Set(artworkHashes).size, assets.length, 'every asset artwork file has distinct image content');
+  assert.equal(levelHashes.length, 400, 'all 100 assets have four artwork files');
+  assert.equal(new Set(levelHashes.map(entry => entry.hash)).size, 400, 'every asset and level has unique image content');
+  for (const asset of assets) {
+    const hashes = levelHashes.filter(entry => entry.assetId === asset.id).map(entry => entry.hash);
+    assert.equal(new Set(hashes).size, 4, `${asset.id} changes artwork at every level`);
+  }
 
   for (const file of [
     'components/milestone-choice.tsx',
     'components/player-assets.tsx',
     'components/upgrade-token-controls.tsx',
     'components/finish-line-panel.tsx',
+    'components/endgame-presentation.tsx',
   ]) {
     const source = readFileSync(path.join(projectRoot, 'src', file), 'utf8');
     assert.match(source, /AssetArtwork/, `${file} renders asset-specific artwork`);
@@ -113,7 +132,7 @@ try {
   assert.equal(catalog.collections.find((collection) => collection.id === 'milestone-states').items.length, 4, 'all four milestone states have a marker');
   assert.equal(catalog.collections.find((collection) => collection.id === 'endgame-support').items.length, 7, 'all seven endgame support symbols are mapped');
 
-  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct milestone artworks (20 per category), all four level references, four artwork display surfaces, and ${visualAssets.length} valid manifest paths.`);
+  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct Level 1 artworks (20 per category), 400 unique Level 1–4 artworks, five asset display surfaces, and ${visualAssets.length} valid manifest paths.`);
 } finally {
   await vite.close();
 }

@@ -1,7 +1,7 @@
 import type { CardDefinition } from '@/game/cards';
 import { getCardArtworkUrl } from '@/game/card-artwork';
 import { getAsset, type AssetSlot } from '@/game/assets';
-import { getAssetArtworkUrl } from '@/game/asset-artwork';
+import { AssetArtwork } from './asset-artwork';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import type { Match } from '@/game/match';
@@ -62,9 +62,9 @@ function StatBlock({ label, value, accent, money }: { label: string; value: numb
   );
 }
 
-function AssetTrophy({ slot, label, eyebrow, assetId }: (typeof assetSlots)[number] & { assetId: string | null }) {
+function AssetTrophy({ slot, label, eyebrow, assetId, assetLevel }: (typeof assetSlots)[number] & { assetId: string | null; assetLevel: number }) {
   const asset = assetId ? getAsset(assetId) : undefined;
-  const artwork = asset ? getAssetArtworkUrl(asset.id) : undefined;
+  const level = asset ? Math.max(1, Math.min(4, assetLevel)) as 1 | 2 | 3 | 4 : 1;
 
   return (
     <article className={`endgame-trophy ${asset ? 'collected' : 'uncollected'}`} data-testid={`endgame-asset-${slot}`}>
@@ -73,10 +73,10 @@ function AssetTrophy({ slot, label, eyebrow, assetId }: (typeof assetSlots)[numb
         <span className="endgame-trophy-notch" aria-hidden="true" />
       </div>
       <div className="endgame-trophy-art" data-category={asset?.category ?? slot}>
-        {artwork ? (
-          <img src={artwork} alt="" loading="lazy" />
+          {asset ? (
+           <AssetArtwork assetId={asset.id} level={level} className="endgame-trophy-image" />
         ) : (
-          <span className="endgame-trophy-mark" aria-hidden="true">{asset?.visual ?? '—'}</span>
+          <span className="endgame-trophy-mark" aria-hidden="true">—</span>
         )}
         {!asset && <span className="mono endgame-trophy-pending">OPEN SLOT</span>}
       </div>
@@ -260,8 +260,8 @@ export function EndgamePresentation({
           <h2 id="endgame-assets-heading" className="display">Proof of<br /><span>the upgrade.</span></h2>
         </div>
         <div className="endgame-trophy-grid">
-          {assetSlots.map((entry) => (
-            <AssetTrophy key={entry.slot} {...entry} assetId={player.equipment[entry.slot]} />
+           {assetSlots.map((entry) => (
+             <AssetTrophy key={entry.slot} {...entry} assetId={player.equipment[entry.slot]} assetLevel={player.equipment[entry.slot] ? player.assetLevels[player.equipment[entry.slot]!] ?? 1 : 1} />
           ))}
         </div>
       </section>

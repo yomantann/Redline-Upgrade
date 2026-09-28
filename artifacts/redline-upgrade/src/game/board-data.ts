@@ -19,13 +19,21 @@ export interface BoardSpace {
 
 const milestones = new Set([10, 30, 45, 60, 75]);
 const gambles = new Set([15, 50, 70]);
-// These two existing NORMAL spaces become the only board sources for tokens.
-const upgradeTokenSpaces = new Set([14, 55]);
+// Phase 14 keeps the established token behavior and makes the early route read clearly:
+// space 2 joins the two existing token sources without introducing a new system.
+const upgradeTokenSpaces = new Set([2, 14, 55]);
 // Deck assignments preserve the existing board route; landing triggers the live deck draw.
+// Phase 14 adds only ordinary spaces, spread across the latter half of the circuit.
 const cardSpaces: Partial<Record<number, DeckId>> = {
   3: 'wealth', 7: 'ai', 12: 'fame', 17: 'lifestyle', 22: 'influence',
-  32: 'wealth', 42: 'ai', 52: 'fame', 62: 'influence',
+  26: 'lifestyle', 32: 'wealth', 36: 'influence', 42: 'ai',
+  48: 'wealth', 52: 'fame', 58: 'fame', 62: 'influence', 69: 'ai',
 };
+export const PHASE_14_BOARD_CHANGES = {
+  openRoad: [1],
+  upgradeToken: [2],
+  addedCardSpaces: [26, 36, 48, 58, 69],
+} as const;
 // Payday is independent of space type, so later spaces can combine it with an Event.
 export const PAYDAY_SPACES = new Set([6, 18, 29, 41, 54, 66, 73]);
 
@@ -56,7 +64,19 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
   };
   const [icon, label, description, trigger] = milestone[number]
     ?? (effect ? [effect.icon, effect.label, effect.description, 'LAND'] : [defaultIcon, defaultLabel, defaultDescription, defaultTrigger]);
-  return { number, type, payday: PAYDAY_SPACES.has(number), icon, secondaryIcon: number === 45 ? 'investment' : undefined, label, description, trigger, deck, effectId: effect?.id };
+  const isOpenRoad = number === 1;
+  return {
+    number,
+    type,
+    payday: PAYDAY_SPACES.has(number),
+    icon: isOpenRoad ? 'start' : icon,
+    secondaryIcon: number === 45 ? 'investment' : isOpenRoad ? effect?.icon : undefined,
+    label: isOpenRoad ? 'OPEN ROAD' : label,
+    description: isOpenRoad ? 'The route starts here. Land here to resolve Quick Contract and gain $4,000 Wealth.' : description,
+    trigger,
+    deck,
+    effectId: effect?.id,
+  };
 });
 
 export function getSpace(position: number): BoardSpace | null {

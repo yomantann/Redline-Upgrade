@@ -3,7 +3,7 @@ export const ICON_PATHS: Record<string, string> = {
   'upgrade-token': 'M12 2 20 6.5v11L12 22 4 17.5v-11L12 2Zm0 4.2a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Zm0 5.6v4.4m-3.2-2.2h6.4',
   normal: 'M7 12h10',
   wealth: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1',
-  salary: 'M12 3v18 M17 7c-2-2-8-2-9 1-2 5 9 2 9 7-1 3-7 4-10 1 M3 3h18v18H3z',
+  salary: 'M5 22V3 M5 5h14v7H5 M5 12h14v7H5 M9 5v7 M15 12v7',
   ai: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2 M8 8h8v8H8z M10 10h4v4h-4z',
   fame: 'm12 2 2.8 6.4 6.9.6-5.2 4.6 1.5 7-6-3.5-6 3.5 1.5-7L2.3 9l6.9-.6z',
   lifestyle: 'M12 2 21 11 12 22 3 11z M3 11h18 M12 2l4 9-4 11-4-11z',

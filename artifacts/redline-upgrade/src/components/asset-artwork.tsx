@@ -144,7 +144,7 @@ export function AssetArtwork({
   alt?: string;
 }) {
   const asset = getAsset(assetId);
-  const artwork = getAssetArtworkUrl(assetId);
+  const artwork = getAssetArtworkUrl(assetId, level);
   if (!asset || !artwork) return null;
   const visualVariant = asset.visualVariants?.[level] ?? `${asset.id}:level-${level}`;
   return (

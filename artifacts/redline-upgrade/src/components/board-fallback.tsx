@@ -1,7 +1,7 @@
 import { BOARD_SPACES } from '../game/board-data';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
-import { ROUTE, TABLETOP_DRESSING, ZONE_ANCHORS } from './board-scene';
+import { ROUTE, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
 import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
@@ -24,7 +24,12 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+export function BoardFallback({ players, activePlayerId, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+  const activePosition = Math.max(0, Math.min(75, players.find(player => player.playerId === activePlayerId)?.position ?? 0));
+  const focus = project(ROUTE[activePosition].x, ROUTE[activePosition].z, .45);
+  const cameraZoom = zoom * (overview ? 1 : 2);
+  const centerX = overview ? 600 : focus.x;
+  const centerY = overview ? 380 : focus.y;
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
@@ -32,7 +37,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom 
   const finish = ROUTE[75];
   return <div className="ru-board__static" data-testid="board-static-fallback">
     <div className="ru-board__static-heading"><span>WEBGL2 UNAVAILABLE / CIRCUIT MAP ACTIVE</span><strong>The circuit remains live.</strong><p>This device cannot draw the 3D tabletop. The physical route, turns, and every runner are shown below.</p></div>
-    <svg className="ru-board__static-svg" viewBox={`${600 - 600 / zoom + pan.x * 19 + pan.z * 6} ${380 - 380 / zoom + pan.z * 15 - pan.x * 4} ${1200 / zoom} ${760 / zoom}`} role="img" aria-label="Isometric Redline circuit with all 75 raised spaces and live player positions">
+    <svg className="ru-board__static-svg" viewBox={`${centerX - 600 / cameraZoom + pan.x * 19 + pan.z * 6} ${centerY - 380 / cameraZoom + pan.z * 15 - pan.x * 4} ${1200 / cameraZoom} ${760 / cameraZoom}`} role="img" aria-label="Isometric Redline circuit with all 75 raised spaces and live player positions">
       <defs>
         <pattern id="ru-circuit-grain" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0 0h12M0 0v12" fill="none" stroke="#a8c69a" strokeOpacity=".07" /></pattern>
         <filter id="ru-board-shadow" x="-30%" y="-30%" width="160%" height="180%"><feGaussianBlur stdDeviation="13" /></filter>
@@ -47,7 +52,22 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom 
       <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.45); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#d4e981" strokeOpacity=".62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {zoneNames.map((zone, i) => {
         const p = project(ZONE_ANCHORS[i].x, ZONE_ANCHORS[i].z, .2);
-        return <g key={zone}><rect x={p.x-58} y={p.y-12} width="116" height="22" fill="#0c1b16" stroke="#839f7e" strokeWidth="1" />
+        const routeIndex = [8, 23, 38, 53, 68][i];
+        const center = ROUTE[routeIndex];
+        const next = ROUTE[Math.min(75, routeIndex + 1)];
+        const dx = next.x - center.x;
+        const dz = next.z - center.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const nx = -dz / length;
+        const nz = dx / length;
+        const a = project(center.x - dx / length * 2.25 + nx * 1.6, center.z - dz / length * 2.25 + nz * 1.6, .2);
+        const b = project(center.x + dx / length * 2.25 + nx * 1.6, center.z + dz / length * 2.25 + nz * 1.6, .2);
+        const c = project(center.x - dx / length * 2.25 - nx * 1.6, center.z - dz / length * 2.25 - nz * 1.6, .2);
+        const d = project(center.x + dx / length * 2.25 - nx * 1.6, center.z + dz / length * 2.25 - nz * 1.6, .2);
+        return <g key={zone}>
+          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'][i]} strokeWidth="4" opacity=".5" />
+          <line x1={c.x} y1={c.y} x2={d.x} y2={d.y} stroke={['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'][i]} strokeWidth="4" opacity=".5" />
+          <rect x={p.x-58} y={p.y-12} width="116" height="22" fill="#0c1b16" stroke="#839f7e" strokeWidth="1" />
           <text x={p.x} y={p.y+3} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="10" fontWeight="700">{`0${i+1} / ${zone}`}</text>
         </g>;
       })}
@@ -73,6 +93,21 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom 
           <text x={screen.x} y={screen.y+12} textAnchor="middle" fill="#c3d3bc" fontFamily="Space Mono, monospace" fontSize="4">{panel.subtitle}</text>
         </g>;
       })}
+      {TABLETOP_STRUCTURES.map((structure) => {
+        const base = platform(structure.x, structure.z, 1.18, 1.18, .32);
+        const tower = project(structure.x, structure.z, 1.8);
+        const foot = project(structure.x, structure.z, .38);
+        return <g key={structure.id} data-board-structure={structure.id}>
+          <polygon points={base.front} fill="#0b1713" stroke={structure.accent} strokeOpacity=".45" strokeWidth="1" />
+          <polygon points={base.right} fill="#101e19" stroke={structure.accent} strokeOpacity=".45" strokeWidth="1" />
+          <polygon points={base.top} fill="#172821" stroke={structure.accent} strokeWidth="1.5" />
+          <line x1={foot.x} y1={foot.y} x2={tower.x} y2={tower.y} stroke="#52665a" strokeWidth="7" />
+          <line x1={tower.x-12} y1={tower.y} x2={tower.x+12} y2={tower.y} stroke={structure.accent} strokeWidth="3" />
+          <circle cx={tower.x} cy={tower.y-12} r="10" fill="#15251e" stroke={structure.accent} strokeWidth="2" />
+          <path d={`M${tower.x} ${tower.y-25}v-13`} stroke={structure.accent} strokeWidth="2" />
+          <text x={tower.x} y={tower.y+4} textAnchor="middle" fill={structure.accent} fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">{structure.label}</text>
+        </g>;
+      })}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
       {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><path d={ICON_PATHS.start} transform={`translate(${p.x-7} ${p.y-32}) scale(.6)`} fill="none" stroke="#d4e981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
       {BOARD_SPACES.map(space => {
@@ -81,8 +116,8 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom 
          const visual = getSpaceVisual(space);
         const y = milestone ? .86 : .7;
         const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
-         const color = milestone ? '#794337' : space.payday ? '#577455' : visual.tile;
-         const accent = milestone ? '#f96346' : space.payday ? '#d4e981' : visual.accent;
+          const color = milestone ? '#794337' : visual.className === 'start' ? '#3b543f' : space.payday ? '#577455' : visual.tile;
+          const accent = milestone ? '#f96346' : visual.className === 'start' ? '#d4e981' : space.payday ? '#d4e981' : visual.accent;
         const center = project(x,z,y+.02);
         return <g key={space.number} data-board-space={space.number} style={{ cursor: 'pointer' }} onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)}>
           <title>{`Space ${space.number}, ${space.label}. ${space.description}`}</title>
@@ -101,7 +136,21 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], zoom 
               <ellipse cx={center.x+16} cy={center.y-12} rx="15" ry="11.5" fill="#0b1512" stroke={accent} strokeWidth="2" />
               <ellipse cx={center.x+16} cy={center.y-12} rx="11.5" ry="8.4" fill="#17221e" stroke="#eef0df" strokeOpacity=".28" strokeWidth=".7" />
             </g> : visual.className !== 'safe' && <circle cx={center.x+16} cy={center.y-12} r="11" fill="#14211c" stroke={accent} strokeOpacity=".72" strokeWidth={visual.className === 'gamble' ? 1.2 : 1.4} />}
-            {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+(visual.className === 'deck' || visual.className === 'gamble' ? 4 : 7)} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+            {visual.className === 'start' && <circle cx={center.x} cy={center.y} r="24" fill="none" stroke="#d4e981" strokeWidth="2" opacity=".8" />}
+            {visual.className === 'start' && <text x={center.x} y={center.y+20} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">OPEN ROAD</text>}
+            {space.type === 'UPGRADE_TOKEN' && <g>
+              <polygon points={Array.from({ length: 6 }, (_, i) => {
+                const angle = Math.PI / 6 + i * Math.PI / 3;
+                return `${center.x + Math.cos(angle) * 13},${center.y + Math.sin(angle) * 13}`;
+              }).join(' ')} fill="#433b5a" stroke="#d4c5ff" strokeWidth="2" />
+              <circle cx={center.x} cy={center.y} r="6" fill="none" stroke="#e7dcff" strokeWidth="1.5" />
+            </g>}
+            {space.type === 'SALARY_GATE' && <g stroke="#d4e981" strokeWidth="2">
+              <path d={`M${center.x-17} ${center.y+14}v-18h34v18`} fill="none" />
+              <path d={`M${center.x-20} ${center.y-4}h40`} />
+            </g>}
+            {landingPosition === space.number && <circle cx={center.x} cy={center.y} r="31" fill="none" stroke="#f0f0d6" strokeWidth="3" opacity=".95" />}
+            {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect' || visual.className === 'start') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+(visual.className === 'deck' || visual.className === 'gamble' ? 4 : 7)} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
             {visual.deckCode && <g aria-hidden="true">
               <rect x={center.x+7} y={center.y+1} width="18" height="9" rx="2" fill="#0b1512" stroke={accent} strokeOpacity=".92" strokeWidth=".85" />
               <text x={center.x+16} y={center.y+7.3} textAnchor="middle" fill={accent} fontFamily="Space Mono, monospace" fontSize="5" fontWeight="700" letterSpacing=".1">{visual.deckCode}</text>

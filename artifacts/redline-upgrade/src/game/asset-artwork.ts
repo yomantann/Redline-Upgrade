@@ -1,4 +1,4 @@
-import { assets, type AssetCategory } from './assets';
+import { assets, type AssetCategory, type AssetLevel } from './assets';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
 
 const artworkGroups: Record<AssetCategory, { directory: string; prefix: string }> = {
@@ -33,8 +33,17 @@ export function getAssetArtworkFilePath(assetId: string): string | undefined {
   return artworkByAssetId[assetId];
 }
 
-export function getAssetArtworkUrl(assetId: string): string | undefined {
-  const filePath = getAssetArtworkFilePath(assetId);
+export function getAssetArtworkFilePathForLevel(assetId: string, level: AssetLevel = 1): string | undefined {
+  const asset = assets.find(candidate => candidate.id === assetId);
+  const basePath = getAssetArtworkFilePath(assetId);
+  if (!asset || !basePath) return undefined;
+  if (level === 1) return basePath;
+  const directory = artworkGroups[asset.category].directory;
+  return `milestone-assets/${directory}/phase14/${asset.id}-level-${level}.svg`;
+}
+
+export function getAssetArtworkUrl(assetId: string, level: AssetLevel = 1): string | undefined {
+  const filePath = getAssetArtworkFilePathForLevel(assetId, level);
   return filePath ? getPublicAssetUrl(filePath) : undefined;
 }
 

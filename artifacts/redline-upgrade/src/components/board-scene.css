@@ -159,8 +159,12 @@
 .ru-board__static-key .ru-key-effect i { background: #9fc6ae; }
 @media (max-width: 700px) {
   .ru-tabletop .ru-board__masthead { flex-wrap: wrap; align-items: start; gap: 14px; padding: 15px; }
-  .ru-board__controls { width: 100%; }
-  .ru-board__controls button { flex: 1; font-size: 8px; padding: 0 7px; }
+  .ru-board__controls { display: grid; width: 100%; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ru-board__controls button { min-width: 0; width: 100%; flex: none; font-size: 8px; line-height: 1.15; padding: 0 5px; white-space: normal; }
+  .ru-board__controls button:nth-child(1),
+  .ru-board__controls button:nth-child(2) { grid-column: span 3; }
+  .ru-board__controls button:nth-child(5),
+  .ru-board__controls button:nth-child(6) { grid-column: span 2; }
   .ru-board__stage { height: 660px; min-height: 0; }
   .ru-board__stage-index { left: 20px; right: 20px; font-size: 7px; }
   .ru-board__telemetry { left: 18px; bottom: 18px; width: 128px; padding: 12px; }
@@ -179,4 +183,62 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ru-board__controls button { transition: none; }
+}
+
+/* Phase 14: make the board read as a machined object on a table, not a flat map. */
+.ru-tabletop {
+  border-width: 1px 1px 2px;
+  box-shadow: 0 30px 0 #070e0c, 0 42px 74px rgba(0, 4, 2, .42);
+}
+.ru-board__stage {
+  height: clamp(620px, 64vw, 900px);
+  min-height: 620px;
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(120, 54, 47, .12), transparent 30%),
+    radial-gradient(ellipse at 50% 55%, rgba(91, 120, 85, .28), transparent 58%),
+    repeating-linear-gradient(0deg, transparent 0 51px, rgba(169, 198, 170, .028) 52px 53px),
+    #101917;
+}
+.ru-board__stage::before {
+  inset: 18px;
+  border-color: rgba(249, 99, 70, .18);
+  box-shadow: inset 0 0 0 1px rgba(212, 233, 129, .06), 0 0 0 8px rgba(8, 17, 14, .25);
+}
+.ru-board__stage::after {
+  content: '';
+  position: absolute;
+  inset: 29px;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px dashed rgba(212, 233, 129, .1);
+}
+.ru-board__stage canvas { position: relative; z-index: 1; }
+.ru-board__stage-index { top: 35px; }
+.ru-board__telemetry,
+.ru-board__minimap {
+  backdrop-filter: blur(4px);
+  box-shadow: 5px 7px 0 rgba(0, 5, 3, .48), inset 0 1px rgba(231, 245, 205, .08);
+}
+.ru-board__telemetry { bottom: 35px; }
+.ru-board__minimap { bottom: 35px; }
+.ru-board__loading {
+  inset: 12%;
+  border: 1px solid #536f5c;
+  box-shadow: 10px 12px 0 rgba(0, 5, 3, .4);
+}
+.ru-board__static {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(95, 67, 57, .14), transparent 31%),
+    radial-gradient(ellipse at 50% 50%, #304236, #101b17 72%);
+}
+.ru-board__static-svg { filter: drop-shadow(0 18px 14px rgba(0, 5, 3, .32)); }
+.ru-tabletop .ru-board__foot {
+  border-top-width: 2px;
+  box-shadow: inset 0 1px rgba(232, 246, 211, .08);
+}
+@media (max-width: 700px) {
+  .ru-board__stage { height: 660px; min-height: 0; }
+  .ru-board__stage::after { inset: 23px; }
+  .ru-board__stage-index { top: 27px; }
+  .ru-board__telemetry, .ru-board__minimap { bottom: 18px; }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cardsForDeck, type CardDefinition } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
+import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_RESULT_SECONDS } from '@/game/card-reveal-timing';
 import { decks, getDeck, type DeckId } from '@/game/decks';
 import { RedlineCard } from './redline-card';
 
@@ -39,7 +40,7 @@ export function CardTabletop({
   useEffect(() => {
     setMinimumReadTimeComplete(false);
     if (!activeDeck) return;
-    const timer = window.setTimeout(() => setMinimumReadTimeComplete(true), 2200);
+    const timer = window.setTimeout(() => setMinimumReadTimeComplete(true), CARD_READ_MINIMUM_MS);
     return () => window.clearTimeout(timer);
   }, [activeDeck, activeCard?.id, cardStage]);
 
@@ -75,7 +76,15 @@ export function CardTabletop({
             <RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} />
           </div>
           <div className="card-draw-action">
-            {isCPU ? <p className="mono">{activeCardResolved ? 'RESULT RECORDED // CPU CONTINUES AFTER THE TABLE READS IT' : 'CPU ACTION // REVIEWING CARD EFFECT'}</p> : activeCardResolved
+             {isCPU ? (
+               <>
+                 <p className="mono">{activeCardResolved ? 'RESULT RECORDED // CPU CONTINUES AUTOMATICALLY' : 'CPU ACTION // CARD READ IN PROGRESS'}</p>
+                 <div className={`card-cpu-progress ${activeCardResolved ? 'resolved' : 'draw'}`} role="progressbar" aria-label={activeCardResolved ? 'CPU continuing after card result' : 'CPU reviewing card'} aria-valuetext={activeCardResolved ? `Auto-continue in about ${CPU_CARD_RESULT_SECONDS} seconds` : `Card read in progress for about ${CARD_READ_MINIMUM_SECONDS} seconds`} key={`${activeCard?.id ?? activeDeck}-${cardStage ?? 'draw'}`}>
+                   <span aria-hidden="true" />
+                 </div>
+                 <small className="card-cpu-progress-label mono">{activeCardResolved ? `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC` : `CARD READ / ${CARD_READ_MINIMUM_SECONDS} SEC`}</small>
+               </>
+             ) : activeCardResolved
               ? <button type="button" className="action lime-action" onClick={onAcknowledge} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
               : onResolveCard
                 ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>

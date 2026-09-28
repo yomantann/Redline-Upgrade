@@ -86,7 +86,14 @@
 .card-draw-action p { margin:12px 0 0; font-size:clamp(10px,1.05vw,13px); }
 .card-draw-action p b { display:inline-block; margin-bottom:4px; color:var(--deck-color,#d8e78b); }
 .card-draw-action .mono { color:#c6d0c4; font:700 9px/1.55 'Space Mono',monospace; }
+.card-cpu-progress { height:5px; margin-top:12px; overflow:hidden; border:1px solid #52695a; background:#111a16; }
+.card-cpu-progress span { display:block; width:100%; height:100%; transform-origin:left center; background:var(--deck-color,#d8e78b); }
+.card-cpu-progress.draw span { animation:cpu-card-draw 2.2s linear both; }
+.card-cpu-progress.resolved span { animation:cpu-card-resolve 2.4s linear both; }
+.card-cpu-progress-label { display:block; margin-top:6px; color:#8fa493; font-size:7px; text-align:right; }
 .card-read-time-reason { display:block; margin-top:8px; color:#c5d3c3; font:700 8px/1.45 'Space Mono',monospace; text-align:center; }
+@keyframes cpu-card-draw { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes cpu-card-resolve { from { transform:scaleX(0); } to { transform:scaleX(1); } }
 @media(max-width:720px) {
   .card-draw-panel { padding:8px; }
   .card-draw-modal-card { width:min(560px,100%); grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto auto; gap:10px; padding:14px; }
@@ -104,4 +111,4 @@
   .card-draw-stage { width:min(100%,270px); }
   .card-draw-stage .redline-card { max-width:270px; }
 }
-@media(prefers-reduced-motion:reduce) { .card-draw-stage.revealed .redline-card { animation:none; } }
+@media(prefers-reduced-motion:reduce) { .card-draw-stage.revealed .redline-card { animation:none; } .card-cpu-progress span { animation:none !important; transform:scaleX(1); } }

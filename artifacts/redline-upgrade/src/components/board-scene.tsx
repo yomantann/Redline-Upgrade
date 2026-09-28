@@ -20,6 +20,11 @@ export const TABLETOP_DRESSING = [
   { id: 'market-display', x: 18, z: -12, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
   { id: 'ai-terminal', x: -18, z: 12, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
 ] as const;
+export const TABLETOP_STRUCTURES = [
+  { id: 'north-spine', x: 20.8, z: 11.8, label: 'NORTH / 05', accent: '#e9c477' },
+  { id: 'south-spine', x: 20.8, z: -2.3, label: 'SOUTH / 06', accent: '#f96346' },
+  { id: 'west-spine', x: -21.2, z: 2.5, label: 'WEST / 02', accent: '#88c6c2' },
+] as const;
 
 /**
  * A nearly three-turn inward race spiral, not rows. Catmull-Rom bends pass through
@@ -156,6 +161,57 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
   </group>;
 }
 
+function ZoneFrame({ index, color }: { index: number; color: string }) {
+  const routeIndex = [8, 23, 38, 53, 68][index];
+  const point = ROUTE[routeIndex];
+  const next = ROUTE[Math.min(75, routeIndex + 1)];
+  const angle = Math.atan2(next.z - point.z, next.x - point.x);
+  return <group position={[point.x, 0.14, point.z]} rotation={[0, -angle, 0]}>
+    <mesh position={[0, 0.03, -1.6]} receiveShadow>
+      <boxGeometry args={[4.8, 0.08, 0.11]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.78} roughness={0.34} />
+    </mesh>
+    <mesh position={[0, 0.03, 1.6]} receiveShadow>
+      <boxGeometry args={[4.8, 0.08, 0.11]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.78} roughness={0.34} />
+    </mesh>
+    {[-2.25, 2.25].map((x) => <mesh key={x} position={[x, 0.62, 0]} castShadow>
+      <boxGeometry args={[0.12, 1.18, 3.3]} />
+      <meshStandardMaterial color="#101b18" metalness={0.76} roughness={0.36} />
+    </mesh>)}
+    <mesh position={[0, 1.2, 0]} castShadow>
+      <boxGeometry args={[4.62, 0.12, 0.14]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.16} metalness={0.72} roughness={0.3} />
+    </mesh>
+  </group>;
+}
+
+function TabletopStructure({ structure }: { structure: typeof TABLETOP_STRUCTURES[number] }) {
+  return <group position={[structure.x, 0.12, structure.z]}>
+    <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
+      <cylinderGeometry args={[1.2, 1.35, 0.18, 8]} />
+      <meshStandardMaterial color="#101a18" metalness={0.76} roughness={0.34} />
+    </mesh>
+    <mesh position={[0, 0.86, 0]} castShadow>
+      <boxGeometry args={[0.62, 1.55, 0.62]} />
+      <meshStandardMaterial color="#1d3029" metalness={0.7} roughness={0.36} />
+    </mesh>
+    {[-1, 1].map((side) => <mesh key={side} position={[side * 0.46, 0.92, 0]} castShadow>
+      <boxGeometry args={[0.07, 1.7, 0.85]} />
+      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.2} metalness={0.72} roughness={0.32} />
+    </mesh>)}
+    <mesh position={[0, 1.7, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[0.47, 0.045, 8, 24]} />
+      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.25} metalness={0.7} roughness={0.3} />
+    </mesh>
+    <mesh position={[0, 2.05, 0]} castShadow>
+      <coneGeometry args={[0.34, 0.55, 6]} />
+      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.24} metalness={0.62} roughness={0.3} />
+    </mesh>
+    <PrintedLabel lines={[structure.label]} x={0} y={0.24} z={0.78} w={1.8} h={0.2} color={structure.accent} />
+  </group>;
+}
+
 const tileShape = new THREE.BoxGeometry(2.18, 0.24, 2.08);
 const tileTop = new THREE.BoxGeometry(2.06, 0.12, 1.96);
 const stripShape = new THREE.BoxGeometry(1.86, 0.025, 0.06);
@@ -166,6 +222,7 @@ const mats = {
   payday: new THREE.MeshStandardMaterial({ color: '#496752', metalness: 0.56, roughness: 0.34 }),
   event: new THREE.MeshStandardMaterial({ color: '#45523b', metalness: 0.45, roughness: 0.43 }),
   effect: new THREE.MeshStandardMaterial({ color: '#35483e', metalness: 0.42, roughness: 0.48 }),
+  start: new THREE.MeshStandardMaterial({ color: '#3b543f', metalness: 0.58, roughness: 0.38 }),
   safeMarker: new THREE.MeshStandardMaterial({ color: '#8ea69a', metalness: 0.35, roughness: 0.58 }),
   gamble: new THREE.MeshStandardMaterial({ color: '#533b32', metalness: 0.5, roughness: 0.43 }),
   deckSocket: new THREE.MeshStandardMaterial({ color: '#0d1715', metalness: 0.78, roughness: 0.3 }),
@@ -200,9 +257,10 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
   const topY = landmark ? 0.87 : 0.71;
   const sideMaterial = visual.className === 'major' ? mats.accent
     : visual.className === 'deck' || visual.className === 'gamble' ? deckEdgeMaterial ?? mats.event
+    : visual.className === 'start' ? mats.lime
     : space.payday ? mats.lime : visual.className === 'effect' ? mats.effect : mats.normal;
   const topMaterial = finish ? mats.milestone : landmark ? mats.milestone : space.payday ? mats.payday
-    : visual.className === 'effect' ? mats.effect : visual.className === 'gamble' ? deckMaterial ?? mats.gamble
+    : visual.className === 'effect' ? mats.effect : visual.className === 'start' ? mats.start : visual.className === 'gamble' ? deckMaterial ?? mats.gamble
     : deckMaterial ?? mats.normal;
   return <group position={[x, 0, z]} onPointerDown={(event) => { event.stopPropagation(); onSelect(space.number); }} onPointerOver={(event) => { event.stopPropagation(); onHover(space.number); }} onPointerOut={() => onHover(null)}>
     <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
@@ -236,6 +294,35 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
     {space.type === 'GAMBLE' && <mesh position={[0, topY + 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.63, 0.69, 8]} /><primitive object={deckEdgeMaterial ?? mats.accent} attach="material" />
     </mesh>}
+    {visual.className === 'start' && <group position={[0, topY + 0.052, 0.18]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.76, 0.84, 24]} /><primitive object={mats.lime} attach="material" />
+      </mesh>
+      <mesh position={[0, 0.025, 0.48]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.12, 0.5]} /><primitive object={mats.accent} attach="material" />
+      </mesh>
+    </group>}
+    {space.type === 'UPGRADE_TOKEN' && <group position={[0, topY + 0.09, 0.24]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.32, 0.38, 0.16, 6]} />
+        <meshStandardMaterial color="#433b5a" emissive="#d4c5ff" emissiveIntensity={0.18} metalness={0.72} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.35, 0.4, 6]} />
+        <meshStandardMaterial color="#d4c5ff" emissive="#d4c5ff" emissiveIntensity={0.3} metalness={0.7} roughness={0.26} />
+      </mesh>
+    </group>}
+    {space.type === 'SALARY_GATE' && <group position={[0, topY + 0.05, 0.35]}>
+      {[-0.42, 0.42].map((x) => <mesh key={x} position={[x, 0.2, 0]} castShadow>
+        <boxGeometry args={[0.08, 0.42, 0.18]} /><primitive object={mats.lime} attach="material" />
+      </mesh>)}
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <boxGeometry args={[0.94, 0.08, 0.18]} /><primitive object={mats.lime} attach="material" />
+      </mesh>
+    </group>}
+    {landing && <mesh position={[0, topY + 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.91, 1.02, 32]} /><primitive object={mats.lime} attach="material" />
+    </mesh>}
     {space.effectId && <mesh position={[0.72, topY + 0.075, -0.68]} rotation={[-Math.PI / 2, 0, 0]} castShadow={false}>
       <boxGeometry args={[0.16, 0.025, 0.16]} />
       <meshStandardMaterial color={visual.accent} metalness={0.62} roughness={0.4} />
@@ -253,7 +340,8 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
       </mesh>
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={visual.className === 'safe' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
+    {visual.className === 'start' && <PrintedLabel lines={['OPEN ROAD']} x={0} y={topY + 0.045} z={0.6} w={1.65} h={0.23} color={COLORS.lime} />}
+    {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect' || visual.className === 'start') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
     {visual.deckCode && <PrintedLabel lines={[visual.deckCode]} x={0.59} y={topY + 0.045} z={0.64} w={0.88} h={0.18} color={visual.accent} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
     {finish && <PrintedLabel lines={['FINISH']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.46} color={COLORS.orange} />}
@@ -439,7 +527,7 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
     const p = ROUTE[Math.max(0, Math.min(75, focus))];
     const target = overview ? new THREE.Vector3(pan.x, 0, pan.z) : new THREE.Vector3(p.x + pan.x, 0, p.z + pan.z);
     const width = size.width / Math.max(size.height, 1);
-    const height = (overview ? Math.max(37, 53 / width) : Math.max(14.7, 20 / width)) / zoom;
+    const height = (overview ? Math.max(39, 56 / width) : Math.max(14.7, 20 / width)) / zoom;
     const c = camera as THREE.OrthographicCamera;
     const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
     c.left += (-height * width / 2 - c.left) * factor;
@@ -469,11 +557,12 @@ export function BoardScene({ players, activePlayerId, finishOrder = [], landingP
     <CircuitBoard />
     <CenterEmblem />
     {TABLETOP_DRESSING.map((panel) => <DressingPanel key={panel.id} panel={panel} />)}
+    {TABLETOP_STRUCTURES.map((structure) => <TabletopStructure key={structure.id} structure={structure} />)}
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i % 15 === 14} zoneColor={ZONE_COLORS[Math.floor(i / 15)]} />)}
     {BOARD_SPACES.map(space => <Tile key={space.number} space={space} active={space.number === activePosition} landing={space.number === landingPosition} onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     <StartGate />
     <FinishGate players={players} finishOrder={finishOrder} />
-    {ZONES.map((name, i) => <StandingLabel key={name} name={name} index={i} x={ZONE_ANCHORS[i].x} z={ZONE_ANCHORS[i].z} color={ZONE_COLORS[i]} />)}
+    {ZONES.map((name, i) => <group key={name}><ZoneFrame index={i} color={ZONE_COLORS[i]} /><StandingLabel name={name} index={i} x={ZONE_ANCHORS[i].x} z={ZONE_ANCHORS[i].z} color={ZONE_COLORS[i]} /></group>)}
     {players.map((player, playerIndex) => {
       const colocated = players.filter(p => p.position === player.position).sort((a, b) => a.slot - b.slot);
       const finishIndex = finishOrder.indexOf(playerIndex);

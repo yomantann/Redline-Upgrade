@@ -205,6 +205,12 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
         <div className="preview-info">
           <span className="mono preview-number signal">PROFILE // {character.id}</span>
           <h2 className="display preview-name">{character.name}</h2>
+          <div className="preview-selection-confirmation" role="status" aria-live="polite">
+            <span className="mono lime">SELECTED / READY TO START</span>
+            <button className="action lime-action" type="button" onClick={confirm} data-testid="button-confirm-identity">
+              Confirm identity <span aria-hidden="true">↗</span>
+            </button>
+          </div>
           <p className="preview-description">{character.description}</p>
           <div className="ability-panel">
             <span className="mono signal">SIGNATURE ABILITY</span>
@@ -212,9 +218,6 @@ function CharacterPreview({ character, index }: { character: CharacterDefinition
             <p className="ability-description">{character.abilityDescription}</p>
           </div>
           <div className="preview-actions">
-            <button className="action lime-action" type="button" onClick={confirm}>
-              Confirm identity <span aria-hidden="true">↗</span>
-            </button>
             <button className="action secondary" type="button" onClick={previewMove} data-testid="button-preview-move">
               Test move <span aria-hidden="true">↗</span>
             </button>

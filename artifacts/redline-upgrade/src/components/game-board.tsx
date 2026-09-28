@@ -21,7 +21,7 @@ const zones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 
 export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [] }: GameBoardProps) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [overview, setOverview] = useState(true);
+  const [overview, setOverview] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
@@ -101,8 +101,8 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
-      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
-      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
+      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
+      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
         <Canvas
           aria-hidden="true"
           data-testid="board-canvas"

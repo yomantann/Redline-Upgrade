@@ -253,8 +253,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
           <div className="finish-line-outcome finish-line-gamble-outcome">
             <span className="mono">FINAL CARD</span>
             <strong>{card?.title ?? (endgame.gambleCardId ? `CARD ${endgame.gambleCardId}` : 'CARD NOT SUPPLIED')}</strong>
-            {typeof endgame.gambleRawDelta === 'number' && <small>RAW CHANGE / {formatSignedMoney(endgame.gambleRawDelta)}</small>}
-            {typeof endgame.gambleAdjustedDelta === 'number' && <small>ADJUSTED CHANGE / {formatSignedMoney(endgame.gambleAdjustedDelta)}</small>}
+            {typeof endgame.gambleAdjustedDelta === 'number' && <small>OUTCOME / {formatSignedMoney(endgame.gambleAdjustedDelta)}</small>}
             {card && <small>{card.effect}</small>}
           </div>
         )}
