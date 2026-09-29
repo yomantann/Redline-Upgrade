@@ -1,7 +1,7 @@
 import { BOARD_SPACES } from '../game/board-data';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
-import { ROUTE, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
+import { PHASE_FLAG_FOOTPRINT, ROUTE, SPACE_TILE_FOOTPRINT, START_PAD_FOOTPRINT, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
 import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
@@ -33,7 +33,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
-  const start = platform(ROUTE[0].x, ROUTE[0].z, 1.55, 1.58, .78);
+  const start = platform(ROUTE[0].x, ROUTE[0].z, START_PAD_FOOTPRINT.width / 2, START_PAD_FOOTPRINT.depth / 2, .78);
   const finish = ROUTE[75];
   return <div className="ru-board__static" data-testid="board-static-fallback">
     <div className="ru-board__static-heading"><span>WEBGL2 UNAVAILABLE / CIRCUIT MAP ACTIVE</span><strong>The circuit remains live.</strong><p>This device cannot draw the 3D tabletop. The physical route, turns, and every runner are shown below.</p></div>
@@ -76,27 +76,6 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
           {texture && <rect x={center.x - 42} y={center.y - 12} width="84" height="24" fill={texture} />}
         </g>;
       })}
-      {zoneNames.map((zone, i) => {
-        const p = project(ZONE_ANCHORS[i].x, ZONE_ANCHORS[i].z, .2);
-        const routeIndex = [8, 23, 38, 53, 68][i];
-        const center = ROUTE[routeIndex];
-        const next = ROUTE[Math.min(75, routeIndex + 1)];
-        const dx = next.x - center.x;
-        const dz = next.z - center.z;
-        const length = Math.hypot(dx, dz) || 1;
-        const nx = -dz / length;
-        const nz = dx / length;
-        const a = project(center.x - dx / length * 2.25 + nx * 1.6, center.z - dz / length * 2.25 + nz * 1.6, .2);
-        const b = project(center.x + dx / length * 2.25 + nx * 1.6, center.z + dz / length * 2.25 + nz * 1.6, .2);
-        const c = project(center.x - dx / length * 2.25 - nx * 1.6, center.z - dz / length * 2.25 - nz * 1.6, .2);
-        const d = project(center.x + dx / length * 2.25 - nx * 1.6, center.z + dz / length * 2.25 - nz * 1.6, .2);
-        return <g key={zone}>
-          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'][i]} strokeWidth="4" opacity=".5" />
-          <line x1={c.x} y1={c.y} x2={d.x} y2={d.y} stroke={['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'][i]} strokeWidth="4" opacity=".5" />
-          <rect x={p.x-58} y={p.y-12} width="116" height="22" fill="#0c1b16" stroke="#839f7e" strokeWidth="1" />
-          <text x={p.x} y={p.y+3} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="10" fontWeight="700">{`0${i+1} / ${zone}`}</text>
-        </g>;
-      })}
       {(() => { const p = project(0, 0, .2); return <g>
         <circle cx={p.x} cy={p.y} r="49" fill="#14261f" stroke="#536557" strokeWidth="2" />
         <circle cx={p.x} cy={p.y} r="42" fill="none" stroke="#395248" strokeWidth="2" />
@@ -106,7 +85,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         <text x={p.x} y={p.y+11} textAnchor="middle" fill="#e9e7dc" fontFamily="Space Mono, monospace" fontSize="6">UPGRADE / 01</text>
       </g>; })()}
       {TABLETOP_DRESSING.map((panel) => {
-        const base = platform(panel.x, panel.z, 1.55, .24, .3);
+        const base = platform(panel.x, panel.z, panel.width / 2, panel.depth / 2, .3);
         const screen = project(panel.x, panel.z, .48);
         return <g key={panel.id} data-board-dressing={panel.id}>
           <polygon points={base.front} fill="#0c1713" stroke={panel.accent} strokeOpacity=".42" strokeWidth="1" />
@@ -118,7 +97,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         </g>;
       })}
       {TABLETOP_STRUCTURES.map((structure) => {
-        const base = platform(structure.x, structure.z, 1.42, .34, .3);
+        const base = platform(structure.x, structure.z, structure.width / 2, structure.depth / 2, .3);
         const tower = project(structure.x, structure.z, .72);
         return <g key={structure.id} data-board-structure={structure.id}>
           <polygon points={base.front} fill="#0b1713" stroke={structure.accent} strokeOpacity=".45" strokeWidth="1" />
@@ -139,14 +118,16 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         const topFace = points([[left,far,top],[right,far,top],[right,near,top],[left,near,top]]);
         const frontFace = points([[left,near,top],[right,near,top],[right,near,bottom],[left,near,bottom]]);
         const rightFace = points([[right,far,top],[right,near,top],[right,near,bottom],[right,far,bottom]]);
-        const rows = building.height > 0.46 ? [0.18, 0.36] : [0.19];
+        const rowCount = Math.max(2, Math.floor(building.height / .34));
+        const rows = Array.from({ length: rowCount }, (_, rowIndex) => building.height * (rowIndex + 1) / (rowCount + 1));
+        const columns = [-.34, 0, .34].map(fraction => fraction * building.width);
         return <g key={building.id} data-board-building={building.id}>
           <polygon points={frontFace} fill={building.profile === 'industrial' ? '#343a2e' : '#244141'} stroke={building.accent} strokeOpacity=".6" strokeWidth="1" />
           <polygon points={rightFace} fill="#13231e" stroke={building.accent} strokeOpacity=".48" strokeWidth="1" />
           <polygon points={topFace} fill={building.color} stroke={building.accent} strokeWidth="1.3" />
-          {rows.flatMap((row, rowIndex) => [-0.3, 0, 0.3].map((column, columnIndex) => {
+          {rows.flatMap((row, rowIndex) => columns.map((column, columnIndex) => {
             const pane = project(building.x + column, near + .01, bottom + row);
-            return <rect key={`pane-${rowIndex}-${columnIndex}`} x={pane.x - 2.5} y={pane.y - 1.6} width="5" height="3.2" fill={building.accent} opacity=".9" />;
+            return <rect key={`pane-${rowIndex}-${columnIndex}`} x={pane.x - 3.1} y={pane.y - 2} width="6.2" height="4" fill={building.accent} opacity=".9" />;
           }))}
           <line x1={project(left, near + .02, bottom + .06).x} y1={project(left, near + .02, bottom + .06).y} x2={project(right, near + .02, bottom + .06).x} y2={project(right, near + .02, bottom + .06).y} stroke={building.accent} strokeWidth="2" opacity=".85" />
         </g>;
@@ -158,7 +139,8 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
          const visual = getSpaceVisual(space);
         const y = milestone ? .86 : .7;
-        const block = platform(x,z,milestone ? 1.29 : 1.09,milestone ? 1.2 : .98,y);
+        const scale = milestone ? SPACE_TILE_FOOTPRINT.landmarkScale : 1;
+        const block = platform(x, z, SPACE_TILE_FOOTPRINT.width * scale / 2, SPACE_TILE_FOOTPRINT.depth * scale / 2, y);
           const color = milestone ? '#794337' : visual.className === 'start' ? '#3b543f' : space.payday ? '#577455' : visual.tile;
           const accent = milestone ? '#f96346' : visual.className === 'start' ? '#d4e981' : space.payday ? '#d4e981' : visual.accent;
         const center = project(x,z,y+.02);
@@ -199,6 +181,28 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
               <text x={center.x+16} y={center.y+7.3} textAnchor="middle" fill={accent} fontFamily="Space Mono, monospace" fontSize="5" fontWeight="700" letterSpacing=".1">{visual.deckCode}</text>
             </g>}
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+        </g>;
+      })}
+      {zoneNames.map((zone, i) => {
+        const anchor = ZONE_ANCHORS[i];
+        const yaw = Math.atan2(-anchor.x, -anchor.z);
+        const tx = Math.cos(yaw);
+        const tz = -Math.sin(yaw);
+        const halfFlagWidth = PHASE_FLAG_FOOTPRINT.width / 2;
+        const color = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'][i];
+        const leftTop = project(anchor.x - tx * halfFlagWidth, anchor.z - tz * halfFlagWidth, 1.48);
+        const rightTop = project(anchor.x + tx * halfFlagWidth, anchor.z + tz * halfFlagWidth, 1.48);
+        const leftBottom = project(anchor.x - tx * halfFlagWidth, anchor.z - tz * halfFlagWidth, .74);
+        const rightBottom = project(anchor.x + tx * halfFlagWidth, anchor.z + tz * halfFlagWidth, .74);
+        const poleBase = project(anchor.x - tx * halfFlagWidth, anchor.z - tz * halfFlagWidth, .14);
+        const poleTop = project(anchor.x - tx * halfFlagWidth, anchor.z - tz * halfFlagWidth, 1.51);
+        const label = project(anchor.x, anchor.z, 1.1);
+        return <g key={`phase-flag-${zone}`} data-board-flag={zone} aria-label={zone}>
+          <line x1={poleBase.x} y1={poleBase.y} x2={poleTop.x} y2={poleTop.y} stroke="#26362d" strokeWidth="5" strokeLinecap="round" />
+          <line x1={leftTop.x} y1={leftTop.y} x2={rightTop.x} y2={rightTop.y} stroke={color} strokeWidth="4" strokeLinecap="round" />
+          <polygon points={`${leftTop.x},${leftTop.y} ${rightTop.x},${rightTop.y} ${rightBottom.x},${rightBottom.y} ${label.x},${rightBottom.y + 4} ${leftBottom.x},${leftBottom.y}`} fill="#18251e" stroke={color} strokeWidth="2.5" />
+          <text x={label.x} y={label.y - 2} textAnchor="middle" fill="#f0f0df" fontFamily="Barlow Condensed, sans-serif" fontSize="12" fontWeight="900">{zone}</text>
+          <text x={label.x} y={label.y + 8} textAnchor="middle" fill={color} fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">{`ZONE 0${i + 1}`}</text>
         </g>;
       })}
       {(() => {

@@ -3,7 +3,7 @@
 .game-screen:not(.game-screen-finish-line) > .game-tabletop { order:1; }
 .game-screen:not(.game-screen-finish-line) > .game-console { order:2; }
 .game-screen:not(.game-screen-finish-line) > .game-players { order:3; }
-.game-screen:not(.game-screen-finish-line) > .upgrade-token-panel { order:4; }
+.game-screen:not(.game-screen-finish-line) > .upgrade-token-panel { order:3; }
 .game-head { display: flex; justify-content: space-between; align-items: end; gap: 40px; margin-bottom: 34px; }
 .game-head h1 { font-size: clamp(82px,10vw,160px); margin: 27px 0 0; }
 .game-head h1 span { color: transparent; -webkit-text-stroke: 1px #e9e7dc; }
@@ -284,13 +284,13 @@
 .game-tabletop { grid-template-columns:minmax(0,1fr) minmax(260px,clamp(260px,24vw,340px)); }
 .game-tabletop > .game-tabletop-board { grid-column:1; grid-row:1; }
 .game-tabletop > .game-dice-panel { grid-column:2; grid-row:1; }
-.game-tabletop > .tabletop-decks { grid-column:2; grid-row:2; width:100%; }
+.game-tabletop > .tabletop-decks { grid-column:1/-1; grid-row:2; width:100%; }
 .game-tabletop > .card-draw-panel { grid-column:1/-1; grid-row:1; }
 .game-tabletop:has(.card-draw-panel) > .game-tabletop-board { grid-column:1; grid-row:2; }
 .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:2; grid-row:2; }
 .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1/-1; grid-row:3; }
-.game-screen:not(.game-screen-finish-line) > .game-tabletop { order:1; }
-.game-screen:not(.game-screen-finish-line) > .game-players { order:3; }
+.game-screen:not(.game-screen-finish-line) > .game-tabletop { order:2; }
+.game-screen:not(.game-screen-finish-line) > .game-players { order:1; }
 @media(max-width:1000px) {
   .game-tabletop { grid-template-columns:minmax(0,1fr); }
   .game-tabletop > .game-dice-panel { grid-column:1; grid-row:1; }
@@ -315,5 +315,54 @@
 @media(max-width:390px) {
   .game-player-summary { padding:8px; }
   .game-player-summary-values { grid-template-columns:1fr 1fr; }
+}
+
+.game-screen:not(.game-screen-finish-line) > .game-players { order:1; }
+.game-screen:not(.game-screen-finish-line) > .game-tabletop { order:2; }
+.game-screen:not(.game-screen-finish-line) > .game-console { order:4; }
+.game-screen { padding-top:clamp(16px,2vw,28px); }
+.game-head { margin-bottom:10px; }
+.game-head h1 { margin:4px 0 0; font-size:clamp(42px,5vw,68px); line-height:.9; }
+.game-tabletop > .tabletop-decks { grid-column:1/-1; grid-row:2; }
+.game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1/-1; grid-row:3; }
+.game-player-summary-top { align-items:center; flex-wrap:wrap; }
+.game-player-summary-active { flex:none; padding:3px 5px; background:#d4e981; color:#17231d; font:800 7px/1.15 'Space Mono',monospace; letter-spacing:.025em; white-space:nowrap; }
+.game-player-summary-active.cpu { background:#f3a56c; color:#24180f; }
+.game-player-expanded > .game-player-top,
+.game-player-active-signal { display:none; }
+
+@media(min-width:701px) {
+  .game-players { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .game-player-details[open] .game-player-summary { min-height:39px; padding:7px 12px; }
+  .game-player-details[open] .game-player-summary-identity,
+  .game-player-details[open] .game-player-summary-values,
+  .game-player-details[open] .game-player-summary-toggle { display:none; }
+  .game-player-details[open] .game-player-summary-top { grid-column:1/-1; gap:5px; padding-right:26px; }
+}
+
+@media(max-width:1000px) {
+  .game-tabletop > .tabletop-decks { grid-column:1; grid-row:3; }
+  .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1; grid-row:4; }
+}
+
+@media(max-width:700px) {
+  .game-screen:not(.game-screen-finish-line) > .game-players { order:1; }
+  .game-screen:not(.game-screen-finish-line) > .game-tabletop { order:2; }
+  .game-players { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .game-player-summary { min-height:124px; }
+  .game-player-summary-active { font-size:6px; }
+  .game-player-summary-top { gap:5px; }
+  .game-tabletop > .game-dice-panel { grid-column:1; grid-row:1; }
+  .game-tabletop > .game-tabletop-board { grid-column:1; grid-row:2; }
+  .game-tabletop > .tabletop-decks { grid-column:1; grid-row:3; }
+  .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:1; grid-row:2; }
+  .game-tabletop:has(.card-draw-panel) > .game-tabletop-board { grid-column:1; grid-row:3; }
+  .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1; grid-row:4; }
+}
+
+@media(max-width:390px) {
+  .game-head h1 { font-size:42px; }
+  .game-player-summary { min-height:132px; }
+  .game-player-summary-values b { font-size:14px; }
 }
 @media(prefers-reduced-motion:reduce) { .ability-activation-flash,.space-reward-flash { animation:none !important; } }

@@ -66,6 +66,8 @@ const spaceFeedbackTypes = new Set([
 ]);
 
 const boardZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'] as const;
+type PlayerCardLayout = 'compact' | 'wide';
+type PlayerCardDisclosure = { layout: PlayerCardLayout; open: boolean };
 
 function boardZone(position: number): string {
   if (position <= 0) return 'LAUNCH PAD';
@@ -100,6 +102,8 @@ function summarizeCardResolution(events: EventLogEntry[], playerId: string): str
 export function GameScreen() {
   const [, navigate] = useLocation();
   const { match, dispatchMatch, rollDice } = useGame();
+  const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
+  const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
   const phase = match?.phase;
   const turnIndex = match?.turnIndex;
   const remaining = match?.stepsRemaining;
@@ -141,6 +145,14 @@ export function GameScreen() {
   const gambleCardKey = currentPlayerId && currentGambleCardId ? `${currentPlayerId}:${currentGambleCardId}` : null;
   const lastGambleCardKey = useRef<string | null>(null);
   const [gambleCardStage, setGambleCardStage] = useState<'draw' | 'resolved'>('draw');
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 700px)');
+    const updateLayout = (event: MediaQueryListEvent) => setCompactPlayerLayout(event.matches);
+    setCompactPlayerLayout(query.matches);
+    query.addEventListener('change', updateLayout);
+    return () => query.removeEventListener('change', updateLayout);
+  }, []);
 
   useEffect(() => {
     if (previousDecision.current?.kind === 'CAREER' && previousDecision.current.stage === 'choice' && !pending && phase !== 'decision') setCareerLocked(true);
@@ -393,11 +405,29 @@ export function GameScreen() {
           const finishPlace = finishPlaceIndex >= 0 ? finishPlaceIndex + 1 : null;
           const finishBonus = finishPlace ? FINISH_ORDER_WEALTH_REWARDS[finishPlaceIndex] ?? 0 : 0;
           const change = visibleEvent?.playerIndex === index ? visibleEvent : null;
+          const cardLayout: PlayerCardLayout = compactPlayerLayout ? 'compact' : 'wide';
+          const savedDisclosure = playerCardDisclosure[contestant.playerId];
+          const playerCardOpen = savedDisclosure?.layout === cardLayout ? savedDisclosure.open : !compactPlayerLayout;
           return (
              <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${index === 0 ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? `CPU ${contestant.slot}` : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
-               <details className="game-player-details">
+                <details
+                  className="game-player-details"
+                  open={playerCardOpen}
+                  onToggle={event => {
+                    const open = event.currentTarget.open;
+                    setPlayerCardDisclosure(current => {
+                      const previous = current[contestant.playerId];
+                      if (previous?.layout === cardLayout && previous.open === open) return current;
+                      return { ...current, [contestant.playerId]: { layout: cardLayout, open } };
+                    });
+                  }}
+                >
                  <summary className="game-player-summary" data-testid={`button-toggle-player-status-${index}`}>
-                   <div className="game-player-summary-top"><span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span><span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span></div>
+                    <div className="game-player-summary-top">
+                      <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span>
+                      {index === match.turnIndex && <span className={`game-player-summary-active ${contestant.isCPU ? 'cpu' : ''}`} data-testid={`status-active-player-${index}`}>{contestant.isCPU ? `CPU ${contestant.slot} ACTIVE` : 'YOUR TURN'}</span>}
+                      <span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
+                    </div>
                    <div className="game-player-summary-identity">
                      {character && <CharacterPortrait character={character} className="game-player-summary-portrait" />}
                      <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}</small></div>
@@ -407,7 +437,7 @@ export function GameScreen() {
                      <span><small className="mono">SALARY</small><b>{formatMoney(contestant.salaryAmount)}</b></span>
                      <span><small className="mono">UPGRADE TOKENS</small><b>{contestant.upgradeTokens}</b></span>
                    </div>
-                   <span className="game-player-summary-toggle mono">DETAILS <span aria-hidden="true">+</span></span>
+                    <span className="game-player-summary-toggle mono">DETAILS</span>
                  </summary>
                  <div className="game-player-expanded">
                <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}>

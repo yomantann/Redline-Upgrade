@@ -9,11 +9,11 @@ The screenshot browser may fail to create a WebGL context even when the app and 
 
 **How to apply:** When changing pawns, preserve the capability check and fallback, then check the app preview for route stability. A screenshot of that fallback does not validate the actual GPU scene; verify live geometry in a WebGL-capable browser when one is available.
 
-On September 26, 2026, the automated browser tester returned infrastructure errors twice before reporting any gameplay result; a standalone Chromium debugging attempt connected but did not load the app. This is a verification gap, not evidence of an app bug. Use deterministic reducer checks and app screenshots for the parts they can verify, and clearly distinguish those from a completed interactive browser test.
+The automated browser tester can return infrastructure errors before reporting gameplay results, and the screenshot proxy can return 504 while local Vite and the development-domain URL both return 200. Treat those as verification gaps, not evidence of an app bug.
 
 **Why:** Turn timing and visual movement need a running browser, but automation availability is outside the app's control. Claiming an end-to-end pass after an infrastructure failure would misrepresent what was checked.
 
-**How to apply:** When browser testing fails independently of the app, attempt a distinct low-cost check, stop after repeated infrastructure failures, and report the limitation plainly.
+**How to apply:** When browser testing fails, check the local Vite and development-domain responses, then use deterministic reducer and layout checks for what they cover. Retry a screenshot once if the endpoints are healthy; stop after repeated capture failures, avoid restart loops, and report the visual-verification gap plainly.
 
 For board redesigns, keep the WebGL tabletop as the primary renderer, but give its no-WebGL path a physical-looking route projected from the same world positions—not a separate card grid.
 

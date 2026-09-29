@@ -1301,12 +1301,12 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: carId });
   assert.equal(match.players[0].lifestyle, lifestyleBefore + (getAsset(carId).effects.lifestyle ?? 0) + 1);
 
-  const convertedEventLanding = move(start(3), 2);
+  const convertedEventLanding = move(withoutAbilities(start(3)), 2);
   assert.equal(convertedEventLanding.players[0].position, 5);
   assert.equal(convertedEventLanding.pending.kind, 'CARD');
   assert.equal(convertedEventLanding.pending.deck, 'wealth');
   assert.equal(countEvent(convertedEventLanding, 'BOARD_EFFECT_RESOLVED'), 0);
-  const passedConvertedSpace = move(start(3), 4);
+  const passedConvertedSpace = move(withoutAbilities(start(3)), 4);
   assert.equal(passedConvertedSpace.players[0].position, 7);
   assert.equal(countEvent(passedConvertedSpace, 'CARD_DRAW'), 1, 'passing space 5 does not draw; landing on space 7 draws once');
 

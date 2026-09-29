@@ -16,21 +16,24 @@ const COLORS = {
   orange: '#f96346', lime: '#d4e981', cream: '#e9e7dc', teal: '#7fbdb1',
 };
 const ZONE_COLORS = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'];
+export const SPACE_TILE_FOOTPRINT = { width: 2.06, depth: 1.9, landmarkScale: 1.02 } as const;
+export const START_PAD_FOOTPRINT = { width: 2.9, depth: 3.55 } as const;
+export const PHASE_FLAG_FOOTPRINT = { width: 2.5, depth: 0.12 } as const;
 export const TABLETOP_DRESSING = [
-  { id: 'redline-sign', x: -16.4, z: -14.25, title: 'REDLINE', subtitle: 'UPGRADE SYSTEMS', accent: '#f96346' },
-  { id: 'market-display', x: 16.4, z: -14.25, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
-  { id: 'ai-terminal', x: -16.4, z: 14.25, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
+  { id: 'redline-sign', x: -16.4, z: -14.25, width: 3.7, depth: 0.44, title: 'REDLINE', subtitle: 'UPGRADE SYSTEMS', accent: '#f96346' },
+  { id: 'market-display', x: 16.4, z: -14.25, width: 3.7, depth: 0.44, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
+  { id: 'ai-terminal', x: -16.4, z: 14.25, width: 3.7, depth: 0.44, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
 ] as const;
 export const TABLETOP_STRUCTURES = [
-  { id: 'north-spine', x: 20.4, z: 13.7, label: 'NORTH / 05', accent: '#e9c477' },
-  { id: 'south-spine', x: 20.4, z: -13.7, label: 'SOUTH / 06', accent: '#f96346' },
-  { id: 'west-spine', x: -20.4, z: 13.7, label: 'WEST / 02', accent: '#88c6c2' },
+  { id: 'north-spine', x: 20.4, z: 13.7, width: 2.9, depth: 0.7, label: 'NORTH / 05', accent: '#e9c477' },
+  { id: 'south-spine', x: 20.4, z: -13.7, width: 2.9, depth: 0.7, label: 'SOUTH / 06', accent: '#f96346' },
+  { id: 'west-spine', x: -20.4, z: 13.7, width: 2.9, depth: 0.7, label: 'WEST / 02', accent: '#88c6c2' },
 ] as const;
 export const TABLETOP_BUILDINGS = [
-  { id: 'grind-foundry', x: -20.4, z: -13.75, width: 1.05, depth: 0.72, height: 0.44, color: '#2b3328', accent: '#c5b96d', profile: 'industrial' },
-  { id: 'north-residences', x: -17.6, z: 13.7, width: 1.12, depth: 0.72, height: 0.52, color: '#263a3a', accent: '#88c6c2', profile: 'glazed' },
-  { id: 'flex-exchange', x: 18.2, z: 13.7, width: 1.22, depth: 0.82, height: 0.56, color: '#243a39', accent: '#88c6c2', profile: 'glazed' },
-  { id: 'relay-hub', x: 20.3, z: -10.9, width: 0.92, depth: 0.62, height: 0.4, color: '#302e26', accent: '#f96346', profile: 'industrial' },
+  { id: 'grind-foundry', x: -20.4, z: -13.75, width: 2.7, depth: 1.52, height: 1.02, color: '#2b3328', accent: '#c5b96d', profile: 'industrial' },
+  { id: 'north-residences', x: -17.3, z: 11.5, width: 2.45, depth: 1.42, height: 1.18, color: '#263a3a', accent: '#88c6c2', profile: 'glazed' },
+  { id: 'flex-exchange', x: 17.25, z: 13.7, width: 2.62, depth: 1.48, height: 1.24, color: '#243a39', accent: '#88c6c2', profile: 'glazed' },
+  { id: 'relay-hub', x: 20.3, z: -10.9, width: 2.3, depth: 1.38, height: 1.08, color: '#302e26', accent: '#f96346', profile: 'industrial' },
 ] as const;
 
 /**
@@ -100,18 +103,18 @@ function DressingPanel({ panel }: { panel: typeof TABLETOP_DRESSING[number] }) {
   useEffect(() => () => texture.dispose(), [texture]);
   return <group position={[panel.x, 0.16, panel.z]}>
     <mesh position={[0, 0.045, 0]} receiveShadow>
-      <boxGeometry args={[3.7, 0.09, 0.44]} />
+      <boxGeometry args={[panel.width, 0.09, panel.depth]} />
       <meshStandardMaterial color="#101a17" metalness={0.82} roughness={0.3} />
     </mesh>
     <mesh position={[0, 0.11, 0]}>
-      <boxGeometry args={[3.42, 0.025, 0.3]} />
+      <boxGeometry args={[panel.width - 0.28, 0.025, panel.depth - 0.14]} />
       <meshStandardMaterial color={panel.accent} emissive={panel.accent} emissiveIntensity={0.16} metalness={0.72} roughness={0.32} />
     </mesh>
     <mesh position={[0, 0.145, 0]}>
-      <planeGeometry args={[2.9, 0.2]} />
+      <planeGeometry args={[panel.width - 0.8, 0.2]} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} />
     </mesh>
-    <mesh position={[-1.57, 0.15, 0]}>
+    <mesh position={[-panel.width / 2 + 0.28, 0.15, 0]}>
       <boxGeometry args={[0.06, 0.055, 0.34]} />
       <meshStandardMaterial color="#d9e9c0" emissive="#d9e9c0" emissiveIntensity={0.25} />
     </mesh>
@@ -142,13 +145,41 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
 }
 
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
-  const lines = useMemo(() => [`0${index + 1} / ${name}`], [index, name]);
+  const lines = useMemo(() => [`ZONE 0${index + 1}`, name], [index, name]);
   const texture = useMemo(() => graphic(lines, color), [lines, color]);
+  const banner = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-1.08, 0.38);
+    shape.lineTo(1.08, 0.38);
+    shape.lineTo(1.08, -0.34);
+    shape.lineTo(0, -0.54);
+    shape.lineTo(-1.08, -0.34);
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+  }, []);
   useEffect(() => () => texture.dispose(), [texture]);
-  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.145, z]}>
-    <planeGeometry args={[2.9, 0.42]} />
-    <meshBasicMaterial map={texture} transparent depthWrite={false} />
-  </mesh>;
+  useEffect(() => () => banner.dispose(), [banner]);
+  return <group position={[x, 0.14, z]} rotation={[0, Math.atan2(-x, -z), 0]}>
+    <mesh position={[-1.1, 0.72, 0]} castShadow>
+      <boxGeometry args={[0.075, 1.44, 0.085]} />
+      <meshStandardMaterial color="#35453d" metalness={0.78} roughness={0.32} />
+    </mesh>
+    <mesh position={[0, 1.48, 0]} castShadow>
+      <boxGeometry args={[2.3, 0.055, 0.09]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.14} metalness={0.7} roughness={0.3} />
+    </mesh>
+    <mesh position={[0, 1.08, 0]} geometry={banner} castShadow>
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} roughness={0.72} side={THREE.DoubleSide} />
+    </mesh>
+    <mesh position={[0, 1.08, 0.055]}>
+      <planeGeometry args={[1.94, 0.48]} />
+      <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
+    <mesh position={[-1.1, 0.035, 0]} receiveShadow>
+      <cylinderGeometry args={[0.2, 0.24, 0.07, 8]} />
+      <meshStandardMaterial color="#1c2922" metalness={0.72} roughness={0.38} />
+    </mesh>
+  </group>;
 }
 
 function ZoneFrame({ index, color }: { index: number; color: string }) {
@@ -171,7 +202,7 @@ function ZoneFrame({ index, color }: { index: number; color: string }) {
 function TabletopStructure({ structure }: { structure: typeof TABLETOP_STRUCTURES[number] }) {
   return <group position={[structure.x, 0.16, structure.z]}>
     <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.9, 0.16, 0.7]} />
+      <boxGeometry args={[structure.width, 0.16, structure.depth]} />
       <meshStandardMaterial color="#101a18" metalness={0.8} roughness={0.34} />
     </mesh>
     {[-1, 0, 1].map((slot) => <mesh key={slot} position={[slot * 0.74, 0.26 + (slot === 0 ? 0.1 : 0), 0]} castShadow>
@@ -187,7 +218,10 @@ function TabletopStructure({ structure }: { structure: typeof TABLETOP_STRUCTURE
 }
 
 function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[number] }) {
-  const rows = building.height > 0.46 ? [0.18, 0.36] : [0.19];
+  const rowCount = Math.max(2, Math.floor(building.height / 0.34));
+  const rows = Array.from({ length: rowCount }, (_, index) => building.height * (index + 1) / (rowCount + 1));
+  const frontColumns = [-0.34, 0, 0.34].map(fraction => fraction * building.width);
+  const sideColumns = [-0.32, 0, 0.32].map(fraction => fraction * building.depth);
   const industrial = building.profile === 'industrial';
   return <group position={[building.x, 0.14, building.z]}>
     <mesh position={[0, 0.026, 0]} receiveShadow>
@@ -202,15 +236,15 @@ function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[n
       <boxGeometry args={[building.width + 0.12, 0.05, building.depth + 0.1]} />
       <meshStandardMaterial color={industrial ? '#495044' : '#345451'} metalness={0.74} roughness={0.3} />
     </mesh>
-    {rows.flatMap((row, rowIndex) => [-0.3, 0, 0.3].map((column, columnIndex) => (
+    {rows.flatMap((row, rowIndex) => frontColumns.map((column, columnIndex) => (
       <mesh key={`front-window-${rowIndex}-${columnIndex}`} position={[column, 0.052 + row, building.depth / 2 + 0.014]}>
-        <boxGeometry args={[0.13, 0.065, 0.024]} />
+        <boxGeometry args={[0.19, 0.11, 0.024]} />
         <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.18} metalness={0.68} roughness={0.24} />
       </mesh>
     )))}
-    {rows.slice(0, 1).map((row) => [-0.12, 0.12].map((column) => (
-      <mesh key={`side-window-${row}-${column}`} position={[building.width / 2 + 0.014, 0.052 + row, column]}>
-        <boxGeometry args={[0.024, 0.065, 0.12]} />
+    {rows.slice(0, 2).flatMap((row, rowIndex) => sideColumns.map((column, columnIndex) => (
+      <mesh key={`side-window-${rowIndex}-${columnIndex}`} position={[building.width / 2 + 0.014, 0.052 + row, column]}>
+        <boxGeometry args={[0.024, 0.11, 0.17]} />
         <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.14} metalness={0.68} roughness={0.24} />
       </mesh>
     )))}
@@ -226,10 +260,10 @@ function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[n
   </group>;
 }
 
-const tileShape = new THREE.BoxGeometry(2.18, 0.24, 2.08);
-const tileTop = new THREE.BoxGeometry(2.06, 0.12, 1.96);
+const tileShape = new THREE.BoxGeometry(SPACE_TILE_FOOTPRINT.width - 0.06, 0.24, SPACE_TILE_FOOTPRINT.depth - 0.06);
+const tileTop = new THREE.BoxGeometry(SPACE_TILE_FOOTPRINT.width - 0.16, 0.12, SPACE_TILE_FOOTPRINT.depth - 0.16);
 const stripShape = new THREE.BoxGeometry(1.86, 0.025, 0.06);
-const edgeGeometry = new THREE.BoxGeometry(2.34, 0.035, 2.24);
+const edgeGeometry = new THREE.BoxGeometry(SPACE_TILE_FOOTPRINT.width, 0.035, SPACE_TILE_FOOTPRINT.depth);
 const tabletopBaseGeometry = new RoundedBoxGeometry(48, 0.86, 31.8, 3, 0.12);
 const mats = {
   base: new THREE.MeshStandardMaterial({ color: '#101a19', metalness: 0.55, roughness: 0.52 }),
@@ -278,9 +312,9 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
     : visual.className === 'effect' ? mats.effect : visual.className === 'start' ? mats.start : visual.className === 'gamble' ? deckMaterial ?? mats.gamble
     : deckMaterial ?? mats.normal;
   return <group position={[x, 0, z]} onPointerDown={(event) => { event.stopPropagation(); onSelect(space.number); }} onPointerOver={(event) => { event.stopPropagation(); onHover(space.number); }} onPointerOut={() => onHover(null)}>
-    <mesh position={[0, 0.34, 0]} scale={[landmark ? 1.18 : 1, landmark ? 1.45 : 1, landmark ? 1.18 : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
-    <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
-    <mesh position={[0, landmark ? 0.79 : 0.63, 0]} scale={[landmark ? 1.18 : 1, 1, landmark ? 1.18 : 1]} geometry={tileTop}
+    <mesh position={[0, 0.34, 0]} scale={[landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1, landmark ? 1.45 : 1, landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1]} geometry={tileShape} material={mats.base} castShadow receiveShadow />
+    <mesh position={[0, landmark ? 0.7 : 0.56, 0]} scale={[landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1, 1, landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1]} geometry={edgeGeometry} material={sideMaterial} castShadow />
+    <mesh position={[0, landmark ? 0.79 : 0.63, 0]} scale={[landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1, 1, landmark ? SPACE_TILE_FOOTPRINT.landmarkScale : 1]} geometry={tileTop}
       material={topMaterial} castShadow receiveShadow />
     <mesh position={[0, topY + 0.015, 0.82]} geometry={stripShape} material={landing || active ? mats.lime : sideMaterial} />
     <mesh position={[-0.67, topY + 0.045, 0.49]} castShadow={false}>
@@ -535,18 +569,18 @@ function StartGate() {
   const p = ROUTE[0];
   return <group position={[p.x, 0, p.z]}>
     <mesh position={[0, 0.46, 0]} castShadow receiveShadow>
-      <boxGeometry args={[3.2, 0.12, 3.55]} /><primitive object={mats.dark} attach="material" />
+      <boxGeometry args={[START_PAD_FOOTPRINT.width, 0.12, START_PAD_FOOTPRINT.depth]} /><primitive object={mats.dark} attach="material" />
     </mesh>
     <mesh position={[0, 0.54, 0]} castShadow receiveShadow>
-      <boxGeometry args={[3.08, 0.035, 3.42]} /><primitive object={mats.lime} attach="material" />
+      <boxGeometry args={[2.78, 0.035, 3.42]} /><primitive object={mats.lime} attach="material" />
     </mesh>
     <mesh position={[0, 0.58, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.94, 0.03, 3.28]} /><primitive object={mats.normal} attach="material" />
+      <boxGeometry args={[2.68, 0.03, 3.28]} /><primitive object={mats.normal} attach="material" />
     </mesh>
     <PrintedLabel lines={['START', '00 / LAUNCH PAD']} x={0} y={0.62} z={0.15} w={2.25} h={0.78} color={COLORS.lime} />
     <PrintedIcon icon="start" y={0.58} color={COLORS.lime} x={0} z={-0.83} size={0.7} />
     <mesh position={[0, 0.625, -1.2]}>
-      <boxGeometry args={[2.8, 0.025, 0.06]} /><primitive object={mats.accent} attach="material" />
+      <boxGeometry args={[2.55, 0.025, 0.06]} /><primitive object={mats.accent} attach="material" />
     </mesh>
   </group>;
 }
