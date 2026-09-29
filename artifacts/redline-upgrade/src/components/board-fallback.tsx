@@ -111,6 +111,9 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
       {TABLETOP_BUILDINGS.map((building) => {
         const bottom = 0.13;
         const top = bottom + building.height;
+        const tower = building.profile === 'tower';
+        const garage = building.profile === 'garage';
+        const neon = building.profile === 'neon';
         const left = building.x - building.width / 2;
         const right = building.x + building.width / 2;
         const near = building.z + building.depth / 2;
@@ -130,6 +133,44 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
             return <rect key={`pane-${rowIndex}-${columnIndex}`} x={pane.x - 3.1} y={pane.y - 2} width="6.2" height="4" fill={building.accent} opacity=".9" />;
           }))}
           <line x1={project(left, near + .02, bottom + .06).x} y1={project(left, near + .02, bottom + .06).y} x2={project(right, near + .02, bottom + .06).x} y2={project(right, near + .02, bottom + .06).y} stroke={building.accent} strokeWidth="2" opacity=".85" />
+          {tower && (() => {
+            const mastBase = project(building.x, building.z, top);
+            const mastTop = project(building.x, building.z, top + .9);
+            return <g aria-label={`${building.label} tower`}>
+              <polygon points={`${project(building.x - building.width * .35, building.z - building.depth * .3, top + .02).x},${project(building.x - building.width * .35, building.z - building.depth * .3, top + .02).y} ${project(building.x + building.width * .35, building.z - building.depth * .3, top + .02).x},${project(building.x + building.width * .35, building.z - building.depth * .3, top + .02).y} ${project(building.x + building.width * .35, building.z + building.depth * .3, top + .02).x},${project(building.x + building.width * .35, building.z + building.depth * .3, top + .02).y} ${project(building.x - building.width * .35, building.z + building.depth * .3, top + .02).x},${project(building.x - building.width * .35, building.z + building.depth * .3, top + .02).y}`} fill="#1a302d" stroke={building.accent} strokeWidth="1" />
+              <line x1={mastBase.x} y1={mastBase.y} x2={mastTop.x} y2={mastTop.y} stroke={building.accent} strokeWidth="2" />
+              <circle cx={mastTop.x} cy={mastTop.y} r="3" fill={building.accent} />
+            </g>;
+          })()}
+          {garage && (() => {
+            const canopy = project(building.x, building.z + building.depth * .25, top + .18);
+            return <g aria-label={`${building.label} garage`}>
+              <line x1={canopy.x - 27} y1={canopy.y} x2={canopy.x + 27} y2={canopy.y} stroke={building.accent} strokeWidth="4" />
+              <line x1={canopy.x - 18} y1={canopy.y + 4} x2={canopy.x - 18} y2={canopy.y + 19} stroke={building.accent} strokeWidth="2" />
+              <line x1={canopy.x + 18} y1={canopy.y + 4} x2={canopy.x + 18} y2={canopy.y + 19} stroke={building.accent} strokeWidth="2" />
+            </g>;
+          })()}
+          {neon && (() => {
+            const sign = project(building.x, near + .08, bottom + building.height * .56);
+            return <g aria-label={`${building.label} neon sign`}>
+              <rect x={sign.x - 22} y={sign.y - 7} width="44" height="13" fill="#101a17" stroke={building.accent} strokeWidth="1.5" />
+              <text x={sign.x} y={sign.y + 2.5} textAnchor="middle" fill={building.accent} fontFamily="Space Mono, monospace" fontSize="5" fontWeight="700">{building.label}</text>
+            </g>;
+          })()}
+          <text x={project(building.x, building.z, top + (tower ? .95 : .22)).x} y={project(building.x, building.z, top + (tower ? .95 : .22)).y - 4} textAnchor="middle" fill={building.accent} fontFamily="Space Mono, monospace" fontSize="4.5" fontWeight="700">{building.label}</text>
+          {building.profile === 'industrial' && (() => {
+            const stackLeft = project(building.x - building.width * .3, building.z, top + .62);
+            const stackRight = project(building.x + building.width * .3, building.z, top + .62);
+            const conveyor = project(building.x + building.width * .28, building.z + building.depth * .2, top + .18);
+            return <g aria-label="Foundry industrial structure">
+              <line x1={stackLeft.x} y1={stackLeft.y + 10} x2={stackLeft.x} y2={stackLeft.y - 11} stroke="#1a211b" strokeWidth="7" />
+              <line x1={stackRight.x} y1={stackRight.y + 10} x2={stackRight.x} y2={stackRight.y - 11} stroke="#1a211b" strokeWidth="7" />
+              <circle cx={stackLeft.x} cy={stackLeft.y - 12} r="3" fill={building.accent} />
+              <circle cx={stackRight.x} cy={stackRight.y - 12} r="3" fill={building.accent} />
+              <line x1={conveyor.x - 24} y1={conveyor.y + 5} x2={conveyor.x + 24} y2={conveyor.y - 5} stroke="#626c54" strokeWidth="5" />
+              <line x1={conveyor.x - 24} y1={conveyor.y + 8} x2={conveyor.x + 24} y2={conveyor.y - 2} stroke={building.accent} strokeWidth="1.5" />
+            </g>;
+          })()}
         </g>;
       })}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
@@ -138,6 +179,13 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         const { x, z } = ROUTE[space.number];
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
          const visual = getSpaceVisual(space);
+        const keyLabel = space.number === 1 ? null
+          : space.type === 'SALARY_GATE' ? 'SALARY GATE'
+          : space.type === 'UPGRADE_TOKEN' ? 'UPGRADE TOKEN'
+          : space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' ? space.label.toUpperCase()
+          : visual.className === 'deck' ? `${visual.deckCode ?? 'CARD'} DECK`
+          : visual.className === 'gamble' ? 'GAMBLE'
+          : null;
         const y = milestone ? .86 : .7;
         const scale = milestone ? SPACE_TILE_FOOTPRINT.landmarkScale : 1;
         const block = platform(x, z, SPACE_TILE_FOOTPRINT.width * scale / 2, SPACE_TILE_FOOTPRINT.depth * scale / 2, y);
@@ -162,7 +210,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
               <ellipse cx={center.x+16} cy={center.y-12} rx="11.5" ry="8.4" fill="#17221e" stroke="#eef0df" strokeOpacity=".28" strokeWidth=".7" />
             </g> : visual.className !== 'safe' && <circle cx={center.x+16} cy={center.y-12} r="11" fill="#14211c" stroke={accent} strokeOpacity=".72" strokeWidth={visual.className === 'gamble' ? 1.2 : 1.4} />}
             {visual.className === 'start' && <circle cx={center.x} cy={center.y} r="24" fill="none" stroke="#d4e981" strokeWidth="2" opacity=".8" />}
-            {visual.className === 'start' && <text x={center.x} y={center.y+20} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">OPEN ROAD</text>}
+            {visual.className === 'start' && <text x={center.x} y={center.y+20} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8" fontWeight="700">OPEN ROAD</text>}
             {space.type === 'UPGRADE_TOKEN' && <g>
               <polygon points={Array.from({ length: 6 }, (_, i) => {
                 const angle = Math.PI / 6 + i * Math.PI / 3;
@@ -181,6 +229,17 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
               <text x={center.x+16} y={center.y+7.3} textAnchor="middle" fill={accent} fontFamily="Space Mono, monospace" fontSize="5" fontWeight="700" letterSpacing=".1">{visual.deckCode}</text>
             </g>}
           {space.secondaryIcon && <path d={ICON_PATHS[space.secondaryIcon]} transform={`translate(${center.x+4} ${center.y-3}) scale(.4)`} fill="none" stroke="#d4e981" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+             {keyLabel && (() => {
+               const lines = keyLabel === 'SALARY GATE' ? ['SALARY', 'GATE']
+                 : keyLabel === 'UPGRADE TOKEN' ? ['UPGRADE', 'TOKEN']
+                 : keyLabel.includes(' / ') ? keyLabel.split(' / ') : [keyLabel];
+               const labelY = center.y + 25;
+               const labelHeight = lines.length > 1 ? 19 : 12;
+               return <g aria-label={keyLabel}>
+                 <rect x={center.x - 30} y={labelY - 9} width="60" height={labelHeight} rx="2" fill="#0b1512" fillOpacity=".94" stroke={space.type === 'UPGRADE_TOKEN' ? '#d4c5ff' : visual.accent} strokeOpacity=".72" strokeWidth="1" />
+                 {lines.map((line, lineIndex) => <text key={line} x={center.x} y={labelY + lineIndex * 8} textAnchor="middle" fill={space.type === 'UPGRADE_TOKEN' ? '#d4c5ff' : visual.accent} fontFamily="Space Mono, monospace" fontSize={lines.length > 1 ? 7 : milestone ? 8 : 7} fontWeight="700" letterSpacing=".04">{line}</text>)}
+               </g>;
+             })()}
         </g>;
       })}
       {zoneNames.map((zone, i) => {

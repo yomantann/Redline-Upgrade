@@ -17,7 +17,6 @@ import {
   createFinishSnapshot,
   doubleDownValue,
   finalGambleValue,
-  getEndgameTokenTier,
   type EndgameChoice,
   type EndgameState,
   type PlayerMatchStatus,
@@ -169,7 +168,6 @@ function finishPlayersAtLine(match: Match): Match {
       );
     }
     const snapshot = createFinishSnapshot(rewardedPlayer, player.slot, player.isCPU, match.round, match.turnCounter);
-    const tokenTier = getEndgameTokenTier(rewardedPlayer.heldUpgradeTokens);
     const baseValue = calculateEndgameBaseValue(rewardedPlayer);
     drafts.push(
       {
@@ -182,14 +180,13 @@ function finishPlayersAtLine(match: Match): Match {
         type: 'ENDGAME_STARTED',
         playerIndex,
         baseValue,
-        tokenTier,
         description: `${player.displayName} locked a finish value of ${formatAssetValue(baseValue)} and entered the endgame.`,
       },
     );
     return {
       ...rewardedPlayer,
       status: 'FINISHED' as const,
-      endgame: { status: 'PENDING' as const, snapshot, baseValue, tokenTier },
+      endgame: { status: 'PENDING' as const, snapshot, baseValue },
     };
   });
   const currentPlayerFinished = newlyFinished.includes(match.turnIndex);
@@ -688,14 +685,13 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     playerIndex,
     endgameChoice: choice,
     baseValue: endgame.baseValue,
-    tokenTier: endgame.tokenTier,
     description: `${player.displayName} selected ${choice.replaceAll('_', ' ')}.`,
   }]);
   const selectedPlayer = selected.players[playerIndex];
   const selectedEndgame = selectedPlayer.endgame ?? endgame;
 
   if (choice === 'CASH_OUT') {
-    const outcome = cashOutValue(selectedEndgame.baseValue, selectedEndgame.tokenTier);
+    const outcome = cashOutValue(selectedEndgame.baseValue);
     const completed = resolvedEndgamePlayer(selected, playerIndex, {
       ...selectedEndgame,
       status: 'RESOLVED',
@@ -711,7 +707,6 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
         baseValue: selectedEndgame.baseValue,
         finalGameValue: outcome.finalGameValue,
         multiplier: outcome.multiplier,
-        tokenTier: selectedEndgame.tokenTier,
         description: `${player.displayName} cashed out at ${outcome.multiplier}× for ${formatAssetValue(outcome.finalGameValue)}.`,
       },
       {
@@ -720,7 +715,6 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
         endgameChoice: choice,
         baseValue: selectedEndgame.baseValue,
         finalGameValue: outcome.finalGameValue,
-        tokenTier: selectedEndgame.tokenTier,
       },
     ]);
   }
@@ -729,7 +723,7 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     const dice = { die1: rollD4(), die2: rollD4() };
     const total = dice.die1 + dice.die2;
     const roll = { ...dice, total, doubles: dice.die1 === dice.die2 };
-    const outcome = doubleDownValue(selectedEndgame.baseValue, total, selectedEndgame.tokenTier);
+    const outcome = doubleDownValue(selectedEndgame.baseValue, total);
     const completed = resolvedEndgamePlayer({ ...selected, roll }, playerIndex, {
       ...selectedEndgame,
       status: 'RESOLVED',
@@ -751,9 +745,8 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
         baseValue: selectedEndgame.baseValue,
         finalGameValue: outcome.finalGameValue,
         multiplier: outcome.multiplier,
-        tokenTier: selectedEndgame.tokenTier,
         effectiveRoll: outcome.effectiveRoll,
-        description: `${player.displayName} rolled ${roll.die1}-${roll.die2}; held tokens raised the outcome to ${outcome.effectiveRoll} for ${outcome.multiplier}×.`,
+        description: `${player.displayName} rolled ${roll.die1}-${roll.die2}; the 2d4 total set the outcome at ${outcome.multiplier}×.`,
       },
       {
         type: 'ENDGAME_COMPLETED',
@@ -761,7 +754,6 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
         endgameChoice: choice,
         baseValue: selectedEndgame.baseValue,
         finalGameValue: outcome.finalGameValue,
-        tokenTier: selectedEndgame.tokenTier,
       },
     ]);
   }
@@ -791,7 +783,7 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
   }]);
   const finalPlayer = gambled.players[playerIndex];
   const rawDelta = calculateEndgameBaseValue(finalPlayer) - selectedEndgame.baseValue;
-  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta, selectedEndgame.tokenTier);
+  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta);
   const completed = resolvedEndgamePlayer(gambled, playerIndex, {
     ...selectedEndgame,
     status: 'RESOLVED',
@@ -813,7 +805,6 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
       finalGameValue: outcome.finalGameValue,
       delta: outcome.adjustedDelta,
       multiplier: outcome.multiplier,
-      tokenTier: selectedEndgame.tokenTier,
       description: `${player.displayName} resolved ${card.title}: ${outcome.adjustedDelta >= 0 ? '+' : ''}${formatAssetValue(outcome.adjustedDelta)} adjusted value.`,
     },
     {
@@ -822,7 +813,6 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
       endgameChoice: choice,
       baseValue: selectedEndgame.baseValue,
       finalGameValue: outcome.finalGameValue,
-      tokenTier: selectedEndgame.tokenTier,
     },
   ]);
 }
@@ -835,7 +825,6 @@ function autoDecide(match: Match): Match {
     const choice = chooseCpuEndgameChoice(
       player.wealth,
       player.endgame.baseValue,
-      player.endgame.tokenTier,
     );
     return resolveEndgameChoice(match, choice);
   }

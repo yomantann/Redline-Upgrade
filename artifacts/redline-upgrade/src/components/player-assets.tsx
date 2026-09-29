@@ -1,5 +1,7 @@
-import { getAsset, type AssetSlot } from '@/game/assets';
+import { formatMoney } from '@/game/careers';
+import { getAsset, type AssetLevel, type AssetSlot } from '@/game/assets';
 import { getAssetArtworkUrl } from '@/game/asset-artwork';
+import { assetValueAtLevel } from '@/game/upgrade-tokens';
 import { SpaceIcon } from './space-icon';
 import { AssetArtwork } from './asset-artwork';
 import './player-assets.css';
@@ -35,7 +37,8 @@ export function PlayerAssets({
       <div className="player-assets-grid">
         {slots.map(({ slot, label, empty }) => {
           const asset = equipment[slot] ? getAsset(equipment[slot]!) : undefined;
-          const level = asset ? (assetLevels[asset.id] ?? 1) : 1;
+          const level = asset ? (assetLevels[asset.id] ?? 1) as AssetLevel : 1;
+          const endgameValue = asset ? assetValueAtLevel(asset, level) : 0;
           const artwork = asset ? getAssetArtworkUrl(asset.id) : undefined;
           const categoryLabel = asset?.category === 'pet'
             ? 'PET'
@@ -48,7 +51,7 @@ export function PlayerAssets({
               key={slot}
               title={asset ? `${asset.name} — ${asset.description} — Level ${level}` : `${label}: ${empty}`}
               data-testid={`asset-player-${playerIndex}-${slot}`}
-              aria-label={asset ? `${categoryLabel}, ${asset.name}, level ${level}, value ${asset.cost * level}` : `${label}, ${empty}`}
+              aria-label={asset ? `${categoryLabel}, ${asset.name}, level ${level}, endgame value ${formatMoney(endgameValue)}` : `${label}, ${empty}`}
             >
               <div className={`player-asset-art ${artwork ? 'has-artwork' : ''}`} data-category={asset?.category ?? slot} aria-hidden="true">
                  <b><SpaceIcon name={asset?.category ?? (slot === 'companion' ? 'pet' : slot)} size={24} /></b>
@@ -58,7 +61,7 @@ export function PlayerAssets({
               <div className="player-asset-label">{categoryLabel}</div>
               <strong className="player-asset-name">{asset?.name ?? empty}</strong>
               {asset
-                ? <span className="player-asset-level">LEVEL {level} · VALUE ${(asset.cost * level).toLocaleString('en-US')}</span>
+                 ? <span className="player-asset-level">LEVEL {level} · ENDGAME +{formatMoney(endgameValue)}</span>
                 : <span className="player-asset-level player-asset-empty-state">NOT ACQUIRED</span>}
             </div>
           );

@@ -42,7 +42,6 @@ try {
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
     calculateEndgameBaseValue,
-    getEndgameTokenTier,
     cashOutValue,
     doubleDownValue,
     finalGambleValue,
@@ -627,6 +626,7 @@ try {
     const asset = assets.find(entry => entry.category === category);
     assert(playerAssetsMarkup.includes(asset.name) && playerAssetsMarkup.includes('LEVEL 4'), `${category} Level 4 artwork appears on the player card`);
   }
+  assert(playerAssetsMarkup.includes('ENDGAME +$'), 'the player card labels asset contribution as endgame value');
   const investment = assets.find(asset => asset.category === 'investment');
   const investmentAssetsMarkup = renderToStaticMarkup(React.createElement(PlayerAssets, {
     equipment: { ...playerAssetFixture, companion: investment.id },
@@ -943,7 +943,6 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(match.players[0].endgame.snapshot.heldUpgradeTokens, 3);
   assert.equal(match.players[0].endgame.snapshot.upgradeTokens, 5);
   assert.deepEqual(match.players[0].endgame.snapshot.upgrades, ['finish-line-fixture']);
-  assert.equal(match.players[0].endgame.tokenTier, 3);
   assert(eventTypes(match).includes('FINISH_LINE_REACHED'));
   assert(eventTypes(match).includes('ENDGAME_STARTED'));
   assert(eventTypes(match).includes('TURN_END'), 'reaching the finish line closes that player’s normal turn');
@@ -1028,21 +1027,21 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   );
 
   assert.equal(advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }).players[0].endgame.status, 'RESOLVED');
-  assert.deepEqual([0, 1, 2, 3, 4, 12].map(getEndgameTokenTier), [0, 1, 2, 3, 4, 4]);
-  assert(cashOutValue(100000, 4).finalGameValue > cashOutValue(100000, 0).finalGameValue, 'held tokens enhance Cash Out without becoming cash');
-  assert.equal(doubleDownValue(100000, 2, 0).multiplier, 0.25);
-  assert.equal(doubleDownValue(100000, 2, 4).effectiveRoll, 6, 'four held tokens add four points to the final roll');
-  assert.equal(doubleDownValue(100000, 2, 4).multiplier, 1.25);
-  assert.equal(finalGambleValue(100000, 10000, 0).adjustedDelta, 10000);
-  assert(finalGambleValue(100000, 10000, 4).adjustedDelta > 10000, 'held tokens amplify Final Gamble upside');
-  assert(finalGambleValue(100000, -10000, 4).adjustedDelta > -10000, 'held tokens reduce Final Gamble downside');
+  assert.equal(cashOutValue(100000).multiplier, 1);
+  assert.equal(cashOutValue(100000).finalGameValue, 100000, 'Cash Out preserves the locked base value');
+  assert.equal(doubleDownValue(100000, 2).effectiveRoll, 2);
+  assert.equal(doubleDownValue(100000, 2).multiplier, 0.25);
+  assert.equal(doubleDownValue(100000, 8).effectiveRoll, 8);
+  assert.equal(doubleDownValue(100000, 8).multiplier, 2.75);
+  assert.equal(finalGambleValue(100000, 10000).adjustedDelta, 10000);
+  assert.equal(finalGambleValue(100000, -10000).adjustedDelta, -10000);
   const cashResult = advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' });
   assert.equal(cashResult.phase, 'landed');
   assert.equal(cashResult.players[0].endgame.status, 'RESOLVED');
   assert.equal(cashResult.players[0].endgame.choice, 'CASH_OUT');
   assert.equal(
     cashResult.players[0].endgame.finalGameValue,
-    cashOutValue(cashResult.players[0].endgame.baseValue, 3).finalGameValue,
+    cashOutValue(cashResult.players[0].endgame.baseValue).finalGameValue,
   );
   assert.equal(cashResult.players[0].heldUpgradeTokens, 3, 'endgame modifiers do not spend held tokens');
   assert.equal(cashResult.players[0].upgradeTokens, 5, 'endgame resolution does not mutate the unheld token pool');
@@ -1072,7 +1071,6 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
           status: 'PENDING',
           snapshot: createFinishSnapshot(finishedPlayer, index, player.isCPU, cashResult.round, cashResult.turnCounter),
           baseValue: 100000,
-          tokenTier: 0,
         },
       };
     }),
@@ -1095,9 +1093,9 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   );
   assert.equal(doubleResult.players[0].endgame.status, 'RESOLVED');
   assert.deepEqual(doubleResult.players[0].endgame.dice, { die1: 4, die2: 4, total: 8, doubles: true });
-  assert.equal(doubleResult.players[0].endgame.effectiveRoll, 12);
-  assert.equal(doubleResult.players[0].endgame.multiplier, 3.6);
-  assert.equal(doubleResult.players[0].endgame.finalGameValue, Math.round(doubleResult.players[0].endgame.baseValue * 3.6));
+  assert.equal(doubleResult.players[0].endgame.effectiveRoll, 8);
+  assert.equal(doubleResult.players[0].endgame.multiplier, 2.75);
+  assert.equal(doubleResult.players[0].endgame.finalGameValue, Math.round(doubleResult.players[0].endgame.baseValue * 2.75));
   assert(eventTypes(doubleResult).includes('DOUBLE_DOWN_RESOLVED'));
   assert(eventTypes(doubleResult).includes('ENDGAME_COMPLETED'));
   assert.equal(doubleResult.players[0].history.doubleDowns, 1, 'resolved Double Downs are retained in match history');
@@ -1168,7 +1166,6 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
         status: 'RESOLVED',
         snapshot: createFinishSnapshot(titledPlayer, player.slot, player.isCPU, 3, 1),
         baseValue: 300000,
-        tokenTier: 0,
         choice,
         finalGameValue: 350000,
       };
@@ -1207,7 +1204,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   );
   assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
-  assert(resultsMarkup.includes('0 available · 0 held · 2 spent'), 'the final token ledger uses event history, not the upgrades list');
+  assert(resultsMarkup.includes('HELD TOKENS / FUTURE CREDITS') && resultsMarkup.includes('held tokens are not included in this match value'), 'final records explain that held tokens carry forward without affecting match value');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('1ST TO FINISH') && resultsMarkup.includes('FINISH BONUS'), 'final records distinguish arrival order from final-value placement');
 
@@ -1221,6 +1218,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     onContinue: () => {},
   }));
   assert(finishPanelMarkup.includes('4TH TO FINISH!') && finishPanelMarkup.includes('FINISH BONUS'), 'finish screen announces arrival place and the Wealth bonus');
+  assert(finishPanelMarkup.includes('HELD TOKENS / FUTURE CREDITS'), 'the finish screen labels held tokens as future Credits conversion');
 
   const cpuFinishStart = withoutAbilities(start(73, 1), 1);
   const cpuPending = move(cpuFinishStart, 2);
@@ -1265,7 +1263,6 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
           status: 'RESOLVED',
           snapshot: createFinishSnapshot(finishedPlayer, index, player.isCPU, cashResult.round, cashResult.turnCounter),
           baseValue: 100000,
-          tokenTier: 0,
           choice: 'CASH_OUT',
           finalGameValue: 100000,
         },

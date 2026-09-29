@@ -366,3 +366,24 @@
   .game-player-summary-values b { font-size:14px; }
 }
 @media(prefers-reduced-motion:reduce) { .ability-activation-flash,.space-reward-flash { animation:none !important; } }
+
+/* Board-first tabletop layout: the route owns the height; the compact deck bay
+   lives below the throw readout instead of creating a second full-width row. */
+@media(min-width:1001px) {
+  .game-tabletop { grid-template-columns:minmax(0,1fr) minmax(260px,clamp(260px,24vw,340px)); }
+  .game-tabletop > .game-tabletop-board,
+  .game-tabletop:has(.card-draw-panel) > .game-tabletop-board { grid-column:1; grid-row:1 / span 2; }
+  .game-tabletop > .game-dice-panel,
+  .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:2; grid-row:1; }
+  .game-tabletop > .tabletop-decks,
+  .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:2; grid-row:2; width:100%; }
+}
+
+@media(max-width:1000px) {
+  .game-tabletop > .game-dice-panel,
+  .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:1; grid-row:1; }
+  .game-tabletop > .game-tabletop-board,
+  .game-tabletop:has(.card-draw-panel) > .game-tabletop-board { grid-column:1; grid-row:2; }
+  .game-tabletop > .tabletop-decks,
+  .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1; grid-row:3; width:100%; }
+}

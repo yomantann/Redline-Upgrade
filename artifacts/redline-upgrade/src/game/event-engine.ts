@@ -74,7 +74,6 @@ export interface EventDraft {
   baseValue?: number;
   finalGameValue?: number;
   multiplier?: number;
-  tokenTier?: number;
   effectiveRoll?: number;
 }
 

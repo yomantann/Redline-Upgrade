@@ -1,10 +1,11 @@
-import { getAsset, type AssetSlot } from '@/game/assets';
+import { getAsset, type AssetLevel, type AssetSlot } from '@/game/assets';
 import { getCard } from '@/game/cards';
 import { formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
 import type { MatchPlayer } from '@/game/match';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
+import { assetValueAtLevel } from '@/game/upgrade-tokens';
 import { CharacterPortrait } from './character-portrait';
 import { AssetArtwork } from './asset-artwork';
 import { AbilityActivationBanner, type AbilityFeedback } from './game-event-feedback';
@@ -38,21 +39,21 @@ const choices: readonly {
     id: 'CASH_OUT',
     number: '01',
     title: 'CASH OUT',
-    description: 'Secure the recorded value and close the run.',
+    description: 'Lock the base value at 1× and close the run.',
     accent: 'cash',
   },
   {
     id: 'DOUBLE_DOWN',
     number: '02',
     title: 'DOUBLE DOWN',
-    description: 'Put the base value against one last roll.',
+    description: 'Roll 2d4 for a 0.25×–2.75× multiplier on the base value.',
     accent: 'double',
   },
   {
     id: 'FINAL_GAMBLE',
     number: '03',
     title: 'FINAL GAMBLE',
-    description: 'Take one last card before the record closes.',
+    description: 'Draw one Gamble card and apply its effect to the recorded value.',
     accent: 'gamble',
   },
 ];
@@ -134,9 +135,9 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           </div>
         </div>
         <div className="finish-line-token-readout">
-          <span className="mono">UPGRADE TOKEN LEDGER</span>
-          <strong>TIER {String(endgame.tokenTier).padStart(2, '0')}</strong>
-          <small>{availableTokens} available · {snapshot.heldUpgradeTokens} held · {snapshot.history.upgradeTokensSpent} spent</small>
+          <span className="mono">HELD TOKENS / FUTURE CREDITS</span>
+          <strong>{snapshot.heldUpgradeTokens} HELD</strong>
+          <small>{availableTokens} available · {snapshot.history.upgradeTokensSpent} spent · held tokens are not included in this match value</small>
         </div>
       </div>
       <div className="finish-line-assets" aria-label="Captured assets">
@@ -156,7 +157,7 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
                  {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-asset-image" /> : <span>+</span>}
                </div>
               <strong>{asset?.name ?? 'OPEN SLOT'}</strong>
-               <small>{asset ? `LEVEL ${level} / VALUE $${(asset.cost * (level ?? 1)).toLocaleString('en-US')}` : 'NOT ACQUIRED'}</small>
+                <small>{asset ? `LEVEL ${level} / ENDGAME +${formatMoney(assetValueAtLevel(asset, level! as AssetLevel))}` : 'NOT ACQUIRED'}</small>
             </div>
           );
         })}
@@ -376,9 +377,9 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                   <strong>{career?.name ?? 'UNASSIGNED'}</strong>
                 </div>
                 <div className="finish-line-result-token">
-                   <span className="mono">TOKEN LEDGER / TIER</span>
-                  <strong>TIER {String(endgame.tokenTier).padStart(2, '0')}</strong>
-                  <small>{availableTokens} available · {endgame.snapshot.heldUpgradeTokens} held · {endgame.snapshot.history.upgradeTokensSpent} spent</small>
+                   <span className="mono">HELD TOKENS / FUTURE CREDITS</span>
+                  <strong>{endgame.snapshot.heldUpgradeTokens} HELD</strong>
+                  <small>{availableTokens} available · {endgame.snapshot.history.upgradeTokensSpent} spent · held tokens are not included in this match value</small>
                 </div>
                 <div className="finish-line-result-value">
                   <span className="mono">FINAL GAME VALUE</span>
@@ -396,6 +397,7 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                        const assetId = endgame.snapshot.equipment[slot];
                        const asset = assetId ? getAsset(assetId) : undefined;
                        const level = asset ? endgame.snapshot.assetLevels[asset.id] ?? 1 : null;
+                        const endgameValue = asset ? assetValueAtLevel(asset, level! as AssetLevel) : 0;
                        const categoryLabel = asset?.category === 'pet'
                          ? 'PET'
                          : asset?.category === 'investment'
@@ -408,7 +410,7 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                              {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-result-asset-image" /> : <span>+</span>}
                            </div>
                            <strong>{asset?.name ?? 'OPEN'}</strong>
-                           <small>{asset ? `LV ${level}` : 'EMPTY'}</small>
+                            <small>{asset ? `LV ${level} / ENDGAME +${formatMoney(endgameValue)}` : 'EMPTY'}</small>
                          </div>
                        );
                      })}

@@ -102,7 +102,6 @@ export interface GameEvent {
   baseValue?: number;
   finalGameValue?: number;
   multiplier?: number;
-  tokenTier?: number;
   effectiveRoll?: number;
 }
 

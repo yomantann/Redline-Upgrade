@@ -30,10 +30,10 @@ export const TABLETOP_STRUCTURES = [
   { id: 'west-spine', x: -20.4, z: 13.7, width: 2.9, depth: 0.7, label: 'WEST / 02', accent: '#88c6c2' },
 ] as const;
 export const TABLETOP_BUILDINGS = [
-  { id: 'grind-foundry', x: -20.4, z: -13.75, width: 2.7, depth: 1.52, height: 1.02, color: '#2b3328', accent: '#c5b96d', profile: 'industrial' },
-  { id: 'north-residences', x: -17.3, z: 11.5, width: 2.45, depth: 1.42, height: 1.18, color: '#263a3a', accent: '#88c6c2', profile: 'glazed' },
-  { id: 'flex-exchange', x: 17.25, z: 13.7, width: 2.62, depth: 1.48, height: 1.24, color: '#243a39', accent: '#88c6c2', profile: 'glazed' },
-  { id: 'relay-hub', x: 20.3, z: -10.9, width: 2.3, depth: 1.38, height: 1.08, color: '#302e26', accent: '#f96346', profile: 'industrial' },
+  { id: 'grind-foundry', x: -20.4, z: -13.75, width: 2.7, depth: 1.52, height: 1.02, color: '#2b3328', accent: '#c5b96d', profile: 'industrial', label: 'FOUNDRY' },
+  { id: 'north-skyline', x: -17.3, z: 11.5, width: 2.1, depth: 1.42, height: 1.62, color: '#263a3a', accent: '#88c6c2', profile: 'tower', label: 'SKYLINE' },
+  { id: 'flex-garage', x: 17.25, z: 13.7, width: 2.8, depth: 1.48, height: 0.84, color: '#243a39', accent: '#88c6c2', profile: 'garage', label: 'PIT 09' },
+  { id: 'relay-neon', x: 20.3, z: -10.9, width: 2.3, depth: 1.38, height: 1.08, color: '#302e26', accent: '#f96346', profile: 'neon', label: 'RELAY' },
 ] as const;
 
 /**
@@ -145,15 +145,15 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
 }
 
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
-  const lines = useMemo(() => [`ZONE 0${index + 1}`, name], [index, name]);
+  const lines = useMemo(() => [name, `ZONE 0${index + 1}`], [index, name]);
   const texture = useMemo(() => graphic(lines, color), [lines, color]);
   const banner = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.moveTo(-1.08, 0.38);
-    shape.lineTo(1.08, 0.38);
-    shape.lineTo(1.08, -0.34);
+    shape.moveTo(-1.34, 0.42);
+    shape.lineTo(1.34, 0.42);
+    shape.lineTo(1.34, -0.38);
     shape.lineTo(0, -0.54);
-    shape.lineTo(-1.08, -0.34);
+    shape.lineTo(-1.34, -0.38);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
   }, []);
@@ -165,14 +165,14 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
       <meshStandardMaterial color="#35453d" metalness={0.78} roughness={0.32} />
     </mesh>
     <mesh position={[0, 1.48, 0]} castShadow>
-      <boxGeometry args={[2.3, 0.055, 0.09]} />
+      <boxGeometry args={[2.78, 0.055, 0.09]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.14} metalness={0.7} roughness={0.3} />
     </mesh>
     <mesh position={[0, 1.08, 0]} geometry={banner} castShadow>
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} roughness={0.72} side={THREE.DoubleSide} />
     </mesh>
     <mesh position={[0, 1.08, 0.055]}>
-      <planeGeometry args={[1.94, 0.48]} />
+      <planeGeometry args={[2.55, 0.62]} />
       <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} depthWrite={false} />
     </mesh>
     <mesh position={[-1.1, 0.035, 0]} receiveShadow>
@@ -223,15 +223,27 @@ function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[n
   const frontColumns = [-0.34, 0, 0.34].map(fraction => fraction * building.width);
   const sideColumns = [-0.32, 0, 0.32].map(fraction => fraction * building.depth);
   const industrial = building.profile === 'industrial';
+  const tower = building.profile === 'tower';
+  const garage = building.profile === 'garage';
+  const neon = building.profile === 'neon';
   return <group position={[building.x, 0.14, building.z]}>
     <mesh position={[0, 0.026, 0]} receiveShadow>
       <boxGeometry args={[building.width + 0.22, 0.052, building.depth + 0.18]} />
       <meshStandardMaterial color="#101a16" metalness={0.76} roughness={0.42} />
     </mesh>
-    <mesh position={[0, 0.052 + building.height / 2, 0]} castShadow receiveShadow>
-      <boxGeometry args={[building.width, building.height, building.depth]} />
+     <mesh position={[0, 0.052 + building.height / 2, 0]} castShadow receiveShadow>
+       <boxGeometry args={[building.width, building.height, building.depth]} />
       <meshStandardMaterial color={building.color} metalness={industrial ? 0.46 : 0.78} roughness={industrial ? 0.7 : 0.26} />
     </mesh>
+     {tower && <group position={[0, 0.052 + building.height + 0.22, 0]}>
+       <mesh castShadow><boxGeometry args={[building.width * 0.66, 0.34, building.depth * 0.72]} /><meshStandardMaterial color="#1a302d" metalness={0.8} roughness={0.23} /></mesh>
+       <mesh position={[0, 0.26, 0]} castShadow><cylinderGeometry args={[0.055, 0.055, 0.48, 8]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.25} metalness={0.72} roughness={0.25} /></mesh>
+       <mesh position={[0, 0.53, 0]}><sphereGeometry args={[0.09, 12, 8]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.75} /></mesh>
+     </group>}
+     {garage && <group position={[0, 0.052 + building.height + 0.06, 0]}>
+       <mesh castShadow><boxGeometry args={[building.width + 0.12, 0.11, building.depth + 0.1]} /><meshStandardMaterial color="#345451" metalness={0.74} roughness={0.3} /></mesh>
+       {[-0.74, 0.74].map(x => <mesh key={x} position={[x, 0.11, building.depth * 0.28]}><boxGeometry args={[0.09, 0.2, 0.04]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.28} /></mesh>)}
+     </group>}
     <mesh position={[0, 0.052 + building.height + 0.025, 0]} castShadow>
       <boxGeometry args={[building.width + 0.12, 0.05, building.depth + 0.1]} />
       <meshStandardMaterial color={industrial ? '#495044' : '#345451'} metalness={0.74} roughness={0.3} />
@@ -248,15 +260,29 @@ function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[n
         <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.14} metalness={0.68} roughness={0.24} />
       </mesh>
     )))}
-    {industrial
-      ? <group position={[-building.width * 0.22, 0.052 + building.height + 0.07, 0]}>
-          <mesh><boxGeometry args={[0.24, 0.09, 0.24]} /><meshStandardMaterial color="#171f1a" metalness={0.72} roughness={0.45} /></mesh>
-          <mesh position={[0, 0.07, 0]}><cylinderGeometry args={[0.055, 0.055, 0.08, 8]} /><meshStandardMaterial color={building.accent} metalness={0.66} roughness={0.32} /></mesh>
-        </group>
-      : <mesh position={[0, 0.052 + building.height + 0.055, 0]}>
+     {industrial
+       ? <group>
+           {[-0.34, 0.34].map((x) => <group key={x} position={[x, 0.052 + building.height + 0.2, 0]}>
+             <mesh castShadow><cylinderGeometry args={[0.14, 0.18, 0.38, 8]} /><meshStandardMaterial color="#171f1a" metalness={0.72} roughness={0.45} /></mesh>
+             <mesh position={[0, 0.22, 0]}><cylinderGeometry args={[0.09, 0.09, 0.06, 8]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.28} metalness={0.66} roughness={0.32} /></mesh>
+           </group>)}
+           <mesh position={[building.width * 0.25, 0.052 + building.height + 0.1, building.depth * 0.18]} rotation={[0, 0, -0.22]} castShadow>
+             <boxGeometry args={[1.28, 0.1, 0.16]} /><meshStandardMaterial color="#59634d" metalness={0.56} roughness={0.58} />
+           </mesh>
+           <mesh position={[building.width * 0.25, 0.052 + building.height + 0.03, building.depth * 0.18]}>
+             <boxGeometry args={[1.4, 0.025, 0.22]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.2} metalness={0.62} roughness={0.4} />
+           </mesh>
+         </group>
+       : <mesh position={[0, 0.052 + building.height + (tower ? 0.82 : 0.055), 0]}>
           <boxGeometry args={[building.width * 0.72, 0.018, 0.04]} />
           <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.22} metalness={0.82} roughness={0.2} />
         </mesh>}
+     {neon && <group position={[0, 0.052 + building.height * 0.58, building.depth / 2 + 0.04]}>
+       <mesh><boxGeometry args={[building.width * 0.76, 0.3, 0.06]} /><meshStandardMaterial color="#141b18" metalness={0.72} roughness={0.3} /></mesh>
+       <mesh position={[0, 0, 0.05]}><boxGeometry args={[building.width * 0.62, 0.06, 0.025]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.62} metalness={0.5} roughness={0.24} /></mesh>
+       <mesh position={[building.width * 0.36, 0.24, 0]} rotation={[0, 0, -0.2]}><boxGeometry args={[0.06, 0.35, 0.05]} /><meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.58} /></mesh>
+     </group>}
+     <PrintedLabel lines={[building.label]} x={0} y={0.052 + building.height + (tower ? 0.98 : garage ? 0.2 : 0.18)} z={0.18} w={building.width * 0.82} h={0.15} color={building.accent} />
   </group>;
 }
 
@@ -304,6 +330,13 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
   const landmark = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
   const finish = space.number === 75;
   const topY = landmark ? 0.87 : 0.71;
+  const boardLabel = space.number === 1 || finish ? null
+    : space.type === 'SALARY_GATE' ? 'SALARY GATE'
+    : space.type === 'UPGRADE_TOKEN' ? 'UPGRADE TOKEN'
+    : space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' ? space.label.toUpperCase()
+    : visual.className === 'deck' ? `${visual.deckCode ?? 'CARD'} DECK`
+    : visual.className === 'gamble' ? 'GAMBLE'
+    : null;
   const sideMaterial = visual.className === 'major' ? mats.accent
     : visual.className === 'deck' || visual.className === 'gamble' ? deckEdgeMaterial ?? mats.event
     : visual.className === 'start' ? mats.lime
@@ -389,10 +422,10 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
       </mesh>
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={visual.className === 'safe' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    {visual.className === 'start' && <PrintedLabel lines={['OPEN ROAD']} x={0} y={topY + 0.045} z={0.6} w={1.65} h={0.23} color={COLORS.lime} />}
+    {visual.className === 'start' && <PrintedLabel lines={['OPEN ROAD']} x={0} y={topY + 0.045} z={0.6} w={1.86} h={0.29} color={COLORS.lime} />}
     {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect' || visual.className === 'start') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
-    {visual.deckCode && <PrintedLabel lines={[visual.deckCode]} x={0.59} y={topY + 0.045} z={0.64} w={0.88} h={0.18} color={visual.accent} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
+    {boardLabel && <PrintedLabel lines={[boardLabel]} x={0} y={topY + 0.045} z={0.68} w={landmark ? 2.02 : 1.92} h={0.25} color={visual.className === 'deck' ? visual.accent : space.type === 'UPGRADE_TOKEN' ? '#d4c5ff' : COLORS.cream} />}
     {finish && <PrintedLabel lines={['FINISH']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.46} color={COLORS.orange} />}
   </group>;
 }

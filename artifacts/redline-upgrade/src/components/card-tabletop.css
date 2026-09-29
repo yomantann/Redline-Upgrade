@@ -113,3 +113,19 @@
   .card-draw-stage .redline-card { max-width:270px; }
 }
 @media(prefers-reduced-motion:reduce) { .card-draw-stage.revealed .redline-card { animation:none; } .card-cpu-progress span { animation:none !important; transform:scaleX(1); } }
+
+/* Six compact, legible deck bays. The full card remains reserved for the
+   fixed draw reveal above; these are only table references. */
+@media(min-width:1001px) {
+  .tabletop-decks { padding:12px; }
+  .tabletop-decks-head { align-items:start; padding-bottom:10px; margin-bottom:10px; }
+  .tabletop-decks-head h2 { font-size:24px; }
+  .tabletop-decks-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px 7px; }
+  .tabletop-deck-caption { margin-top:6px; font-size:7px; }
+  .tabletop-deck-caption span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+
+@media(max-width:700px) {
+  .tabletop-decks { margin-top:0; }
+  .tabletop-decks-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
