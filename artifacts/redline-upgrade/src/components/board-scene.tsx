@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { BOARD_SPACES } from '../game/board-data';
 import type { BoardSpace } from '../game/board-data';
 import type { MatchPlayer } from '../game/match';
@@ -16,14 +17,20 @@ const COLORS = {
 };
 const ZONE_COLORS = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'];
 export const TABLETOP_DRESSING = [
-  { id: 'redline-sign', x: -18, z: -12, title: 'REDLINE', subtitle: 'UPGRADE SYSTEMS', accent: '#f96346' },
-  { id: 'market-display', x: 18, z: -12, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
-  { id: 'ai-terminal', x: -18, z: 12, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
+  { id: 'redline-sign', x: -16.4, z: -14.25, title: 'REDLINE', subtitle: 'UPGRADE SYSTEMS', accent: '#f96346' },
+  { id: 'market-display', x: 16.4, z: -14.25, title: 'MARKET', subtitle: 'LIVE EXCHANGE', accent: '#d4e981' },
+  { id: 'ai-terminal', x: -16.4, z: 14.25, title: 'AI NODE', subtitle: 'SKILL NETWORK', accent: '#88c6c2' },
 ] as const;
 export const TABLETOP_STRUCTURES = [
-  { id: 'north-spine', x: 20.8, z: 11.8, label: 'NORTH / 05', accent: '#e9c477' },
-  { id: 'south-spine', x: 20.8, z: -2.3, label: 'SOUTH / 06', accent: '#f96346' },
-  { id: 'west-spine', x: -21.2, z: 2.5, label: 'WEST / 02', accent: '#88c6c2' },
+  { id: 'north-spine', x: 20.4, z: 13.7, label: 'NORTH / 05', accent: '#e9c477' },
+  { id: 'south-spine', x: 20.4, z: -13.7, label: 'SOUTH / 06', accent: '#f96346' },
+  { id: 'west-spine', x: -20.4, z: 13.7, label: 'WEST / 02', accent: '#88c6c2' },
+] as const;
+export const TABLETOP_BUILDINGS = [
+  { id: 'grind-foundry', x: -20.4, z: -13.75, width: 1.05, depth: 0.72, height: 0.44, color: '#2b3328', accent: '#c5b96d', profile: 'industrial' },
+  { id: 'north-residences', x: -17.6, z: 13.7, width: 1.12, depth: 0.72, height: 0.52, color: '#263a3a', accent: '#88c6c2', profile: 'glazed' },
+  { id: 'flex-exchange', x: 18.2, z: 13.7, width: 1.22, depth: 0.82, height: 0.56, color: '#243a39', accent: '#88c6c2', profile: 'glazed' },
+  { id: 'relay-hub', x: 20.3, z: -10.9, width: 0.92, depth: 0.62, height: 0.4, color: '#302e26', accent: '#f96346', profile: 'industrial' },
 ] as const;
 
 /**
@@ -91,26 +98,22 @@ function PrintedLabel({ lines, x, y, z, w, h, color }: {
 function DressingPanel({ panel }: { panel: typeof TABLETOP_DRESSING[number] }) {
   const texture = useMemo(() => graphic([panel.title, panel.subtitle], panel.accent), [panel.title, panel.subtitle, panel.accent]);
   useEffect(() => () => texture.dispose(), [texture]);
-  return <group position={[panel.x, 0.12, panel.z]}>
-    <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
-      <boxGeometry args={[1.9, 0.2, 1.18]} />
-      <meshStandardMaterial color="#18241f" metalness={0.76} roughness={0.42} />
+  return <group position={[panel.x, 0.16, panel.z]}>
+    <mesh position={[0, 0.045, 0]} receiveShadow>
+      <boxGeometry args={[3.7, 0.09, 0.44]} />
+      <meshStandardMaterial color="#101a17" metalness={0.82} roughness={0.3} />
     </mesh>
-    <mesh position={[0, 0.73, -0.02]} castShadow>
-      <boxGeometry args={[0.76, 1.02, 0.16]} />
-      <meshStandardMaterial color="#26382f" metalness={0.68} roughness={0.4} />
+    <mesh position={[0, 0.11, 0]}>
+      <boxGeometry args={[3.42, 0.025, 0.3]} />
+      <meshStandardMaterial color={panel.accent} emissive={panel.accent} emissiveIntensity={0.16} metalness={0.72} roughness={0.32} />
     </mesh>
-    <mesh position={[0, 1.4, 0]} castShadow>
-      <boxGeometry args={[1.64, 0.88, 0.2]} />
-      <meshStandardMaterial color="#17231e" metalness={0.72} roughness={0.36} />
-    </mesh>
-    <mesh position={[0, 1.4, 0.105]}>
-      <planeGeometry args={[1.46, 0.68]} />
+    <mesh position={[0, 0.145, 0]}>
+      <planeGeometry args={[2.9, 0.2]} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} />
     </mesh>
-    <mesh position={[0, 0.25, 0.09]}>
-      <boxGeometry args={[1.48, 0.035, 0.05]} />
-      <meshStandardMaterial color={panel.accent} metalness={0.7} roughness={0.38} />
+    <mesh position={[-1.57, 0.15, 0]}>
+      <boxGeometry args={[0.06, 0.055, 0.34]} />
+      <meshStandardMaterial color="#d9e9c0" emissive="#d9e9c0" emissiveIntensity={0.25} />
     </mesh>
   </group>;
 }
@@ -166,28 +169,60 @@ function ZoneFrame({ index, color }: { index: number; color: string }) {
 }
 
 function TabletopStructure({ structure }: { structure: typeof TABLETOP_STRUCTURES[number] }) {
-  return <group position={[structure.x, 0.12, structure.z]}>
+  return <group position={[structure.x, 0.16, structure.z]}>
     <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
-      <cylinderGeometry args={[1.2, 1.35, 0.18, 8]} />
-      <meshStandardMaterial color="#101a18" metalness={0.76} roughness={0.34} />
+      <boxGeometry args={[2.9, 0.16, 0.7]} />
+      <meshStandardMaterial color="#101a18" metalness={0.8} roughness={0.34} />
     </mesh>
-    <mesh position={[0, 0.86, 0]} castShadow>
-      <boxGeometry args={[0.62, 1.55, 0.62]} />
-      <meshStandardMaterial color="#1d3029" metalness={0.7} roughness={0.36} />
-    </mesh>
-    {[-1, 1].map((side) => <mesh key={side} position={[side * 0.46, 0.92, 0]} castShadow>
-      <boxGeometry args={[0.07, 1.7, 0.85]} />
-      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.2} metalness={0.72} roughness={0.32} />
+    {[-1, 0, 1].map((slot) => <mesh key={slot} position={[slot * 0.74, 0.26 + (slot === 0 ? 0.1 : 0), 0]} castShadow>
+      <boxGeometry args={[0.42, slot === 0 ? 0.38 : 0.24, 0.52]} />
+      <meshStandardMaterial color="#20312a" metalness={0.68} roughness={0.4} />
     </mesh>)}
-    <mesh position={[0, 1.7, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[0.47, 0.045, 8, 24]} />
-      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.25} metalness={0.7} roughness={0.3} />
+    <mesh position={[0, 0.49, 0.02]}>
+      <boxGeometry args={[2.46, 0.035, 0.06]} />
+      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.2} metalness={0.72} roughness={0.3} />
     </mesh>
-    <mesh position={[0, 2.05, 0]} castShadow>
-      <coneGeometry args={[0.34, 0.55, 6]} />
-      <meshStandardMaterial color={structure.accent} emissive={structure.accent} emissiveIntensity={0.24} metalness={0.62} roughness={0.3} />
+    <PrintedLabel lines={[structure.label]} x={0} y={0.52} z={0.2} w={1.9} h={0.16} color={structure.accent} />
+  </group>;
+}
+
+function PerimeterBuilding({ building }: { building: typeof TABLETOP_BUILDINGS[number] }) {
+  const rows = building.height > 0.46 ? [0.18, 0.36] : [0.19];
+  const industrial = building.profile === 'industrial';
+  return <group position={[building.x, 0.14, building.z]}>
+    <mesh position={[0, 0.026, 0]} receiveShadow>
+      <boxGeometry args={[building.width + 0.22, 0.052, building.depth + 0.18]} />
+      <meshStandardMaterial color="#101a16" metalness={0.76} roughness={0.42} />
     </mesh>
-    <PrintedLabel lines={[structure.label]} x={0} y={0.24} z={0.78} w={1.8} h={0.2} color={structure.accent} />
+    <mesh position={[0, 0.052 + building.height / 2, 0]} castShadow receiveShadow>
+      <boxGeometry args={[building.width, building.height, building.depth]} />
+      <meshStandardMaterial color={building.color} metalness={industrial ? 0.46 : 0.78} roughness={industrial ? 0.7 : 0.26} />
+    </mesh>
+    <mesh position={[0, 0.052 + building.height + 0.025, 0]} castShadow>
+      <boxGeometry args={[building.width + 0.12, 0.05, building.depth + 0.1]} />
+      <meshStandardMaterial color={industrial ? '#495044' : '#345451'} metalness={0.74} roughness={0.3} />
+    </mesh>
+    {rows.flatMap((row, rowIndex) => [-0.3, 0, 0.3].map((column, columnIndex) => (
+      <mesh key={`front-window-${rowIndex}-${columnIndex}`} position={[column, 0.052 + row, building.depth / 2 + 0.014]}>
+        <boxGeometry args={[0.13, 0.065, 0.024]} />
+        <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.18} metalness={0.68} roughness={0.24} />
+      </mesh>
+    )))}
+    {rows.slice(0, 1).map((row) => [-0.12, 0.12].map((column) => (
+      <mesh key={`side-window-${row}-${column}`} position={[building.width / 2 + 0.014, 0.052 + row, column]}>
+        <boxGeometry args={[0.024, 0.065, 0.12]} />
+        <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.14} metalness={0.68} roughness={0.24} />
+      </mesh>
+    )))}
+    {industrial
+      ? <group position={[-building.width * 0.22, 0.052 + building.height + 0.07, 0]}>
+          <mesh><boxGeometry args={[0.24, 0.09, 0.24]} /><meshStandardMaterial color="#171f1a" metalness={0.72} roughness={0.45} /></mesh>
+          <mesh position={[0, 0.07, 0]}><cylinderGeometry args={[0.055, 0.055, 0.08, 8]} /><meshStandardMaterial color={building.accent} metalness={0.66} roughness={0.32} /></mesh>
+        </group>
+      : <mesh position={[0, 0.052 + building.height + 0.055, 0]}>
+          <boxGeometry args={[building.width * 0.72, 0.018, 0.04]} />
+          <meshStandardMaterial color={building.accent} emissive={building.accent} emissiveIntensity={0.22} metalness={0.82} roughness={0.2} />
+        </mesh>}
   </group>;
 }
 
@@ -195,6 +230,7 @@ const tileShape = new THREE.BoxGeometry(2.18, 0.24, 2.08);
 const tileTop = new THREE.BoxGeometry(2.06, 0.12, 1.96);
 const stripShape = new THREE.BoxGeometry(1.86, 0.025, 0.06);
 const edgeGeometry = new THREE.BoxGeometry(2.34, 0.035, 2.24);
+const tabletopBaseGeometry = new RoundedBoxGeometry(48, 0.86, 31.8, 3, 0.12);
 const mats = {
   base: new THREE.MeshStandardMaterial({ color: '#101a19', metalness: 0.55, roughness: 0.52 }),
   normal: new THREE.MeshStandardMaterial({ color: '#30423b', metalness: 0.38, roughness: 0.56 }),
@@ -351,11 +387,80 @@ function Connector({ a, b, hot = false, zoneColor = COLORS.lime }: { a: Point; b
   </group>;
 }
 
+function ZoneInlay({ index, color }: { index: number; color: string }) {
+  const routeIndex = [8, 23, 38, 53, 68][index];
+  const point = ROUTE[routeIndex];
+  const next = ROUTE[Math.min(75, routeIndex + 1)];
+  const angle = Math.atan2(next.z - point.z, next.x - point.x);
+  const polished = index === 2;
+  const rough = index === 0;
+  return <group position={[ZONE_ANCHORS[index].x, 0.115, ZONE_ANCHORS[index].z]} rotation={[0, -angle, 0]}>
+    <mesh receiveShadow>
+      <boxGeometry args={[4.55, 0.025, 1.12]} />
+      <meshStandardMaterial color={rough ? '#4a5140' : polished ? '#294846' : '#303e36'} metalness={polished ? 0.72 : 0.42} roughness={rough ? 0.78 : polished ? 0.25 : 0.55} />
+    </mesh>
+    {[-0.42, 0, 0.42].map((z) => <mesh key={z} position={[0, 0.022, z]}>
+      <boxGeometry args={[4.1, 0.012, 0.018]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={index === 0 || index === 2 ? 0.12 : 0.04} metalness={0.68} roughness={0.36} />
+    </mesh>)}
+    {rough && <mesh position={[0, 0.027, 0]}>
+      <boxGeometry args={[3.7, 0.012, 0.025]} />
+      <meshStandardMaterial color="#c5b96d" metalness={0.4} roughness={0.85} />
+    </mesh>}
+    {rough && [-1.35, -0.45, 0.45, 1.35].map((x, i) => <mesh key={`hazard-mark-${i}`} position={[x, 0.026, 0.47]} rotation={[0, Math.PI / 4, 0]}>
+      <boxGeometry args={[0.32, 0.012, 0.035]} />
+      <meshStandardMaterial color="#d2bd69" metalness={0.32} roughness={0.86} />
+    </mesh>)}
+    {polished && [-1, 1].map((side) => <mesh key={`glass-rail-${side}`} position={[side * 2.08, 0.023, 0]}>
+      <boxGeometry args={[0.035, 0.012, 0.84]} />
+      <meshStandardMaterial color="#9adbd0" emissive="#73c6bb" emissiveIntensity={0.34} metalness={0.82} roughness={0.18} />
+    </mesh>)}
+  </group>;
+}
+
+function PerimeterRoad() {
+  const dash = (x: number, z: number, horizontal: boolean, key: string) => <mesh key={key} position={[x, 0.13, z]}>
+    <boxGeometry args={horizontal ? [1.15, 0.018, 0.045] : [0.045, 0.018, 1.15]} />
+    <meshStandardMaterial color="#b9c98f" emissive="#b9c98f" emissiveIntensity={0.08} metalness={0.44} roughness={0.58} />
+  </mesh>;
+  return <group>
+    <mesh position={[0, 0.11, -15.03]} receiveShadow>
+      <boxGeometry args={[45.7, 0.045, 0.62]} />
+      <meshStandardMaterial color="#1b2924" metalness={0.34} roughness={0.8} />
+    </mesh>
+    <mesh position={[0, 0.11, 15.03]} receiveShadow>
+      <boxGeometry args={[45.7, 0.045, 0.62]} />
+      <meshStandardMaterial color="#1b2924" metalness={0.34} roughness={0.8} />
+    </mesh>
+    <mesh position={[-23.03, 0.11, 0]} receiveShadow>
+      <boxGeometry args={[0.62, 0.045, 30.2]} />
+      <meshStandardMaterial color="#1b2924" metalness={0.34} roughness={0.8} />
+    </mesh>
+    <mesh position={[23.03, 0.11, 0]} receiveShadow>
+      <boxGeometry args={[0.62, 0.045, 30.2]} />
+      <meshStandardMaterial color="#1b2924" metalness={0.34} roughness={0.8} />
+    </mesh>
+    {Array.from({ length: 18 }, (_, i) => dash(-21.3 + i * 2.5, -15.03, true, `n-${i}`))}
+    {Array.from({ length: 18 }, (_, i) => dash(-21.3 + i * 2.5, 15.03, true, `s-${i}`))}
+    {Array.from({ length: 12 }, (_, i) => dash(-23.03, -12.8 + i * 2.35, false, `w-${i}`))}
+    {Array.from({ length: 12 }, (_, i) => dash(23.03, -12.8 + i * 2.35, false, `e-${i}`))}
+  </group>;
+}
+
+function PerimeterCity() {
+  return <group>
+    <PerimeterRoad />
+    {TABLETOP_DRESSING.map(panel => <DressingPanel key={panel.id} panel={panel} />)}
+    {TABLETOP_STRUCTURES.map(structure => <TabletopStructure key={structure.id} structure={structure} />)}
+    {TABLETOP_BUILDINGS.map(building => <PerimeterBuilding key={building.id} building={building} />)}
+  </group>;
+}
+
 function CircuitBoard() {
   return <group>
     <mesh position={[0, -0.42, 0]} receiveShadow>
-      <boxGeometry args={[48, 0.86, 31.8]} />
-      <meshStandardMaterial color={COLORS.side} metalness={0.55} roughness={0.48} />
+      <primitive object={tabletopBaseGeometry} attach="geometry" />
+      <meshStandardMaterial color="#0a1211" metalness={0.68} roughness={0.42} />
     </mesh>
     <mesh position={[0, 0.012, 0]} receiveShadow>
       <boxGeometry args={[47.65, 0.08, 31.45]} />
@@ -365,6 +470,15 @@ function CircuitBoard() {
       <boxGeometry args={[47.25, 0.09, 31.05]} />
       <meshStandardMaterial color={COLORS.deck} metalness={0.52} roughness={0.6} />
     </mesh>
+    <mesh position={[0, 0.105, 0]} receiveShadow>
+      <boxGeometry args={[46.8, 0.035, 30.6]} />
+      <meshStandardMaterial color="#22342c" metalness={0.28} roughness={0.76} />
+    </mesh>
+    {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`bolt-${x}-${z}`} position={[x * 22.45, 0.18, z * 14.65]}>
+      <cylinderGeometry args={[0.12, 0.12, 0.035, 12]} />
+      <meshStandardMaterial color="#a6b593" metalness={0.84} roughness={0.22} />
+    </mesh>))}
+    {ZONE_COLORS.map((color, index) => <ZoneInlay key={color} index={index} color={color} />)}
     {[-1, 1].map(s => <group key={s}>
       <mesh position={[0, 0.11, s * 15.15]}>
         <boxGeometry args={[46.8, 0.025, 0.1]} /><primitive object={mats.accent} attach="material" />
@@ -391,6 +505,7 @@ function CircuitBoard() {
     {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`${x}-${z}`} position={[x * 20.7, -0.93, z * 13.2]} castShadow>
       <boxGeometry args={[2.2, 0.25, 1.5]} /><meshStandardMaterial color="#0a100f" metalness={0.5} />
     </mesh>))}
+    <PerimeterCity />
   </group>;
 }
 
@@ -419,44 +534,38 @@ function CenterEmblem() {
 function StartGate() {
   const p = ROUTE[0];
   return <group position={[p.x, 0, p.z]}>
-    <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
-      <boxGeometry args={[3.2, 0.66, 3.55]} /><primitive object={mats.dark} attach="material" />
+    <mesh position={[0, 0.46, 0]} castShadow receiveShadow>
+      <boxGeometry args={[3.2, 0.12, 3.55]} /><primitive object={mats.dark} attach="material" />
     </mesh>
-    <mesh position={[0, 0.71, 0]} castShadow receiveShadow>
-      <boxGeometry args={[3.08, 0.06, 3.42]} /><primitive object={mats.lime} attach="material" />
+    <mesh position={[0, 0.54, 0]} castShadow receiveShadow>
+      <boxGeometry args={[3.08, 0.035, 3.42]} /><primitive object={mats.lime} attach="material" />
     </mesh>
-    <mesh position={[0, 0.76, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.94, 0.06, 3.28]} /><primitive object={mats.normal} attach="material" />
+    <mesh position={[0, 0.58, 0]} castShadow receiveShadow>
+      <boxGeometry args={[2.94, 0.03, 3.28]} /><primitive object={mats.normal} attach="material" />
     </mesh>
-    <PrintedLabel lines={['START', '00 / LAUNCH PAD']} x={0} y={0.801} z={0.15} w={2.25} h={0.78} color={COLORS.lime} />
-    <PrintedIcon icon="start" y={0.76} color={COLORS.lime} x={0} z={-0.83} size={0.7} />
-    {[-1, 1].map(s => <group key={s}>
-      <mesh position={[s * 1.34, 1.05, -1.2]} castShadow><boxGeometry args={[0.14, 0.55, 0.18]} /><primitive object={mats.lime} attach="material" /></mesh>
-      <mesh position={[s * 1.34, 1.63, -1.2]} castShadow><boxGeometry args={[0.14, 0.55, 0.18]} /><primitive object={mats.lime} attach="material" /></mesh>
-    </group>)}
-    <mesh position={[0, 1.84, -1.2]} castShadow><boxGeometry args={[2.82, 0.18, 0.22]} /><primitive object={mats.accent} attach="material" /></mesh>
+    <PrintedLabel lines={['START', '00 / LAUNCH PAD']} x={0} y={0.62} z={0.15} w={2.25} h={0.78} color={COLORS.lime} />
+    <PrintedIcon icon="start" y={0.58} color={COLORS.lime} x={0} z={-0.83} size={0.7} />
+    <mesh position={[0, 0.625, -1.2]}>
+      <boxGeometry args={[2.8, 0.025, 0.06]} /><primitive object={mats.accent} attach="material" />
+    </mesh>
   </group>;
 }
 
 function FinishGate({ players, finishOrder }: { players: MatchPlayer[]; finishOrder: number[] }) {
   const p = ROUTE[75];
   return <group position={[p.x, 0, p.z]}>
-    <mesh position={[0, 0.38, 0]} castShadow receiveShadow>
-      <cylinderGeometry args={[1.52, 1.64, 0.76, 8]} /><primitive object={mats.dark} attach="material" />
+    <mesh position={[0, 0.46, 0]} castShadow receiveShadow>
+      <cylinderGeometry args={[1.52, 1.64, 0.12, 8]} /><primitive object={mats.dark} attach="material" />
     </mesh>
-    <mesh position={[0, 0.78, 0]} castShadow receiveShadow>
-      <cylinderGeometry args={[1.5, 1.5, 0.08, 8]} /><primitive object={mats.accent} attach="material" />
+    <mesh position={[0, 0.55, 0]} castShadow receiveShadow>
+      <cylinderGeometry args={[1.5, 1.5, 0.035, 8]} /><primitive object={mats.accent} attach="material" />
     </mesh>
-    {[-1, 1].map(s => <mesh key={s} position={[s * 1.36, 1.73, -0.25]} castShadow>
-      <boxGeometry args={[0.18, 1.85, 0.22]} /><primitive object={mats.accent} attach="material" />
-    </mesh>)}
-    <mesh position={[0, 2.7, -0.25]} castShadow><boxGeometry args={[2.9, 0.23, 0.25]} /><primitive object={mats.accent} attach="material" /></mesh>
-    <PrintedLabel lines={['FINISH']} x={0} y={0.84} z={0.98} w={2.25} h={0.42} color={COLORS.orange} />
+    <PrintedLabel lines={['FINISH']} x={0} y={0.59} z={0.98} w={2.25} h={0.42} color={COLORS.orange} />
     {finishOrder.slice(0, 4).map((playerIndex, place) => {
       const player = players[playerIndex];
       if (!player) return null;
       const ordinal = `${place + 1}${place === 0 ? 'ST' : place === 1 ? 'ND' : place === 2 ? 'RD' : 'TH'}`;
-      return <PrintedLabel key={player.playerId} lines={[`${ordinal} / ${player.displayName}`]} x={0} y={0.86} z={1.62 + place * 0.43} w={2.35} h={0.3} color={COLORS.lime} />;
+      return <PrintedLabel key={player.playerId} lines={[`${ordinal} / ${player.displayName}`]} x={0} y={0.61} z={1.0 + place * 0.27} w={2.35} h={0.2} color={COLORS.lime} />;
     })}
   </group>;
 }
@@ -532,6 +641,9 @@ export function BoardScene({ players, activePlayerId, finishOrder = [], landingP
     <hemisphereLight args={['#bcd2c2', '#16201d', 1.8]} />
     <directionalLight position={[-12, 25, 17]} intensity={2.6} color="#ffe4cb" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-29} shadow-camera-right={29} shadow-camera-top={23} shadow-camera-bottom={-23} shadow-bias={-0.0005} />
     <directionalLight position={[14, 9, -12]} intensity={1.1} color="#a8d7bf" />
+    <pointLight position={[ZONE_ANCHORS[0].x, 0.65, ZONE_ANCHORS[0].z]} intensity={1.35} distance={6} color="#c5b96d" />
+    <pointLight position={[ZONE_ANCHORS[2].x, 0.65, ZONE_ANCHORS[2].z]} intensity={1.45} distance={6} color="#88c6c2" />
+    <pointLight position={[0, 0.55, 0]} intensity={0.8} distance={11} color="#d4e981" />
     <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
     <CenterEmblem />

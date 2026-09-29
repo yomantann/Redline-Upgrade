@@ -1,7 +1,7 @@
 import { BOARD_SPACES } from '../game/board-data';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
-import { ROUTE, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
+import { ROUTE, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
 import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
@@ -47,9 +47,35 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
       <polygon points={boardFront} fill="#0b1814" stroke="#4c6452" strokeWidth="2" />
       <polygon points={boardTop} fill="#192b23" stroke="#788f77" strokeWidth="4" />
       <polygon points={boardTop} fill="url(#ru-circuit-grain)" />
+      <polyline points={[[-23.03,-15.03],[23.03,-15.03],[23.03,15.03],[-23.03,15.03],[-23.03,-15.03]].map(([x,z]) => { const p = project(x,z,.13); return `${p.x},${p.y}`; }).join(' ')} fill="none" stroke="#08120f" strokeWidth="18" strokeLinejoin="round" />
+      <polyline points={[[-23.03,-15.03],[23.03,-15.03],[23.03,15.03],[-23.03,15.03],[-23.03,-15.03]].map(([x,z]) => { const p = project(x,z,.15); return `${p.x},${p.y}`; }).join(' ')} fill="none" stroke="#293c31" strokeWidth="10" strokeLinejoin="round" />
+      {Array.from({ length: 16 }, (_, i) => {
+        const t = (i + 1) / 17;
+        const marks = [
+          [(-23.03 + t * 46.06), -15.03, (-23.03 + t * 46.06) + 0.32, -15.03],
+          [(-23.03 + t * 46.06), 15.03, (-23.03 + t * 46.06) + 0.32, 15.03],
+          [-23.03, (-15.03 + t * 30.06), -23.03, (-15.03 + t * 30.06) + 0.32],
+          [23.03, (-15.03 + t * 30.06), 23.03, (-15.03 + t * 30.06) + 0.32],
+        ];
+        return marks.map(([x1,z1,x2,z2], markIndex) => {
+          const a = project(x1,z1,.17);
+          const b = project(x2,z2,.17);
+          return <line key={`perimeter-lane-${i}-${markIndex}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#b9c98f" strokeWidth="2" strokeLinecap="round" opacity=".74" />;
+        });
+      })}
       <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.36); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#091915" strokeWidth="39" strokeLinecap="round" strokeLinejoin="round" />
       <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.42); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#43644d" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
       <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.45); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#d4e981" strokeOpacity=".62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {ZONE_ANCHORS.map((anchor, i) => {
+        const center = project(anchor.x, anchor.z, .19);
+        const colors = ['#687553', '#526e5f', '#3e7772', '#866845', '#8e4b40'];
+        const texture = i === 0 ? 'url(#ru-circuit-grain)' : undefined;
+        return <g key={`zone-inlay-${i}`} aria-hidden="true">
+          <rect x={center.x - 42} y={center.y - 12} width="84" height="24" fill={colors[i]} fillOpacity=".48" stroke={colors[i]} strokeWidth="1.2" />
+          <path d={`M${center.x - 34} ${center.y - 5}h68M${center.x - 34} ${center.y + 5}h68`} stroke={i === 2 ? '#a2d4cc' : '#d4e981'} strokeOpacity=".4" strokeWidth="1" />
+          {texture && <rect x={center.x - 42} y={center.y - 12} width="84" height="24" fill={texture} />}
+        </g>;
+      })}
       {zoneNames.map((zone, i) => {
         const p = project(ZONE_ANCHORS[i].x, ZONE_ANCHORS[i].z, .2);
         const routeIndex = [8, 23, 38, 53, 68][i];
@@ -80,32 +106,49 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         <text x={p.x} y={p.y+11} textAnchor="middle" fill="#e9e7dc" fontFamily="Space Mono, monospace" fontSize="6">UPGRADE / 01</text>
       </g>; })()}
       {TABLETOP_DRESSING.map((panel) => {
-        const base = platform(panel.x, panel.z, .78, .5, .35);
-        const foot = project(panel.x, panel.z, .36);
-        const screen = project(panel.x, panel.z, 1.42);
+        const base = platform(panel.x, panel.z, 1.55, .24, .3);
+        const screen = project(panel.x, panel.z, .48);
         return <g key={panel.id} data-board-dressing={panel.id}>
           <polygon points={base.front} fill="#0c1713" stroke={panel.accent} strokeOpacity=".42" strokeWidth="1" />
           <polygon points={base.right} fill="#101e19" stroke={panel.accent} strokeOpacity=".42" strokeWidth="1" />
           <polygon points={base.top} fill="#192721" stroke={panel.accent} strokeWidth="1.5" />
-          <path d={`M${foot.x} ${foot.y}L${screen.x} ${screen.y+18}`} stroke="#52665a" strokeWidth="5" />
-          <rect x={screen.x-31} y={screen.y-7} width="62" height="28" rx="2" fill="#0b1512" stroke={panel.accent} strokeWidth="1.5" />
+          <rect x={screen.x-53} y={screen.y-7} width="106" height="16" rx="1" fill="#0b1512" stroke={panel.accent} strokeWidth="1.5" />
           <text x={screen.x} y={screen.y+3} textAnchor="middle" fill={panel.accent} fontFamily="Barlow Condensed, sans-serif" fontSize="7" fontWeight="900">{panel.title}</text>
-          <text x={screen.x} y={screen.y+12} textAnchor="middle" fill="#c3d3bc" fontFamily="Space Mono, monospace" fontSize="4">{panel.subtitle}</text>
+          <text x={screen.x} y={screen.y+14} textAnchor="middle" fill="#c3d3bc" fontFamily="Space Mono, monospace" fontSize="3.4">{panel.subtitle}</text>
         </g>;
       })}
       {TABLETOP_STRUCTURES.map((structure) => {
-        const base = platform(structure.x, structure.z, 1.18, 1.18, .32);
-        const tower = project(structure.x, structure.z, 1.8);
-        const foot = project(structure.x, structure.z, .38);
+        const base = platform(structure.x, structure.z, 1.42, .34, .3);
+        const tower = project(structure.x, structure.z, .72);
         return <g key={structure.id} data-board-structure={structure.id}>
           <polygon points={base.front} fill="#0b1713" stroke={structure.accent} strokeOpacity=".45" strokeWidth="1" />
           <polygon points={base.right} fill="#101e19" stroke={structure.accent} strokeOpacity=".45" strokeWidth="1" />
           <polygon points={base.top} fill="#172821" stroke={structure.accent} strokeWidth="1.5" />
-          <line x1={foot.x} y1={foot.y} x2={tower.x} y2={tower.y} stroke="#52665a" strokeWidth="7" />
-          <line x1={tower.x-12} y1={tower.y} x2={tower.x+12} y2={tower.y} stroke={structure.accent} strokeWidth="3" />
-          <circle cx={tower.x} cy={tower.y-12} r="10" fill="#15251e" stroke={structure.accent} strokeWidth="2" />
-          <path d={`M${tower.x} ${tower.y-25}v-13`} stroke={structure.accent} strokeWidth="2" />
-          <text x={tower.x} y={tower.y+4} textAnchor="middle" fill={structure.accent} fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">{structure.label}</text>
+          <rect x={tower.x-21} y={tower.y-9} width="42" height="12" fill="#15251e" stroke={structure.accent} strokeWidth="1.5" />
+          <path d={`M${tower.x-30} ${tower.y+8}h60`} stroke={structure.accent} strokeWidth="2" />
+          <text x={tower.x} y={tower.y-1} textAnchor="middle" fill={structure.accent} fontFamily="Space Mono, monospace" fontSize="4.8" fontWeight="700">{structure.label}</text>
+        </g>;
+      })}
+      {TABLETOP_BUILDINGS.map((building) => {
+        const bottom = 0.13;
+        const top = bottom + building.height;
+        const left = building.x - building.width / 2;
+        const right = building.x + building.width / 2;
+        const near = building.z + building.depth / 2;
+        const far = building.z - building.depth / 2;
+        const topFace = points([[left,far,top],[right,far,top],[right,near,top],[left,near,top]]);
+        const frontFace = points([[left,near,top],[right,near,top],[right,near,bottom],[left,near,bottom]]);
+        const rightFace = points([[right,far,top],[right,near,top],[right,near,bottom],[right,far,bottom]]);
+        const rows = building.height > 0.46 ? [0.18, 0.36] : [0.19];
+        return <g key={building.id} data-board-building={building.id}>
+          <polygon points={frontFace} fill={building.profile === 'industrial' ? '#343a2e' : '#244141'} stroke={building.accent} strokeOpacity=".6" strokeWidth="1" />
+          <polygon points={rightFace} fill="#13231e" stroke={building.accent} strokeOpacity=".48" strokeWidth="1" />
+          <polygon points={topFace} fill={building.color} stroke={building.accent} strokeWidth="1.3" />
+          {rows.flatMap((row, rowIndex) => [-0.3, 0, 0.3].map((column, columnIndex) => {
+            const pane = project(building.x + column, near + .01, bottom + row);
+            return <rect key={`pane-${rowIndex}-${columnIndex}`} x={pane.x - 2.5} y={pane.y - 1.6} width="5" height="3.2" fill={building.accent} opacity=".9" />;
+          }))}
+          <line x1={project(left, near + .02, bottom + .06).x} y1={project(left, near + .02, bottom + .06).y} x2={project(right, near + .02, bottom + .06).x} y2={project(right, near + .02, bottom + .06).y} stroke={building.accent} strokeWidth="2" opacity=".85" />
         </g>;
       })}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
