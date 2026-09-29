@@ -37,6 +37,8 @@ const EFFECT_ACCENTS = {
  * spaces carry the category accent for their predictable board effect.
  */
 export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
+  if (space.number === 1) return { className: 'start', accent: '#d4e981', tile: '#3b543f' };
+
   switch (space.type) {
     case 'CARD': {
       if (!space.deck) throw new Error(`Card space ${space.number} is missing its deck identity.`);
@@ -55,7 +57,6 @@ export function getSpaceVisual(space: BoardSpace): BoardSpaceVisual {
       if (!space.effectId) return { className: 'safe', accent: '#8ea69a', tile: '#30423b' };
       const effect = getBoardEffect(space.effectId);
       if (!effect) throw new Error(`Board space ${space.number} references unknown effect ${space.effectId}.`);
-      if (space.number === 1) return { className: 'start', accent: '#d4e981', tile: '#3b543f' };
       return { className: 'effect', accent: EFFECT_ACCENTS[effect.tone], tile: '#35483e' };
     }
     case 'NORMAL':

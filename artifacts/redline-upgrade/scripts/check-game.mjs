@@ -205,7 +205,13 @@ try {
     'all generic event spaces now draw from existing card decks',
   );
   assert.equal(BOARD_SPACES[0].label, 'OPEN ROAD', 'Space 1 clearly identifies the start of the route');
-  assert.equal(BOARD_SPACES[0].effectId, 'quick-contract', 'Space 1 retains its existing Quick Contract effect');
+  assert.equal(BOARD_SPACES[0].type, 'NORMAL', 'Space 1 is an ordinary no-effect Open Road');
+  assert.equal(BOARD_SPACES[0].trigger, 'NONE', 'Space 1 does not trigger gameplay on landing');
+  assert.equal(BOARD_SPACES[0].effectId, undefined, 'Space 1 has no board effect');
+  assert.equal(BOARD_SPACES[0].icon, 'normal', 'Space 1 uses a neutral road mark instead of an effect icon');
+  assert.equal(BOARD_SPACES[0].secondaryIcon, undefined, 'Space 1 has no secondary effect icon');
+  assert.match(BOARD_SPACES[0].description, /no gameplay effect/i, 'Space 1 explains that it has no gameplay effect');
+  assert.equal(getSpaceVisual(BOARD_SPACES[0]).className, 'start', 'Open Road remains visually distinct without a gameplay effect');
   assert.equal(BOARD_SPACES[1].type, 'UPGRADE_TOKEN', 'Space 2 uses the existing Upgrade Token space mechanic');
   assert.equal(BOARD_SPACES[1].trigger, 'LAND', 'Space 2 awards its token only when a player lands there');
   assert.deepEqual([...PAYDAY_SPACES], [6, 18, 29, 41, 54, 66, 73]);
@@ -227,11 +233,11 @@ try {
   assert.equal(gambleVisual.deckCode, 'GMB', 'Gamble carries its deck identifier');
   assert.equal(gambleVisual.deckName, 'GAMBLE', 'Gamble uses the same deck identity as its cards');
   assert.equal(new Set([...expectedDeckCodes.values(), gambleVisual.deckCode]).size, 6, 'all six deck identities have a visible short code');
-  assert.equal(BOARD_EFFECTS.length, 1, 'Space 1 retains the only unique board effect');
-  assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), [1]);
+  assert.equal(BOARD_EFFECTS.length, 0, 'Open Road has no unique board effect');
+  assert.deepEqual(BOARD_SPACES.filter(space => space.effectId).map(space => space.number), []);
   assert.deepEqual(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').map(space => space.number), [2, 14, 55], 'Space 2 joins the existing Upgrade Token spaces');
   assert(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').every(space => space.trigger === 'LAND' && getSpaceVisual(space).className === 'upgrade'), 'token spaces award only on landing and have a distinct visual');
-  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 27, 'Space 2 and five ordinary spaces are replaced without changing route length');
+  assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 28, 'Open Road remains no-effect and the route retains 75 spaces');
 
   assert.equal(cards.length, 96, 'the full card set has 96 cards');
   assert.equal(new Set(cards.map(card => card.id)).size, 96, 'card IDs are unique');
@@ -1309,8 +1315,8 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
 
   assert.deepEqual(
     BOARD_SPACES.filter(space => space.type === 'EVENT').map(space => space.number),
-    [1],
-    'generic event effects are replaced while Space 1 remains the unique Open Road space',
+    [],
+    'Space 1 Open Road has no event effect',
   );
   console.log('CARD ARTWORK AUDIT');
   console.log('DECK | TOTAL | WITH IMAGE | MISSING');

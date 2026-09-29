@@ -41,15 +41,6 @@ export interface BoardEffectDefinition {
 
 const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
   {
-    id: 'quick-contract',
-    spaceNumber: 1,
-    label: 'QUICK CONTRACT',
-    description: 'A local client signs on. Gain $4,000 Wealth.',
-    icon: 'wealth',
-    tone: 'wealth',
-    effects: [{ kind: 'STAT', target: 'SELF', stat: 'wealth', amount: 4000 }],
-  },
-  {
     id: 'unexpected-expense',
     spaceNumber: 5,
     label: 'UNEXPECTED EXPENSE',

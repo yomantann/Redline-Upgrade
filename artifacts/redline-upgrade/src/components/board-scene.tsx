@@ -422,9 +422,9 @@ function Tile({ space, active, landing, onSelect, onHover }: { space: BoardSpace
       </mesh>
     </group>}
     <PrintedLabel lines={[String(space.number).padStart(2, '0')]} x={visual.className === 'safe' ? 0 : -0.52} y={topY + 0.045} z={-0.37} w={0.9} h={0.57} color={landmark ? COLORS.orange : COLORS.cream} />
-    {visual.className === 'start' && <PrintedLabel lines={['OPEN ROAD']} x={0} y={topY + 0.045} z={0.6} w={1.86} h={0.29} color={COLORS.lime} />}
     {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect' || visual.className === 'start') && <PrintedIcon icon={space.icon} y={topY} color={visual.accent} z={space.secondaryIcon ? -0.55 : -0.26} size={space.secondaryIcon ? 0.6 : 0.64} />}
     {space.secondaryIcon && <PrintedIcon icon={space.secondaryIcon} y={topY} color={COLORS.lime} z={0.16} size={0.6} />}
+    {visual.className === 'start' && <PrintedLabel lines={['OPEN ROAD']} x={0} y={topY + 0.045} z={0.6} w={1.86} h={0.29} color={COLORS.lime} />}
     {boardLabel && <PrintedLabel lines={[boardLabel]} x={0} y={topY + 0.045} z={0.68} w={landmark ? 2.02 : 1.92} h={0.25} color={visual.className === 'deck' ? visual.accent : space.type === 'UPGRADE_TOKEN' ? '#d4c5ff' : COLORS.cream} />}
     {finish && <PrintedLabel lines={['FINISH']} x={0} y={topY + 0.05} z={0.42} w={1.83} h={0.46} color={COLORS.orange} />}
   </group>;

@@ -46,9 +46,10 @@ export const PAYDAY_SPACES = new Set([6, 18, 29, 41, 54, 66, 73]);
 
 export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) => {
   const number = index + 1;
+  const isOpenRoad = number === 1;
   const deck = cardSpaces[number] ?? (gambles.has(number) ? 'gamble' : undefined);
-  const effect = BOARD_EFFECTS_BY_SPACE.get(number);
-  const type: SpaceType = number === 35 ? 'CAREER_CHANGE' : PAYDAY_SPACES.has(number) ? 'SALARY_GATE'
+  const effect = isOpenRoad ? undefined : BOARD_EFFECTS_BY_SPACE.get(number);
+  const type: SpaceType = isOpenRoad ? 'NORMAL' : number === 35 ? 'CAREER_CHANGE' : PAYDAY_SPACES.has(number) ? 'SALARY_GATE'
     : milestones.has(number) ? 'MILESTONE' : upgradeTokenSpaces.has(number) ? 'UPGRADE_TOKEN' : gambles.has(number) ? 'GAMBLE'
     : deck ? 'CARD' : effect ? 'EVENT' : 'NORMAL';
   const details: Record<SpaceType, [string, string, string, SpaceTrigger]> = {
@@ -71,18 +72,17 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
   };
   const [icon, label, description, trigger] = milestone[number]
     ?? (effect ? [effect.icon, effect.label, effect.description, 'LAND'] : [defaultIcon, defaultLabel, defaultDescription, defaultTrigger]);
-  const isOpenRoad = number === 1;
   return {
     number,
     type,
     payday: PAYDAY_SPACES.has(number),
-    icon: isOpenRoad ? 'start' : icon,
-    secondaryIcon: number === 45 ? 'investment' : isOpenRoad ? effect?.icon : undefined,
+    icon: isOpenRoad ? 'normal' : icon,
+    secondaryIcon: number === 45 ? 'investment' : undefined,
     label: isOpenRoad ? 'OPEN ROAD' : label,
-    description: isOpenRoad ? 'The route starts here. Land here to resolve Quick Contract and gain $4,000 Wealth.' : description,
-    trigger,
+    description: isOpenRoad ? 'Open Road. No gameplay effect is triggered here.' : description,
+    trigger: isOpenRoad ? 'NONE' : trigger,
     deck,
-    effectId: effect?.id,
+    effectId: isOpenRoad ? undefined : effect?.id,
   };
 });
 
