@@ -22,11 +22,32 @@ const vite = await createServer({
 try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { assets } = await vite.ssrLoadModule('/src/game/assets.ts');
-  const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { approvedLevelOneArtworkIds, getAssetArtworkFilePath, getAssetArtworkFilePathForLevel } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { careers } = await vite.ssrLoadModule('/src/game/careers.ts');
   const manifestIds = visualAssets.map((asset) => asset.id);
   assert.equal(new Set(manifestIds).size, manifestIds.length, 'visual asset IDs are unique');
   assert.equal(assets.length, 100, 'milestone catalog has exactly 100 assets');
+  const approvedFolders = {
+    car: ['cars', 'CAR'],
+    lifestyle: ['lifestyles', 'LIFESTYLE'],
+    pet: ['pets', 'PET'],
+    investment: ['investments', 'INVESTMENT'],
+    property: ['properties', 'PROPERTY'],
+  };
+  const allApprovedLevelOneIds = Object.values(approvedLevelOneArtworkIds).flat();
+  assert.equal(allApprovedLevelOneIds.length, 50, 'exactly 10 approved Level 1 images are retained per category');
+  assert.equal(new Set(allApprovedLevelOneIds).size, 50, 'approved Level 1 IDs are unique');
+  for (const [category, ids] of Object.entries(approvedLevelOneArtworkIds)) {
+    assert.equal(ids.length, 10, `${category} retains its 10 approved Level 1 artworks`);
+    const [directory, prefix] = approvedFolders[category];
+    ids.forEach((id, index) => {
+      assert.equal(
+        getAssetArtworkFilePath(id),
+        `milestone-assets/${directory}/${prefix}_${String(index + 1).padStart(2, '0')}.webp`,
+        `${id} continues to use its approved original Level 1 WebP`,
+      );
+    });
+  }
   const artworkPaths = assets.map((asset) => getAssetArtworkFilePath(asset.id));
   assert.equal(new Set(artworkPaths).size, artworkPaths.length, 'asset artwork paths are unique');
   const categoryGroups = new Map();

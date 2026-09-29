@@ -11,7 +11,7 @@ const artworkGroups: Record<AssetCategory, { directory: string; prefix: string }
 
 // Keep commissioned Phase 1-10 Level 1 WebPs stable. New assets use their own
 // Phase 14 WebP files rather than shifting the ordinal legacy mapping.
-const legacyArtworkIds: Record<AssetCategory, readonly string[]> = {
+export const approvedLevelOneArtworkIds: Record<AssetCategory, readonly string[]> = {
   car: ['budget-racer', 'flex-car', 'supercar', 'electric-hypercar', 'street-tuner', 'electric-coupe', 'executive-sedan', 'track-special', 'grand-tourer', 'prototype-one'],
   lifestyle: ['luxury-travel', 'vip-life', 'low-key-life', 'creator-lifestyle', 'studio-life', 'city-weekends', 'wellness-club', 'art-collector', 'private-retreat', 'global-elite'],
   pet: ['cyber-dog', 'golden-retriever', 'robot-cat', 'chaos-monkey', 'rescue-pup', 'street-cat', 'drone-bird', 'fox-companion', 'holo-hound', 'legendary-companion'],
@@ -20,7 +20,7 @@ const legacyArtworkIds: Record<AssetCategory, readonly string[]> = {
 };
 
 const artworkByAssetId = Object.fromEntries(assets.map((asset) => {
-  const legacyIndex = legacyArtworkIds[asset.category].indexOf(asset.id);
+  const legacyIndex = approvedLevelOneArtworkIds[asset.category].indexOf(asset.id);
   if (legacyIndex >= 0) {
     const group = artworkGroups[asset.category];
     return [asset.id, `milestone-assets/${group.directory}/${group.prefix}_${String(legacyIndex + 1).padStart(2, '0')}.webp`];
