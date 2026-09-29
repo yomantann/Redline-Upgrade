@@ -1,0 +1,370 @@
+REDLINE UPGRADE — NEXT PHASE
+GAMEPLAY SCREEN CLEANUP + RESPONSIVE LAYOUT
+
+Focus this phase on presentation, layout, and usability.
+
+Do NOT add new gameplay mechanics.
+
+Preserve all existing:
+- Board
+- 2d4 movement
+- Dice animation
+- CPU players
+- Careers
+- Character abilities
+- Career abilities
+- Six decks
+- Cards
+- Milestones
+- Assets
+- Asset upgrades
+- Upgrade Tokens
+- Salary
+- Wealth
+- Finish system
+- Endgame bonuses
+
+==================================================
+1. PC PLAYER CARDS — EXPANDED ABOVE BOARD
+==================================================
+
+On desktop/PC, restore the player/character cards to the expanded presentation used previously.
+
+Player cards should appear ABOVE the board.
+
+They should be visible without requiring the player to open them.
+
+Show useful information including:
+
+- Character
+- Career
+- Salary
+- Salary tier
+- Wealth
+- Core attributes
+- Upgrade Tokens
+- Career deck affinities
+- Character ability
+- Career ability
+- Owned milestone assets
+- Finish status/order when applicable
+
+Keep the design clean and color coded.
+
+Do not make the cards unnecessarily tall.
+
+The player should be able to understand the current players before looking at the board.
+
+==================================================
+2. PHONE PLAYER CARDS — MINIMIZED BY DEFAULT
+==================================================
+
+On phone/mobile:
+
+Player cards should still appear ABOVE the board.
+
+However, they should start MINIMIZED.
+
+Collapsed view should show a compact summary:
+
+- Character
+- Career
+- Wealth
+- Salary
+- Upgrade Tokens
+
+Allow the player to expand the card when they want detailed information.
+
+Do not force mobile players to scroll through large expanded cards before reaching the board.
+
+==================================================
+3. PC BOARD POSITION
+==================================================
+
+On desktop, the board should remain the primary gameplay area immediately below the player cards.
+
+Preferred hierarchy:
+
+PLAYER CARDS
+↓
+BOARD + DICE/THROW CONTROL
+↓
+DECK AREA / SECONDARY INFORMATION
+
+Do not push the board unnecessarily far down the page.
+
+The player should immediately see:
+
+- Current players
+- Board
+- Active player
+- Dice control
+- Dice result
+
+==================================================
+4. SIX DECK DISPLAY POSITION
+==================================================
+
+The six deck/card visual area is currently being pushed too far down on PC.
+
+Fix the layout.
+
+The decks should remain visually accessible without requiring excessive scrolling.
+
+Do NOT simply make the decks tiny.
+
+Instead, use the available horizontal desktop space efficiently.
+
+Possible layout:
+
+BOARD | DECK AREA
+
+or:
+
+BOARD
+DECK AREA immediately beneath/alongside the board
+
+Choose whichever fits the existing implementation best.
+
+The six decks should still feel like physical decks sitting beside the game board.
+
+Do not redesign their existing visual identities.
+
+==================================================
+5. PHONE DECK AREA
+==================================================
+
+On mobile, prioritize:
+
+1. Player summary
+2. Your Throw / Dice
+3. Board
+4. Relevant card/deck information
+
+Do not put the six decks above the board on mobile.
+
+The board and dice should remain the primary interaction.
+
+The relevant card should become prominent when drawn.
+
+==================================================
+6. YOUR THROW / DICE
+
+PC:
+
+Place the Your Throw / Roll Dice control BESIDE the board where practical.
+
+Phone:
+
+Place Your Throw / Roll Dice ABOVE the board.
+
+The player should see:
+
+YOUR THROW
+ROLL DICE
+DICE RESULT
+BOARD
+
+without excessive scrolling.
+
+Preserve the existing 2d4 dice animation.
+
+==================================================
+7. ACTIVE PLAYER CLARITY
+==================================================
+
+Make it immediately obvious whose turn it is.
+
+Use a clean visual treatment around the active player's card.
+
+Examples:
+
+- subtle glow
+- border
+- "YOUR TURN"
+- active indicator
+
+Do not make the effect overly animated or distracting.
+
+CPU turns should clearly indicate which CPU is acting.
+
+==================================================
+8. CARD DRAW PRESENTATION
+==================================================
+
+Preserve the recent card-draw improvements.
+
+When any player draws a card:
+
+- Card appears prominently
+- Artwork is clearly visible
+- Deck identity is obvious
+- Effect is readable
+- Resolution is not instantaneous
+
+For CPU cards:
+
+- automatically progress after approximately 5 seconds
+- never freeze the game
+- never require human interaction to continue
+
+For human cards:
+
+- preserve appropriate interaction where needed
+
+==================================================
+9. INFORMATION HIERARCHY
+==================================================
+
+The gameplay screen should visually prioritize:
+
+1. Players / current turn
+2. Board
+3. Dice
+4. Active event/card
+5. Player assets and stats
+6. Six decks
+7. Secondary information
+
+Do not allow secondary UI to dominate the screen.
+
+==================================================
+10. PLAYER CARD CLARITY
+==================================================
+
+Keep the existing salary color system.
+
+Salary should remain clearly shaded by tier:
+
+LOW
+→ harsher red
+
+MID
+→ intermediate shading
+
+HIGH
+→ gold
+
+Keep career deck affinities visible.
+
+Career abilities and character abilities should remain visible somewhere on the expanded PC player card.
+
+Make it clear when an ability activates.
+
+Do not add complicated number-change displays.
+
+Use concise result messages such as:
+
++ $50K WEALTH
++2 FAME
+ABILITY ACTIVATED
+
+==================================================
+11. ASSET VISIBILITY
+==================================================
+
+Player cards should continue showing actual milestone artwork.
+
+Do not replace the new WebP artwork with generic category icons.
+
+Owned assets should be visually recognizable.
+
+Upgraded assets should show their appropriate Level 2/3/4 artwork.
+
+==================================================
+12. RESPONSIVE BEHAVIOR
+==================================================
+
+Do not treat mobile as a scaled-down desktop.
+
+PC:
+- Expanded player cards
+- Board prominent
+- Dice beside board
+- Decks accessible beside/below board
+
+Phone:
+- Minimized player cards
+- Dice above board
+- Board immediately accessible
+- Decks secondary
+
+Verify both layouts at realistic screen sizes.
+
+==================================================
+13. NO NEW MECHANICS
+==================================================
+
+Do NOT add:
+
+- new decks
+- new currencies
+- new cards
+- new careers
+- new abilities
+- new milestones
+- new asset types
+- new board spaces
+
+This is strictly a UX/presentation cleanup phase.
+
+==================================================
+14. TESTING
+==================================================
+
+Test:
+
+PC:
+- Player cards expanded above board
+- Board position
+- Dice beside board
+- Six decks accessible without excessive scrolling
+- Card draw
+- CPU card resolution
+- Assets visible
+- Abilities visible
+
+Phone:
+- Player cards minimized above board
+- Expand/collapse
+- Dice above board
+- Board immediately accessible
+- Card presentation
+- Asset visibility
+
+Also verify:
+
+- CPU turns continue
+- Human turns continue
+- Dice animation works
+- Board movement works
+- Card draws resolve
+- Existing milestone interactions work
+- Existing Upgrade Token interactions work
+
+Run:
+- TypeScript check
+- Existing regression tests
+- Production build
+- Preview/restart
+
+==================================================
+15. FINAL REPORT
+==================================================
+
+Report:
+
+1. PC player-card layout
+2. Mobile player-card layout
+3. PC board positioning
+4. Mobile board positioning
+5. Dice positioning
+6. Six-deck positioning
+7. Card presentation
+8. CPU card flow
+9. Player ability visibility
+10. Career ability visibility
+11. Asset visibility
+12. Responsive testing
+13. Build/test results
+14. Remaining UI issues
