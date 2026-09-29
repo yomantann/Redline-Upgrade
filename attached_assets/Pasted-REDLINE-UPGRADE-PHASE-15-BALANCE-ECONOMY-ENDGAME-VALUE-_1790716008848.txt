@@ -1,0 +1,688 @@
+REDLINE UPGRADE — PHASE 15
+BALANCE, ECONOMY & ENDGAME VALUE
+
+This phase is primarily about balancing the existing game systems and making sure the three endgame choices are meaningfully different.
+
+Do NOT add multiplayer.
+Do NOT add the persistent Credits/Auth system yet.
+Do NOT create a large new gameplay system.
+
+Preserve the existing:
+- Careers
+- Characters
+- Character abilities
+- Career abilities
+- Career deck affinities
+- Six card decks
+- Board
+- 2d4 movement
+- Salary system
+- Salary Gates
+- Milestones
+- Cars
+- Lifestyle
+- Pets
+- Investments
+- Properties
+- Asset upgrades
+- Upgrade Tokens
+- Finish line
+- Finish-order rewards
+- Attribute endgame bonuses
+- Existing Cash Out / Double Down / Final Gamble framework
+
+==================================================
+1. FIRST: AUDIT THE CURRENT ECONOMY
+==================================================
+
+Before changing numbers, inspect the actual current implementation.
+
+Create a balance report covering:
+
+STARTING ECONOMY
+- Starting Wealth
+- Career salary
+- Salary tiers
+- Career salary distribution
+
+BOARD ECONOMY
+- Salary Gate frequency
+- Salary Gate payouts
+- Wealth/deck spaces
+- Upgrade Token spaces
+- Milestone spaces
+- Career Change
+- Other major reward/punishment spaces
+
+CARD ECONOMY
+For every deck:
+- average positive Wealth impact
+- average negative Wealth impact
+- average attribute impact
+- player-targeting frequency
+- large swing cards
+- defensive/protection effects
+
+MILESTONE ECONOMY
+For each category:
+- purchase cost
+- expected benefit
+- upgrade availability
+- Level 1–4 progression
+- relative value compared with simply keeping Wealth
+
+PLAYER/CAREER ECONOMY
+- character ability frequency
+- career ability frequency
+- career affinity bonuses
+- major outlier abilities
+- abilities that can create unusually large Wealth swings
+
+ENDGAME ECONOMY
+- finish-order rewards
+- four attribute bonuses
+- asset value
+- asset upgrade value
+- Upgrade Token value
+- Cash Out
+- Double Down
+- Final Gamble
+
+Do not blindly rebalance everything.
+
+Identify actual outliers first.
+
+==================================================
+2. CORE BALANCE GOAL
+==================================================
+
+The game should create meaningful decisions between:
+
+A. Accumulating Wealth
+
+B. Acquiring milestone assets
+
+C. Upgrading milestone assets
+
+D. Saving an Upgrade Token for its future persistent-credit value
+
+E. Taking risk near the finish line
+
+There should NOT be one universally correct strategy.
+
+A player who focuses heavily on assets should have a meaningful endgame advantage.
+
+A player who focuses heavily on Wealth should also have a meaningful endgame path.
+
+A player who takes calculated risks should have a different path.
+
+==================================================
+3. STARTING WEALTH
+==================================================
+
+Starting Wealth should equal the player's current career salary.
+
+Do not use a separate lower starting Wealth value.
+
+Example:
+
+Career Salary = $100K
+Starting Wealth = $100K
+
+Career Salary = $150K
+Starting Wealth = $150K
+
+Use the existing career salary value as the source of truth.
+
+Do not duplicate salary values in separate systems.
+
+==================================================
+4. ASSETS MUST MATTER AT ENDGAME
+==================================================
+
+This is one of the most important changes in Phase 15.
+
+Players should have a real reason to acquire milestone assets.
+
+Players should also have a real reason to upgrade those assets.
+
+Assets must provide some form of measurable endgame value.
+
+Do NOT simply make every asset equivalent to a fixed amount of Wealth.
+
+Keep the asset categories distinct.
+
+The final system should allow assets to contribute to endgame value through a combination of:
+
+- Wealth/value contribution
+- attribute contribution
+- category-specific bonuses
+- level-based value
+- endgame modifiers
+
+Use the existing four attributes where appropriate:
+
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+
+Do not introduce additional attributes.
+
+==================================================
+5. ASSET LEVEL PROGRESSION
+==================================================
+
+Level 1 should provide meaningful value.
+
+Level 2 should be better.
+
+Level 3 should be better again.
+
+Level 4 should provide the strongest endgame contribution.
+
+The increase does NOT need to be perfectly linear.
+
+The important thing is:
+
+LEVEL 4 > LEVEL 3 > LEVEL 2 > LEVEL 1
+
+in meaningful endgame value.
+
+A player should be able to look at an asset and understand:
+
+"I paid to upgrade this, and that will matter later."
+
+Do not make upgrades purely cosmetic.
+
+The existing unique Level 1–4 artwork should continue to represent the progression visually.
+
+==================================================
+6. ASSET CATEGORY IDENTITY
+==================================================
+
+Keep the categories distinct.
+
+CAR:
+Should contribute toward a mobility/status/lifestyle-oriented endgame value.
+
+LIFESTYLE:
+Should primarily contribute toward LIFESTYLE and/or Wealth-related endgame value.
+
+PET:
+Should contribute toward LIFESTYLE and potentially a secondary endgame benefit.
+
+INVESTMENT:
+Should contribute toward Wealth/economic endgame value.
+
+PROPERTY:
+Should contribute toward Wealth, LIFESTYLE, or Influence-oriented endgame value.
+
+Do not make every category mechanically identical.
+
+Use the existing game's attributes and Wealth system.
+
+==================================================
+7. ASSET VALUE SHOULD BE DISPLAYED
+==================================================
+
+On the player card and/or asset detail UI, make it clear that an owned asset has endgame value.
+
+Show concise information such as:
+
+ENDGAME VALUE
++$XXK
+
+or:
+
+ENDGAME
++X LIFESTYLE
+
+or:
+
+LEVEL 3
+ENDGAME VALUE: +$XXK
+
+Do not create a complicated accounting screen.
+
+The player should understand why acquiring/upgrading the asset matters.
+
+==================================================
+8. THREE ENDGAME CHOICES
+==================================================
+
+Balance the three endgame choices so that each represents a different strategic decision.
+
+The choices are:
+
+1. CASH OUT
+2. DOUBLE DOWN
+3. FINAL GAMBLE
+
+Do not make one obviously superior.
+
+==================================================
+9. CASH OUT
+==================================================
+
+CASH OUT should represent the safer endgame option.
+
+The player locks in the value they have accumulated.
+
+This should strongly reward:
+
+- Wealth
+- Assets
+- Asset upgrades
+- Consistent play
+
+The player should not feel punished for choosing Cash Out.
+
+It should be the reliable path.
+
+==================================================
+10. DOUBLE DOWN
+==================================================
+
+DOUBLE DOWN should represent a higher-risk, higher-reward option.
+
+Use the existing game economy.
+
+The player should risk something meaningful for a potentially larger endgame result.
+
+Do not create a completely new currency or complicated secondary game.
+
+The reward should scale appropriately with what the player has accumulated.
+
+Assets should still matter when using Double Down.
+
+==================================================
+11. FINAL GAMBLE
+==================================================
+
+FINAL GAMBLE should be the highest-variance choice.
+
+It should provide a legitimate possibility of a substantially better result but also carry meaningful downside.
+
+Use the existing Gamble deck/system where possible.
+
+Do not make it a completely separate minigame.
+
+The result should still interact with:
+
+- Wealth
+- Assets
+- Asset upgrades
+- Attributes
+- Finish status
+
+==================================================
+12. THREE CHOICES MUST HAVE DIFFERENT IDENTITIES
+==================================================
+
+Make the strategic identities extremely clear:
+
+CASH OUT
+"Protect what you've built."
+
+DOUBLE DOWN
+"Risk some of what you've built for more."
+
+FINAL GAMBLE
+"Go for the biggest possible outcome."
+
+Do not use those exact descriptions if the existing UI has better terminology, but preserve the conceptual distinction.
+
+==================================================
+13. UPGRADE TOKENS — REDESIGN ENDGAME HOLDING
+==================================================
+
+Change the previous Upgrade Token endgame concept.
+
+An Upgrade Token should primarily be valuable DURING the game because it can:
+
+- upgrade an existing asset
+OR
+- recover a previously missed milestone asset
+
+The player should therefore face a real decision:
+
+USE TOKEN NOW
+→ gain immediate asset/endgame value
+
+OR
+
+HOLD TOKEN
+→ sacrifice that immediate opportunity for a future persistent reward
+
+==================================================
+14. HOLDING UPGRADE TOKENS
+==================================================
+
+Do NOT give held Upgrade Tokens a direct Wealth bonus at the end of the match.
+
+Instead:
+
+Upgrade Tokens held through the end of the game should eventually contribute to the future persistent Credits system.
+
+The persistent Credits system is NOT being implemented in Phase 15.
+
+For now:
+
+- Track how many Upgrade Tokens the player finishes with.
+- Preserve that value in the final game result/state.
+- Clearly identify it as a future Credits conversion value.
+- Do not invent the actual Credits currency yet.
+
+This creates a meaningful sacrifice:
+
+USE TOKEN
+→ improve your current game
+
+HOLD TOKEN
+→ give up the immediate upgrade opportunity in exchange for greater future meta progression
+
+==================================================
+15. UPGRADE TOKEN VALUE
+==================================================
+
+Do not make Upgrade Tokens so common that players can freely upgrade everything.
+
+Do not make them so rare that the system becomes irrelevant.
+
+Audit:
+
+- board Upgrade Token spaces
+- card-based Upgrade Token rewards
+- career starting Upgrade Token
+- other existing sources
+
+Report expected average Upgrade Tokens per player.
+
+Use the current intended availability unless the audit identifies a serious balance issue.
+
+==================================================
+16. MISSED MILESTONE RECOVERY
+==================================================
+
+Preserve the existing rule:
+
+If a player uses an Upgrade Token to recover a missed milestone:
+
+- They must have already passed that milestone.
+- They do NOT choose which missed asset to recover.
+- The recovered milestone asset is randomly assigned from the applicable missed milestone options.
+- The player receives it for free.
+
+Do not allow players to strategically choose the strongest missed asset.
+
+==================================================
+17. ENDGAME ASSET CALCULATION
+==================================================
+
+Create a centralized endgame calculation.
+
+Calculate:
+
+FINAL WEALTH
++
+ASSET ENDGAME VALUE
++
+FINISH-ORDER REWARD
++
+ATTRIBUTE BONUSES
++
+OTHER EXISTING ENDGAME MODIFIERS
+=
+ENDGAME TOTAL
+
+Then apply the selected:
+
+CASH OUT
+DOUBLE DOWN
+FINAL GAMBLE
+
+result.
+
+Do not scatter endgame calculations across multiple unrelated reducers/components.
+
+Create one clear source of truth.
+
+==================================================
+18. ASSET + ENDGAME INTERACTION
+==================================================
+
+The system should ensure that acquiring assets earlier provides a meaningful advantage.
+
+Example progression:
+
+Player A:
+More Wealth
+Few assets
+
+Player B:
+Moderate Wealth
+Several Level 2–3 assets
+
+Player C:
+Lower Wealth
+Fewer but highly upgraded assets
+
+All three should have legitimate paths to a strong finish.
+
+Do NOT force assets to dominate Wealth.
+
+Do NOT make Wealth automatically dominate assets.
+
+==================================================
+19. FINISH ORDER
+==================================================
+
+Preserve the existing finish-order reward system.
+
+The player who reaches the finish first should receive an additional reward.
+
+The reward should be meaningful but should not completely overwhelm:
+
+- Wealth
+- Assets
+- Upgrades
+- Attribute bonuses
+
+Audit the current values and adjust only if necessary.
+
+Show finish order clearly on the player card/board.
+
+==================================================
+20. FOUR ATTRIBUTE ENDGAME BONUSES
+==================================================
+
+Preserve:
+
+MOST AI SKILL
++$50K
+
+MOST FAME
++$50K
+
+MOST LIFESTYLE
++$50K
+
+MOST INFLUENCE
++$50K
+
+These are awarded when the final player crosses the finish.
+
+Ensure asset contributions can meaningfully influence these attributes where appropriate.
+
+Do not allow an asset strategy to make the attribute bonuses irrelevant.
+
+==================================================
+21. BALANCE TARGETS
+==================================================
+
+Do not target perfect mathematical equality.
+
+Target:
+
+- multiple viable strategies
+- meaningful tradeoffs
+- no obviously dominant asset category
+- no career that completely overwhelms others
+- no deck that dominates the economy
+- upgrades should feel worth considering
+- Cash Out should feel safe
+- Double Down should feel risky but attractive
+- Final Gamble should feel genuinely high variance
+- holding Upgrade Tokens should have a meaningful opportunity cost
+- assets should matter at the finish
+
+==================================================
+22. DO NOT OVER-COMPLICATE THE UI
+==================================================
+
+Do NOT introduce complicated financial breakdowns.
+
+The player should see concise values.
+
+Examples:
+
+ASSET ENDGAME
++$75K
+
+LEVEL 3
++$125K ENDGAME
+
+MOST FAME
++$50K
+
+FINISH #2
++$25K
+
+UPGRADE TOKEN
+1 HELD
+
+Keep detailed calculations available internally but don't overwhelm the main gameplay UI.
+
+==================================================
+23. BALANCE REPORT BEFORE MAJOR CHANGES
+==================================================
+
+Before changing significant numbers, generate a report showing:
+
+- Starting Wealth range
+- Salary range
+- Average Wealth gained per game
+- Average Wealth lost per game
+- Average milestone spending
+- Average asset ownership
+- Average asset upgrade count
+- Expected Upgrade Tokens per player
+- Expected final Wealth
+- Expected asset endgame value
+- Expected finish-order impact
+- Expected attribute-bonus impact
+- Expected Cash Out result
+- Expected Double Down result
+- Expected Final Gamble result
+
+Identify obvious outliers.
+
+Then make targeted balance adjustments.
+
+==================================================
+24. TEST SCENARIOS
+==================================================
+
+Create/expand test scenarios for:
+
+A. Wealth-focused player
+
+B. Asset-focused player
+
+C. Upgrade-focused player
+
+D. High-risk Gamble-focused player
+
+E. Player who finishes with held Upgrade Tokens
+
+F. Player who spends Upgrade Tokens on upgrades
+
+G. Player who recovers a missed milestone
+
+H. Player with Level 1 assets
+
+I. Player with Level 4 assets
+
+J. Different Cash Out / Double Down / Final Gamble choices
+
+Verify that all produce valid and distinct outcomes.
+
+==================================================
+25. IMPORTANT: DO NOT IMPLEMENT PERSISTENT CREDITS YET
+==================================================
+
+Do NOT implement:
+
+- Replit Auth
+- persistent player profiles
+- Credits wallet
+- Stripe
+- purchases
+- cosmetic store
+- cross-game inventory
+
+Only preserve the final Upgrade Token count/state so the future Credits system can use it.
+
+==================================================
+26. VALIDATION
+==================================================
+
+Run:
+
+- TypeScript check
+- Existing regression tests
+- New balance/economy tests
+- Production build
+- Preview/restart
+
+Verify:
+
+- starting Wealth equals salary
+- asset levels have increasing endgame value
+- assets affect endgame
+- upgrades affect endgame
+- all three endgame choices resolve correctly
+- finish order works
+- four attribute bonuses work
+- held Upgrade Tokens are tracked
+- Upgrade Token recovery remains random
+- no duplicate endgame payouts
+- CPU and human players use the same calculations
+
+==================================================
+27. FINAL REPORT
+==================================================
+
+Report:
+
+1. Current economy audit
+2. Major balance issues discovered
+3. Numbers changed and why
+4. Starting Wealth changes
+5. Asset endgame value system
+6. Asset level progression
+7. Upgrade Token opportunity cost
+8. Held Upgrade Token tracking
+9. Cash Out balance
+10. Double Down balance
+11. Final Gamble balance
+12. Finish-order reward balance
+13. Attribute bonus interaction
+14. Test scenarios
+15. TypeScript/build/test results
+16. Remaining balance concerns
+
+Do NOT begin multiplayer or persistent Credits implementation.
+
+STOP AFTER PHASE 15.

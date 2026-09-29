@@ -1,0 +1,243 @@
+==================================================
+28. FLAGS / BOARD LABEL READABILITY
+==================================================
+
+Audit all board flags, labels, and indicators.
+
+They must be clearly readable at normal gameplay zoom.
+
+Do not use tiny text that requires zooming in.
+
+Prioritize readability for:
+- Space names
+- Salary Gate
+- Deck indicators
+- Upgrade Token
+- Milestones
+- Open Road
+- Finish
+- Major board areas
+
+Keep icons visually strong but do not overcrowd the spaces.
+
+==================================================
+29. REMOVE DECK BAY CARD PREVIEWS
+==================================================
+
+We no longer need large card previews displayed in the Deck Bay.
+
+Remove the large preview-card presentation from the normal board layout.
+
+The six decks should still remain visually distinct and accessible.
+
+PC:
+Place the deck cards/deck area in a compact presentation UNDERNEATH THE DICE / YOUR THROW area.
+
+Phone:
+Place the compact deck area UNDERNEATH THE BOARD.
+
+Do not allow the deck area to push the board unnecessarily far down.
+
+When a card is actually drawn, use the existing large card-reveal presentation.
+
+==================================================
+30. BOARD DRESSING — MORE UNIQUE 3D STRUCTURES
+==================================================
+
+The current structures around the sides of the board are too much like generic houses.
+
+Replace the generic house-heavy dressing with more unique futuristic structures that feel specific to the Redline Upgrade world.
+
+Examples of the type of visual direction:
+
+- futuristic towers
+- unusual commercial structures
+- futuristic garages
+- industrial structures
+- luxury buildings
+- neon architectural installations
+- unusual entertainment venues
+- futuristic roadside structures
+- large signs integrated into architecture
+- distinctive silhouettes
+
+Do NOT simply create larger houses.
+
+The structures should feel like miniature environmental scenery surrounding the board.
+
+They may be approximately TWICE the current scale if necessary to create stronger visual presence.
+
+However:
+
+- Do not obstruct board spaces
+- Do not cover player pieces
+- Do not interfere with movement
+- Do not obscure text
+- Do not make the board feel cluttered
+
+The structures should make the board feel like a miniature world rather than a flat game UI.
+
+==================================================
+31. BOARD STRUCTURE FALLBACK
+==================================================
+
+If creating appropriate 3D structures in the current environment is producing low-quality or generic results, DO NOT fill the board with poor 3D objects just to satisfy the requirement.
+
+A clean 2D environmental solution is acceptable.
+
+In that case, use high-quality transparent PNG environmental artwork positioned around the board corners/perimeter.
+
+The PNGs should:
+
+- have transparent backgrounds
+- have strong silhouettes
+- look like part of the same world
+- remain behind/outside the playable board
+- not interfere with spaces or player pieces
+
+Do not use generic placeholder shapes.
+
+The priority is:
+
+GOOD 2D ENVIRONMENTAL ART
+over
+BAD 3D STRUCTURES.
+
+==================================================
+32. SPACE 1 — OPEN ROAD ONLY
+==================================================
+
+Space 1 should ONLY communicate:
+
+OPEN ROAD
+
+Remove any additional:
+
+- generic event indicator
+- Wealth icon
+- deck icon
+- unnecessary decoration
+- secondary effect
+
+The visual treatment should be simple and unmistakable.
+
+SPACE 1 = OPEN ROAD.
+
+Do not attach another gameplay effect to it.
+
+==================================================
+33. FUTURE CONTENT ROADMAP — DO NOT IMPLEMENT YET
+==================================================
+
+Add the following to the project's future roadmap/documentation.
+
+MEME CARD EXPANSION:
+
+Eventually create additional meme/funny cards for every existing deck.
+
+The six existing decks remain:
+
+- WEALTH
+- AI SKILL
+- FAME
+- LIFESTYLE
+- INFLUENCE
+- GAMBLE
+
+Future work should expand each deck with additional unique meme cards while preserving the existing gameplay architecture.
+
+Do NOT implement this expansion during Phase 15.
+
+==================================================
+34. FUTURE BOARD RESKIN — DO NOT IMPLEMENT YET
+==================================================
+
+Eventually the entire board visual theme will be redesigned.
+
+The current board should therefore be treated as the current visual theme, not as the permanent final art direction.
+
+Future board reskin should preserve the underlying game logic while allowing:
+
+- completely new board artwork
+- new environmental dressing
+- new space artwork
+- new visual theme
+- new icons
+- new area presentation
+
+Do NOT redesign the entire board during Phase 15.
+
+==================================================
+35. FUTURE DRINKING-THEME BOARD VARIANT — ROADMAP ONLY
+==================================================
+
+Future goal:
+
+Create a separate board/theme where the entire experience becomes drinking-related while playing on that particular board.
+
+The underlying game logic should remain largely unchanged.
+
+Potential future reskin targets:
+
+- Board artwork
+- Board spaces
+- Environmental dressing
+- Deck card artwork
+- Card names/content
+- Character abilities
+- Career abilities
+- Endgame titles/statuses
+- Meme cards
+- Visual effects
+- Thematic terminology
+
+The important architecture goal is:
+
+SAME CORE GAME LOGIC
++
+DIFFERENT THEME / CONTENT PACK
+
+The current Redline Upgrade board should remain intact.
+
+Do NOT implement the drinking theme now.
+
+Do NOT replace the existing cards, abilities, careers, characters, or titles now.
+
+==================================================
+36. FUTURE THEME ARCHITECTURE
+==================================================
+
+Where practical, avoid hard-coding visual/content assumptions that would make a future themed board difficult to create.
+
+The long-term goal should be:
+
+CORE GAME ENGINE
++
+THEME-SPECIFIC CONTENT
+
+rather than duplicating the entire game.
+
+Future themes should ideally be able to change:
+
+- artwork
+- card content
+- terminology
+- abilities
+- titles
+- board appearance
+
+while retaining the core:
+
+- movement
+- turns
+- careers
+- salary
+- Wealth
+- milestones
+- assets
+- upgrades
+- cards/decks
+- endgame calculations
+- CPU logic
+
+Do not build the theme system now unless a small architectural change is necessary to avoid creating future technical debt.
