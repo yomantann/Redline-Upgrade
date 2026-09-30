@@ -30,7 +30,7 @@ export function RedlineCard({ deck, face = 'back', card, artwork, action, classN
           <div className={`redline-card-art ${!artwork && artworkUrl ? 'has-artwork' : !artwork ? 'artwork-missing' : ''}`} aria-hidden="true">
             {artwork ?? (
               <>
-                {artworkUrl && <img className="redline-card-art-image" src={artworkUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; const parent = event.currentTarget.parentElement; parent?.classList.remove('has-artwork'); parent?.classList.add('artwork-missing'); }} />}
+                {artworkUrl && <img className="redline-card-art-image" src={artworkUrl} alt="" data-card-id={card?.id} loading="eager" decoding="async" onError={event => { event.currentTarget.style.display = 'none'; const parent = event.currentTarget.parentElement; parent?.classList.remove('has-artwork'); parent?.classList.add('artwork-missing'); }} />}
                 <span className="redline-card-art-missing">ARTWORK UNAVAILABLE</span>
               </>
             )}

@@ -33,6 +33,7 @@ try {
   const { PlayerAssets } = await vite.ssrLoadModule('/src/components/player-assets.tsx');
   const { MilestoneChoice } = await vite.ssrLoadModule('/src/components/milestone-choice.tsx');
   const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
+  const { RedlineCard } = await vite.ssrLoadModule('/src/components/redline-card.tsx');
   const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
   const { AbilityActivationBanner, SpaceRewardBanner, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
@@ -128,6 +129,7 @@ try {
       }));
       assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
       assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
+      assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${deck.name} draw card loads the artwork mapped to ${card.id}`);
       assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
       assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CARD_READ_MINIMUM_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
       if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);
@@ -135,6 +137,20 @@ try {
         ? cardMarkup.includes('card is revealed to the table')
         : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
     }
+  }
+  for (const card of cards) {
+    const artworkPath = getCardArtworkFilePath(card.id);
+    assert.equal(artworkPath, card.artworkPath, `${card.id} resolves its declared artwork`);
+    assert(artworkPath && existsSync(new URL(`../public/${artworkPath}`, import.meta.url)), `${card.id} artwork exists at ${artworkPath}`);
+    assert.equal(getCardArtworkUrl(card.id), getPublicAssetUrl(artworkPath, '/'), `${card.id} artwork URL uses the artifact root base`);
+    const cardMarkup = renderToStaticMarkup(React.createElement(RedlineCard, {
+      deck: card.deck,
+      face: 'front',
+      card,
+    }));
+    assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${card.id} front renders its own artwork`);
+    assert(cardMarkup.includes(`data-card-id="${card.id}"`), `${card.id} artwork is identifiable in the DOM`);
+    assert(cardMarkup.includes('loading="eager"'), `${card.id} artwork is not deferred by lazy loading`);
   }
 
   for (let i = 0; i < 50; i++) {
@@ -874,6 +890,19 @@ try {
   assert(allLevelArtworkPaths.every(path => path && existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 400 L1–L4 artwork files exist');
   assert(levelOneArtworkPaths.every(Boolean), 'all milestone choices map to Level 1 artwork');
   assert.equal(new Set(levelOneArtworkPaths).size, 100, 'every milestone choice has a distinct Level 1 artwork path');
+  for (const asset of assets) {
+    const artworkUrl = getAssetArtworkUrl(asset.id, 1);
+    const artworkMarkup = renderToStaticMarkup(React.createElement(AssetArtwork, {
+      assetId: asset.id,
+      level: 1,
+      className: 'asset-artwork-audit',
+      alt: `${asset.name}, level 1`,
+    }));
+    assert(artworkUrl, `${asset.id} has a Level 1 artwork URL`);
+    assert(artworkMarkup.includes(`src="${artworkUrl}"`), `${asset.id} card renders its own Level 1 artwork`);
+    assert(artworkMarkup.includes(`data-asset-id="${asset.id}"`), `${asset.id} artwork is identifiable in the DOM`);
+    assert(artworkMarkup.includes('loading="eager"'), `${asset.id} artwork is not deferred by lazy loading`);
+  }
   assert.equal(getAssetArtworkFilePath('budget-racer'), 'milestone-assets/cars/CAR_01.webp', 'legacy car artwork mapping remains stable');
   assert.equal(getAssetArtworkFilePath('luxury-travel'), 'milestone-assets/lifestyles/LIFESTYLE_01.webp', 'legacy lifestyle artwork mapping remains stable');
   for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
@@ -1184,7 +1213,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     assert.equal(consecutiveCpuMatch.pending, null);
   }
   assertCompleteCardPiles(consecutiveCpuMatch.cardPiles);
-  match = move(start(58, 1), 2);
+  match = move(withoutAbilities(start(58, 1)), 2);
   assert.equal(match.pending.slot, 'property');
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });
   assert.equal(match.phase, 'landed');
@@ -1604,6 +1633,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
       const path = getCardArtworkFilePath(card.id);
       return Boolean(path && existsSync(new URL(`../public/${path}`, import.meta.url)));
     }).length;
+    assert.equal(withImages, deckCards.length, `${deck.name} deck has a mapped, existing image for every draw card`);
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
   console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);

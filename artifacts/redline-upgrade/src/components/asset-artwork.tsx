@@ -156,7 +156,8 @@ export function AssetArtwork({
         data-asset-id={asset.id}
         data-asset-level={level}
         data-visual-variant={visualVariant}
-        loading="lazy"
+        loading="eager"
+        decoding="async"
         onLoad={event => {
           event.currentTarget.style.display = '';
           event.currentTarget.parentElement?.classList.remove('asset-artwork-failed');
