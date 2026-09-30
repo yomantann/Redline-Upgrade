@@ -1,0 +1,747 @@
+PHASE — CAREER ABILITY OVERHAUL
+
+Update the existing Redline Upgrade career ability system.
+
+IMPORTANT:
+This phase is specifically about REDOING SELECTED CAREER ABILITIES and adding the two new careers THIEF and ALIEN.
+
+DO NOT change:
+- Existing board layout
+- Character abilities
+- Card deck mechanics
+- Milestone mechanics
+- Upgrade Token mechanics
+- Endgame mechanics
+- Existing career categories unless specifically required for the two new careers
+- Existing primary/secondary deck affinity assignments for existing careers
+- Existing career stat modifiers for existing careers
+- Existing salary tiers for existing careers
+- Existing career names
+
+Only change career abilities and the supporting event/UI logic required for these abilities.
+
+==================================================
+1. CAREER CHANGE VS CAREER SWAP — CRITICAL
+==================================================
+
+There are TWO completely different mechanics.
+
+CAREER CHANGE:
+
+When a player voluntarily changes careers through the existing Space 35 Career Change system:
+
+1. Player chooses to stay OR switch.
+2. If switching, show the existing 2 random career choices.
+3. Player selects a new career.
+4. Generate a NEW RANDOM SALARY appropriate to that new career.
+
+The old salary is replaced.
+
+CAREER SWAP:
+
+When a career ability/card causes two players to swap careers:
+
+- Swap Career
+- Swap Career ability
+- Swap Career categories
+- Swap Primary deck affinity
+- Swap Secondary deck affinity
+- Swap Salary
+
+The salary stays attached to the career being transferred.
+
+Example:
+
+Player A:
+Lawyer
+$100K salary
+
+Player B:
+Corporate Executive
+$75K salary
+
+After Career Swap:
+
+Player A:
+Corporate Executive
+$75K salary
+
+Player B:
+Lawyer
+$100K salary
+
+DO NOT reroll salaries during a career swap.
+
+Career swap does NOT transfer:
+
+- Character
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Assets
+- Upgrade Tokens
+- Finish position
+- Other player-specific progression
+
+Use ONE shared career-swap operation for every career-swap mechanic.
+
+==================================================
+2. DOCTOR — UPGRADE TOKEN
+==================================================
+
+Doctor's unique distinction is now ONLY:
+
+STARTS WITH 1 UPGRADE TOKEN.
+
+Remove the existing Doctor "block one Lifestyle or AI Skill penalty" ability.
+
+IMPORTANT:
+
+Whenever a player obtains the Doctor career, they receive Doctor's 1 Upgrade Token.
+
+This applies if they:
+
+- Start as Doctor
+- Select Doctor through Space 35
+- Obtain Doctor through a career swap
+- Obtain Doctor through another valid future career-acquisition mechanic
+
+The token should be granted once when Doctor is acquired.
+
+If Doctor is obtained through a CAREER SWAP, the Doctor career package includes the Doctor Upgrade Token.
+
+Do not reroll the salary during the swap.
+
+Do not repeatedly grant additional Doctor tokens simply because the player still has Doctor.
+
+Do not remove an already-earned Upgrade Token if the player later changes careers.
+
+==================================================
+3. AI ENGINEER
+==================================================
+
+CURRENT:
+MODEL UPGRADE — When you gain AI Skill, gain $2,500 Wealth once per turn.
+
+CHANGE TO:
+
+MODEL UPGRADE
+
+When you gain AI Skill, gain $7,500 Wealth once per turn.
+
+Keep the once-per-turn limitation.
+
+==================================================
+4. RACE DRIVER
+==================================================
+
+CURRENT:
+NEED FOR SPEED — Buying a car earns you 1 Fame once per game.
+
+CHANGE TO:
+
+NEED FOR SPEED
+
+When you land on another player, if that player owns an eligible Car asset, you may choose ONE:
+
+- Steal one eligible Car asset from that player
+OR
+- Swap one of your eligible Car assets with one of theirs.
+
+This is optional.
+
+If the target does not own an eligible Car, nothing happens.
+
+Use the existing asset ownership and asset-level systems.
+
+Do not create a new asset system.
+
+==================================================
+5. CONTENT CREATOR
+==================================================
+
+CURRENT:
+GO VIRAL — A positive Fame change earns you $1,500 Wealth once per round.
+
+CHANGE TO:
+
+GO VIRAL
+
+Whenever the player gains:
+
+- AI Skill
+- Fame
+- Influence
+
+they may choose which of those three attributes receives the gain.
+
+Example:
+
+A card normally gives:
++1 Fame
+
+Content Creator may choose:
+
++1 Fame
+OR
++1 AI Skill
+OR
++1 Influence
+
+The player receives a clear choice UI when this ability activates.
+
+Do NOT allow Lifestyle to be selected.
+
+The amount of the original gain does not change. Only the destination attribute changes.
+
+==================================================
+6. GIG WORKER
+==================================================
+
+CURRENT:
+SIDE HUSTLE — Moving earns you $1,500 Wealth once per turn.
+
+CHANGE TO:
+
+SIDE HUSTLE
+
+If the Gig Worker still has this career when passing Space 35:
+
+- Allow the player to obtain a SECOND career/job.
+- The player keeps their original career.
+- Give them a second randomly selected career.
+- Generate the normal random salary for the second career.
+- Do NOT add the two salaries together.
+- Effective salary becomes the HIGHER of the two salaries.
+
+Display clearly:
+
+Primary Career
+Primary Salary
+
+Second Job
+Second Salary
+
+Effective Salary = Higher Salary
+
+The second job should NOT create a second copy of every career ability.
+
+The player retains the Gig Worker's Side Hustle ability.
+
+If the second career is Doctor, apply the Doctor acquisition rule and grant its Upgrade Token.
+
+==================================================
+7. LAWYER
+==================================================
+
+KEEP CURRENT ABILITY:
+
+OBJECTION
+
+When an opponent loses Wealth, gain 1 Influence once per round.
+
+Do not modify.
+
+==================================================
+8. PRO GAMER
+==================================================
+
+KEEP CURRENT ABILITY:
+
+SWEAT THE ODDS
+
+Rolling doubles earns you 1 AI Skill once per round.
+
+Do not modify.
+
+==================================================
+9. PERSONAL TRAINER
+==================================================
+
+CURRENT:
+LOCKED IN — A roll of 8 earns you 1 Lifestyle once per round.
+
+CHANGE TO:
+
+ABILITY NAME:
+SORE
+
+When the Personal Trainer lands on a space occupied by another player:
+
+- Personal Trainer gains +1 Lifestyle.
+- Every other player currently occupying that same space loses their NEXT TURN.
+- Personal Trainer is NOT affected.
+
+Clearly communicate:
+
+"SORE ACTIVATED"
+"+1 Lifestyle"
+"Target skips next turn"
+
+Use the existing turn-skipping/event architecture.
+
+==================================================
+10. DEGEN TRADER
+==================================================
+
+CURRENT:
+YOLO — A roll of 8 earns you $5,000 Wealth once per turn.
+
+CHANGE TO:
+
+YOLO
+
+A roll of 8 earns the Degen Trader:
+
++$50,000 Wealth
+
+Keep the once-per-turn limitation.
+
+Clearly show the $50K gain.
+
+==================================================
+11. STARTUP FOUNDER
+==================================================
+
+CURRENT:
+EQUITY — Buying an investment earns you $2,500 Wealth once per round.
+
+CHANGE TO:
+
+EQUITY
+
+Whenever the Startup Founder purchases/acquires an asset:
+
+- Immediately upgrade that newly acquired asset to Level 2 for FREE.
+- Do not charge Wealth.
+- Do not require an Upgrade Token.
+- Apply only to the newly acquired asset.
+- Never downgrade an asset.
+
+Immediately show the Level 2 visual.
+
+==================================================
+12. INFLUENCER
+==================================================
+
+KEEP CURRENT:
+
+ENGAGEMENT
+
+Passing another player earns you 1 Fame once per round.
+
+Do not modify.
+
+==================================================
+13. CORPORATE EXECUTIVE
+==================================================
+
+CURRENT:
+GOLDEN HANDCUFFS — Crossing a Payday earns you another $2,500 once per turn.
+
+CHANGE TO:
+
+GOLDEN HANDCUFFS
+
+When the Corporate Executive lands on another player:
+
+- Corporate Executive may choose to swap careers with that player.
+- This is optional.
+- This is a CAREER SWAP.
+- Both careers and salaries are exchanged.
+- Do NOT reroll either salary.
+
+Use the shared Career Swap operation.
+
+Clearly show the career and salary changes.
+
+==================================================
+14. CYBERSECURITY SPECIALIST
+==================================================
+
+CURRENT:
+ZERO DAY — Resolving an AI card grants one-use protection from an AI penalty.
+
+CHANGE TO:
+
+ZERO DAY
+
+When Cybersecurity Specialist lands on another player:
+
+- Steal 1 AI Skill from that player.
+- Cybersecurity Specialist gains +1 AI Skill.
+- The target loses 1 AI Skill.
+
+IMPORTANT:
+
+AI Skill IS allowed to go negative.
+
+Example:
+
+Target:
+0 AI Skill
+
+After ZERO DAY:
+
+Target:
+-1 AI Skill
+
+Cybersecurity Specialist:
++1 AI Skill
+
+Do NOT clamp AI Skill to zero.
+
+Use the existing stat/event system.
+
+==================================================
+15. ENTERTAINER
+==================================================
+
+CURRENT:
+MAIN CHARACTER — When another player lands on you, gain 1 Fame once per round.
+
+CHANGE TO:
+
+MAIN CHARACTER
+
+When the Entertainer lands on another player:
+
+- Steal 1 Fame from that player.
+- Entertainer gains +1 Fame.
+- Target loses 1 Fame.
+
+IMPORTANT:
+
+Fame IS allowed to go negative.
+
+Example:
+
+Target:
+0 Fame
+
+After MAIN CHARACTER:
+
+Target:
+-1 Fame
+
+Entertainer:
++1 Fame
+
+Do NOT clamp Fame to zero.
+
+==================================================
+16. REAL ESTATE INVESTOR
+==================================================
+
+CURRENT:
+PROPERTY LADDER — Buying property earns you $2,500 Wealth once per round.
+
+CHANGE TO:
+
+PROPERTY LADDER
+
+When the Real Estate Investor lands on another player:
+
+If the target owns an eligible Property/House asset, choose ONE:
+
+- Steal one eligible Property/House asset
+OR
+- Swap one of your eligible Property/House assets with theirs.
+
+This is optional.
+
+If the target has no eligible Property/House asset, nothing happens.
+
+Use existing asset ownership and asset-level systems.
+
+==================================================
+17. NEW CAREER — THIEF
+==================================================
+
+THIEF does not currently exist.
+
+Create THIEF as a fully supported career using the same structure as all other careers.
+
+It needs:
+
+- Career name
+- Career description
+- Salary tiers
+- Career category/categories
+- Primary deck affinity
+- Secondary deck affinity
+- Appropriate stat modifiers
+- Career ability
+- Ability ID
+- Career card/UI presentation
+
+Choose categories, affinities, salary tiers, and stat modifiers that fit naturally into the EXISTING career architecture.
+
+Do not create a new category system.
+
+ABILITY:
+
+TAXMAN
+
+Whenever another player rolls a 2 OR rolls an 8:
+
+- That player pays $25,000 Wealth to the Thief.
+- If they have less than $25,000, transfer whatever Wealth they currently have.
+- Do not allow the payer's Wealth to become negative from this payment.
+
+Clearly display:
+
+THIEF — TAXMAN
+Player X rolled 2/8
+-$25,000 Wealth
++$25,000 Wealth to Thief
+
+==================================================
+18. NEW CAREER — ALIEN
+==================================================
+
+ALIEN does not currently exist.
+
+Create ALIEN as a fully supported career using the same structure as every other career.
+
+It needs:
+
+- Career name
+- Career description
+- Salary tiers
+- Career category/categories
+- Primary deck affinity
+- Secondary deck affinity
+- Appropriate stat modifiers
+- Career ability
+- Ability ID
+- Career card/UI presentation
+
+Choose categories, affinities, salary tiers, and stat modifiers that fit naturally into the existing career architecture.
+
+ABILITY:
+
+ABDUCTION
+
+Whenever another player lands on the Alien:
+
+- The player who landed on Alien MUST swap careers with the Alien.
+- This is mandatory.
+- Career AND salary swap together.
+- Do NOT reroll salary.
+
+Example:
+
+Alien:
+Alien career
+$100K salary
+
+Target:
+Lawyer
+$75K salary
+
+After swap:
+
+Alien player:
+Lawyer
+$75K salary
+
+Target:
+Alien
+$100K salary
+
+Use the shared Career Swap operation.
+
+==================================================
+19. CAREER SWAP — UNIVERSAL IMPLEMENTATION
+==================================================
+
+Every career-swap ability must use ONE shared operation.
+
+Career Swap transfers:
+
+- Career
+- Career ability
+- Career categories
+- Primary deck affinity
+- Secondary deck affinity
+- Salary
+
+Career Swap does NOT transfer:
+
+- Character
+- Wealth
+- AI Skill
+- Fame
+- Lifestyle
+- Influence
+- Assets
+- Upgrade Tokens
+- Finish position
+- Other player-specific progression
+
+EXCEPTION:
+
+If the acquired career has an acquisition benefit, such as Doctor's Upgrade Token, resolve that benefit when the player obtains the career.
+
+==================================================
+20. CAREER CHANGE — UNIVERSAL IMPLEMENTATION
+==================================================
+
+Normal Career Change remains:
+
+1. Player reaches/passes Space 35.
+2. Player chooses:
+   - Stay with current career
+   - Switch career
+3. If switching:
+   - Show 2 random career choices.
+4. Player chooses one.
+5. Generate NEW RANDOM SALARY appropriate to that career.
+
+If the chosen career is Doctor:
+grant Doctor's Upgrade Token.
+
+If the chosen career is Gig Worker's second job:
+generate the normal random salary for that second career.
+
+Career Change = NEW salary.
+
+Career Swap = SWAP existing salary.
+
+==================================================
+21. CAREER ABILITY LIMITS / BALANCE
+==================================================
+
+Use the existing ability usage-limit architecture.
+
+Do not introduce unlimited repeated triggers where the current system expects:
+
+- once per turn
+- once per round
+- once per game
+
+Pay particular attention to:
+
+- Asset theft
+- Asset swaps
+- Career swaps
+- Forced career swaps
+- Skip-turn effects
+- Wealth transfers
+- Attribute theft
+
+Use the existing event/ability architecture rather than hardcoded one-off behavior.
+
+==================================================
+22. PLAYER CARD / UI
+==================================================
+
+Career ability should remain clearly visible on the player card.
+
+When an ability activates, make the trigger obvious to all players.
+
+Examples:
+
+"ZERO DAY ACTIVATED"
+"Cybersecurity Specialist stole 1 AI Skill from Player 2."
+
+"MAIN CHARACTER ACTIVATED"
+"Entertainer stole 1 Fame from Player 3."
+
+"NEED FOR SPEED"
+"Race Driver stole a Car."
+
+"TAXMAN"
+"Player 2 rolled an 8."
+"-$25K → Thief"
+
+"SORE"
+"Personal Trainer gained +1 Lifestyle."
+"Player 3 skips their next turn."
+
+Do not create a giant permanent popup for every ability.
+
+Use the existing event/recent-event presentation.
+
+==================================================
+23. SECONDARY CAREER ATTRIBUTES
+==================================================
+
+DO NOT change existing careers':
+
+- categories
+- primary deck affinity
+- secondary deck affinity
+- stat modifiers
+- salary tiers
+
+The existing career identity and deck-affinity system remains intact.
+
+Only the PRIMARY CAREER ABILITIES are being redesigned.
+
+The two newly created careers, Thief and Alien, should receive appropriate values for these fields.
+
+==================================================
+24. VALIDATION
+==================================================
+
+Add/update tests for:
+
+- Career Change rerolls salary
+- Career Swap swaps salary
+- Corporate Executive career swap
+- Alien forced career swap
+- Doctor obtained at game start grants Upgrade Token
+- Doctor obtained through Space 35 grants Upgrade Token
+- Doctor obtained through career swap grants Doctor acquisition benefit
+- Race Driver Car steal
+- Race Driver Car swap
+- Real Estate Investor Property steal
+- Real Estate Investor Property swap
+- Cybersecurity steals AI Skill
+- Cybersecurity can make AI Skill negative
+- Entertainer steals Fame
+- Entertainer can make Fame negative
+- Thief receives $25K from roll 2
+- Thief receives $25K from roll 8
+- Degen Trader roll 8 = $50K
+- Personal Trainer landing on player = Lifestyle + skip turn
+- Startup Founder receives free Level 2 asset
+- Content Creator attribute choice
+- Gig Worker receives second career at Space 35
+- Gig Worker uses higher salary
+- AI Engineer = $7,500 AI Skill bonus
+- Lawyer remains unchanged
+- Pro Gamer remains unchanged
+- Influencer remains unchanged
+- Doctor no longer has Health Insurance penalty-blocking ability
+- CPU and human players use identical career ability logic
+
+Run:
+
+- TypeScript check
+- Existing check-game script
+- Production build
+- Relevant regression tests
+
+==================================================
+25. FINAL REPORT
+==================================================
+
+When complete, report:
+
+1. Every career whose ability changed.
+2. Careers whose abilities were intentionally kept.
+3. New Thief career details.
+4. New Alien career details.
+5. Confirmation that Career Change generates a new salary.
+6. Confirmation that Career Swap swaps salary.
+7. Confirmation that Doctor grants an Upgrade Token whenever Doctor is newly acquired.
+8. Confirmation that AI Skill and Fame can go negative through the new theft abilities.
+9. Validation/test results.
+10. Any limitations or edge cases discovered.
+
+Do not modify unrelated systems.
