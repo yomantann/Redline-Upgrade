@@ -130,6 +130,9 @@ try {
       assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
       assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
       assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${deck.name} draw card loads the artwork mapped to ${card.id}`);
+      assert(cardMarkup.includes(`data-testid="deck-bay-${deck.id}"`), `${deck.name} stays visible in the non-interactive deck bay`);
+      assert(!cardMarkup.includes(`button-preview-deck-${deck.id}`), `${deck.name} deck card is not a preview button`);
+      assert(!cardMarkup.includes('PREVIEW NEXT CARD') && !cardMarkup.includes('tabletop-preview'), 'card previews and next-card controls are absent');
       assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
       assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CARD_READ_MINIMUM_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
       if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);

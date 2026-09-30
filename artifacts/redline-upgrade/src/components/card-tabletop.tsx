@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { cardsForDeck, type CardDefinition } from '@/game/cards';
+import type { CardDefinition } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
 import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_RESULT_SECONDS } from '@/game/card-reveal-timing';
 import { decks, getDeck, type DeckId } from '@/game/decks';
@@ -32,11 +32,8 @@ export function CardTabletop({
   resultSummary,
   showDeckBay = true,
 }: Props) {
-  const [preview, setPreview] = useState<DeckId | null>(null);
-  const [previewIndex, setPreviewIndex] = useState(0);
   const [minimumReadTimeComplete, setMinimumReadTimeComplete] = useState(false);
 
-  useEffect(() => { setPreview(null); }, [activeDeck]);
   useEffect(() => {
     setMinimumReadTimeComplete(false);
     if (!activeDeck) return;
@@ -44,9 +41,6 @@ export function CardTabletop({
     return () => window.clearTimeout(timer);
   }, [activeDeck, activeCard?.id, cardStage]);
 
-  const previewCards = preview ? cardsForDeck(preview) : [];
-  const previewedCard = previewCards.length ? previewCards[previewIndex % previewCards.length] : null;
-  const displayed = preview ? getDeck(preview) : null;
   const activeCardResolved = cardStage === 'resolved' && activeCard;
   const presentationStep = activeCardResolved ? 3 : activeCard ? 2 : 0;
   return (
@@ -99,26 +93,12 @@ export function CardTabletop({
         <div className="tabletop-decks-head"><div><span className="eyebrow">TABLETOP / DECK BAY</span><h2>Six ways forward.</h2></div><span className="mono">06 DECKS</span></div>
         <div className="tabletop-decks-grid">
           {decks.map(deck => (
-            <button className={`tabletop-deck ${activeDeck === deck.id ? 'active' : ''}`} type="button" key={deck.id} onClick={() => { setPreview(deck.id); setPreviewIndex(0); }} aria-pressed={activeDeck === deck.id} data-testid={`button-preview-deck-${deck.id}`}>
+            <figure className={`tabletop-deck ${activeDeck === deck.id ? 'active' : ''}`} key={deck.id} data-testid={`deck-bay-${deck.id}`}>
               <RedlineCard deck={deck.id} />
-              <div className="tabletop-deck-caption"><span>{deck.name}</span><span>{String(cardPiles?.[deck.id]?.drawPile.length ?? deck.count).padStart(2, '0')}</span></div>
-            </button>
+              <figcaption className="tabletop-deck-caption"><span>{deck.name}</span><span>{String(cardPiles?.[deck.id]?.drawPile.length ?? deck.count).padStart(2, '0')}</span></figcaption>
+            </figure>
           ))}
         </div>
-        {displayed && (
-          <div className="tabletop-preview" data-testid={`section-deck-preview-${displayed.id}`}>
-            <div className="tabletop-preview-head"><div><span className="mono" style={{ color: displayed.color }}>DECK FILE / {displayed.serial}</span><h3>{displayed.name}</h3></div><button type="button" onClick={() => setPreview(null)} aria-label="Close deck preview" data-testid="button-close-deck-preview">×</button></div>
-            <p>{displayed.description}</p>
-            <div className="tabletop-preview-content">
-              <RedlineCard deck={displayed.id} face="front" card={previewedCard ?? undefined} />
-              <div>
-                <p className="tabletop-preview-count">{displayed.count} UNIQUE CARDS / {previewedCard ? `CARD ${String((previewIndex % displayed.count) + 1).padStart(2, '0')}` : 'EMPTY DECK'}</p>
-                <p>{previewedCard ? `${previewedCard.title}: ${previewedCard.effect}` : 'No card is available to preview.'}</p>
-                <button className="action secondary" type="button" onClick={() => setPreviewIndex(value => (value + 1) % Math.max(1, previewCards.length))} data-testid={`button-preview-draw-${displayed.id}`}>PREVIEW NEXT CARD <span aria-hidden="true">↗</span></button>
-              </div>
-            </div>
-          </div>
-        )}
       </aside>}
     </>
   );

@@ -1,0 +1,79 @@
+REDLINE UPGRADE — PHASE 15.5
+
+Improve visual feedback for all existing cards, character abilities, career abilities, passive effects, and player interactions.
+
+Do NOT change the underlying game mechanics or balance.
+
+Every meaningful effect should clearly show:
+
+WHO caused it → WHO was affected → WHAT happened → RESULT
+
+Examples:
+
+CARD RESOLVED
+Rind → Executive P
+- $20K Wealth
+
+CHARACTER ABILITY
+Panic Bot → Rind
+-2 Influence
+
+CAREER ABILITY
+Cybersecurity / DIGITAL
+Click Click
++$15K Wealth
+
+CAREER/DECK INTERACTION
+WEALTH CARD
+Rind — RISK CAREER
+-$10K Wealth
+
+Requirements:
+
+1. When a player is affected, briefly highlight their player card.
+
+2. Show the exact change clearly:
+   +$20K Wealth
+   -2 Fame
+   +1 AI Skill
+
+3. Where useful, show before → after:
+   Wealth: $125K → $145K
+
+4. Clearly identify the source:
+   Card, Character Ability, Career Ability, Passive Ability, Board Event, etc.
+
+5. Clearly identify the target when another player is affected.
+
+6. If a card/ability affects a career category or deck affinity, explicitly show WHY:
+   "DIGITAL CAREER BONUS"
+   "RISK CAREER EFFECT"
+   etc.
+
+7. Effects should resolve visibly rather than happening instantaneously.
+
+8. Multiple effects should resolve sequentially so players can follow what happened.
+
+9. Keep the presentation clean and short. Do NOT create a complicated permanent event log.
+
+10. Make sure CPU and human effects use the same visual feedback system.
+
+The goal is simple:
+
+PLAYERS SHOULD NEVER HAVE TO GUESS WHETHER A CARD, CHARACTER ABILITY, CAREER ABILITY, OR PASSIVE EFFECT ACTUALLY AFFECTED SOMEONE.
+
+After implementation, test:
+- card → self
+- card → another player
+- card → multiple players
+- character ability
+- career ability
+- passive ability
+- career-category interaction
+- deck-affinity interaction
+- LAND_ON_PLAYER
+- PASS_PLAYER
+- protection effects
+- doubles / roll 2 / roll 8
+
+Run TypeScript check, existing tests, and production build.

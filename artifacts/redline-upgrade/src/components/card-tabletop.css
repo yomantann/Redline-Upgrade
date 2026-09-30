@@ -28,8 +28,8 @@
 .tabletop-decks-head h2 { margin:5px 0 0; font:800 29px/.9 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .tabletop-decks-head span { color:#9bafa2; }
 .tabletop-decks-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:13px 9px; }
-.tabletop-deck { min-width:0; border:0; padding:0; color:inherit; background:transparent; text-align:left; transition:transform .24s ease; }
-.tabletop-deck:hover,.tabletop-deck.active { transform:translateY(-5px); }
+.tabletop-deck { min-width:0; margin:0; transition:transform .24s ease; }
+.tabletop-deck.active { transform:translateY(-5px); }
 .tabletop-deck.active .redline-card { box-shadow:2px 3px 0 #0c1312,6px 9px 0 var(--deck-color),10px 15px 24px rgba(0,0,0,.35); }
 .tabletop-deck .redline-card { width:100%; }
 .tabletop-deck .redline-card-rail { padding:7px 7px 5px; font-size:6px; }
@@ -40,18 +40,6 @@
 .tabletop-deck .redline-card-back-core small,.tabletop-deck .redline-card-footer { display:none; }
 .tabletop-deck-caption { display:flex; align-items:center; justify-content:space-between; gap:3px; margin-top:9px; color:#d8e3d3; font:700 8px/1.2 'Space Mono',monospace; letter-spacing:.01em; }
 .tabletop-deck-caption span:last-child { color:#8ba296; }
-.tabletop-preview { grid-column:1/-1; margin-top:14px; padding:16px; border:1px solid #5c6e5f; background:#1d2b25; }
-.tabletop-preview-head { display:flex; justify-content:space-between; gap:12px; }
-.tabletop-preview-head h3 { margin:5px 0 7px; font:800 35px/.9 'Barlow Condensed',sans-serif; }
-.tabletop-preview-head button { align-self:start; border:1px solid #647c69; background:transparent; color:#e9e7dc; width:29px; height:29px; }
-.tabletop-preview p { color:#aebfaf; font-size:11px; line-height:1.5; }
-.tabletop-preview-content { display:grid; grid-template-columns:90px 1fr; align-items:center; gap:16px; margin-top:15px; }
-.tabletop-preview-content .redline-card { width:90px; }
-.tabletop-preview-content .redline-card-back-core b { font-size:14px; }
-.tabletop-preview-content .redline-card-rail,.tabletop-preview-content .redline-card-footer { font-size:6px; padding:6px; }
-.tabletop-preview-content .redline-card-back-core small { display:none; }
-.tabletop-preview-content .action { width:100%; min-height:45px; font-size:9px; }
-.tabletop-preview-count { color:#d4e981 !important; font:700 9px 'Space Mono',monospace !important; }
 .card-draw-panel { padding:20px; border:1px solid #586a5c; background:#18251f; display:grid; grid-template-columns:minmax(0,1fr) 175px minmax(0,1fr); gap:22px; align-items:center; margin:0 0 18px; }
 .card-draw-copy h2 { font:900 clamp(39px,5vw,72px)/.85 'Barlow Condensed',sans-serif; text-transform:uppercase; margin:10px 0; }
 .card-draw-copy p { color:#b8c6b8; font-size:12px; line-height:1.6; }
