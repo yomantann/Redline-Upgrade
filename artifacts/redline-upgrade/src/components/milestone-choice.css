@@ -144,4 +144,15 @@
 @media(max-width:1100px) { .milestone-grid:not(.two) { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:700px) { .milestone-heading { display:block; } .milestone-heading h2 { font-size:clamp(65px,16vw,105px); } .milestone-heading p { margin-top:20px; } .milestone-salary { grid-template-columns:1fr; } .milestone-salary-feature { min-height:250px; } }
 @media(max-width:520px) { .milestone-grid,.milestone-grid.two,.milestone-grid:not(.two) { grid-template-columns:1fr; } .milestone-art { min-height:150px; } .milestone-card h3 { min-height:0; } .milestone-card-desc { min-height:0; } .milestone-footer .milestone-skip { width:100%; } }
+.ability-decision-context { margin:0 clamp(15px,2vw,30px); padding:16px 19px; border:1px solid #526456; background:#1d2b22; color:#e9e7dc; }
+.ability-decision-context .mono { color:#d4e981; font-size:10px; letter-spacing:.09em; }
+.ability-decision-context p { margin:8px 0 0; color:#afc2ae; font-size:13px; line-height:1.55; }
+.ability-decision-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:clamp(15px,2vw,30px); }
+.ability-decision-choice { min-height:88px; border:1px solid #667862; background:#213228; color:#e9e7dc; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:8px; padding:16px; text-align:left; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+.ability-decision-choice:hover { background:#2a3a2f; border-color:#d4e981; transform:translateY(-2px); }
+.ability-decision-choice .mono { color:#d4e981; font-size:10px; }
+.ability-decision-choice strong { font:800 26px/.95 'Barlow Condensed',sans-serif; }
+.ability-decision-actions .action,.ability-decision-actions .milestone-skip { width:100%; }
+@media(max-width:700px) { .ability-decision-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:520px) { .ability-decision-actions { grid-template-columns:1fr; } .ability-decision-context { margin:0 15px; } }
 @media(prefers-reduced-motion:reduce) { .milestone-card,.milestone-buy { transition:none; } .milestone-cpu i { animation:none; } }

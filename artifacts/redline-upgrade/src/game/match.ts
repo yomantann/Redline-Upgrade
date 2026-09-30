@@ -1,5 +1,5 @@
 import { characters } from './characters';
-import { createPlayer, type PlayerStat } from './player';
+import { createPlayer, effectiveSalaryAmount, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
 import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
@@ -22,6 +22,7 @@ import {
   type PlayerMatchStatus,
 } from './endgame';
 import { evaluateEndGameTitle } from './endgame-titles';
+import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & {
   isCPU: boolean;
@@ -77,10 +78,26 @@ export interface DiceResult { die1: number; die2: number; total: number; doubles
 export interface Landing { playerIndex: number; space: BoardSpace }
 export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE' | 'FINISH_BONUS'; space: number }
 export interface RewardModifierState { stat: PlayerStat; amount: number }
-export type PendingDecision =
+export type BoardPendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
   | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'draw' | 'resolved' }
-  | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string };
+  | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string }
+  | { kind: 'GIG_WORKER'; space: number };
+export type AbilityPendingDecision = {
+  kind: 'ABILITY';
+  playerIndex: number;
+  abilityId: string;
+  space: number;
+  resumePhase: TurnPhase;
+  resumePending: BoardPendingDecision | null;
+  resumeEvents: EventDraft[];
+  afterStep?: { previousPosition: number };
+} & (
+  | { decision: 'STAT_DESTINATION'; sourceStat: 'aiSkill' | 'fame' | 'influence'; amount: number; reason?: string }
+  | { decision: 'ASSET_INTERACTION'; targetPlayerId: string; category: 'car' | 'property'; targetAssetId: string; ownAssetId: string | null }
+  | { decision: 'CAREER_SWAP'; targetPlayerId: string }
+);
+export type PendingDecision = BoardPendingDecision | AbilityPendingDecision;
 export interface Match {
   players: MatchPlayer[];
   turnIndex: number;
@@ -306,13 +323,13 @@ export function createMatch(characterId: string): Match {
   };
   const startingTokenEvents = match.players.flatMap((player, playerIndex) => {
     const career = careers.find((item) => item.id === player.careerId);
-    const amount = career?.startingUpgradeTokens ?? 0;
+    const amount = career?.acquisitionUpgradeTokens ?? 0;
     return amount > 0 ? [{
       type: 'UPGRADE_TOKEN_GAINED' as const,
       playerIndex,
       delta: amount,
-      reason: `${career?.name} starting benefit`,
-      description: `${player.displayName} gained ${amount} Upgrade Token from the ${career?.name} starting benefit.`,
+      reason: `${career?.name} career benefit`,
+      description: `${player.displayName} gained ${amount} Upgrade Token for acquiring the ${career?.name} career.`,
     }] : [];
   });
   return emit(match, [...startingTokenEvents, { type: 'TURN_START', playerIndex: 0 }]);
@@ -339,6 +356,9 @@ export type MatchAction =
   | { type: 'ACKNOWLEDGE_CAREER' }
   | { type: 'RESOLVE_CARD' }
   | { type: 'ACKNOWLEDGE_CARD' }
+  | { type: 'RESOLVE_ABILITY_STAT_DESTINATION'; stat: 'aiSkill' | 'fame' | 'influence' }
+  | { type: 'RESOLVE_ABILITY_ASSET_INTERACTION'; choice: 'STEAL' | 'SWAP' | 'DECLINE' }
+  | { type: 'RESOLVE_ABILITY_CAREER_SWAP'; accept: boolean }
   | { type: 'AUTO_DECIDE' }
   | { type: 'CHOOSE_ENDGAME'; choice: EndgameChoice }
   | { type: 'NEXT_TURN' };
@@ -433,20 +453,208 @@ function resume(match: Match): Match {
   return { ...match, phase: 'landed', stepsRemaining: 0, lastLanding: { playerIndex: match.turnIndex, space }, pending: null };
 }
 
-function careerOffers(currentId: string): [string, string] {
-  const other = pickUnique(careers.filter(career => career.id !== currentId), 2);
+function careerOffers(currentId: string, secondCareerId?: string | null): [string, string] {
+  const other = pickUnique(careers.filter(career => career.id !== currentId && career.id !== secondCareerId), 2);
   return [other[0].id, other[1].id];
 }
 
-function assignNewCareer(match: Match, careerId: string): Match {
+function assignNewCareer(match: Match, careerId: string): [Match, EventDraft[]] {
   const current = match.players[match.turnIndex];
   const career = careers.find(item => item.id === careerId);
-  if (!career || careerId === current.careerId) return match;
+  if (!career || careerId === current.careerId || careerId === current.secondCareer?.careerId) return [match, []];
   const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
   const players = match.players.map((player, index) => index === match.turnIndex
     ? { ...player, careerId, salaryTier, salaryAmount: career.salaryTiers[salaryTier - 1] }
     : player);
-  return { ...match, players };
+  const updated = { ...match, players };
+  const acquiredTokens = careerAcquisitionTokenCount([career.id])
+    - careerAcquisitionTokenCount([current.careerId]);
+  const drafts: EventDraft[] = acquiredTokens > 0 ? [{
+    type: 'UPGRADE_TOKEN_GAINED',
+    playerIndex: match.turnIndex,
+    delta: acquiredTokens,
+    reason: 'Newly acquired Doctor career',
+    description: `${current.displayName} gained ${acquiredTokens} Upgrade Token for newly acquiring Doctor.`,
+  }] : [];
+  return [updated, drafts];
+}
+
+function finishStep(match: Match, previousPosition: number): Match {
+  if (match.phase !== 'moving') return match;
+  const current = match.players[match.turnIndex];
+  const space = getSpace(current.position);
+  if (!space) throw new Error(`Invalid movement position: ${current.position}`);
+  if (space.type === 'CAREER_CHANGE') {
+    if (space.number === 35 && current.careerId === 'gig-worker' && current.secondCareer) {
+      if (match.stepsRemaining > 0 && current.position < 75) return match;
+      return land(match, space, previousPosition);
+    }
+    return {
+      ...match,
+      phase: 'decision',
+      pending: { kind: 'CAREER', stage: 'choice', space: space.number },
+      lastLanding: match.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space } : match.lastLanding,
+    };
+  }
+  if (match.stepsRemaining > 0 && current.position < 75) return match;
+  return land(match, space, previousPosition);
+}
+
+function resumeAbilityDecision(match: Match, events: EventDraft[] = []): Match {
+  const pending = match.pending;
+  if (pending?.kind !== 'ABILITY') return match;
+  const resumed = {
+    ...match,
+    phase: pending.resumePhase,
+    pending: pending.resumePending,
+  };
+  const withChoiceEvents = events.length ? emit(resumed, events) : resumed;
+  if (withChoiceEvents.pending?.kind === 'ABILITY') {
+    return {
+      ...withChoiceEvents,
+      pending: {
+        ...withChoiceEvents.pending,
+        resumeEvents: [...withChoiceEvents.pending.resumeEvents, ...pending.resumeEvents],
+        afterStep: pending.afterStep ?? withChoiceEvents.pending.afterStep,
+      },
+    };
+  }
+  const withQueuedEvents = pending.resumeEvents.length ? emit(withChoiceEvents, pending.resumeEvents) : withChoiceEvents;
+  if (withQueuedEvents.pending?.kind === 'ABILITY' && pending.afterStep) {
+    return {
+      ...withQueuedEvents,
+      pending: { ...withQueuedEvents.pending, afterStep: pending.afterStep },
+    };
+  }
+  return pending.afterStep ? finishStep(withQueuedEvents, pending.afterStep.previousPosition) : withQueuedEvents;
+}
+
+function attributeEventType(stat: 'aiSkill' | 'fame' | 'influence'): EventDraft['type'] {
+  if (stat === 'aiSkill') return 'AI_SKILL_CHANGED';
+  if (stat === 'fame') return 'FAME_CHANGED';
+  return 'INFLUENCE_CHANGED';
+}
+
+function resolveAbilityStatDestination(match: Match, stat: 'aiSkill' | 'fame' | 'influence'): Match {
+  const pending = match.pending;
+  if (match.phase !== 'decision' || pending?.kind !== 'ABILITY' || pending.decision !== 'STAT_DESTINATION') return match;
+  if (!['aiSkill', 'fame', 'influence'].includes(stat)) return match;
+  if (stat === pending.sourceStat) return resumeAbilityDecision(match);
+  const player = match.players[pending.playerIndex];
+  if (!player) return match;
+  const sourceBefore = player[pending.sourceStat];
+  const destinationBefore = player[stat];
+  const sourceAfter = sourceBefore - pending.amount;
+  const destinationAfter = destinationBefore + pending.amount;
+  const updated = {
+    ...match,
+    players: match.players.map((item, index) => index === pending.playerIndex
+      ? { ...item, [pending.sourceStat]: sourceAfter, [stat]: destinationAfter }
+      : item),
+  };
+  const eventContext = {
+    playerIndex: pending.playerIndex,
+    source: 'ABILITY' as const,
+    abilityId: pending.abilityId,
+    reason: pending.reason ?? 'Go Viral',
+  };
+  return resumeAbilityDecision(updated, [
+    {
+      ...eventContext,
+      type: attributeEventType(pending.sourceStat),
+      stat: pending.sourceStat,
+      previousValue: sourceBefore,
+      newValue: sourceAfter,
+      delta: -pending.amount,
+      description: `${player.displayName} redirected ${pending.amount} ${pending.sourceStat} to ${stat}.`,
+    },
+    {
+      ...eventContext,
+      type: attributeEventType(stat),
+      stat,
+      previousValue: destinationBefore,
+      newValue: destinationAfter,
+      delta: pending.amount,
+      description: `${player.displayName} gained ${pending.amount} ${stat} from Go Viral.`,
+    },
+  ]);
+}
+
+function resolveAbilityAssetInteraction(
+  match: Match,
+  choice: 'STEAL' | 'SWAP' | 'DECLINE',
+): Match {
+  const pending = match.pending;
+  if (match.phase !== 'decision' || pending?.kind !== 'ABILITY' || pending.decision !== 'ASSET_INTERACTION') return match;
+  if (choice === 'DECLINE') return resumeAbilityDecision(match);
+  if (pending.ownAssetId ? choice !== 'SWAP' : choice !== 'STEAL') return match;
+  const actorIndex = pending.playerIndex;
+  const targetIndex = match.players.findIndex((player) => player.playerId === pending.targetPlayerId);
+  const actor = match.players[actorIndex];
+  const target = match.players[targetIndex];
+  if (!actor || !target || target.equipment[pending.category] !== pending.targetAssetId) return match;
+  if (pending.ownAssetId && actor.equipment[pending.category] !== pending.ownAssetId) return match;
+  if (!pending.ownAssetId && actor.equipment[pending.category]) return match;
+
+  const targetLevel = target.assetLevels[pending.targetAssetId] ?? 1;
+  const ownLevel = pending.ownAssetId ? actor.assetLevels[pending.ownAssetId] ?? 1 : null;
+  const actorLevels = { ...actor.assetLevels };
+  const targetLevels = { ...target.assetLevels };
+  delete targetLevels[pending.targetAssetId];
+  if (pending.ownAssetId) {
+    delete actorLevels[pending.ownAssetId];
+    targetLevels[pending.ownAssetId] = ownLevel ?? 1;
+  }
+  actorLevels[pending.targetAssetId] = targetLevel;
+  const players = match.players.map((player, index) => index === actorIndex
+    ? {
+      ...player,
+      equipment: { ...player.equipment, [pending.category]: pending.targetAssetId },
+      assetLevels: actorLevels,
+    }
+    : index === targetIndex
+      ? {
+        ...player,
+        equipment: { ...player.equipment, [pending.category]: pending.ownAssetId },
+        assetLevels: targetLevels,
+      }
+      : player);
+  const updated = { ...match, players };
+  const incoming = [
+    { playerIndex: actorIndex, assetId: pending.targetAssetId, assetLevel: targetLevel, from: target },
+    ...(pending.ownAssetId
+      ? [{ playerIndex: targetIndex, assetId: pending.ownAssetId, assetLevel: ownLevel ?? 1, from: actor }]
+      : []),
+  ];
+  const transferEvents: EventDraft[] = incoming.flatMap(({ playerIndex, assetId, assetLevel, from }) => {
+    const asset = getAsset(assetId);
+    if (!asset) return [];
+    return [
+      {
+        type: 'ASSET_TRANSFERRED',
+        playerIndex,
+        targetPlayerId: from.playerId,
+        abilityId: pending.abilityId,
+        assetId,
+        assetName: asset.name,
+        assetLevel,
+        category: asset.category,
+        reason: 'Career asset interaction',
+        description: `${match.players[playerIndex].displayName} received ${asset.name} at Level ${assetLevel} from ${from.displayName}.`,
+      },
+      {
+        type: 'ASSET_ACQUIRED',
+        playerIndex,
+        abilityId: pending.abilityId,
+        assetId,
+        assetName: asset.name,
+        assetLevel,
+        category: asset.category,
+        reason: 'Career asset interaction',
+      },
+    ];
+  });
+  return resumeAbilityDecision(updated, transferEvents);
 }
 
 function applyAssetStats(match: Match, playerIndex: number, assetId: string, chargeCost = true): [Match, EventDraft[]] {
@@ -819,7 +1027,8 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
 
 function autoDecide(match: Match): Match {
   const pending = match.pending;
-  const player = match.players[match.turnIndex];
+  const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : match.turnIndex;
+  const player = match.players[decisionPlayerIndex];
   if (!player?.isCPU) return match;
   if (match.phase === 'endgame' && player.endgame?.status === 'PENDING') {
     const choice = chooseCpuEndgameChoice(
@@ -829,6 +1038,25 @@ function autoDecide(match: Match): Match {
     return resolveEndgameChoice(match, choice);
   }
   if (match.phase !== 'decision' || !pending) return match;
+  if (pending.kind === 'ABILITY') {
+    if (pending.decision === 'STAT_DESTINATION') {
+      return resolveAbilityStatDestination(match, pending.sourceStat);
+    }
+    if (pending.decision === 'ASSET_INTERACTION') {
+      return resolveAbilityAssetInteraction(match, pending.ownAssetId ? 'SWAP' : 'STEAL');
+    }
+    const target = match.players.find((candidate) => candidate.playerId === pending.targetPlayerId);
+    const accept = Boolean(target && effectiveSalaryAmount(target) > effectiveSalaryAmount(player));
+    if (!accept) return resumeAbilityDecision(match);
+    return resumeAbilityDecision(match, [{
+      type: 'CAREER_SWAP_RESOLVED',
+      playerIndex: pending.playerIndex,
+      targetPlayerId: pending.targetPlayerId,
+      abilityId: pending.abilityId,
+      reason: 'Golden Handcuffs',
+      description: `${player.displayName} swapped career packages with ${target?.displayName ?? 'another player'}.`,
+    }]);
+  }
   if (pending.kind === 'CARD') {
     return pending.stage === 'draw'
       ? resolveCardDecision(match)
@@ -856,10 +1084,24 @@ function autoDecide(match: Match): Match {
     return purchase({ ...match, pending: { ...pending, offeredAssetIds: offers, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } }, chosen.id);
   }
   if (Math.random() > 0.42) return resume(match);
-  const options = careerOffers(player.careerId ?? '');
+  const options = careerOffers(player.careerId ?? '', player.secondCareer?.careerId);
   const chosen = options.map(id => careers.find(career => career.id === id)!)
     .sort((a, b) => (b.salaryTiers[1] + Math.random() * 80000) - (a.salaryTiers[1] + Math.random() * 80000))[0];
-  return resume(assignNewCareer(match, chosen.id));
+  const [updated, acquisitionEvents] = assignNewCareer(match, chosen.id);
+  const withCareerEvent = emit({ ...updated, pending: null }, [
+    {
+      type: 'CAREER_CHANGE',
+      playerIndex: decisionPlayerIndex,
+      spaceNumber: pending.space,
+      stage: 'RESOLVED',
+      previousCareerId: player.careerId,
+      newCareerId: chosen.id,
+      previousSalary: player.salaryAmount,
+      newSalary: updated.players[decisionPlayerIndex].salaryAmount,
+    },
+    ...acquisitionEvents,
+  ]);
+  return resume(withCareerEvent);
 }
 
 function createStepEvents(match: Match, previousPosition: number, position: number, isFinalStep: boolean, salaryAmount: number, hitPayday: boolean): EventDraft[] {
@@ -952,25 +1194,25 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         wealthEvents: match.wealthEvents,
         stepsRemaining: match.stepsRemaining - 1,
       };
+      const effectiveSalary = effectiveSalaryAmount(current);
       const salaryGate = applySalaryGate(moved, match.turnIndex, previousPosition, position);
       moved = {
         ...salaryGate.match,
         wealthEvents: salaryGate.drafts.length
-          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: current.salaryAmount, kind: 'PAYDAY', space: position }]
+          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: effectiveSalary, kind: 'PAYDAY', space: position }]
           : match.wealthEvents,
       };
-      const drafts = createStepEvents(moved, previousPosition, position, moved.stepsRemaining <= 0, current.salaryAmount, salaryGate.drafts.length > 0);
+      const drafts = createStepEvents(moved, previousPosition, position, moved.stepsRemaining <= 0, effectiveSalary, salaryGate.drafts.length > 0);
       drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
       moved = emit(moved, [...salaryGate.drafts, ...drafts]);
-      if (moved.phase !== 'moving') return moved;
-      const currentAfterMove = moved.players[moved.turnIndex];
-      const resolvedSpace = getSpace(currentAfterMove.position);
-      if (!resolvedSpace) throw new Error(`Invalid movement position: ${currentAfterMove.position}`);
-      if (resolvedSpace.type === 'CAREER_CHANGE') {
-        return { ...moved, phase: 'decision', pending: { kind: 'CAREER', stage: 'choice', space: resolvedSpace.number }, lastLanding: moved.stepsRemaining <= 0 ? { playerIndex: match.turnIndex, space: resolvedSpace } : moved.lastLanding };
+      if (moved.pending?.kind === 'ABILITY') {
+        return {
+          ...moved,
+          pending: { ...moved.pending, afterStep: { previousPosition } },
+        };
       }
-      if (moved.stepsRemaining > 0 && currentAfterMove.position < 75) return moved;
-      return land(moved, resolvedSpace, previousPosition);
+      if (moved.phase !== 'moving') return moved;
+      return finishStep(moved, previousPosition);
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
@@ -989,13 +1231,21 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return match.phase === 'decision' && match.pending?.kind === 'CAREER' && match.pending.stage === 'choice' ? resume(match) : match;
     case 'SWITCH_CAREER': {
       if (match.phase !== 'decision' || match.pending?.kind !== 'CAREER' || match.pending.stage !== 'choice') return match;
-      return { ...match, pending: { ...match.pending, stage: 'offers', options: careerOffers(match.players[match.turnIndex].careerId ?? '') } };
+      const current = match.players[match.turnIndex];
+      return {
+        ...match,
+        pending: {
+          ...match.pending,
+          stage: 'offers',
+          options: careerOffers(current.careerId ?? '', current.secondCareer?.careerId),
+        },
+      };
     }
     case 'SELECT_CAREER': {
       const pending = match.pending;
       if (match.phase !== 'decision' || pending?.kind !== 'CAREER' || pending.stage !== 'offers' || !pending.options?.includes(action.careerId)) return match;
       const previous = match.players[match.turnIndex];
-      const updated = assignNewCareer(match, action.careerId);
+      const [updated, acquisitionEvents] = assignNewCareer(match, action.careerId);
       const next = updated.players[updated.turnIndex];
       return emit(
         { ...updated, pending: { ...pending, stage: 'salary', selectedCareerId: action.careerId, previousCareerId: previous.careerId ?? undefined } },
@@ -1008,7 +1258,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           newCareerId: next.careerId,
           previousSalary: previous.salaryAmount,
           newSalary: next.salaryAmount,
-        }],
+        }, ...acquisitionEvents],
       );
     }
     case 'ACKNOWLEDGE_CAREER':
@@ -1019,6 +1269,26 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'ACKNOWLEDGE_CARD':
       if (match.players[match.turnIndex]?.isCPU) return match;
       return acknowledgeCardDecision(match);
+    case 'RESOLVE_ABILITY_STAT_DESTINATION':
+      if (match.players[match.pending?.kind === 'ABILITY' ? match.pending.playerIndex : match.turnIndex]?.isCPU) return match;
+      return resolveAbilityStatDestination(match, action.stat);
+    case 'RESOLVE_ABILITY_ASSET_INTERACTION':
+      if (match.players[match.pending?.kind === 'ABILITY' ? match.pending.playerIndex : match.turnIndex]?.isCPU) return match;
+      return resolveAbilityAssetInteraction(match, action.choice);
+    case 'RESOLVE_ABILITY_CAREER_SWAP': {
+      const pending = match.pending;
+      const player = match.players[pending?.kind === 'ABILITY' ? pending.playerIndex : match.turnIndex];
+      if (player?.isCPU || match.phase !== 'decision' || pending?.kind !== 'ABILITY' || pending.decision !== 'CAREER_SWAP') return match;
+      if (!action.accept) return resumeAbilityDecision(match);
+      return resumeAbilityDecision(match, [{
+        type: 'CAREER_SWAP_RESOLVED',
+        playerIndex: pending.playerIndex,
+        targetPlayerId: pending.targetPlayerId,
+        abilityId: pending.abilityId,
+        reason: 'Golden Handcuffs',
+        description: `${player.displayName} swapped career packages with another player.`,
+      }]);
+    }
     case 'AUTO_DECIDE':
       return autoDecide(match);
     case 'CHOOSE_ENDGAME':
@@ -1027,20 +1297,22 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'NEXT_TURN': {
       if (match.phase !== 'landed') return match;
       const currentPlayer = match.players[match.turnIndex];
+      const previousTurnIndex = match.turnIndex;
       const normalTurnEnded = currentPlayer.status === 'ACTIVE';
       const finishedPlayerTurnEnded = currentPlayer.status === 'FINISHED'
         && currentPlayer.endgame?.snapshot.capturedTurnCounter === match.turnCounter;
       const turnEnded = normalTurnEnded || finishedPlayerTurnEnded;
-      const nextTurnCounter = match.turnCounter + (turnEnded ? 1 : 0);
-      const endedTurn = emit(
+      let nextTurnCounter = match.turnCounter + (turnEnded ? 1 : 0);
+      let endedTurn = emit(
         resetTurnScopedState(match),
         normalTurnEnded ? [{ type: 'TURN_END', playerIndex: match.turnIndex }] : [],
       );
       const playerCount = endedTurn.players.length;
       let nextIndex = -1;
       let nextIsEndgame = false;
+      let skippedTurns = 0;
       for (let offset = 1; offset <= playerCount; offset += 1) {
-        const candidateIndex = (endedTurn.turnIndex + offset) % playerCount;
+        const candidateIndex = (previousTurnIndex + offset) % playerCount;
         const candidate = endedTurn.players[candidateIndex];
         if (candidate.endgame?.status === 'PENDING') {
           nextIndex = candidateIndex;
@@ -1048,8 +1320,36 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           break;
         }
         if (candidate.status === 'ACTIVE') {
+          if (candidate.skipTurns > 0) {
+            endedTurn = emit({
+              ...resetTurnScopedState(endedTurn),
+              turnIndex: candidateIndex,
+              turnCounter: nextTurnCounter,
+              players: endedTurn.players.map((player, index) => index === candidateIndex
+                ? { ...player, skipTurns: player.skipTurns - 1 }
+                : player),
+            }, [{
+              type: 'TURN_SKIPPED',
+              playerIndex: candidateIndex,
+              delta: -1,
+              reason: 'Scheduled turn skip',
+              description: `${candidate.displayName} skipped their scheduled turn.`,
+            }]);
+            nextTurnCounter += 1;
+            skippedTurns += 1;
+            continue;
+          }
           nextIndex = candidateIndex;
           break;
+        }
+      }
+      if (nextIndex < 0 && skippedTurns > 0) {
+        for (let offset = 1; offset <= playerCount; offset += 1) {
+          const candidateIndex = (previousTurnIndex + offset) % playerCount;
+          if (endedTurn.players[candidateIndex].status === 'ACTIVE') {
+            nextIndex = candidateIndex;
+            break;
+          }
         }
       }
       if (nextIndex < 0) {
@@ -1062,7 +1362,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           pending: null,
         });
       }
-      const nextRound = nextIndex <= endedTurn.turnIndex ? endedTurn.round + 1 : endedTurn.round;
+      const nextRound = nextIndex <= previousTurnIndex ? endedTurn.round + 1 : endedTurn.round;
       const withUpdatedClock = { ...endedTurn, round: nextRound, turnCounter: nextTurnCounter };
       if (nextIsEndgame) {
         return {

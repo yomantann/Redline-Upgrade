@@ -5,7 +5,7 @@ import { AssetArtwork } from './asset-artwork';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import type { Match } from '@/game/match';
-import type { Player } from '@/game/player';
+import { effectiveSalaryAmount, type Player } from '@/game/player';
 import { CharacterPortrait } from './character-portrait';
 import { RedlineCard } from './redline-card';
 import './endgame-presentation.css';
@@ -186,9 +186,13 @@ export function EndgamePresentation({
 }: EndgamePresentationProps) {
   const character = getCharacter(player.characterId);
   const career = player.careerId ? getCareer(player.careerId) : undefined;
+  const secondCareer = player.secondCareer ? getCareer(player.secondCareer.careerId) : undefined;
   const category = career ? getCategory(career.categoryId) : undefined;
   const matchPlayer = match.players.find((entry) => entry.playerId === player.playerId);
-  const tierIndex = Math.max(0, Math.min(SALARY_TIERS.length - 1, player.salaryTier - 1));
+  const paydayTier = player.secondCareer && player.secondCareer.salaryAmount > player.salaryAmount
+    ? player.secondCareer.salaryTier
+    : player.salaryTier;
+  const tierIndex = Math.max(0, Math.min(SALARY_TIERS.length - 1, paydayTier - 1));
   const hasAchievements = achievements !== null && achievements !== undefined;
 
   return (
@@ -220,12 +224,12 @@ export function EndgamePresentation({
           </h2>
           <div className="endgame-career-line">
             <span className="mono">CAREER / CATEGORY</span>
-            <strong data-testid="endgame-career">{career?.name ?? 'CAREER PENDING'}</strong>
-            <span data-testid="endgame-career-category">{category?.name ?? 'CATEGORY PENDING'}</span>
+            <strong data-testid="endgame-career">{career?.name ?? 'CAREER PENDING'}{secondCareer ? ` + ${secondCareer.name}` : ''}</strong>
+            <span data-testid="endgame-career-category">{category?.name ?? 'CATEGORY PENDING'}{secondCareer ? ` / ${getCategory(secondCareer.categoryId)?.name ?? 'SECOND CAREER'}` : ''}</span>
           </div>
           <div className="endgame-salary-line">
-            <span className="mono">SALARY TIER / AMOUNT</span>
-            <strong data-testid="endgame-salary">{career ? `${SALARY_TIERS[tierIndex]} / ${formatMoney(player.salaryAmount)}` : 'SALARY PENDING'}</strong>
+            <span className="mono">PAYDAY TIER / AMOUNT</span>
+            <strong data-testid="endgame-salary">{career ? `${SALARY_TIERS[tierIndex]} / ${formatMoney(effectiveSalaryAmount(player))}` : 'SALARY PENDING'}</strong>
           </div>
         </div>
         <div className="endgame-title-panel">

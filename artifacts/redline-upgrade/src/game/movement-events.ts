@@ -1,6 +1,7 @@
 import { getSpace } from './board-data';
 import type { EventDraft } from './event-engine';
 import type { Match } from './match';
+import { effectiveSalaryAmount } from './player';
 
 interface EventContext {
   source?: 'GAME' | 'ABILITY' | 'EFFECT';
@@ -20,7 +21,8 @@ export function applySalaryGate(
   if (!space?.payday || position <= previousPosition) return { match, drafts: [] };
   const player = match.players[playerIndex];
   const previousWealth = player.wealth;
-  const newWealth = previousWealth + player.salaryAmount;
+  const salaryAmount = effectiveSalaryAmount(player);
+  const newWealth = previousWealth + salaryAmount;
   return {
     match: {
       ...match,
@@ -33,7 +35,7 @@ export function applySalaryGate(
         previousPosition,
         newPosition: position,
         spaceNumber: position,
-        salaryAmount: player.salaryAmount,
+        salaryAmount,
         previousWealth,
         newWealth,
         ...context,

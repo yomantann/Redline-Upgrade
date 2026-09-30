@@ -2,6 +2,7 @@ import { getAsset, type AssetLevel, type AssetSlot } from '@/game/assets';
 import { getCard } from '@/game/cards';
 import { formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
+import { effectiveSalaryAmount } from '@/game/player';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
 import type { MatchPlayer } from '@/game/match';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
@@ -96,7 +97,11 @@ function ChoiceButton({
 function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   const { snapshot } = endgame;
   const career = snapshot.careerId ? getCareer(snapshot.careerId) : undefined;
-  const salaryTier = SALARY_TIERS[snapshot.salaryTier - 1] ?? 'UNASSIGNED';
+  const secondCareer = snapshot.secondCareer ? getCareer(snapshot.secondCareer.careerId) : undefined;
+  const salaryTier = snapshot.secondCareer && snapshot.secondCareer.salaryAmount > snapshot.salaryAmount
+    ? SALARY_TIERS[snapshot.secondCareer.salaryTier - 1] ?? 'UNASSIGNED'
+    : SALARY_TIERS[snapshot.salaryTier - 1] ?? 'UNASSIGNED';
+  const paydaySalary = effectiveSalaryAmount(snapshot);
   const availableTokens = Math.max(0, snapshot.upgradeTokens - snapshot.heldUpgradeTokens);
 
   return (
@@ -120,8 +125,8 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
         </div>
         <div className="finish-line-ledger-cell">
           <span className="mono">CAREER / SALARY</span>
-          <strong>{career?.name ?? 'UNASSIGNED'}</strong>
-          <small>{salaryTier} / {formatMoney(snapshot.salaryAmount)}</small>
+          <strong>{career?.name ?? 'UNASSIGNED'}{secondCareer ? ` + ${secondCareer.name}` : ''}</strong>
+          <small>PAYDAY / {salaryTier} / {formatMoney(paydaySalary)}</small>
         </div>
       </div>
       <div className="finish-line-detail-grid">

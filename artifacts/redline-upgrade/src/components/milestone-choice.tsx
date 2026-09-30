@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { assetOptions, type AssetCategory, type AssetDefinition } from '@/game/assets';
+import { assetOptions, getAsset, type AssetCategory, type AssetDefinition } from '@/game/assets';
+import { getAbility } from '@/game/abilities';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
+import { effectiveSalaryAmount } from '@/game/player';
 import { CareerGlyph } from './career-reveal';
 import { CareerDeckBadges } from './career-deck-badges';
 import { SpaceIcon } from './space-icon';
 import { AssetArtwork } from './asset-artwork';
 import './milestone-choice.css';
 
-type Props = { pending: PendingDecision; player: MatchPlayer; onAction: (action: MatchAction) => void };
+type Props = { pending: PendingDecision; player: MatchPlayer; players: MatchPlayer[]; onAction: (action: MatchAction) => void };
 const statLabels: Record<string, string> = { aiSkill: 'AI SKILL', fame: 'FAME', lifestyle: 'LIFESTYLE', influence: 'INFLUENCE', wealth: 'WEALTH' };
 const titles: Record<string, string> = { car: 'Choose your car.', lifestyle: 'Choose your lifestyle.', pet: 'Choose your companion.', investment: 'Choose your investment.', property: 'Choose your property.' };
 
@@ -73,7 +75,7 @@ function CareerCard({ career, index, onSelect }: { career: Career; index: number
   );
 }
 
-export function MilestoneChoice({ pending, player, onAction }: Props) {
+export function MilestoneChoice({ pending, player, players, onAction }: Props) {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const currentCareer = player.careerId ? getCareer(player.careerId) : undefined;
   const category = pending.kind === 'ASSET' ? pending.category ?? (pending.slot === 'companion' ? null : pending.slot) : null;
@@ -87,6 +89,122 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
       <section className="milestone-choice" aria-live="polite" data-testid="status-cpu-decision">
         <Header space={pending.space} eyebrow="AUTOMATIC DECISION" title={`CPU ${player.slot} is`} highlighted="choosing." description="Their move is being resolved. The player sheet will update when the decision is complete." />
         <div className="milestone-cpu"><strong>Calculating<br />next move.</strong><i aria-hidden="true" /><p className="mono">DECISION IN PROGRESS // BOARD PAUSED</p></div>
+      </section>
+    );
+  }
+
+  if (pending.kind === 'ABILITY') {
+    const ability = getAbility(pending.abilityId);
+    const targetPlayer = pending.decision === 'ASSET_INTERACTION' || pending.decision === 'CAREER_SWAP'
+      ? players.find((candidate) => candidate.playerId === pending.targetPlayerId)
+      : undefined;
+    const targetAsset = pending.decision === 'ASSET_INTERACTION' ? getAsset(pending.targetAssetId) : undefined;
+    const ownAsset = pending.decision === 'ASSET_INTERACTION' && pending.ownAssetId
+      ? getAsset(pending.ownAssetId)
+      : undefined;
+    const targetCareer = targetPlayer?.careerId ? getCareer(targetPlayer.careerId) : undefined;
+
+    return (
+      <section className="milestone-choice ability-decision" aria-live="polite" data-testid="panel-ability-decision">
+        <Header
+          space={pending.space}
+          eyebrow="CAREER ABILITY / DECISION"
+          title={ability?.name ?? 'Career ability'}
+          highlighted="needs a choice."
+          description={ability?.description ?? 'Resolve this ability to continue the turn.'}
+        />
+        <div className="ability-decision-context">
+          <span className="mono">ABILITY OWNER / {player.displayName}</span>
+          {pending.decision === 'STAT_DESTINATION' && (
+            <p>
+              Redirect +{pending.amount} {statLabels[pending.sourceStat]} to a stat of your choice.
+            </p>
+          )}
+          {pending.decision === 'ASSET_INTERACTION' && (
+            <p>
+              {targetPlayer?.displayName ?? 'The other player'} has {targetAsset?.name ?? `a ${pending.category}`}.
+              {ownAsset
+                ? ` Swap it for your ${ownAsset.name}. Asset levels stay with each asset.`
+                : ' Your matching slot is empty, so you can steal it.'}
+            </p>
+          )}
+          {pending.decision === 'CAREER_SWAP' && (
+            <>
+              <p>
+                Swap careers and salary packages with {targetPlayer?.displayName ?? 'the other player'}.
+                {targetCareer ? ` They currently work as a ${targetCareer.name}.` : ''}
+                {' '}Characters, stats, wealth, assets, and finish status stay with their owners.
+              </p>
+              {targetPlayer && (
+                <p className="mono">
+                  EFFECTIVE PAYDAY / {formatMoney(effectiveSalaryAmount(player))} → {formatMoney(effectiveSalaryAmount(targetPlayer))}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {pending.decision === 'STAT_DESTINATION' && (
+          <div className="ability-decision-actions" role="group" aria-label="Choose attribute destination">
+            {(['aiSkill', 'fame', 'influence'] as const).map((stat) => (
+              <button
+                className="ability-decision-choice"
+                key={stat}
+                type="button"
+                onClick={() => onAction({ type: 'RESOLVE_ABILITY_STAT_DESTINATION', stat })}
+                data-testid={`button-ability-stat-${stat}`}
+              >
+                <span className="mono">+{pending.amount} TO</span>
+                <strong>{statLabels[stat]}</strong>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {pending.decision === 'ASSET_INTERACTION' && (
+          <div className="ability-decision-actions" role="group" aria-label="Choose asset interaction">
+            <button
+              className="action lime-action"
+              type="button"
+              onClick={() => onAction({
+                type: 'RESOLVE_ABILITY_ASSET_INTERACTION',
+                choice: pending.ownAssetId ? 'SWAP' : 'STEAL',
+              })}
+              data-testid="button-ability-asset-transfer"
+            >
+              {pending.ownAssetId ? 'SWAP ASSETS' : 'STEAL ASSET'} <span aria-hidden="true">↗</span>
+            </button>
+            <button
+              className="milestone-skip"
+              type="button"
+              onClick={() => onAction({ type: 'RESOLVE_ABILITY_ASSET_INTERACTION', choice: 'DECLINE' })}
+              data-testid="button-ability-asset-decline"
+            >
+              DECLINE
+            </button>
+          </div>
+        )}
+
+        {pending.decision === 'CAREER_SWAP' && (
+          <div className="ability-decision-actions" role="group" aria-label="Choose career swap">
+            <button
+              className="action lime-action"
+              type="button"
+              onClick={() => onAction({ type: 'RESOLVE_ABILITY_CAREER_SWAP', accept: true })}
+              data-testid="button-ability-career-swap"
+            >
+              SWAP CAREERS <span aria-hidden="true">↗</span>
+            </button>
+            <button
+              className="milestone-skip"
+              type="button"
+              onClick={() => onAction({ type: 'RESOLVE_ABILITY_CAREER_SWAP', accept: false })}
+              data-testid="button-ability-career-decline"
+            >
+              KEEP MY CAREER
+            </button>
+          </div>
+        )}
       </section>
     );
   }
@@ -125,10 +243,24 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
     );
   }
 
+  if (pending.kind === 'GIG_WORKER') {
+    return (
+      <section className="milestone-choice" aria-live="polite" data-testid="panel-gig-worker">
+        <Header
+          space={pending.space}
+          eyebrow="SIDE HUSTLE / CAREER ASSIGNED"
+          title="Second career."
+          highlighted="Payday grows."
+          description="Gig Worker stays your primary career. Your Payday now uses the higher salary."
+        />
+      </section>
+    );
+  }
+
   if (pending.stage === 'choice') return (
     <section className="milestone-choice" aria-label="Career opportunity">
       <Header space={35} eyebrow="CAREER OPPORTUNITY" title="Stay the course." highlighted="Or switch." description="Your career is on the line. Keep your current role, or draw two new offers and rewrite your next payday." />
-      <div className={`milestone-career-current ${currentCareer ? `career-${currentCareer.id}` : ''}`} data-category={currentCareer?.categoryId}><CareerGlyph icon={currentCareer?.icon ?? '◇'} /><div><span className="mono">CURRENT CAREER / {currentCareer ? getCategory(currentCareer.categoryId)?.name : 'UNASSIGNED'}</span><strong>{currentCareer?.name ?? 'Unassigned'}</strong><small>{currentCareer?.abilityName} · {SALARY_TIERS[player.salaryTier - 1]} · {formatMoney(player.salaryAmount)} salary</small></div></div>
+      <div className={`milestone-career-current ${currentCareer ? `career-${currentCareer.id}` : ''}`} data-category={currentCareer?.categoryId}><CareerGlyph icon={currentCareer?.icon ?? '◇'} /><div><span className="mono">CURRENT CAREER / {currentCareer ? getCategory(currentCareer.categoryId)?.name : 'UNASSIGNED'}</span><strong>{currentCareer?.name ?? 'Unassigned'}</strong><small>{currentCareer?.abilityName} · {SALARY_TIERS[player.salaryTier - 1]} · {formatMoney(effectiveSalaryAmount(player))} effective Payday salary</small>{player.secondCareer && <small>SECOND CAREER / {getCareer(player.secondCareer.careerId)?.name ?? 'Career'} · {formatMoney(player.secondCareer.salaryAmount)}</small>}</div></div>
       <div className="milestone-grid two">
         <button className="milestone-card milestone-option" type="button" onClick={() => onAction({ type: 'KEEP_CAREER' })} data-testid="button-keep-career"><div className="milestone-art" data-category="lifestyle"><span className="milestone-art-index">OPTION / 01</span><span className="milestone-art-symbol">=</span><span className="milestone-art-caption">STABILITY / LOCK IN</span></div><div className="milestone-card-body"><span className="mono">NO CHANGE TO SALARY OR WEALTH</span><h3>KEEP CAREER</h3><span className="milestone-card-desc">Stay with {currentCareer?.name ?? 'your current career'}. Your category, ability, salary and wealth remain intact.</span><span className="milestone-buy">LOCK IN CAREER <span aria-hidden="true">↗</span></span></div></button>
         <button className="milestone-card milestone-option" type="button" onClick={() => onAction({ type: 'SWITCH_CAREER' })} data-testid="button-switch-career"><div className="milestone-art" data-category="car"><span className="milestone-art-index">OPTION / 02</span><span className="milestone-art-symbol">↗</span><span className="milestone-art-caption">NEW PATH / TWO OFFERS</span></div><div className="milestone-card-body"><span className="mono">REPLACE YOUR CAREER</span><h3>SWITCH CAREER</h3><span className="milestone-card-desc">Reveal two new career offers. Your new salary tier will be drawn after you choose; existing wealth stays yours.</span><span className="milestone-buy">REVEAL OFFERS <span aria-hidden="true">↗</span></span></div></button>
@@ -150,7 +282,7 @@ export function MilestoneChoice({ pending, player, onAction }: Props) {
       <Header space={35} eyebrow="SALARY REVEAL" title="New career." highlighted="New salary." description="The draw is locked. Your existing wealth carries forward, and future salary gates now use this figure." />
       <div className="milestone-salary">
         <div className="milestone-salary-feature"><span className="mono">REDLINE / NEW CAREER</span><div><CareerGlyph icon={selected?.icon ?? '◇'} /><h3>{selected?.name ?? 'Career selected'}</h3><span className="mono">{selected ? getCategory(selected.categoryId)?.name : ''} / {selected?.abilityName}</span></div></div>
-        <div className={`milestone-salary-details salary-tier-${player.salaryTier}`}><span className="mono">SALARY TIER / {SALARY_TIERS[player.salaryTier - 1]}</span><strong data-testid="text-new-salary">{formatMoney(player.salaryAmount)}</strong><b>{SALARY_TIERS[player.salaryTier - 1]}</b><p>Existing wealth: {formatMoney(player.wealth)}. No new starting wealth is added.</p><button className="action lime-action" type="button" onClick={() => onAction({ type: 'ACKNOWLEDGE_CAREER' })} data-testid="button-acknowledge-career">CONTINUE RUN <span aria-hidden="true">↗</span></button></div>
+        <div className={`milestone-salary-details salary-tier-${player.salaryTier}`}><span className="mono">PRIMARY SALARY TIER / {SALARY_TIERS[player.salaryTier - 1]}</span><strong data-testid="text-new-salary">{formatMoney(player.salaryAmount)}</strong><b>{SALARY_TIERS[player.salaryTier - 1]}</b>{player.secondCareer && <small>SECOND CAREER / {getCareer(player.secondCareer.careerId)?.name ?? 'Career'} · {formatMoney(player.secondCareer.salaryAmount)}</small>}<p>Effective Payday salary: {formatMoney(effectiveSalaryAmount(player))}. Existing wealth: {formatMoney(player.wealth)}. No new starting wealth is added.</p><button className="action lime-action" type="button" onClick={() => onAction({ type: 'ACKNOWLEDGE_CAREER' })} data-testid="button-acknowledge-career">CONTINUE RUN <span aria-hidden="true">↗</span></button></div>
       </div>
     </section>
   );

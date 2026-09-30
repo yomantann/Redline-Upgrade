@@ -17,6 +17,7 @@ export interface FinishSnapshot {
   careerId: string | null;
   salaryTier: number;
   salaryAmount: number;
+  secondCareer: Player['secondCareer'];
   wealth: number;
   aiSkill: number;
   fame: number;
@@ -106,6 +107,7 @@ export function createFinishSnapshot(
     careerId: player.careerId,
     salaryTier: player.salaryTier,
     salaryAmount: player.salaryAmount,
+    secondCareer: player.secondCareer ? { ...player.secondCareer } : null,
     wealth: player.wealth,
     aiSkill: player.aiSkill,
     fame: player.fame,

@@ -28,7 +28,14 @@ export type EffectType =
   | 'PROTECT_FROM_EFFECT'
   | 'MODIFY_REWARD'
   | 'MODIFY_SALARY'
-  | 'TRIGGER_EVENT';
+  | 'TRIGGER_EVENT'
+  | 'ASSET_INTERACTION'
+  | 'SWAP_CAREER'
+  | 'TRANSFER_WEALTH_FROM_EVENT_ACTOR'
+  | 'SKIP_NEXT_TURN'
+  | 'UPGRADE_ACQUIRED_ASSET'
+  | 'CHOOSE_STAT_DESTINATION'
+  | 'ACQUIRE_SECOND_CAREER';
 
 export interface AbilityUsageLimit {
   oncePerTurn?: boolean;
@@ -50,7 +57,10 @@ export type AbilityCondition =
   | { kind: 'EVENT_SPACE_IS'; spaceNumber: number }
   | { kind: 'EVENT_STAT_IS'; stat: PlayerStat }
   | { kind: 'PLAYER_CAREER_TAG'; tag: CareerCategoryTag }
-  | { kind: 'TARGET_IS_OTHER_PLAYER' };
+  | { kind: 'TARGET_IS_OTHER_PLAYER' }
+  | { kind: 'EVENT_TARGET_HAS_ASSET'; category: 'car' | 'property' }
+  | { kind: 'EVENT_SPACE_HAS_OTHER_PLAYERS' }
+  | { kind: 'PLAYER_HAS_NO_SECOND_CAREER' };
 
 interface EffectBase {
   type: EffectType;
@@ -67,7 +77,14 @@ export type EffectDefinition =
   | (EffectBase & { type: 'PROTECT_FROM_EFFECT'; amount?: number; blockedEffectTypes?: EffectType[] })
   | (EffectBase & { type: 'MODIFY_REWARD'; amount: number; stat: PlayerStat })
   | (EffectBase & { type: 'MODIFY_SALARY'; amount: number })
-  | (EffectBase & { type: 'TRIGGER_EVENT'; eventType: GameEventType; payload?: Record<string, unknown> });
+  | (EffectBase & { type: 'TRIGGER_EVENT'; eventType: GameEventType; payload?: Record<string, unknown> })
+  | (EffectBase & { type: 'ASSET_INTERACTION'; category: 'car' | 'property' })
+  | (EffectBase & { type: 'SWAP_CAREER'; mode: 'OPTIONAL' | 'FORCED' })
+  | (EffectBase & { type: 'TRANSFER_WEALTH_FROM_EVENT_ACTOR'; amount: number })
+  | (EffectBase & { type: 'SKIP_NEXT_TURN' })
+  | (EffectBase & { type: 'UPGRADE_ACQUIRED_ASSET'; level: 2 })
+  | (EffectBase & { type: 'CHOOSE_STAT_DESTINATION' })
+  | (EffectBase & { type: 'ACQUIRE_SECOND_CAREER' });
 
 export interface AbilityDefinition {
   id: string;
@@ -108,21 +125,23 @@ const characterText = [
 ] as const;
 
 const careerText = [
-  ['ai-engineer', 'MODEL UPGRADE', 'When you gain AI Skill, gain $2,500 Wealth once per turn.'],
-  ['race-driver', 'NEED FOR SPEED', 'Buying a car earns you 1 Fame once per game.'],
-  ['content-creator', 'GO VIRAL', 'A positive Fame change earns you $1,500 Wealth once per round.'],
-  ['gig-worker', 'SIDE HUSTLE', 'Moving earns you $1,500 Wealth once per turn.'],
+  ['ai-engineer', 'MODEL UPGRADE', 'When you gain AI Skill, gain $7,500 Wealth once per turn.'],
+  ['race-driver', 'NEED FOR SPEED', 'When you land on another player, optionally steal their Car if your slot is empty, or swap Cars. Once per game.'],
+  ['content-creator', 'GO VIRAL', 'Whenever you gain AI Skill, Fame, or Influence, choose which of those attributes receives the gain.'],
+  ['gig-worker', 'SIDE HUSTLE', 'At Space 35, keep Gig Worker and gain a second career with its own salary; Payday uses the higher salary.'],
   ['lawyer', 'OBJECTION', 'When an opponent loses Wealth, gain 1 Influence once per round.'],
   ['pro-gamer', 'SWEAT THE ODDS', 'Rolling doubles earns you 1 AI Skill once per round.'],
-  ['doctor', 'HEALTH INSURANCE', 'Once per game, block one Lifestyle or AI Skill penalty.'],
-  ['personal-trainer', 'LOCKED IN', 'A roll of 8 earns you 1 Lifestyle once per round.'],
-  ['degen-trader', 'YOLO', 'A roll of 8 earns you $5,000 Wealth once per turn.'],
-  ['startup-founder', 'EQUITY', 'Buying an investment earns you $2,500 Wealth once per round.'],
+  ['doctor', 'CAREER BENEFIT', 'Receive 1 Upgrade Token whenever you newly acquire the Doctor career.'],
+  ['personal-trainer', 'SORE', 'When you land on another player, gain 1 Lifestyle and every other player on that space skips their next turn. Once per round.'],
+  ['degen-trader', 'YOLO', 'A roll of 8 earns you $50,000 Wealth once per turn.'],
+  ['startup-founder', 'EQUITY', 'Whenever you acquire an asset, upgrade that asset to Level 2 for free.'],
   ['influencer', 'ENGAGEMENT', 'Passing another player earns you 1 Fame once per round.'],
-  ['corporate-executive', 'GOLDEN HANDCUFFS', 'Crossing a Payday earns you another $2,500 once per turn.'],
-  ['cybersecurity-specialist', 'ZERO DAY', 'Resolving an AI card grants one-use protection from an AI penalty.'],
-  ['entertainer', 'MAIN CHARACTER', 'When another player lands on you, gain 1 Fame once per round.'],
-  ['real-estate-investor', 'PROPERTY LADDER', 'Buying property earns you $2,500 Wealth once per round.'],
+  ['corporate-executive', 'GOLDEN HANDCUFFS', 'When you land on another player, you may swap careers and salaries with them. Once per turn.'],
+  ['cybersecurity-specialist', 'ZERO DAY', 'When you land on another player, steal 1 AI Skill from them. Once per game.'],
+  ['entertainer', 'MAIN CHARACTER', 'When you land on another player, steal 1 Fame from them. Once per round.'],
+  ['real-estate-investor', 'PROPERTY LADDER', 'When you land on another player, optionally steal their Property if your slot is empty, or swap Properties. Once per round.'],
+  ['thief', 'TAXMAN', 'Whenever another player rolls a 2 or 8, take up to $25,000 of their Wealth.'],
+  ['alien', 'ABDUCTION', 'Whenever another player lands on you, they must swap careers and salaries with you. Once per round.'],
 ] as const;
 
 const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 'description'>>> = {
@@ -281,37 +300,45 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
   [careerAbilityId('degen-trader')]: {
     trigger: 'ROLL_OF_8',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'PLAYER_CAREER_TAG', tag: 'risk' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 5000, reason: 'YOLO' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 50000, reason: 'YOLO' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerTurn: true },
   },
   [careerAbilityId('ai-engineer')]: {
     trigger: 'AI_SKILL_CHANGED',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_DELTA_IS_POSITIVE' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 2500, reason: 'Model Upgrade' }],
+    effects: [{ type: 'ADD_WEALTH', amount: 7500, reason: 'Model Upgrade' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerTurn: true },
   },
   [careerAbilityId('race-driver')]: {
-    trigger: 'CAR_PURCHASED',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_FAME', amount: 1, reason: 'Need for Speed' }],
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [
+      { kind: 'EVENT_ACTOR_IS_SELF' },
+      { kind: 'TARGET_IS_OTHER_PLAYER' },
+      { kind: 'EVENT_TARGET_HAS_ASSET', category: 'car' },
+    ],
+    effects: [{ type: 'ASSET_INTERACTION', category: 'car', reason: 'Need for Speed' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerGame: true },
   },
   [careerAbilityId('content-creator')]: {
-    trigger: 'FAME_CHANGED',
+    trigger: 'ATTRIBUTE_GAINED',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_DELTA_IS_POSITIVE' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 1500, reason: 'Go Viral' }],
+    effects: [{ type: 'CHOOSE_STAT_DESTINATION', reason: 'Go Viral' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('gig-worker')]: {
-    trigger: 'PLAYER_MOVED',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 1500, reason: 'Side Hustle' }],
+    trigger: 'CAREER_CHANGE',
+    conditions: [
+      { kind: 'EVENT_ACTOR_IS_SELF' },
+      { kind: 'EVENT_STAGE_IS', stage: 'TRIGGERED' },
+      { kind: 'EVENT_SPACE_IS', spaceNumber: 35 },
+      { kind: 'PLAYER_HAS_NO_SECOND_CAREER' },
+    ],
+    effects: [{ type: 'ACQUIRE_SECOND_CAREER', reason: 'Side Hustle' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerTurn: true },
+    usageLimits: { oncePerGame: true },
   },
   [careerAbilityId('lawyer')]: {
     trigger: 'WEALTH_CHANGED',
@@ -328,30 +355,25 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('doctor')]: {
-    trigger: 'TURN_START',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{
-      type: 'PROTECT_FROM_EFFECT',
-      amount: 1,
-      blockedEffectTypes: ['REMOVE_LIFESTYLE', 'REMOVE_AI_SKILL'],
-      reason: 'Health Insurance',
-    }],
+    trigger: null,
+    conditions: [],
+    effects: [],
     mode: 'PASSIVE',
-    usageLimits: { oncePerGame: true },
   },
   [careerAbilityId('personal-trainer')]: {
-    trigger: 'ROLL_OF_8',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_LIFESTYLE', amount: 1, reason: 'Locked In' }],
+    trigger: 'LAND_ON_SPACE',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_SPACE_HAS_OTHER_PLAYERS' }],
+    effects: [
+      { type: 'ADD_LIFESTYLE', amount: 1, reason: 'SORE' },
+      { type: 'SKIP_NEXT_TURN', target: 'ALL_OTHER_PLAYERS', reason: 'SORE' },
+    ],
     mode: 'PASSIVE',
-    usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('startup-founder')]: {
-    trigger: 'ASSET_PURCHASED',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_CATEGORY_IS', category: 'investment' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 2500, reason: 'Equity' }],
+    trigger: 'ASSET_ACQUIRED',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
+    effects: [{ type: 'UPGRADE_ACQUIRED_ASSET', level: 2, reason: 'Equity' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('influencer')]: {
     trigger: 'PASS_PLAYER',
@@ -361,35 +383,53 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('corporate-executive')]: {
-    trigger: 'SALARY_GATE',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 2500, reason: 'Golden Handcuffs' }],
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'TARGET_IS_OTHER_PLAYER' }],
+    effects: [{ type: 'SWAP_CAREER', mode: 'OPTIONAL', reason: 'Golden Handcuffs' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerTurn: true },
   },
   [careerAbilityId('cybersecurity-specialist')]: {
-    trigger: 'CARD_RESOLVED',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_DECK_IS', deck: 'ai' }],
-    effects: [{
-      type: 'PROTECT_FROM_EFFECT',
-      amount: 1,
-      blockedEffectTypes: ['REMOVE_AI_SKILL'],
-      reason: 'Zero Day',
-    }],
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'TARGET_IS_OTHER_PLAYER' }],
+    effects: [
+      { type: 'ADD_AI_SKILL', amount: 1, reason: 'Zero Day' },
+      { type: 'REMOVE_AI_SKILL', amount: 1, target: 'LANDED_ON_PLAYER', reason: 'Zero Day' },
+    ],
     mode: 'PASSIVE',
     usageLimits: { oncePerGame: true },
   },
   [careerAbilityId('entertainer')]: {
     trigger: 'LAND_ON_PLAYER',
-    conditions: [{ kind: 'EVENT_OWNER_IS_EVENT_TARGET' }],
-    effects: [{ type: 'ADD_FAME', amount: 1, reason: 'Main Character' }],
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'TARGET_IS_OTHER_PLAYER' }],
+    effects: [
+      { type: 'ADD_FAME', amount: 1, reason: 'Main Character' },
+      { type: 'REMOVE_FAME', amount: 1, target: 'LANDED_ON_PLAYER', reason: 'Main Character' },
+    ],
     mode: 'PASSIVE',
     usageLimits: { oncePerRound: true },
   },
   [careerAbilityId('real-estate-investor')]: {
-    trigger: 'PROPERTY_PURCHASED',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_WEALTH', amount: 2500, reason: 'Property Ladder' }],
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [
+      { kind: 'EVENT_ACTOR_IS_SELF' },
+      { kind: 'TARGET_IS_OTHER_PLAYER' },
+      { kind: 'EVENT_TARGET_HAS_ASSET', category: 'property' },
+    ],
+    effects: [{ type: 'ASSET_INTERACTION', category: 'property', reason: 'Property Ladder' }],
+    mode: 'PASSIVE',
+    usageLimits: { oncePerRound: true },
+  },
+  [careerAbilityId('thief')]: {
+    trigger: 'ROLL_OF_2_OR_8',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_OTHER' }],
+    effects: [{ type: 'TRANSFER_WEALTH_FROM_EVENT_ACTOR', amount: 25000, reason: 'Taxman' }],
+    mode: 'PASSIVE',
+  },
+  [careerAbilityId('alien')]: {
+    trigger: 'LAND_ON_PLAYER',
+    conditions: [{ kind: 'EVENT_OWNER_IS_EVENT_TARGET' }],
+    effects: [{ type: 'SWAP_CAREER', mode: 'FORCED', reason: 'Abduction' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerRound: true },
   },

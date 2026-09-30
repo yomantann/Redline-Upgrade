@@ -5,6 +5,7 @@ import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { CARD_READ_MINIMUM_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
 import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
+import { effectiveSalaryAmount } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
 import { FINISH_ORDER_WEALTH_REWARDS, formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
@@ -109,6 +110,8 @@ export function GameScreen() {
   const remaining = match?.stepsRemaining;
   const isCPU = match?.players[match.turnIndex].isCPU;
   const pending = match?.pending;
+  const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : turnIndex;
+  const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
   const latestEvent: WealthEvent | undefined = match?.wealthEvents.filter(event => event.kind === 'PAYDAY').at(-1);
   const latestAbilityEvent = match?.eventLog.filter(event => event.source === 'ABILITY').at(-1);
@@ -279,7 +282,7 @@ export function GameScreen() {
     } else if (phase === 'moving') {
       delay = 360;
       callback = () => dispatchMatch({ type: 'STEP' });
-    } else if (phase === 'decision' && isCPU && pending) {
+  } else if (phase === 'decision' && decisionIsCPU && pending) {
       if (pending.kind === 'CARD') {
         delay = pending.stage === 'draw' ? CARD_READ_MINIMUM_MS : CPU_CARD_RESULT_MS;
         callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
@@ -298,7 +301,7 @@ export function GameScreen() {
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-  }, [match === null, phase, isCPU, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : undefined, rollDice, dispatchMatch]);
+}, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch]);
 
   if (!match) return (
     <main className="game-gate">
@@ -309,6 +312,7 @@ export function GameScreen() {
   );
 
   const active = match.players[match.turnIndex];
+const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playerIndex] : active;
   const currentCharacter = getCharacter(active.characterId);
   const currentCareer = active.careerId ? getCareer(active.careerId) : undefined;
   const landing = match.lastLanding;
@@ -394,13 +398,17 @@ export function GameScreen() {
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
        {zoneNotice && <div className="zone-transition-flash" role="status" aria-live="polite" key={zoneNotice.id}><span className="mono">{zoneNotice.playerName} / ROUTE UPDATE</span><strong>{zoneNotice.zone}</strong><span className="mono">NEW BOARD SECTION</span></div>}
 
-       {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={active} onAction={dispatchMatch} />}
+ {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} />}
 
       <section className="game-players" aria-label="Players, careers and finances">
         {match.players.map((contestant, index) => {
           const character = getCharacter(contestant.characterId);
           const career = contestant.careerId ? getCareer(contestant.careerId) : undefined;
-          const tier = contestant.salaryTier >= 1 && contestant.salaryTier <= 4 ? SALARY_TIERS[contestant.salaryTier - 1] : 'UNASSIGNED';
+          const secondCareer = contestant.secondCareer ? getCareer(contestant.secondCareer.careerId) : undefined;
+          const paydaySalary = effectiveSalaryAmount(contestant);
+          const paydayTier = contestant.secondCareer && contestant.secondCareer.salaryAmount > contestant.salaryAmount
+            ? SALARY_TIERS[contestant.secondCareer.salaryTier - 1] ?? 'UNASSIGNED'
+            : contestant.salaryTier >= 1 && contestant.salaryTier <= 4 ? SALARY_TIERS[contestant.salaryTier - 1] : 'UNASSIGNED';
           const finishPlaceIndex = match.finishOrder.indexOf(index);
           const finishPlace = finishPlaceIndex >= 0 ? finishPlaceIndex + 1 : null;
           const finishBonus = finishPlace ? FINISH_ORDER_WEALTH_REWARDS[finishPlaceIndex] ?? 0 : 0;
@@ -430,11 +438,11 @@ export function GameScreen() {
                     </div>
                    <div className="game-player-summary-identity">
                      {character && <CharacterPortrait character={character} className="game-player-summary-portrait" />}
-                     <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}</small></div>
+                     <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
                    </div>
                    <div className="game-player-summary-values">
                      <span><small className="mono">WEALTH</small><b>{formatMoney(contestant.wealth)}</b></span>
-                     <span><small className="mono">SALARY</small><b>{formatMoney(contestant.salaryAmount)}</b></span>
+                     <span><small className="mono">PAYDAY</small><b>{formatMoney(paydaySalary)}</b></span>
                      <span><small className="mono">UPGRADE TOKENS</small><b>{contestant.upgradeTokens}</b></span>
                    </div>
                     <span className="game-player-summary-toggle mono">DETAILS</span>
@@ -454,7 +462,8 @@ export function GameScreen() {
                   <div>
                     <span className="mono">CAREER</span>
                     <b data-testid={`text-player-career-${index}`}>{career?.name ?? 'Unassigned'}</b>
-                    {career?.startingBenefitDescription && <small className="mono" title="Career benefit granted only at match start">START BENEFIT / {career.startingBenefitDescription}</small>}
+                    {secondCareer && <small className="mono">SECOND CAREER / {secondCareer.name} · {formatMoney(contestant.secondCareer!.salaryAmount)} salary</small>}
+                    {career?.acquisitionBenefitDescription && <small className="mono" title="Granted whenever this career is newly acquired">CAREER BENEFIT / {career.acquisitionBenefitDescription}</small>}
                     {career && <CareerDeckBadges career={career} compact />}
                   </div>
               </div>
@@ -466,7 +475,7 @@ export function GameScreen() {
                 </div>
               )}
               <PlayerAbilityDetails career={career} character={character} />
-               <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">SALARY TIER / {tier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(contestant.salaryAmount)}<small> / PAYDAY</small></b></div>
+               <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">PAYDAY TIER / {paydayTier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(paydaySalary)}<small> / PAYDAY</small></b></div>
               <div className="game-player-wealth">
                  <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH</span>
                 <WealthCounter amount={contestant.wealth} />
@@ -550,7 +559,7 @@ export function GameScreen() {
                 <p>{landingEvent
                   ? `Salary Gate: +${formatMoney(landingEvent.amount)} Wealth for ${match.players[landing.playerIndex].displayName}.`
                   : landing.space.number === 75 ? 'Finish-line decision resolved. The final value is recorded.'
-                  : landing.space.type === 'CAREER_CHANGE' ? `Career opportunity resolved. Current salary: ${formatMoney(match.players[landing.playerIndex].salaryAmount)}.`
+                  : landing.space.type === 'CAREER_CHANGE' ? `Career opportunity resolved. Effective Payday salary: ${formatMoney(effectiveSalaryAmount(match.players[landing.playerIndex]))}.`
                   : landing.space.type === 'MILESTONE' ? (() => {
                     const slot = ({ 10: 'car', 30: 'lifestyle', 45: 'companion', 60: 'property' } as const)[landing.space.number as 10 | 30 | 45 | 60];
                     const item = slot ? match.players[landing.playerIndex].equipment[slot] : null;

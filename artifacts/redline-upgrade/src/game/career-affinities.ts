@@ -21,6 +21,8 @@ export const CAREER_DECK_AFFINITIES = {
   'cybersecurity-specialist': { primary: 'ai', secondary: 'wealth' },
   entertainer: { primary: 'fame', secondary: 'lifestyle' },
   'real-estate-investor': { primary: 'wealth', secondary: 'influence' },
+  thief: { primary: 'gamble', secondary: 'wealth' },
+  alien: { primary: 'ai', secondary: 'influence' },
 } satisfies Record<string, CareerDeckAffinity>;
 
 export function getCareerDeckAffinity(careerId: string): CareerDeckAffinity {

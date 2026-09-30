@@ -1,12 +1,13 @@
 import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
-import { getAbility, type EffectDefinition, type EffectType } from './abilities';
+import { careerAbilityId, getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
 import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
-import { getCareer } from './careers';
+import { careers, getCareer } from './careers';
+import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 import { getCharacter } from './characters';
 import { getCard, type CardEffect, type CardTarget } from './cards';
 import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './events/types';
-import type { Match, MatchPlayer, RewardModifierState } from './match';
+import type { AbilityPendingDecision, Match, MatchPlayer, RewardModifierState } from './match';
 import { applySalaryGate } from './movement-events';
 import type { PlayerStat } from './player';
 import { drawCardFromPiles } from './card-piles';
@@ -113,6 +114,7 @@ function eventLabel(event: AnyGameEvent): string {
     case 'DOUBLES_ROLLED': return 'DOUBLES';
     case 'ROLL_OF_2': return 'ROLL OF 2';
     case 'ROLL_OF_8': return 'ROLL OF 8';
+    case 'ROLL_OF_2_OR_8': return 'ROLL OF 2 OR 8';
     case 'PASS_SPACE': return `PASSED ${String(event.spaceNumber ?? 0).padStart(2, '0')}`;
     case 'LAND_ON_SPACE': return `LANDED ${String(event.spaceNumber ?? 0).padStart(2, '0')}`;
     case 'LAND_ON_PLAYER': return 'LANDED ON PLAYER';
@@ -127,6 +129,8 @@ function eventLabel(event: AnyGameEvent): string {
     case 'UPGRADE_TOKEN_SPENT': return 'UPGRADE TOKEN SPENT';
     case 'UPGRADE_TOKEN_HELD': return 'TOKEN HELD FOR ENDGAME';
     case 'ASSET_UPGRADED': return 'ASSET UPGRADED';
+    case 'ASSET_ACQUIRED': return 'ASSET ACQUIRED';
+    case 'ASSET_TRANSFERRED': return 'ASSET TRANSFERRED';
     case 'MILESTONE_RECOVERED': return 'MILESTONE RECOVERED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
     case 'CAR_PURCHASED': return 'CAR PURCHASED';
@@ -134,6 +138,11 @@ function eventLabel(event: AnyGameEvent): string {
     case 'PET_PURCHASED': return 'PET PURCHASED';
     case 'INVESTMENT_PURCHASED': return 'INVESTMENT PURCHASED';
     case 'PROPERTY_PURCHASED': return 'PROPERTY PURCHASED';
+    case 'CAREER_SWAP_RESOLVED': return 'CAREER SWAP DECIDED';
+    case 'CAREER_SWAPPED': return 'CAREERS SWAPPED';
+    case 'SECOND_CAREER_ACQUIRED': return 'SECOND CAREER ACQUIRED';
+    case 'TURN_SKIPPED': return 'TURN SKIPPED';
+    case 'ATTRIBUTE_GAINED': return 'ATTRIBUTE GAINED';
     case 'WEALTH_CHANGED': return 'WEALTH CHANGED';
     case 'AI_SKILL_CHANGED': return 'AI SKILL CHANGED';
     case 'FAME_CHANGED': return 'FAME CHANGED';
@@ -326,9 +335,12 @@ function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
 function getPlayerAbilityIds(player: MatchPlayer): string[] {
   const ids: string[] = [];
   const character = getCharacter(player.characterId);
-  const career = player.careerId ? getCareer(player.careerId) : undefined;
+  const careerIds = [player.careerId, player.secondCareer?.careerId].filter((id): id is string => Boolean(id));
   if (character) ids.push(...character.abilityIds);
-  if (career) ids.push(...career.abilityIds);
+  for (const careerId of careerIds) {
+    const career = getCareer(careerId);
+    if (career) ids.push(...career.abilityIds);
+  }
   return ids;
 }
 
@@ -389,11 +401,19 @@ function meetsCondition(match: Match, player: MatchPlayer, event: AnyGameEvent, 
     case 'EVENT_STAT_IS':
       return event.stat === condition.stat;
     case 'PLAYER_CAREER_TAG': {
-      const career = player.careerId ? getCareer(player.careerId) : undefined;
-      return Boolean(career?.tags.includes(condition.tag));
+      const careerIds = [player.careerId, player.secondCareer?.careerId].filter((id): id is string => Boolean(id));
+      return careerIds.some((careerId) => getCareer(careerId)?.tags.includes(condition.tag));
     }
     case 'TARGET_IS_OTHER_PLAYER':
       return Boolean(event.targetPlayerId && event.targetPlayerId !== player.playerId);
+    case 'EVENT_TARGET_HAS_ASSET': {
+      const target = match.players.find((candidate) => candidate.playerId === event.targetPlayerId);
+      return Boolean(target?.equipment[condition.category]);
+    }
+    case 'EVENT_SPACE_HAS_OTHER_PLAYERS':
+      return match.players.some((candidate, index) => index !== player.slot && candidate.position === event.spaceNumber);
+    case 'PLAYER_HAS_NO_SECOND_CAREER':
+      return !player.secondCareer;
   }
 }
 
@@ -476,6 +496,85 @@ function isBlocked(match: Match, playerId: string, effectType: EffectType, delta
 
 function updatePlayer(match: Match, index: number, update: (player: MatchPlayer) => MatchPlayer): Match {
   return { ...match, players: match.players.map((player, playerIndex) => playerIndex === index ? update(player) : player) };
+}
+
+function openAbilityDecision(match: Match, details: Record<string, unknown>): Match {
+  const previous = match.pending?.kind === 'ABILITY' ? match.pending : null;
+  const resumePending = previous
+    ? previous.resumePending
+    : match.pending;
+  return {
+    ...match,
+    phase: 'decision',
+    pending: {
+      ...details,
+      kind: 'ABILITY',
+      resumePhase: previous?.resumePhase ?? match.phase,
+      resumePending,
+      resumeEvents: previous?.resumeEvents ?? [],
+    } as AbilityPendingDecision,
+  };
+}
+
+function applyCareerPackageSwap(
+  match: Match,
+  queue: EventDraft[],
+  firstIndex: number,
+  secondIndex: number,
+  event: AnyGameEvent,
+  reason: string,
+): Match {
+  if (firstIndex === secondIndex) return match;
+  const first = match.players[firstIndex];
+  const second = match.players[secondIndex];
+  if (!first || !second) return match;
+  const beforeDoctorTokens = [
+    careerAcquisitionTokenCount([first.careerId, first.secondCareer?.careerId]),
+    careerAcquisitionTokenCount([second.careerId, second.secondCareer?.careerId]),
+  ];
+  const [nextFirst, nextSecond] = swapCareerPackages(first, second);
+  const updated = {
+    ...match,
+    players: match.players.map((player, index) =>
+      index === firstIndex ? nextFirst : index === secondIndex ? nextSecond : player,
+    ),
+  };
+  for (const [playerIndex, previous, next, beforeTokens] of [
+    [firstIndex, first, nextFirst, beforeDoctorTokens[0]],
+    [secondIndex, second, nextSecond, beforeDoctorTokens[1]],
+  ] as const) {
+    const tokenCount = careerAcquisitionTokenCount([next.careerId, next.secondCareer?.careerId]) - beforeTokens;
+    const previousName = getCareer(previous.careerId ?? '')?.name ?? 'No career';
+    const nextName = getCareer(next.careerId ?? '')?.name ?? 'No career';
+    queue.push({
+      type: 'CAREER_SWAPPED',
+      playerIndex,
+      source: 'ABILITY',
+      sourceEventId: event.id,
+      abilityId: event.abilityId,
+      depth: event.depth + 1,
+      previousCareerId: previous.careerId,
+      newCareerId: next.careerId,
+      previousSalary: previous.salaryAmount,
+      newSalary: next.salaryAmount,
+      reason,
+      description: `${previous.displayName} swapped ${previousName} for ${nextName}. Salary changed from $${previous.salaryAmount.toLocaleString()} to $${next.salaryAmount.toLocaleString()}.`,
+    });
+    if (tokenCount > 0) {
+      queue.push({
+        type: 'UPGRADE_TOKEN_GAINED',
+        playerIndex,
+        source: 'ABILITY',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        delta: tokenCount,
+        reason: 'Newly acquired Doctor career',
+        description: `${next.displayName} gained ${tokenCount} Upgrade Token for newly acquiring Doctor.`,
+      });
+    }
+  }
+  return updated;
 }
 
 function applyStatDelta(
@@ -811,6 +910,193 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         ),
         match,
       );
+    case 'ASSET_INTERACTION': {
+      const target = match.players.find((player) => player.playerId === event.targetPlayerId);
+      const targetAssetId = target?.equipment[effect.category];
+      if (!target || !targetAssetId) return match;
+      return openAbilityDecision(match, {
+        decision: 'ASSET_INTERACTION',
+        playerIndex: actor.slot,
+        abilityId: event.abilityId,
+        space: event.spaceNumber ?? actor.position,
+        targetPlayerId: target.playerId,
+        category: effect.category,
+        targetAssetId,
+        ownAssetId: actor.equipment[effect.category],
+      });
+    }
+    case 'SWAP_CAREER': {
+      const targetIndex = effect.mode === 'FORCED'
+        ? event.playerIndex
+        : match.players.findIndex((player) => player.playerId === event.targetPlayerId);
+      if (targetIndex < 0 || targetIndex === actor.slot) return match;
+      if (effect.mode === 'OPTIONAL') {
+        return openAbilityDecision(match, {
+          decision: 'CAREER_SWAP',
+          playerIndex: actor.slot,
+          abilityId: event.abilityId,
+          space: event.spaceNumber ?? actor.position,
+          targetPlayerId: match.players[targetIndex].playerId,
+        });
+      }
+      return applyCareerPackageSwap(match, queue, actor.slot, targetIndex, event, reason);
+    }
+    case 'TRANSFER_WEALTH_FROM_EVENT_ACTOR': {
+      const targetIndex = event.playerIndex;
+      const target = match.players[targetIndex];
+      if (!target || targetIndex === actor.slot || target.wealth <= 0) return match;
+      const amount = Math.min(effect.amount, target.wealth);
+      const actorBefore = match.players[actor.slot].wealth;
+      const targetBefore = target.wealth;
+      const updated = {
+        ...match,
+        players: match.players.map((player, index) => index === actor.slot
+          ? { ...player, wealth: actorBefore + amount }
+          : index === targetIndex
+            ? { ...player, wealth: targetBefore - amount }
+            : player),
+      };
+      queue.push(
+        {
+          type: 'WEALTH_CHANGED',
+          playerIndex: targetIndex,
+          source: 'ABILITY',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          stat: 'wealth',
+          previousValue: targetBefore,
+          newValue: targetBefore - amount,
+          delta: -amount,
+          reason,
+          description: `${target.displayName} paid $${amount.toLocaleString()} to ${match.players[actor.slot].displayName}.`,
+        },
+        {
+          type: 'WEALTH_CHANGED',
+          playerIndex: actor.slot,
+          source: 'ABILITY',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          stat: 'wealth',
+          previousValue: actorBefore,
+          newValue: actorBefore + amount,
+          delta: amount,
+          reason,
+          description: `${match.players[actor.slot].displayName} collected $${amount.toLocaleString()} from ${target.displayName}.`,
+        },
+      );
+      return updated;
+    }
+    case 'SKIP_NEXT_TURN': {
+      const targets = effect.target === 'ALL_OTHER_PLAYERS'
+        ? match.players.flatMap((player, index) =>
+          index !== actor.slot && player.position === event.spaceNumber ? [index] : [],
+        )
+        : event.targetPlayerId
+          ? match.players.flatMap((player, index) => player.playerId === event.targetPlayerId ? [index] : [])
+          : [];
+      return targets.reduce((state, index) => {
+        const target = state.players[index];
+        if (!target) return state;
+        const updated = updatePlayer(state, index, (player) => ({ ...player, skipTurns: player.skipTurns + 1 }));
+        queue.push({
+          type: 'TURN_SKIPPED',
+          playerIndex: index,
+          source: 'ABILITY',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          reason,
+          description: `${target.displayName} will skip their next turn.`,
+        });
+        return updated;
+      }, match);
+    }
+    case 'UPGRADE_ACQUIRED_ASSET': {
+      const assetId = event.assetId;
+      const asset = assetId ? getAsset(assetId) : undefined;
+      if (!asset) return match;
+      const player = match.players[event.playerIndex];
+      if (!player || player.equipment[asset.category === 'pet' || asset.category === 'investment' ? 'companion' : asset.category] !== asset.id) return match;
+      const currentLevel = player.assetLevels[asset.id] ?? 1;
+      if (currentLevel >= 2) return match;
+      let updated = updatePlayer(match, event.playerIndex, (current) => ({
+        ...current,
+        assetLevels: { ...current.assetLevels, [asset.id]: effect.level },
+      }));
+      queue.push({
+        type: 'ASSET_UPGRADED',
+        playerIndex: event.playerIndex,
+        source: 'ABILITY',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        assetId: asset.id,
+        assetName: asset.name,
+        assetLevel: effect.level,
+        reason,
+        description: `${player.displayName} received a free Level ${effect.level} ${asset.name} upgrade.`,
+      });
+      for (const stat of ['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+        const delta = asset.effects[stat] ?? 0;
+        if (delta) updated = applyStatDelta(updated, queue, event, player, stat, delta, effect.type, event.playerIndex, reason);
+      }
+      return updated;
+    }
+    case 'CHOOSE_STAT_DESTINATION': {
+      if (!event.stat || !['aiSkill', 'fame', 'influence'].includes(event.stat) || !event.delta || event.delta <= 0) return match;
+      return openAbilityDecision(match, {
+        decision: 'STAT_DESTINATION',
+        playerIndex: actor.slot,
+        abilityId: event.abilityId,
+        space: event.spaceNumber ?? actor.position,
+        sourceStat: event.stat,
+        amount: event.delta,
+        reason,
+      });
+    }
+    case 'ACQUIRE_SECOND_CAREER': {
+      const player = match.players[actor.slot];
+      if (!player || player.secondCareer) return match;
+      const available = careers.filter((career) => career.id !== player.careerId);
+      if (!available.length) return match;
+      const selected = available[Math.floor(Math.random() * available.length)];
+      const salaryTier = (Math.floor(Math.random() * 4) + 1) as 1 | 2 | 3 | 4;
+      const salaryAmount = selected.salaryTiers[salaryTier - 1];
+      const nextPlayer = {
+        ...player,
+        secondCareer: { careerId: selected.id, salaryTier, salaryAmount },
+      };
+      const updated = updatePlayer(match, actor.slot, () => nextPlayer);
+      queue.push({
+        type: 'SECOND_CAREER_ACQUIRED',
+        playerIndex: actor.slot,
+        source: 'ABILITY',
+        sourceEventId: event.id,
+        abilityId: event.abilityId,
+        depth: event.depth + 1,
+        newCareerId: selected.id,
+        newSalary: salaryAmount,
+        reason,
+        description: `${player.displayName} gained ${selected.name} as a second career with a $${salaryAmount.toLocaleString()} salary. Payday now uses the higher salary.`,
+      });
+      const tokens = careerAcquisitionTokenCount([selected.id]);
+      if (tokens > 0) {
+        queue.push({
+          type: 'UPGRADE_TOKEN_GAINED',
+          playerIndex: actor.slot,
+          source: 'ABILITY',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          delta: tokens,
+          reason: 'Newly acquired Doctor career',
+          description: `${player.displayName} gained ${tokens} Upgrade Token for newly acquiring Doctor.`,
+        });
+      }
+      return updated;
+    }
   }
 }
 
@@ -1091,12 +1377,33 @@ function applyCardEffects(
 }
 
 function nativeSecondaryEvents(match: Match, event: AnyGameEvent): EventDraft[] {
-  if (event.type !== 'DICE_ROLL') return [];
-  const drafts: EventDraft[] = [];
-  if (event.doubles) drafts.push({ type: 'DOUBLES_ROLLED', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
-  if (event.total === 2) drafts.push({ type: 'ROLL_OF_2', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
-  if (event.total === 8) drafts.push({ type: 'ROLL_OF_8', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
-  return drafts;
+  if (event.type === 'DICE_ROLL') {
+    const drafts: EventDraft[] = [];
+    if (event.doubles) drafts.push({ type: 'DOUBLES_ROLLED', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+    if (event.total === 2) drafts.push({ type: 'ROLL_OF_2', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+    if (event.total === 8) drafts.push({ type: 'ROLL_OF_8', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+    if (event.total === 2 || event.total === 8) drafts.push({ type: 'ROLL_OF_2_OR_8', playerIndex: event.playerIndex, source: 'GAME', sourceEventId: event.id, depth: event.depth + 1, die1: event.die1, die2: event.die2, total: event.total });
+    return drafts;
+  }
+  if (
+    (event.type === 'AI_SKILL_CHANGED' || event.type === 'FAME_CHANGED' || event.type === 'INFLUENCE_CHANGED')
+    && typeof event.delta === 'number'
+    && event.delta > 0
+    && (event.stat === 'aiSkill' || event.stat === 'fame' || event.stat === 'influence')
+  ) {
+    return [{
+      type: 'ATTRIBUTE_GAINED',
+      playerIndex: event.playerIndex,
+      source: event.source,
+      sourceEventId: event.id,
+      abilityId: event.abilityId,
+      depth: event.depth + 1,
+      stat: event.stat,
+      delta: event.delta,
+      reason: event.reason,
+    }];
+  }
+  return [];
 }
 
 function abilityOutcomeSummary(before: Match, after: Match, queuedEvents: number): string {
@@ -1158,12 +1465,14 @@ function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): M
     for (const abilityId of getPlayerAbilityIds(player)) {
       const ability = getAbility(abilityId);
       if (!ability || ability.trigger !== event.type || !abilityAvailable(next, player, abilityId)) continue;
+      if (abilityId === careerAbilityId('content-creator') && event.abilityId === abilityId) continue;
       if (!ability.conditions.every((condition) => meetsCondition(next, player, event, condition))) continue;
       const beforeAbility = next;
       const queuedBefore = queue.length;
       let abilityState = markAbilityUsed(next, player, abilityId);
       for (const effect of ability.effects) {
         abilityState = applyEffect(abilityState, queue, player, { ...event, abilityId, source: 'ABILITY' }, effect);
+        if (abilityState.pending?.kind === 'ABILITY') break;
       }
       const outcome = abilityOutcomeSummary(beforeAbility, abilityState, queue.length - queuedBefore);
       const triggerLabel = `${eventLabel(event)} (${event.type.replace(/_/g, ' ')})`;
@@ -1182,6 +1491,7 @@ function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): M
         `Triggered by ${triggerLabel}. ${ability.description}${outcome ? ` Result: ${outcome}.` : ' No immediate resource change.'}`,
         ability.effects[0]?.amount,
       );
+      if (next.pending?.kind === 'ABILITY') return next;
     }
   }
   return next;
@@ -1213,8 +1523,19 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
       if (!effect) throw new Error(`Board effect event references unknown effect ${event.effectId ?? '(missing)'}.`);
       state = applyBoardEffect(state, queue, event, effect);
     }
+    if (event.type === 'CAREER_SWAP_RESOLVED' && event.targetPlayerId) {
+      const targetIndex = state.players.findIndex((player) => player.playerId === event.targetPlayerId);
+      state = applyCareerPackageSwap(state, queue, event.playerIndex, targetIndex, event, event.reason ?? 'Career swap');
+    }
     queue.push(...nativeSecondaryEvents(state, event));
     state = runAbilities(state, queue, event);
+    if (state.pending?.kind === 'ABILITY') {
+      state = {
+        ...state,
+        pending: { ...state.pending, resumeEvents: [...state.pending.resumeEvents, ...queue] },
+      };
+      break;
+    }
     processed += 1;
   }
   return state;
@@ -1267,6 +1588,14 @@ export function createPurchaseEvents(
       cost: asset.cost,
       previousWealth,
       newWealth,
+    },
+    {
+      type: 'ASSET_ACQUIRED',
+      playerIndex,
+      assetId: asset.id,
+      assetName: asset.name,
+      category: asset.category,
+      cost: asset.cost,
     },
     {
       type: categoryType[asset.category],

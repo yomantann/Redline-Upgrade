@@ -16,6 +16,7 @@ const vite = await createServer({
 });
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
   const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
@@ -145,8 +146,8 @@ try {
     assert(match.players.some(player => !player.isCPU && player.wealth === player.salaryAmount), 'human starting Wealth equals assigned salary');
     assert(match.players.filter(player => player.isCPU).every(player => player.wealth === player.salaryAmount), 'CPU starting Wealth equals assigned salary');
     const doctor = match.players.find(player => player.careerId === 'doctor');
-    if (doctor) assert.equal(doctor.upgradeTokens, 1, 'Doctor grants one match-start Upgrade Token');
-    assert(match.players.filter(player => player.careerId !== 'doctor').every(player => player.upgradeTokens === 0), 'no other starting career grants a token');
+    if (doctor) assert.equal(doctor.upgradeTokens, 1, 'Doctor grants one acquisition Upgrade Token');
+    assert(match.players.filter(player => player.careerId !== 'doctor').every(player => player.upgradeTokens === 0), 'no other initially assigned career grants a token');
     assertCompleteCardPiles(match.cardPiles);
   }
   function start(position, slot = 0, wealth = 900000) {
@@ -197,6 +198,268 @@ try {
       Math.random = originalRandom;
     }
   }
+  function abilityFixture(careerIds = []) {
+    const base = withoutAbilities(createMatch(id));
+    return {
+      ...base,
+      phase: 'ready',
+      pending: null,
+      turnIndex: 0,
+      round: 1,
+      turnCounter: 10,
+      eventLog: [],
+      eventCursor: 0,
+      abilityUsage: {},
+      effectProtections: {},
+      players: base.players.map((player, index) => {
+        const careerId = careerIds[index] ?? null;
+        const career = careerId ? getCareer(careerId) : undefined;
+        return {
+          ...player,
+          characterId: '__test_no_ability__',
+          careerId,
+          salaryTier: career ? 1 : 0,
+          salaryAmount: career?.salaryTiers[0] ?? 0,
+          secondCareer: null,
+          wealth: 100_000,
+          aiSkill: 0,
+          fame: 0,
+          lifestyle: 0,
+          influence: 0,
+          position: 7,
+          equipment: { car: null, lifestyle: null, companion: null, property: null },
+          assetLevels: {},
+          upgradeTokens: 0,
+          heldUpgradeTokens: 0,
+          skipTurns: 0,
+        };
+      }),
+    };
+  }
+  const playerEvent = (type, playerIndex, extra = {}) => ({ type, playerIndex, ...extra });
+
+  const creatorFixture = abilityFixture(['content-creator']);
+  creatorFixture.players[0].aiSkill = 3;
+  const creatorGain = playerEvent('AI_SKILL_CHANGED', 0, { stat: 'aiSkill', previousValue: 2, newValue: 3, delta: 1 });
+  const creatorPending = resolveEventQueue(creatorFixture, [
+    creatorGain,
+  ]);
+  assert.equal(creatorPending.pending?.kind, 'ABILITY', 'Content Creator pauses for a stat destination');
+  assert.equal(creatorPending.pending?.decision, 'STAT_DESTINATION');
+  const creatorMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: creatorPending.pending,
+    player: creatorPending.players[0],
+    players: creatorPending.players,
+    onAction: () => undefined,
+  }));
+  assert(creatorMarkup.includes('button-ability-stat-aiSkill') && creatorMarkup.includes('button-ability-stat-influence'), 'the Content Creator decision offers all three destinations');
+  const creatorResolved = advanceMatch(creatorPending, { type: 'RESOLVE_ABILITY_STAT_DESTINATION', stat: 'fame' });
+  assert.equal(creatorResolved.players[0].aiSkill, 2, 'Content Creator removes the gain from its original stat');
+  assert.equal(creatorResolved.players[0].fame, 1, 'Content Creator adds the gain to the selected stat');
+  const cpuCreatorFixture = abilityFixture(['content-creator']);
+  cpuCreatorFixture.players[0].isCPU = true;
+  cpuCreatorFixture.players[0].aiSkill = 3;
+  const cpuCreatorPending = resolveEventQueue(cpuCreatorFixture, [
+    creatorGain,
+  ]);
+  const cpuCreatorMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: cpuCreatorPending.pending,
+    player: cpuCreatorPending.players[0],
+    players: cpuCreatorPending.players,
+    onAction: () => undefined,
+  }));
+  assert(cpuCreatorMarkup.includes('status-cpu-decision'), 'CPU-owned ability decisions show the automatic-decision state');
+  const cpuCreatorResolved = advanceMatch(cpuCreatorPending, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuCreatorResolved.pending, null, 'CPU stat choices resolve without human input');
+
+  const aiEngineerFixture = abilityFixture(['ai-engineer']);
+  const aiEngineerGain = playerEvent('AI_SKILL_CHANGED', 0, { stat: 'aiSkill', previousValue: 0, newValue: 1, delta: 1 });
+  let aiEngineerResult = resolveEventQueue(aiEngineerFixture, [aiEngineerGain]);
+  assert.equal(aiEngineerResult.players[0].wealth, 107_500, 'AI Engineer earns $7,500 when gaining AI Skill');
+  aiEngineerResult = resolveEventQueue(aiEngineerResult, [aiEngineerGain]);
+  assert.equal(aiEngineerResult.players[0].wealth, 107_500, 'AI Engineer earns the bonus only once per turn');
+  const degenFixture = abilityFixture(['degen-trader']);
+  let degenResult = resolveEventQueue(degenFixture, [playerEvent('ROLL_OF_8', 0, { total: 8 })]);
+  assert.equal(degenResult.players[0].wealth, 150_000, 'Degen Trader gains $50,000 on an 8');
+  degenResult = resolveEventQueue(degenResult, [playerEvent('ROLL_OF_8', 0, { total: 8 })]);
+  assert.equal(degenResult.players[0].wealth, 150_000, 'Degen Trader bonus is limited to once per turn');
+  const thiefFixture = abilityFixture(['thief']);
+  thiefFixture.players[1].wealth = 12_000;
+  const thiefResult = resolveEventQueue(thiefFixture, [playerEvent('ROLL_OF_2_OR_8', 1, { total: 2 })]);
+  assert.equal(thiefResult.players[0].wealth, 112_000, 'Thief takes available Wealth from another player');
+  assert.equal(thiefResult.players[1].wealth, 0, 'Thief transfer never reduces a player below zero Wealth');
+
+  const cars = assets.filter(asset => asset.category === 'car');
+  const properties = assets.filter(asset => asset.category === 'property');
+  assert(cars.length > 1 && properties.length > 0, 'asset interaction fixtures have Cars and Properties');
+  const raceDriverFixture = abilityFixture(['race-driver']);
+  raceDriverFixture.players[0].equipment.car = cars[0].id;
+  raceDriverFixture.players[0].assetLevels[cars[0].id] = 2;
+  raceDriverFixture.players[1].equipment.car = cars[1].id;
+  raceDriverFixture.players[1].assetLevels[cars[1].id] = 3;
+  const raceDriverPending = resolveEventQueue(raceDriverFixture, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: raceDriverFixture.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  assert.equal(raceDriverPending.pending?.decision, 'ASSET_INTERACTION', 'Race Driver pauses for a Car interaction');
+  const raceDriverMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: raceDriverPending.pending,
+    player: raceDriverPending.players[0],
+    players: raceDriverPending.players,
+    onAction: () => undefined,
+  }));
+  assert(raceDriverMarkup.includes('button-ability-asset-transfer') && raceDriverMarkup.includes('button-ability-asset-decline'), 'human asset decisions offer transfer and decline controls');
+  const raceDriverResolved = advanceMatch(raceDriverPending, { type: 'RESOLVE_ABILITY_ASSET_INTERACTION', choice: 'SWAP' });
+  assert.equal(raceDriverResolved.players[0].equipment.car, cars[1].id);
+  assert.equal(raceDriverResolved.players[1].equipment.car, cars[0].id);
+  assert.equal(raceDriverResolved.players[0].assetLevels[cars[1].id], 3, 'each Car keeps its level when swapped');
+  assert.equal(raceDriverResolved.players[1].assetLevels[cars[0].id], 2, 'the other Car keeps its level when swapped');
+  assert(eventTypes(raceDriverResolved).includes('ASSET_TRANSFERRED') && eventTypes(raceDriverResolved).includes('ASSET_ACQUIRED'), 'Car swaps are recorded as transfers and acquisitions');
+  const cpuRaceDriver = abilityFixture(['race-driver']);
+  cpuRaceDriver.players[0].isCPU = true;
+  cpuRaceDriver.players[1].equipment.car = cars[1].id;
+  cpuRaceDriver.players[1].assetLevels[cars[1].id] = 3;
+  const cpuRacePending = resolveEventQueue(cpuRaceDriver, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: cpuRaceDriver.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  const cpuRaceResolved = advanceMatch(cpuRacePending, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuRaceResolved.players[0].equipment.car, cars[1].id, 'CPU Race Driver choices resolve automatically');
+  assert.equal(cpuRaceResolved.players[1].equipment.car, null);
+
+  const propertyInvestor = abilityFixture(['real-estate-investor']);
+  propertyInvestor.players[1].equipment.property = properties[0].id;
+  propertyInvestor.players[1].assetLevels[properties[0].id] = 2;
+  const propertyPending = resolveEventQueue(propertyInvestor, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: propertyInvestor.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  assert.equal(propertyPending.pending?.decision, 'ASSET_INTERACTION', 'Real Estate Investor can interact with another player’s Property');
+  const propertyResolved = advanceMatch(propertyPending, { type: 'RESOLVE_ABILITY_ASSET_INTERACTION', choice: 'STEAL' });
+  assert.equal(propertyResolved.players[0].equipment.property, properties[0].id);
+  assert.equal(propertyResolved.players[0].assetLevels[properties[0].id], 2, 'stolen Property retains its upgrade level');
+  assert.equal(propertyResolved.players[1].equipment.property, null);
+
+  const founderFixture = abilityFixture(['startup-founder']);
+  founderFixture.players[0].equipment.car = cars[0].id;
+  founderFixture.players[0].assetLevels[cars[0].id] = 1;
+  const founderResult = resolveEventQueue(founderFixture, [
+    playerEvent('ASSET_ACQUIRED', 0, { assetId: cars[0].id, assetName: cars[0].name, assetLevel: 1, category: 'car' }),
+  ]);
+  assert.equal(founderResult.players[0].assetLevels[cars[0].id], 2, 'Startup Founder upgrades each acquired asset to Level 2');
+  assert(eventTypes(founderResult).includes('ASSET_UPGRADED'), 'the free Startup Founder upgrade is recorded');
+
+  const trainerFixture = abilityFixture(['personal-trainer']);
+  trainerFixture.players[1].position = 7;
+  trainerFixture.players[2].position = 7;
+  trainerFixture.players[3].position = 8;
+  const trainerResult = resolveEventQueue(trainerFixture, [playerEvent('LAND_ON_SPACE', 0, { spaceNumber: 7 })]);
+  assert.equal(trainerResult.players[0].lifestyle, 1, 'Personal Trainer gains Lifestyle when landing with other players');
+  assert.equal(trainerResult.players[1].skipTurns, 1);
+  assert.equal(trainerResult.players[2].skipTurns, 1);
+  assert.equal(trainerResult.players[3].skipTurns, 0, 'Personal Trainer only affects other players on that space');
+  const afterSkippedTurns = advanceMatch({ ...trainerResult, phase: 'landed', turnIndex: 0 }, { type: 'NEXT_TURN' });
+  assert.equal(afterSkippedTurns.turnIndex, 3, 'players who must skip are passed over before the next active turn');
+  assert.equal(afterSkippedTurns.players[1].skipTurns, 0);
+  assert.equal(afterSkippedTurns.players[2].skipTurns, 0);
+
+  const cyberFixture = abilityFixture(['cybersecurity-specialist']);
+  cyberFixture.players[0].aiSkill = 2;
+  const cyberResult = resolveEventQueue(cyberFixture, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: cyberFixture.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  assert.equal(cyberResult.players[0].aiSkill, 3, 'Cybersecurity Specialist steals one AI Skill');
+  assert.equal(cyberResult.players[1].aiSkill, -1, 'AI Skill can become negative after it is stolen');
+  const entertainerFixture = abilityFixture(['entertainer']);
+  const entertainerResult = resolveEventQueue(entertainerFixture, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: entertainerFixture.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  assert.equal(entertainerResult.players[0].fame, 1, 'Entertainer steals one Fame');
+  assert.equal(entertainerResult.players[1].fame, -1, 'Fame can become negative after it is stolen');
+
+  const executiveFixture = abilityFixture(['corporate-executive', 'gig-worker']);
+  const secondJob = getCareer('ai-engineer');
+  executiveFixture.players[1].secondCareer = {
+    careerId: secondJob.id,
+    salaryTier: 4,
+    salaryAmount: secondJob.salaryTiers[3],
+  };
+  const executivePending = resolveEventQueue(executiveFixture, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: executiveFixture.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  assert.equal(executivePending.pending?.decision, 'CAREER_SWAP', 'Corporate Executive can choose whether to swap career packages');
+  const executiveMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: executivePending.pending,
+    player: executivePending.players[0],
+    players: executivePending.players,
+    onAction: () => undefined,
+  }));
+  assert(executiveMarkup.includes('button-ability-career-swap') && executiveMarkup.includes('button-ability-career-decline'), 'career swap decisions explain both choices');
+  const executiveResolved = advanceMatch(executivePending, { type: 'RESOLVE_ABILITY_CAREER_SWAP', accept: true });
+  assert.equal(executiveResolved.players[0].careerId, 'gig-worker');
+  assert.equal(executiveResolved.players[0].secondCareer?.careerId, 'ai-engineer', 'career swaps carry the complete second-career package');
+  assert.equal(executiveResolved.players[1].careerId, 'corporate-executive');
+  assert.equal(executiveResolved.players[1].secondCareer, null);
+  assert.equal(executiveResolved.players[0].aiSkill, executiveFixture.players[0].aiSkill, 'career swaps do not transfer stats');
+  assert(eventTypes(executiveResolved).includes('CAREER_SWAPPED'), 'career swaps are recorded');
+  const cpuExecutiveFixture = abilityFixture(['corporate-executive', 'doctor']);
+  cpuExecutiveFixture.players[0].isCPU = true;
+  cpuExecutiveFixture.players[1].salaryTier = 4;
+  cpuExecutiveFixture.players[1].salaryAmount = getCareer('doctor').salaryTiers[3];
+  const cpuExecutivePending = resolveEventQueue(cpuExecutiveFixture, [
+    playerEvent('LAND_ON_PLAYER', 0, { targetPlayerId: cpuExecutiveFixture.players[1].playerId, targetPlayerIndex: 1, spaceNumber: 7 }),
+  ]);
+  const cpuExecutiveResolved = advanceMatch(cpuExecutivePending, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuExecutiveResolved.players[0].careerId, 'doctor', 'CPU career swaps accept a higher effective salary');
+  assert.equal(cpuExecutiveResolved.players[0].upgradeTokens, 1, 'newly acquiring Doctor through a swap grants its token');
+
+  const alienFixture = abilityFixture(['alien', 'lawyer']);
+  const alienResult = resolveEventQueue(alienFixture, [
+    playerEvent('LAND_ON_PLAYER', 1, { targetPlayerId: alienFixture.players[0].playerId, targetPlayerIndex: 0, spaceNumber: 7 }),
+  ]);
+  assert.equal(alienResult.pending, null, 'Alien career swaps are forced without asking either player');
+  assert.equal(alienResult.players[0].careerId, 'lawyer');
+  assert.equal(alienResult.players[1].careerId, 'alien');
+  assert(eventTypes(alienResult).includes('CAREER_SWAPPED'), 'Alien forced swaps are recorded');
+
+  const doctorCareerChange = abilityFixture(['lawyer']);
+  doctorCareerChange.phase = 'decision';
+  doctorCareerChange.pending = { kind: 'CAREER', space: 35, stage: 'offers', options: ['doctor', 'ai-engineer'] };
+  const newlyDoctor = advanceMatch(doctorCareerChange, { type: 'SELECT_CAREER', careerId: 'doctor' });
+  assert.equal(newlyDoctor.players[0].upgradeTokens, 1, 'switching into Doctor grants one acquisition token');
+
+  const gigWorkerStart = abilityFixture(['gig-worker']);
+  gigWorkerStart.players[0].position = 33;
+  const gigWorkerAt35 = withRandomValue(0.37, () => move(gigWorkerStart, 2));
+  assert.equal(gigWorkerAt35.players[0].careerId, 'gig-worker', 'Gig Worker remains the primary career at space 35');
+  assert(gigWorkerAt35.players[0].secondCareer, 'Gig Worker receives one second-career package at space 35');
+  assert.equal(gigWorkerAt35.pending, null, 'Gig Worker bypasses the normal career-change prompt');
+  assert(eventTypes(gigWorkerAt35).includes('SECOND_CAREER_ACQUIRED'), 'the second career is logged');
+  const eligibleSecondCareers = careers.filter(career => career.id !== 'gig-worker');
+  const doctorSelectionRoll = (eligibleSecondCareers.findIndex(career => career.id === 'doctor') + 0.5) / eligibleSecondCareers.length;
+  const gigDoctorFixture = abilityFixture(['gig-worker']);
+  gigDoctorFixture.players[0].position = 33;
+  const gigDoctorAt35 = withRandomValue(doctorSelectionRoll, () => move(gigDoctorFixture, 2));
+  assert.equal(gigDoctorAt35.players[0].secondCareer?.careerId, 'doctor', 'Gig Worker can receive Doctor as its second career');
+  assert.equal(gigDoctorAt35.players[0].upgradeTokens, 1, 'a Doctor second career grants its acquisition token');
+  const gigDegen = abilityFixture(['gig-worker']);
+  const degenCareer = getCareer('degen-trader');
+  gigDegen.players[0].secondCareer = { careerId: degenCareer.id, salaryTier: 1, salaryAmount: degenCareer.salaryTiers[0] };
+  const gigDegenResult = resolveEventQueue(gigDegen, [playerEvent('ROLL_OF_8', 0, { total: 8 })]);
+  assert.equal(gigDegenResult.players[0].wealth, 150_000, 'a Gig Worker second career participates in career ability checks');
+  const gigSalaryFixture = abilityFixture(['gig-worker']);
+  const gigPrimary = getCareer('gig-worker');
+  const gigSecond = getCareer('ai-engineer');
+  const gigSecondSalary = Math.max(...gigSecond.salaryTiers);
+  gigSalaryFixture.players[0] = {
+    ...gigSalaryFixture.players[0],
+    position: 4,
+    salaryTier: 1,
+    salaryAmount: gigPrimary.salaryTiers[0],
+    secondCareer: { careerId: gigSecond.id, salaryTier: 4, salaryAmount: gigSecondSalary },
+  };
+  const gigPayday = move(gigSalaryFixture, 2);
+  assert.equal(effectiveSalaryAmount(gigPayday.players[0]), gigSecondSalary);
+  assert.equal(gigPayday.players[0].wealth, 100_000 + gigSecondSalary, 'Payday pays Gig Worker the higher of the two salaries');
+  assert.equal(gigPayday.wealthEvents.at(-1).amount, gigSecondSalary, 'Payday wealth records use the effective salary');
+  assert(gigPayday.eventLog.some(event => event.eventType === 'SALARY_GATE' && event.salaryAmount === gigSecondSalary), 'salary-gate feedback records the effective salary');
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
   assert.deepEqual(
@@ -254,9 +517,9 @@ try {
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
   const validDecks = new Set(decks.map(deck => deck.id));
-  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
-  const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT']);
-  const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER']);
+  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'ROLL_OF_2_OR_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'ASSET_ACQUIRED', 'ASSET_TRANSFERRED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'CAREER_SWAP_RESOLVED', 'CAREER_SWAPPED', 'SECOND_CAREER_ACQUIRED', 'TURN_SKIPPED', 'ATTRIBUTE_GAINED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
+  const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT', 'ASSET_INTERACTION', 'SWAP_CAREER', 'TRANSFER_WEALTH_FROM_EVENT_ACTOR', 'SKIP_NEXT_TURN', 'UPGRADE_ACQUIRED_ASSET', 'CHOOSE_STAT_DESTINATION', 'ACQUIRE_SECOND_CAREER']);
+  const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER', 'EVENT_TARGET_HAS_ASSET', 'EVENT_SPACE_HAS_OTHER_PLAYERS', 'PLAYER_HAS_NO_SECOND_CAREER']);
   const abilityById = new Map(abilities.map(ability => [ability.id, ability]));
   assert.equal(characters.length, 21, 'the roster retains all 21 characters');
   assert.equal(new Set(characters.flatMap(character => character.abilityIds)).size, 21, 'character ability IDs are unique');
@@ -278,8 +541,8 @@ try {
       assert(ability.effects.length > 0, `${character.id} has a non-empty ability effect list`);
     }
   }
-  assert.equal(careers.length, 15, 'the career roster retains all 15 careers');
-  assert.equal(careers.filter(career => career.startingUpgradeTokens === 1).length, 1, 'exactly one existing career grants a starting token');
+  assert.equal(careers.length, 17, 'the career roster includes all existing careers plus Thief and Alien');
+  assert.equal(careers.filter(career => career.acquisitionUpgradeTokens === 1).length, 1, 'Doctor grants one token on each new acquisition');
   for (const career of careers) {
     assert(categories.some(category => category.id === career.categoryId), `${career.id} uses an existing career category`);
     assert(career.abilityIds.length >= 2 && career.abilityName && career.abilityDescription, `${career.id} has a career ability and affinity abilities`);
@@ -287,8 +550,14 @@ try {
     if (career.deckAffinity.secondary) assert(validDecks.has(career.deckAffinity.secondary), `${career.id} has a valid secondary deck affinity`);
     for (const abilityId of career.abilityIds) {
       const ability = getAbility(abilityId);
-      assert(ability && ability.trigger && validEventTypes.has(ability.trigger), `${career.id} has a valid ability trigger`);
-      assert(ability.effects.length > 0, `${career.id} has a non-empty ability effect list`);
+      assert(ability, `${career.id} references an existing ability`);
+      if (!ability.trigger) {
+        assert.equal(abilityId, 'career:doctor', 'Doctor acquisition tokens are handled by career-package changes');
+        assert.equal(ability.effects.length, 0, 'Doctor has no duplicate event-driven token effect');
+      } else {
+        assert(validEventTypes.has(ability.trigger), `${career.id} has a valid ability trigger`);
+        assert(ability.effects.length > 0, `${career.id} has a non-empty ability effect list`);
+      }
     }
   }
   function validateAbilityEffects(effects, abilityId) {
@@ -302,10 +571,17 @@ try {
       if (effect.type === 'MODIFY_REWARD') assert(validStats.has(effect.stat), `${abilityId} modifies a valid stat reward`);
       if (effect.type === 'AFFECT_OTHER_PLAYER') validateAbilityEffects(effect.effects, abilityId);
       if (effect.type === 'TRIGGER_EVENT') assert(validEventTypes.has(effect.eventType), `${abilityId} triggers a valid event`);
+      if (effect.type === 'TRANSFER_WEALTH_FROM_EVENT_ACTOR') assert(effect.amount > 0, `${abilityId} transfers a positive wealth amount`);
+      if (effect.type === 'UPGRADE_ACQUIRED_ASSET') assert.equal(effect.level, 2, `${abilityId} upgrades acquired assets to Level 2`);
     }
   }
   for (const ability of abilities) {
-    assert(ability.trigger && validEventTypes.has(ability.trigger), `${ability.id} has a valid trigger`);
+    if (!ability.trigger) {
+      assert.equal(ability.id, 'career:doctor', 'only Doctor uses acquisition-time token handling');
+      assert.equal(ability.effects.length, 0);
+      continue;
+    }
+    assert(validEventTypes.has(ability.trigger), `${ability.id} has a valid trigger`);
     validateAbilityEffects(ability.effects, ability.id);
     for (const condition of ability.conditions) assert(validConditions.has(condition.kind), `${ability.id} uses a valid condition`);
   }
@@ -351,19 +627,19 @@ try {
     assert.equal(resolved.players[0].upgradeTokens, tokenCountBefore + (card.id.endsWith('upgrade-token') ? 1 : 0), `${card.id} applies any token reward through the event engine`);
   }
 
-  let seeded = createMatch(id);
-  assert.equal(seeded.eventLog.at(-1).eventType, 'TURN_START');
-  const seededWealth = seeded.players[0].wealth;
-  const seededFame = seeded.players[0].fame;
-  const seededLifestyle = seeded.players[0].lifestyle;
-  seeded = { ...seeded, players: seeded.players.map((player, index) => index ? player : { ...player, careerId: 'degen-trader', characterId: 'danger_zone' }) };
-  seeded = advanceMatch(seeded, { type: 'ROLL', result: { die1: 4, die2: 4, total: 8, doubles: true } });
-  assert(eventTypes(seeded).includes('DICE_ROLL'));
-  assert(eventTypes(seeded).includes('DOUBLES_ROLLED'));
-  assert(eventTypes(seeded).includes('ROLL_OF_8'));
-  assert.equal(seeded.players[0].wealth, seededWealth + 10000);
-  assert.equal(seeded.players[0].fame, seededFame);
-  assert.equal(seeded.players[0].lifestyle, seededLifestyle);
+  const degenDangerFixture = abilityFixture(['degen-trader']);
+  degenDangerFixture.players[0].characterId = 'danger_zone';
+  degenDangerFixture.players[0].lifestyle = 2;
+  const degenDangerRoll = advanceMatch(degenDangerFixture, {
+    type: 'ROLL',
+    result: { die1: 4, die2: 4, total: 8, doubles: true },
+  });
+  assert(eventTypes(degenDangerRoll).includes('DICE_ROLL'));
+  assert(eventTypes(degenDangerRoll).includes('DOUBLES_ROLLED'));
+  assert(eventTypes(degenDangerRoll).includes('ROLL_OF_8'));
+  assert.equal(degenDangerRoll.players[0].wealth, 155_000, 'Degen Trader and Danger Zone both reward an 8');
+  assert.equal(degenDangerRoll.players[0].fame, 0);
+  assert.equal(degenDangerRoll.players[0].lifestyle, 1, 'Danger Zone pays one Lifestyle for its roll-of-8 reward');
 
   let rollTwo = startWithoutProtection(1);
   rollTwo = {
@@ -507,7 +783,7 @@ try {
     assetName: 'Sport Coupe',
     cost: 1000,
   }]);
-  assert.equal(carPurchase.players[0].fame, carFame + 1, 'Race Driver reacts to a car purchase');
+  assert.equal(carPurchase.players[0].fame, carFame, 'Race Driver triggers on meeting another player, not buying a Car');
 
   let propertyPurchase = startWithoutProtection(8);
   propertyPurchase = {
@@ -523,7 +799,7 @@ try {
     assetName: 'Property Loft',
     cost: 1000,
   }]);
-  assert.equal(propertyPurchase.players[0].wealth, propertyWealth + 2500, 'Real Estate Investor reacts to a property purchase');
+  assert.equal(propertyPurchase.players[0].wealth, propertyWealth, 'Real Estate Investor interacts with Properties when meeting another player');
 
   const humanAbilityFixture = startWithoutProtection(1);
   const cpuAbilityFixture = {
@@ -582,6 +858,7 @@ try {
   const milestoneMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
     pending: match.pending,
     player: match.players[0],
+    players: match.players,
     onAction: () => {},
   }));
   assert.equal((milestoneMarkup.match(/class="milestone-art-image/g) ?? []).length, 3, 'all three milestone options render shared asset artwork');
@@ -659,12 +936,13 @@ try {
   assert(Array.from({ length: 75 }, (_, index) => getSpace(index + 1)).every(space => ICON_PATHS[space.icon] && (!space.secondaryIcon || ICON_PATHS[space.secondaryIcon])));
   const offeredCar = getAsset(match.pending.offeredAssetIds[0]);
   const hiddenCar = assets.find(asset => asset.category === 'car' && !match.pending.offeredAssetIds.includes(asset.id));
-  assert.equal(advanceMatch(match, { type: 'BUY_ASSET', assetId: hiddenCar.id }), match);
-  const poor = { ...match, players: match.players.map((player, index) => index ? player : { ...player, wealth: 0 }) };
+  const assetPurchaseBase = withoutAbilities(match);
+  assert.equal(advanceMatch(assetPurchaseBase, { type: 'BUY_ASSET', assetId: hiddenCar.id }), assetPurchaseBase);
+  const poor = { ...assetPurchaseBase, players: assetPurchaseBase.players.map((player, index) => index ? player : { ...player, wealth: 0 }) };
   assert.equal(advanceMatch(poor, { type: 'BUY_ASSET', assetId: offeredCar.id }), poor);
-  const purchased = advanceMatch(match, { type: 'BUY_ASSET', assetId: offeredCar.id });
-  assert.equal(purchased.players[0].wealth, 900000 - offeredCar.cost + (offeredCar.effects.wealth ?? 0));
-  assert.equal(purchased.players[0].fame, match.players[0].fame + (offeredCar.effects.fame ?? 0));
+  const purchased = advanceMatch(assetPurchaseBase, { type: 'BUY_ASSET', assetId: offeredCar.id });
+  assert.equal(purchased.players[0].wealth, assetPurchaseBase.players[0].wealth - offeredCar.cost + (offeredCar.effects.wealth ?? 0));
+  assert.equal(purchased.players[0].fame, assetPurchaseBase.players[0].fame + (offeredCar.effects.fame ?? 0));
   assert.equal(purchased.players[0].equipment.car, offeredCar.id);
   assert.equal(purchased.players[0].assetLevels[offeredCar.id], 1, 'purchased assets begin at Level 1');
   assert(eventTypes(purchased).includes('ASSET_PURCHASED'));
@@ -876,7 +1154,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(match.cardPiles.gamble.inFlight.length, 0);
   assertCompleteCardPiles(match.cardPiles);
 
-  let consecutiveCpuMatch = start(1, 1);
+  let consecutiveCpuMatch = withoutAbilities(start(1, 1));
   const consecutiveCardStops = [
     { before: 1, deck: 'wealth' },
     { before: 5, deck: 'ai' },
@@ -1328,7 +1606,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     }).length;
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
-  console.log('PASS: 21 portraits, 21 character ability displays, 20 career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions');
+  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
 } finally {
   await vite.close();
 }

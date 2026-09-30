@@ -14,6 +14,9 @@ export interface Player {
   careerId: string | null;
   salaryTier: number;
   salaryAmount: number;
+  secondCareer: { careerId: string; salaryTier: number; salaryAmount: number } | null;
+  /** Number of scheduled turns this player must skip before rolling again. */
+  skipTurns: number;
   equipment: Record<AssetSlot, string | null>;
   assetLevels: Record<string, AssetLevel>;
   /** Total match-only Upgrade Tokens, including any reserved for the endgame. */
@@ -37,6 +40,10 @@ export interface PlayerMatchHistory {
 
 export type PlayerStat = 'wealth' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
 
+export function effectiveSalaryAmount(player: Pick<Player, 'salaryAmount' | 'secondCareer'>): number {
+  return Math.max(player.salaryAmount, player.secondCareer?.salaryAmount ?? 0);
+}
+
 export function createPlayer(characterId: string, displayName = 'Player 1'): Player {
   if (!getCharacter(characterId)) {
     throw new Error(`Unknown character: ${characterId}`);
@@ -55,6 +62,8 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
     careerId: null,
     salaryTier: 0,
     salaryAmount: 0,
+    secondCareer: null,
+    skipTurns: 0,
     equipment: { car: null, lifestyle: null, companion: null, property: null },
     assetLevels: {},
     upgradeTokens: 0,
