@@ -101,8 +101,6 @@
 .game-player-wealth > .mono { display:block; color:#a3b4a1; font-size:9px; }
 .wealth-number { display:block; color:#d4e981; font:800 clamp(36px,3.8vw,59px)/.95 'Barlow Condensed',sans-serif; letter-spacing:-.035em; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .game-player.human .wealth-number { font-size:clamp(44px,4.5vw,72px); }
-.wealth-change { position:absolute; right:17px; top:30px; padding:6px 8px; color:#162119; background:#d4e981; font:700 14px 'Space Mono',monospace; white-space:nowrap; pointer-events:none; }
-.wealth-change.negative { background:#f96346; }
 .game-player-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border-top:1px solid #39493c; margin-top:auto; }
 .game-player-stats > div { padding:9px 12px 10px 17px; min-width:0; border-right:1px solid #39493c; border-bottom:1px solid #39493c; display:flex; justify-content:space-between; gap:5px; align-items:baseline; }
 .game-player-stats > div:nth-child(even) { border-right:0; }
@@ -141,10 +139,10 @@
 .readout-stats .wealth-number.compact { font-size:clamp(22px,2.2vw,32px); line-height:1.15; margin-top:4px; }
 @media (prefers-reduced-motion:no-preference) {
   .game-player.active { animation:player-active .4s ease-out both; }
-  .wealth-change { animation:wealth-float 2.8s ease-out both; }
+  .game-player-summary-impact { animation:player-impact-linger 9s ease-out both; }
   .payday-flash { animation:payday-in .35s cubic-bezier(.2,.9,.2,1) both; }
   @keyframes player-active { from { opacity:.65; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes wealth-float { 0% { opacity:0; transform:translateY(15px); } 18%,65% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-25px); } }
+  @keyframes player-impact-linger { 0%,90% { opacity:1; } 100% { opacity:0; } }
   @keyframes payday-in { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
 }
 @media (max-width:1150px) {
@@ -165,7 +163,7 @@
   .payday-flash { top:76px; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .game-player.active,.wealth-change,.payday-flash { animation:none !important; }
+  .game-player.active,.game-player-summary-impact,.payday-flash { animation:none !important; }
 }
 .game-player-identity { display:grid; grid-template-columns:62px minmax(0,1fr); min-height:76px; border-bottom:1px solid #405045; }
 .game-player-portrait { height:76px; border-right:1px solid #405045; }
@@ -198,6 +196,11 @@
 .game-player-details[open] .game-player-summary::after { content:'−'; }
 .game-player-summary-top { grid-column:1/-1; display:flex; justify-content:space-between; gap:8px; padding-right:27px; }
 .game-player-summary-top .game-player-position { color:#b8ce8c; }
+.game-player-summary-impact { grid-column:1/-1; min-width:0; display:flex; align-items:flex-start; flex-wrap:wrap; gap:5px 9px; padding:6px 8px; border-left:3px solid #d4e981; background:linear-gradient(90deg,rgba(212,233,129,.15),rgba(212,233,129,.035)); }
+.game-player-summary-impact-label { flex:none; padding-top:2px; color:#b7c78f; font-size:7px; }
+.game-player-summary-impact-list { min-width:0; display:flex; flex:1 1 110px; flex-wrap:wrap; gap:4px 8px; }
+.game-player-summary-impact-list b { padding:2px 4px; color:#e7f2c5; background:rgba(212,233,129,.11); font:700 8px/1.35 'Space Mono',monospace; white-space:nowrap; }
+.game-player-summary-impact-list b.negative { color:#ffb3a4; background:rgba(249,99,70,.15); }
 .game-player-summary-identity { display:flex; align-items:center; gap:10px; min-width:0; }
 .game-player-summary-portrait { width:48px; height:64px; flex:none; border:1px solid #405045; }
 .game-player-summary-identity > div { min-width:0; }

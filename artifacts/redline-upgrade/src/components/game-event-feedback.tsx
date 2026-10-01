@@ -25,6 +25,10 @@ function transitionLabel(event: EventLogEntry): string {
   if (event.eventType === 'UPGRADE_TOKEN_GAINED' || event.eventType === 'UPGRADE_TOKEN_SPENT') return 'UPGRADE TOKENS';
   if (event.eventType === 'ASSET_UPGRADED') return `${event.assetName ?? 'ASSET'} LEVEL`;
   if (event.stat) return event.stat.replaceAll(/([A-Z])/g, ' $1').toUpperCase();
+  if (event.eventType === 'AI_SKILL_CHANGED') return 'AI SKILL';
+  if (event.eventType === 'FAME_CHANGED') return 'FAME';
+  if (event.eventType === 'LIFESTYLE_CHANGED') return 'LIFESTYLE';
+  if (event.eventType === 'INFLUENCE_CHANGED') return 'INFLUENCE';
   return event.eventType.replaceAll('_', ' ');
 }
 
@@ -37,6 +41,44 @@ export function formatEventTransition(event: EventLogEntry): string | null {
     ? `${delta >= 0 ? '+' : '−'}${formatMoney(Math.abs(delta))}`
     : `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toLocaleString('en-US')}`;
   return `${signedDelta} ${label}`;
+}
+
+export const PLAYER_CHANGE_FEEDBACK_MS = 9000;
+
+export type PlayerImpactChange = {
+  id: string;
+  text: string;
+  negative: boolean;
+};
+
+export type PlayerImpactNotice = {
+  id: string;
+  changes: PlayerImpactChange[];
+};
+
+export function formatPlayerImpactChange(event: EventLogEntry): PlayerImpactChange | null {
+  const text = formatEventTransition(event);
+  if (!text) return null;
+  return { id: event.id, text, negative: text.startsWith('−') };
+}
+
+export function PlayerImpactFeedback({ notice, playerIndex }: { notice: PlayerImpactNotice; playerIndex: number }) {
+  return (
+    <div
+      className="game-player-summary-impact"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-testid={`player-impact-${playerIndex}`}
+    >
+      <span className="game-player-summary-impact-label mono">RECENT IMPACT</span>
+      <span className="game-player-summary-impact-list">
+        {notice.changes.map(change => (
+          <b className={change.negative ? 'negative' : ''} key={change.id}>{change.text}</b>
+        ))}
+      </span>
+    </div>
+  );
 }
 
 export function formatSpaceFeedbackOutcome(event: EventLogEntry): string {

@@ -17,7 +17,7 @@ import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
 import { PlayerAbilityDetails } from './player-ability-details';
-import { AbilityActivationBanner, formatEventTransition, formatSpaceFeedbackOutcome, SpaceRewardBanner, type AbilityFeedback } from './game-event-feedback';
+import { AbilityActivationBanner, formatEventTransition, formatPlayerImpactChange, formatSpaceFeedbackOutcome, PLAYER_CHANGE_FEEDBACK_MS, PlayerImpactFeedback, SpaceRewardBanner, type AbilityFeedback, type PlayerImpactNotice } from './game-event-feedback';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
@@ -114,6 +114,7 @@ export function GameScreen() {
   const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
   const latestEvent: WealthEvent | undefined = match?.wealthEvents.filter(event => event.kind === 'PAYDAY').at(-1);
+  const latestLogEventId = match?.eventLog.at(-1)?.id;
   const latestAbilityEvent = match?.eventLog.filter(event => event.source === 'ABILITY').at(-1);
   const landedPlayer = match && match.lastLanding ? match.players[match.lastLanding.playerIndex] : undefined;
   const isCardLanding = match?.pending?.kind === 'CARD'
@@ -137,6 +138,9 @@ export function GameScreen() {
     spaceLabel: string;
     outcome: string;
   } | null>(null);
+  const [playerImpactNotices, setPlayerImpactNotices] = useState<Record<string, PlayerImpactNotice>>({});
+  const lastSeenImpactEventId = useRef(latestLogEventId);
+  const playerImpactTimers = useRef(new Map<string, number>());
   const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
   const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; player: string; currentWealth?: number } | null>(null);
   const [zoneNotice, setZoneNotice] = useState<{ id: string; playerName: string; zone: string } | null>(null);
@@ -148,6 +152,59 @@ export function GameScreen() {
   const gambleCardKey = currentPlayerId && currentGambleCardId ? `${currentPlayerId}:${currentGambleCardId}` : null;
   const lastGambleCardKey = useRef<string | null>(null);
   const [gambleCardStage, setGambleCardStage] = useState<'draw' | 'resolved'>('draw');
+
+  useEffect(() => {
+    if (!match) return;
+    const previousId = lastSeenImpactEventId.current;
+    const newestId = match.eventLog.at(-1)?.id;
+    lastSeenImpactEventId.current = newestId;
+    if (!previousId || !newestId || previousId === newestId) return;
+
+    const previousIndex = match.eventLog.findIndex(event => event.id === previousId);
+    if (previousIndex < 0) return;
+
+    const changesByPlayer = new Map<string, NonNullable<ReturnType<typeof formatPlayerImpactChange>>[]>();
+    for (const event of match.eventLog.slice(previousIndex + 1)) {
+      const change = formatPlayerImpactChange(event);
+      if (!change || !match.players.some(player => player.playerId === event.playerId)) continue;
+      const changes = changesByPlayer.get(event.playerId) ?? [];
+      changes.push(change);
+      changesByPlayer.set(event.playerId, changes);
+    }
+    if (changesByPlayer.size === 0) return;
+
+    setPlayerImpactNotices(current => {
+      const next = { ...current };
+      for (const [playerId, changes] of changesByPlayer) {
+        next[playerId] = {
+          id: changes.at(-1)!.id,
+          changes: [...(current[playerId]?.changes ?? []), ...changes].slice(-8),
+        };
+      }
+      return next;
+    });
+
+    for (const [playerId, changes] of changesByPlayer) {
+      const previousTimer = playerImpactTimers.current.get(playerId);
+      if (previousTimer !== undefined) window.clearTimeout(previousTimer);
+      const noticeId = changes.at(-1)!.id;
+      const timer = window.setTimeout(() => {
+        setPlayerImpactNotices(current => {
+          if (current[playerId]?.id !== noticeId) return current;
+          const next = { ...current };
+          delete next[playerId];
+          return next;
+        });
+        playerImpactTimers.current.delete(playerId);
+      }, PLAYER_CHANGE_FEEDBACK_MS);
+      playerImpactTimers.current.set(playerId, timer);
+    }
+  }, [match]);
+
+  useEffect(() => () => {
+    playerImpactTimers.current.forEach(timer => window.clearTimeout(timer));
+    playerImpactTimers.current.clear();
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 700px)');
@@ -412,7 +469,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           const finishPlaceIndex = match.finishOrder.indexOf(index);
           const finishPlace = finishPlaceIndex >= 0 ? finishPlaceIndex + 1 : null;
           const finishBonus = finishPlace ? FINISH_ORDER_WEALTH_REWARDS[finishPlaceIndex] ?? 0 : 0;
-          const change = visibleEvent?.playerIndex === index ? visibleEvent : null;
+          const impactNotice = playerImpactNotices[contestant.playerId];
           const cardLayout: PlayerCardLayout = compactPlayerLayout ? 'compact' : 'wide';
           const savedDisclosure = playerCardDisclosure[contestant.playerId];
           const playerCardOpen = savedDisclosure?.layout === cardLayout ? savedDisclosure.open : !compactPlayerLayout;
@@ -436,6 +493,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                       {index === match.turnIndex && <span className={`game-player-summary-active ${contestant.isCPU ? 'cpu' : ''}`} data-testid={`status-active-player-${index}`}>{contestant.isCPU ? `CPU ${contestant.slot} ACTIVE` : 'YOUR TURN'}</span>}
                       <span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                     </div>
+                    {impactNotice && <PlayerImpactFeedback key={impactNotice.id} notice={impactNotice} playerIndex={index} />}
                    <div className="game-player-summary-identity">
                      {character && <CharacterPortrait character={character} className="game-player-summary-portrait" />}
                      <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
@@ -479,7 +537,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
               <div className="game-player-wealth">
                  <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH</span>
                 <WealthCounter amount={contestant.wealth} />
-                {change && <span className={`wealth-change ${change.amount < 0 ? 'negative' : ''}`} key={change.id}>{change.amount >= 0 ? '+' : '−'}{formatMoney(Math.abs(change.amount))}</span>}
               </div>
               <div className="game-player-stats">
                 {([['AI SKILL', contestant.aiSkill], ['FAME', contestant.fame], ['LIFESTYLE', contestant.lifestyle], ['INFLUENCE', contestant.influence]] as const).map(([label, value]) => (

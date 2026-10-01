@@ -35,7 +35,7 @@ try {
   const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
   const { RedlineCard } = await vite.ssrLoadModule('/src/components/redline-card.tsx');
   const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
-  const { AbilityActivationBanner, SpaceRewardBanner, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
+  const { AbilityActivationBanner, PlayerImpactFeedback, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerImpactChange, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
@@ -102,6 +102,17 @@ try {
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'AI_SKILL_CHANGED', amount: 2 }), /\+2 AI SKILL/);
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'UPGRADE_TOKEN_GAINED', amount: 1 }), /\+1 UPGRADE TOKEN/);
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'WEALTH_CHANGED', amount: 20000 }), /WEALTH/);
+  const influenceImpact = formatPlayerImpactChange({ ...feedbackEvent, id: 'phase15-influence', eventType: 'INFLUENCE_CHANGED', previousValue: 2, newValue: 3, delta: 1 });
+  const wealthImpact = formatPlayerImpactChange({ ...feedbackEvent, id: 'phase15-wealth', eventType: 'WEALTH_CHANGED', previousWealth: 50000, newWealth: 60000, delta: 10000 });
+  assert.equal(influenceImpact?.text, '+1 INFLUENCE', 'player impact feedback keeps attribute changes readable');
+  assert.equal(wealthImpact?.text, '+$10K WEALTH', 'player impact feedback keeps wealth changes readable');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 9000, 'player card impact feedback remains visible long enough to read');
+  assert(influenceImpact && wealthImpact, 'both sample player impacts are available for rendering');
+  const playerImpactMarkup = renderToStaticMarkup(React.createElement(PlayerImpactFeedback, {
+    playerIndex: 0,
+    notice: { id: 'phase15-player-impact', changes: [influenceImpact, wealthImpact] },
+  }));
+  assert(playerImpactMarkup.includes('RECENT IMPACT') && playerImpactMarkup.includes('+1 INFLUENCE') && playerImpactMarkup.includes('+$10K WEALTH'), 'player cards show every recent stat and wealth change together');
   const rewardBannerMarkup = renderToStaticMarkup(React.createElement(SpaceRewardBanner, {
     event: feedbackEvent,
     playerName: 'Guardian H',
@@ -1130,11 +1141,7 @@ try {
   const petId = match.pending.offeredAssetIds[0];
   match = advanceMatch(match, { type: 'BUY_ASSET', assetId: petId });
   assert.equal(match.players[0].equipment.companion, petId);
-  let wealthStart = start(1);
-  wealthStart = {
-    ...wealthStart,
-    players: wealthStart.players.map((player, index) => index === 0 ? { ...player, careerId: 'doctor', characterId: 'frostbyte' } : player),
-  };
+  let wealthStart = withoutAbilities(start(1));
   const wealthDrawPile = wealthStart.cardPiles.wealth.drawPile.filter(cardId => cardId !== 'wealth-seed');
   wealthStart = {
     ...wealthStart,
