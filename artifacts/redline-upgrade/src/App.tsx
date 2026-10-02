@@ -6,6 +6,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { createMatch } from '@/game/match';
 import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
 import { CharacterPortrait } from '@/components/character-portrait';
+import { MusicProvider, useMusic } from '@/lib/music';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
@@ -33,6 +34,7 @@ function Artwork({
 function Header() {
   const [location, navigate] = useLocation();
   const { match } = useGame();
+  const { enabled, setEnabled, hasTracks } = useMusic();
   const activeRoster = location === '/characters' || location === '/setup';
 
   return (
@@ -47,6 +49,7 @@ function Header() {
           ROSTER
         </button>
         <button className={`header-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>{match ? 'BOARD' : 'BOARD PREVIEW'}</button>
+        <button className="header-link" type="button" onClick={() => setEnabled(!enabled)} aria-pressed={enabled} title={hasTracks ? 'Toggle music' : 'No music tracks installed (see public/music/README.md)'} aria-label={enabled ? 'Turn music off' : 'Turn music on'}>{enabled ? 'MUSIC: ON' : 'MUSIC: OFF'}</button>
         <span className="header-index"><i /> LOCAL MATCH</span>
       </div>
     </header>
@@ -374,7 +377,9 @@ function BoardVisualPreview() {
 function Router() {
   const [location] = useLocation();
   const { match, careerRevealed } = useGame();
+  const inGame = location === '/board' && Boolean(match) && careerRevealed;
   return (
+    <MusicProvider mode={inGame ? 'game' : 'lobby'}>
     <RoutedErrorBoundary>
       {location === '/' && <Home />}
       {location === '/characters' && <Characters />}
@@ -384,6 +389,7 @@ function Router() {
       {location === '/board-preview' && <BoardVisualPreview />}
       {!['/', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
+    </MusicProvider>
   );
 }
 
