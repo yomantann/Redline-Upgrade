@@ -396,6 +396,8 @@ function meetsCondition(match: Match, player: MatchPlayer, event: AnyGameEvent, 
       return typeof event.delta === 'number' && event.delta > 0;
     case 'EVENT_STAGE_IS':
       return event.stage === condition.stage;
+    case 'EVENT_CAREER_SWITCHED':
+      return Boolean(event.newCareerId) && event.previousCareerId !== event.newCareerId;
     case 'EVENT_HAS_TARGET_PLAYER':
       return Boolean(event.targetPlayerId);
     case 'EVENT_CATEGORY_IS':
@@ -597,6 +599,18 @@ function applyStatDelta(
   const targetPlayer = match.players[target];
   const delta = baseDelta + (baseDelta > 0 ? getRewardBonus(match, targetPlayer.playerId, stat) : 0);
   if (!delta) return match;
+  if (stat === 'fame' && delta < 0 && targetPlayer.characterId === 'guardian_h') {
+    const guardedEvent: AnyGameEvent = {
+      ...event,
+      id: `${event.id}:guarded:${stat}:${target}`,
+      type: 'PLAYER_AFFECTED',
+      targetPlayerId: targetPlayer.playerId,
+      targetPlayerIndex: target,
+      effectType,
+      description: `${targetPlayer.displayName} cannot lose Fame (Hold the Line).`,
+    };
+    return pushLog(match, guardedEvent, 'FAME PROTECTED', guardedEvent.description, delta, true);
+  }
   if (isBlocked(match, targetPlayer.playerId, effectType, delta)) {
     const blockedEvent: AnyGameEvent = {
       ...event,

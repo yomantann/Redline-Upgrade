@@ -51,6 +51,7 @@ export type AbilityCondition =
   | { kind: 'EVENT_DELTA_IS_NEGATIVE' }
   | { kind: 'EVENT_DELTA_IS_POSITIVE' }
   | { kind: 'EVENT_STAGE_IS'; stage: 'TRIGGERED' | 'RESOLVED' }
+  | { kind: 'EVENT_CAREER_SWITCHED' }
   | { kind: 'EVENT_HAS_TARGET_PLAYER' }
   | { kind: 'EVENT_CATEGORY_IS'; category: AssetCategory }
   | { kind: 'EVENT_DECK_IS'; deck: DeckId }
@@ -101,17 +102,17 @@ export const characterAbilityId = (characterId: string) => `character:${characte
 export const careerAbilityId = (careerId: string) => `career:${careerId}`;
 
 const characterText = [
-  ['guardian_h', 'Hold the Line', 'Once per game, block the next negative effect against you.'],
+  ['guardian_h', 'Hold the Line', 'You can never lose Fame.'],
   ['click_click', 'Quick Draw', 'Landing on another player earns you 1 Influence.'],
   ['frostbyte', 'Deep Freeze', 'When you lose AI Skill, gain 1 Influence once per round.'],
-  ['sadman', 'Last Laugh', 'A roll of 2 earns you 2 Fame once per game.'],
+  ['sadman', 'Last Laugh', 'Any roll of 2 earns you 2 Influence.'],
   ['rainbow_dash', 'Prismatic Rush', 'Passing another player earns you 1 Lifestyle once per turn.'],
   ['accuser', 'Call It Out', 'When an opponent loses Fame, gain 1 Influence once per round.'],
   ['low_flame', 'Slow Burn', 'Crossing a Payday earns you another $2,500 once per turn.'],
-  ['wandering_eye', 'Peripheral Vision', 'Passing Career Change at space 35 earns 1 AI Skill once per game.'],
+  ['wandering_eye', 'Peripheral Vision', 'Switching careers at Career Change earns you 5 AI Skill.'],
   ['the_rind', 'Hard Exterior', 'When another player lands on you, gain $2,500 Wealth once per round.'],
   ['anointed', 'Chosen Path', 'Locking in a career earns you 2 Fame once per game.'],
-  ['executive_p', 'Power Move', 'When you pass a player, take 1 Influence and gain 1 Influence once per turn.'],
+  ['executive_p', 'Power Move', 'Passing another player steals 1 Influence from them for yourself, once per turn.'],
   ['alpha_prime', 'Prime Directive', 'Your first roll permanently raises your salary by $5,000.'],
   ['roll_safe', 'Calculated Risk', 'A roll of 2 gives you one-use protection from a negative effect.'],
   ['hotwired', 'Jump Start', 'Buying an asset earns you 1 Lifestyle once per turn.'],
@@ -120,8 +121,8 @@ const characterText = [
   ['pain_hider', 'Poker Face', 'When you lose Fame, gain 1 Influence once per round.'],
   ['prom_king', 'Spotlight', 'Landing on another player earns you 1 Fame once per round.'],
   ['idol_core', 'Main Character', 'Drawing a Fame card earns you 1 Fame once per round.'],
-  ['danger_zone', 'Full Throttle', 'A roll of 8 earns $5,000 and costs 1 Lifestyle once per round.'],
-  ['the_tank', 'Breakthrough', 'Your first movement each round earns you $2,500 Wealth.'],
+  ['danger_zone', 'Full Throttle', 'A roll of 8 earns $10,000 and costs 1 Lifestyle once per round.'],
+  ['the_tank', 'Breakthrough', 'Your first movement each turn earns you $2,500 Wealth.'],
 ] as const;
 
 const careerText = [
@@ -146,11 +147,10 @@ const careerText = [
 
 const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 'description'>>> = {
   [characterAbilityId('guardian_h')]: {
-    trigger: 'TURN_START',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'PROTECT_FROM_EFFECT', amount: 1, reason: 'Hold the Line' }],
+    trigger: null,
+    conditions: [],
+    effects: [],
     mode: 'PASSIVE',
-    usageLimits: { oncePerGame: true },
   },
   [characterAbilityId('click_click')]: {
     trigger: 'LAND_ON_PLAYER',
@@ -168,9 +168,8 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
   [characterAbilityId('sadman')]: {
     trigger: 'ROLL_OF_2',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
-    effects: [{ type: 'ADD_FAME', amount: 2, reason: 'Last Laugh' }],
+    effects: [{ type: 'ADD_INFLUENCE', amount: 2, reason: 'Last Laugh' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerGame: true },
   },
   [characterAbilityId('rainbow_dash')]: {
     trigger: 'PASS_PLAYER',
@@ -194,9 +193,9 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     usageLimits: { oncePerTurn: true },
   },
   [characterAbilityId('wandering_eye')]: {
-    trigger: 'PASS_SPACE',
-    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_SPACE_IS', spaceNumber: 35 }],
-    effects: [{ type: 'ADD_AI_SKILL', amount: 1, reason: 'Peripheral Vision' }],
+    trigger: 'CAREER_CHANGE',
+    conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_STAGE_IS', stage: 'RESOLVED' }, { kind: 'EVENT_CAREER_SWITCHED' }],
+    effects: [{ type: 'ADD_AI_SKILL', amount: 5, reason: 'Peripheral Vision' }],
     mode: 'PASSIVE',
     usageLimits: { oncePerGame: true },
   },
@@ -284,7 +283,7 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     trigger: 'ROLL_OF_8',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
     effects: [
-      { type: 'ADD_WEALTH', amount: 5000, reason: 'Full Throttle' },
+      { type: 'ADD_WEALTH', amount: 10000, reason: 'Full Throttle' },
       { type: 'REMOVE_LIFESTYLE', amount: 1, reason: 'Full Throttle' },
     ],
     mode: 'PASSIVE',
@@ -295,7 +294,7 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }],
     effects: [{ type: 'ADD_WEALTH', amount: 2500, reason: 'Breakthrough' }],
     mode: 'PASSIVE',
-    usageLimits: { oncePerRound: true },
+    usageLimits: { oncePerTurn: true },
   },
   [careerAbilityId('degen-trader')]: {
     trigger: 'ROLL_OF_8',

@@ -580,7 +580,7 @@ try {
   const validDecks = new Set(decks.map(deck => deck.id));
   const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'ROLL_OF_2_OR_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'ASSET_ACQUIRED', 'ASSET_TRANSFERRED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'CAREER_SWAP_RESOLVED', 'CAREER_SWAPPED', 'SECOND_CAREER_ACQUIRED', 'TURN_SKIPPED', 'ATTRIBUTE_GAINED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
   const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT', 'ASSET_INTERACTION', 'SWAP_CAREER', 'TRANSFER_WEALTH_FROM_EVENT_ACTOR', 'SKIP_NEXT_TURN', 'UPGRADE_ACQUIRED_ASSET', 'CHOOSE_STAT_DESTINATION', 'ACQUIRE_SECOND_CAREER']);
-  const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER', 'EVENT_TARGET_HAS_ASSET', 'EVENT_SPACE_HAS_OTHER_PLAYERS', 'PLAYER_HAS_NO_SECOND_CAREER']);
+  const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_CAREER_SWITCHED', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER', 'EVENT_TARGET_HAS_ASSET', 'EVENT_SPACE_HAS_OTHER_PLAYERS', 'PLAYER_HAS_NO_SECOND_CAREER']);
   const abilityById = new Map(abilities.map(ability => [ability.id, ability]));
   assert.equal(characters.length, 21, 'the roster retains all 21 characters');
   assert.equal(new Set(characters.flatMap(character => character.abilityIds)).size, 21, 'character ability IDs are unique');
@@ -598,6 +598,10 @@ try {
     assert(character.abilityIds.length > 0 && character.abilityName && character.abilityDescription, `${character.id} has non-empty ability metadata`);
     for (const abilityId of character.abilityIds) {
       const ability = getAbility(abilityId);
+      if (character.id === 'guardian_h') {
+        assert(ability && !ability.trigger && ability.effects.length === 0, 'Guardian is an always-on rule enforced by the stat engine');
+        continue;
+      }
       assert(ability && ability.trigger && validEventTypes.has(ability.trigger), `${character.id} has a valid ability trigger`);
       assert(ability.effects.length > 0, `${character.id} has a non-empty ability effect list`);
     }
@@ -638,7 +642,7 @@ try {
   }
   for (const ability of abilities) {
     if (!ability.trigger) {
-      assert.equal(ability.id, 'career:doctor', 'only Doctor uses acquisition-time token handling');
+      assert(['career:doctor', 'character:guardian_h'].includes(ability.id), 'only Doctor and Guardian use non-event handling');
       assert.equal(ability.effects.length, 0);
       continue;
     }
@@ -698,7 +702,7 @@ try {
   assert(eventTypes(degenDangerRoll).includes('DICE_ROLL'));
   assert(eventTypes(degenDangerRoll).includes('DOUBLES_ROLLED'));
   assert(eventTypes(degenDangerRoll).includes('ROLL_OF_8'));
-  assert.equal(degenDangerRoll.players[0].wealth, 155_000, 'Degen Trader and Danger Zone both reward an 8');
+  assert.equal(degenDangerRoll.players[0].wealth, 160_000, 'Degen Trader and Danger Zone both reward an 8');
   assert.equal(degenDangerRoll.players[0].fame, 0);
   assert.equal(degenDangerRoll.players[0].lifestyle, 1, 'Danger Zone pays one Lifestyle for its roll-of-8 reward');
 
@@ -707,10 +711,10 @@ try {
     ...rollTwo,
     players: rollTwo.players.map((player, index) => index === 0 ? { ...player, characterId: 'sadman' } : player),
   };
-  const rollTwoFame = rollTwo.players[0].fame;
+  const rollTwoInfluence = rollTwo.players[0].influence;
   rollTwo = resolveEventQueue(rollTwo, [{ type: 'DICE_ROLL', playerIndex: 0, die1: 1, die2: 1, total: 2, doubles: true }]);
   assert(eventTypes(rollTwo).includes('ROLL_OF_2'), 'a total of 2 emits its native roll event');
-  assert.equal(rollTwo.players[0].fame, rollTwoFame + 2, 'Sadman reacts to roll 2');
+  assert.equal(rollTwo.players[0].influence, rollTwoInfluence + 2, 'Sadman reacts to roll 2 with Influence');
 
   let doubles = startWithoutProtection(1);
   doubles = {
@@ -877,12 +881,99 @@ try {
     ...cpuAbilityFixture,
     players: cpuAbilityFixture.players.map((player, index) => index === 0 ? { ...player, characterId: 'sadman' } : player),
   }, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]);
-  assert.equal(cpuAbility.players[0].fame, humanAbility.players[0].fame, 'CPU and human fixtures resolve the same character ability outcome');
+  assert.equal(cpuAbility.players[0].influence, humanAbility.players[0].influence, 'CPU and human fixtures resolve the same character ability outcome');
   assert.equal(
     cpuAbility.eventLog.filter(entry => entry.abilityId === 'character:sadman').length,
     humanAbility.eventLog.filter(entry => entry.abilityId === 'character:sadman').length,
     'CPU and human fixtures log the same ability activation',
   );
+
+  // Phase 16.5: every character passive fires once, for human and CPU slots, with a stat-change log entry for the player card.
+  {
+    const other = (m) => m.players[1].playerId;
+    const cases = [
+      ['click_click', 'influence', 1, [{ type: 'LAND_ON_PLAYER', playerIndex: 0, targetPlayerIndex: 1, spaceNumber: 5, previousPosition: 4, newPosition: 5, targetPosition: 5 }], true],
+      ['frostbyte', 'influence', 1, [{ type: 'AI_SKILL_CHANGED', playerIndex: 0, stat: 'aiSkill', previousValue: 3, newValue: 2, delta: -1 }]],
+      ['sadman', 'influence', 2, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]],
+      ['rainbow_dash', 'lifestyle', 1, [{ type: 'PASS_PLAYER', playerIndex: 0, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 }], true],
+      ['low_flame', 'wealth', 2500, [{ type: 'SALARY_GATE', playerIndex: 0, spaceNumber: 4, salaryAmount: 0 }]],
+      ['wandering_eye', 'aiSkill', 5, [{ type: 'CAREER_CHANGE', playerIndex: 0, stage: 'RESOLVED', spaceNumber: 35, previousCareerId: 'lawyer', newCareerId: 'doctor' }]],
+      ['anointed', 'fame', 2, [{ type: 'CAREER_CHANGE', playerIndex: 0, stage: 'RESOLVED', spaceNumber: 35, previousCareerId: 'lawyer', newCareerId: 'doctor' }]],
+      ['executive_p', 'influence', 1, [{ type: 'PASS_PLAYER', playerIndex: 0, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 }], true],
+      ['hotwired', 'lifestyle', 1, [{ type: 'ASSET_PURCHASED', playerIndex: 0, assetId: 'x', assetName: 'X', previousWealth: 10, newWealth: 5 }]],
+      ['panic_bot', 'influence', 1, [{ type: 'CARD_DRAW', playerIndex: 0, deck: 'gamble' }]],
+      ['primate', 'lifestyle', 1, [{ type: 'DOUBLES_ROLLED', playerIndex: 0, total: 6, die1: 3, die2: 3 }]],
+      ['prom_king', 'fame', 1, [{ type: 'LAND_ON_PLAYER', playerIndex: 0, targetPlayerIndex: 1, spaceNumber: 5, previousPosition: 4, newPosition: 5, targetPosition: 5 }], true],
+      ['idol_core', 'fame', 1, [{ type: 'CARD_DRAW', playerIndex: 0, deck: 'fame' }]],
+      ['danger_zone', 'wealth', 10000, [{ type: 'ROLL_OF_8', playerIndex: 0, total: 8, die1: 4, die2: 4 }]],
+      ['the_tank', 'wealth', 2500, [{ type: 'PLAYER_MOVED', playerIndex: 0, previousPosition: 1, newPosition: 2, distance: 1 }]],
+    ];
+    for (const isCPU of [false, true]) {
+      for (const [characterId, stat, amount, drafts, needsTarget] of cases) {
+        let m = startWithoutProtection(1);
+        m = { ...m, players: m.players.map((player, index) => index === 0 ? { ...player, characterId, isCPU, careerId: null } : { ...player, characterId: '__test_no_ability__', careerId: null }) };
+        m = { ...m, abilityUsage: {}, eventLog: [] };
+        const before = m.players[0][stat];
+        const resolved = resolveEventQueue(m, drafts.map(d => needsTarget ? { ...d, targetPlayerId: other(m) } : d));
+        const statEvents = resolved.eventLog.filter(e => e.abilityId === `character:${characterId}` && e.source === 'EFFECT' && /_CHANGED$/.test(e.eventType) && e.stat === stat && e.playerId === m.players[0].playerId);
+        assert(statEvents.length >= 1, `${characterId} (${isCPU ? 'CPU' : 'human'}) logs a ${stat} change for the player card`);
+        const expectedDelta = characterId === 'danger_zone' ? amount : amount;
+        assert.equal(statEvents.reduce((sum, e) => sum + e.delta, 0), expectedDelta, `${characterId} (${isCPU ? 'CPU' : 'human'}) changes ${stat} by ${amount}`);
+        assert.equal(resolved.players[0][stat] - before, amount, `${characterId} permanent ${stat} value updated`);
+      }
+    }
+    let exec = startWithoutProtection(1);
+    exec = { ...exec, abilityUsage: {}, players: exec.players.map((p, i) => i === 0 ? { ...p, characterId: 'executive_p', careerId: null, influence: 2 } : { ...p, characterId: '__test_no_ability__', careerId: null, influence: 2 }) };
+    const passEvent = { type: 'PASS_PLAYER', playerIndex: 0, targetPlayerId: exec.players[1].playerId, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 };
+    exec = resolveEventQueue(exec, [passEvent, passEvent]);
+    assert.equal(exec.players[1].influence, 1, 'Executive steals 1 Influence from the passed player');
+    assert.equal(exec.players[0].influence, 3, 'Executive steals Influence only once per turn');
+    // Danger Zone also costs 1 Lifestyle.
+    let danger = startWithoutProtection(1);
+    danger = { ...danger, abilityUsage: {}, players: danger.players.map((p, i) => i === 0 ? { ...p, characterId: 'danger_zone', careerId: null, lifestyle: 3 } : { ...p, characterId: '__test_no_ability__', careerId: null }) };
+    danger = resolveEventQueue(danger, [{ type: 'ROLL_OF_8', playerIndex: 0, total: 8, die1: 4, die2: 4 }]);
+    assert.equal(danger.players[0].lifestyle, 2, 'Danger Zone still costs 1 Lifestyle');
+
+    // Alpha Prime: first roll only.
+    let alpha = startWithoutProtection(1);
+    alpha = { ...alpha, abilityUsage: {}, players: alpha.players.map((p, i) => i === 0 ? { ...p, characterId: 'alpha_prime', careerId: null } : { ...p, characterId: '__test_no_ability__', careerId: null }) };
+    const salary = alpha.players[0].salaryAmount;
+    alpha = resolveEventQueue(alpha, [{ type: 'DICE_ROLL', playerIndex: 0, total: 5, die1: 2, die2: 3 }]);
+    alpha = resolveEventQueue(alpha, [{ type: 'DICE_ROLL', playerIndex: 0, total: 5, die1: 2, die2: 3 }]);
+    assert.equal(alpha.players[0].salaryAmount, salary + 5000, 'Alpha Prime raises salary on the first roll only');
+
+    // Roll Safe: a roll of 2 grants protection.
+    let roll = startWithoutProtection(1);
+    roll = { ...roll, abilityUsage: {}, players: roll.players.map((p, i) => i === 0 ? { ...p, characterId: 'roll_safe', careerId: null } : { ...p, characterId: '__test_no_ability__', careerId: null }) };
+    roll = resolveEventQueue(roll, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]);
+    assert.equal(roll.effectProtections[roll.players[0].playerId]?.length, 1, 'Roll Safe grants protection on a roll of 2');
+
+    // Sadman has no usage limit.
+    let sad = startWithoutProtection(1);
+    sad = { ...sad, abilityUsage: {}, players: sad.players.map((p, i) => i === 0 ? { ...p, characterId: 'sadman', careerId: null } : { ...p, characterId: '__test_no_ability__', careerId: null }) };
+    const sadInfluence = sad.players[0].influence;
+    for (let i = 0; i < 2; i++) sad = resolveEventQueue(sad, [{ type: 'ROLL_OF_2', playerIndex: 0, total: 2, die1: 1, die2: 1 }]);
+    assert.equal(sad.players[0].influence, sadInfluence + 4, 'Sadman can trigger on every roll of 2');
+
+    // Wandering Eye: passing space 35 or keeping the same career grants nothing.
+    let wander = startWithoutProtection(1);
+    wander = { ...wander, abilityUsage: {}, players: wander.players.map((p, i) => i === 0 ? { ...p, characterId: 'wandering_eye', careerId: null } : { ...p, characterId: '__test_no_ability__', careerId: null }) };
+    const wanderSkill = wander.players[0].aiSkill;
+    wander = resolveEventQueue(wander, [{ type: 'PASS_SPACE', playerIndex: 0, spaceNumber: 35 }, { type: 'CAREER_CHANGE', playerIndex: 0, stage: 'RESOLVED', previousCareerId: 'doctor', newCareerId: 'doctor' }]);
+    assert.equal(wander.players[0].aiSkill, wanderSkill, 'Wandering Eye does not reward passing or keeping a career');
+
+    // Guardian: Fame can never be lost; others still can.
+    let guardian = startWithoutProtection(1);
+    guardian = { ...guardian, abilityUsage: {}, players: guardian.players.map((p, i) => i === 0 ? { ...p, characterId: 'guardian_h', careerId: null, fame: 3 } : { ...p, characterId: '__test_no_ability__', careerId: null, fame: 3 }) };
+    const fameLossCard = cards.find(c => c.effects.some(e => e.kind === 'STAT' && e.stat === 'fame' && e.amount < 0 && (e.target ?? 'SELF') === 'SELF'));
+    assert(fameLossCard, 'a self Fame-loss card exists to exercise Guardian');
+    const guardianFameBefore = guardian.players[0].fame;
+    const guardianHit = resolveEventQueue(guardian, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: fameLossCard.deck, cardId: fameLossCard.id, spaceNumber: 1 }]);
+    const normalHit = resolveEventQueue({ ...guardian, players: guardian.players.map((p, i) => i === 0 ? { ...p, characterId: '__test_no_ability__' } : p) }, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: fameLossCard.deck, cardId: fameLossCard.id, spaceNumber: 1 }]);
+    assert(normalHit.players[0].fame < guardianFameBefore, 'control: the Fame-loss card normally lowers Fame');
+    guardian = guardianHit;
+    assert(guardian.players[0].fame >= guardianFameBefore, 'Guardian fame never decreases');
+  }
 
   const paydayStart = start(4);
   const stablePaydayStart = withoutAbilities(paydayStart);
