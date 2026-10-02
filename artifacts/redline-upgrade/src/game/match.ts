@@ -1063,6 +1063,8 @@ function autoDecide(match: Match): Match {
       : acknowledgeCardDecision(match);
   }
   if (pending.kind === 'ASSET') {
+    // The slot can be filled after the offer opens (e.g. by an event resolved on landing); never stall.
+    if (player.equipment[pending.slot]) return resume(match);
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
       : [pending.slot];
