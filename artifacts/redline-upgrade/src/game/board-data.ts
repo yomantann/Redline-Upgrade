@@ -59,7 +59,7 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
     GAMBLE: ['gamble', 'Gamble Card', 'Land here to draw and resolve a high-risk Gamble card.', 'LAND'],
     SALARY_GATE: ['salary', 'Salary Gate', 'Pass through or land here to receive your exact current salary once.', 'LAND_OR_PASS'],
     CAREER_CHANGE: ['career', 'Career Change', 'Pass through or land here to keep your career or choose between two new opportunities.', 'LAND_OR_PASS'],
-    MILESTONE: ['milestone', 'Milestone', 'A special destination on the circuit.', 'LAND'],
+    MILESTONE: ['milestone', 'Milestone', 'A milestone stop. Choose an asset to buy, or skip.', 'LAND'],
     UPGRADE_TOKEN: ['upgrade-token', 'Upgrade Token', 'Land here to gain 1 match-only Upgrade Token.', 'LAND'],
   };
   const [defaultIcon, defaultLabel, defaultDescription, defaultTrigger] = details[type];
@@ -68,7 +68,7 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
     30: ['lifestyle', 'Lifestyle', 'Land here to choose one of three randomly offered lifestyles, or skip.', 'LAND'],
     45: ['pet', 'Pet / Investment', 'Land here to choose a Pet or Investment, then choose one of three offers, or skip.', 'LAND'],
     60: ['property', 'Property', 'Land here to choose one of three randomly offered properties, or skip.', 'LAND'],
-    75: ['finish', 'Finish', 'The finish boundary. End-game rules are reserved for a later phase.', 'NONE'],
+    75: ['finish', 'Finish', 'The finish line. Reach it to lock in your place and make your final choice.', 'NONE'],
   };
   const [icon, label, description, trigger] = milestone[number]
     ?? (effect ? [effect.icon, effect.label, effect.description, 'LAND'] : [defaultIcon, defaultLabel, defaultDescription, defaultTrigger]);

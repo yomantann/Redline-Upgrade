@@ -272,6 +272,23 @@ export function GameScreen() {
     return () => window.clearTimeout(timer);
 }, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch]);
 
+  useEffect(() => {
+    if (!phase || window.matchMedia('(min-width: 1001px)').matches) return;
+    const target = phase === 'ready' ? '.game-dice-panel'
+      : phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
+      : phase === 'moving' ? '.game-tabletop-board'
+      : phase === 'landed' ? '.game-player[data-active="true"]'
+      : null;
+    if (!target) return;
+    const timer = window.setTimeout(() => {
+      const element = document.querySelector(target);
+      if (!element) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: target === '.game-tabletop-board' ? 'center' : 'start' });
+    }, phase === 'landed' ? 600 : 150);
+    return () => window.clearTimeout(timer);
+  }, [phase, turnIndex]);
+
   if (!match) return (
     <main className="game-gate">
       <span className="eyebrow">NO MATCH LOADED</span>
@@ -434,7 +451,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                         );
                       })}
                    </div>
-                    <span className="game-player-summary-toggle mono">DETAILS</span>
+                    <span className="game-player-summary-toggle mono">DETAILS / TAP</span>
                  </summary>
                  <div className="game-player-expanded">
                <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}>
@@ -514,6 +531,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
             <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
             <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
+            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO PLAY / Press ROLL to throw two D4s and move that many spaces. Reach space 75 with the most Wealth. Check the board legend for what each space does.</small>}
             {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
           </div>
           <DiceRoller

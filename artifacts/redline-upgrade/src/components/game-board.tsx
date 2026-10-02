@@ -137,12 +137,12 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
         : <p>Select or hover over a board space to learn what happens there.</p>}
     </div>
     <footer className="ru-board__foot">
-      <details className="ru-board__space-legend">
+      <details className="ru-board__space-legend" open>
         <summary>BOARD LEGEND</summary>
         <div>{[
-          ['salary', 'Salary Gate'], ['career', 'Career Change'], ['car', 'Car'], ['lifestyle', 'Lifestyle'],
-          ['pet', 'Pet'], ['investment', 'Investment'], ['property', 'Property'], ['wealth', 'Card Space'],
-          ['gamble', 'Gamble'], ['event', 'Effect Space'], ['start', 'Start'], ['finish', 'Finish'],
+          ['salary', 'Salary Gate (payday)'], ['career', 'Career Change'], ['car', 'Car'], ['lifestyle', 'Lifestyle'],
+          ['pet', 'Pet'], ['investment', 'Investment'], ['property', 'Property'], ['wealth', 'Card Space (draw)'],
+          ['gamble', 'Gamble'], ['upgrade-token', 'Upgrade Token'], ['event', 'Effect Space'], ['normal', 'Open Road'], ['start', 'Start'], ['finish', 'Finish'],
         ].map(([icon, label]) => <span key={label}><SpaceIcon name={icon} size={20} />{label}</span>)}</div>
       </details>
       <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>

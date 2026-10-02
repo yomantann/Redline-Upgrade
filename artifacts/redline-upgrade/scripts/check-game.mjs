@@ -5,6 +5,20 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
 
+// Fixtures must not depend on random careers/abilities (use withoutAbilities). Set
+// CHECK_SEED=<n> to replay a run with a seeded Math.random; the default is unseeded.
+const seedArg = process.env.CHECK_SEED ?? 'random';
+if (seedArg !== 'random') {
+  let state = Number(seedArg) >>> 0;
+  Math.random = () => {
+    state = (state + 0x6D2B79F5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // Vite loads the same TypeScript game modules as the app, without a browser.
 const vite = await createServer({
   configFile: false,
@@ -1159,7 +1173,7 @@ try {
   assert.equal(advanceMatch(capped, { type: 'UPGRADE_ASSET', assetId: offeredCar.id }), capped, 'Level 4 is the maximum');
 
   const emptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
-  const recoverBase = readyWithPlayer(start(31), 0, {
+  const recoverBase = readyWithPlayer(withoutAbilities(start(31), 0), 0, {
     position: 31,
     equipment: emptyEquipment,
     assetLevels: {},
@@ -1216,11 +1230,11 @@ try {
   assert.equal(cpuTurn.players[1].assetLevels[offeredCar.id], 2, 'CPU spends its available token when starting a turn');
   assert.equal(cpuTurn.players[1].upgradeTokens, 0);
 
-  match = move(start(28), 2);
+  match = move(withoutAbilities(start(28), 0), 2);
   assert.equal(match.pending.slot, 'lifestyle');
   assert.equal(advanceMatch(match, { type: 'SKIP_ASSET' }).phase, 'landed');
 
-  match = move(start(31), 5);
+  match = move(withoutAbilities(start(31), 0), 5);
   assert.equal(match.players[0].position, 35);
   assert.equal(match.phase, 'decision');
   const passedSpaces = match.eventLog.filter((entry) => entry.eventType === 'PASS_SPACE').map((entry) => Number(entry.detail.match(/space (\d+)/)?.[1]));
@@ -1230,7 +1244,7 @@ try {
   assert.equal(match.players[0].position, 36);
   assert.equal(countEvent(match, 'LAND_ON_SPACE') >= 1, true);
 
-  match = move(start(33), 3);
+  match = move(withoutAbilities(start(33), 0), 3);
   assert.equal(match.players[0].position, 35);
   assert.equal(match.phase, 'decision');
   assert.equal(match.stepsRemaining, 1);
@@ -1311,7 +1325,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(reshuffled.cardPiles.wealth.discardPile.length, 0);
   assert.equal(reshuffled.cardPiles.wealth.inFlight.length, 1);
   assertCompleteCardPiles(reshuffled.cardPiles);
-  match = move(start(13, 1), 2);
+  match = move(withoutAbilities(start(13, 1), 1), 2);
   assert.equal(match.pending.deck, 'gamble');
   const cpuCardId = match.pending.cardId;
   const cpuCardResult = advanceMatch(match, { type: 'AUTO_DECIDE' });
@@ -1360,8 +1374,8 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   match = advanceMatch(match, { type: 'AUTO_DECIDE' });
   assert.equal(match.phase, 'landed');
   assert(match.players[1].equipment.property);
-  match = move(start(33, 1), 3);
-  match = advanceMatch(match, { type: 'AUTO_DECIDE' });
+  match = move(withoutAbilities(start(33, 1), 1), 3);
+  match = withRandomValue(0.9, () => advanceMatch(match, { type: 'AUTO_DECIDE' }));
   assert.equal(match.phase, 'moving');
   assert.equal(match.players[1].position, 35);
   const finishLineStart = withoutAbilities(start(73), 0);
