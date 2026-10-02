@@ -17,7 +17,7 @@ import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
 import { PlayerAbilityDetails } from './player-ability-details';
-import { AbilityActivationBanner, formatEventTransition, formatPlayerStatChange, formatSpaceFeedbackOutcome, getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer, PLAYER_CHANGE_FEEDBACK_MS, PlayerStatChangeOverlay, SpaceRewardBanner, type AbilityFeedback, type PlayerStatChange, type PlayerStatChangePulse } from './game-event-feedback';
+import { getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer, PLAYER_CHANGE_FEEDBACK_MS, PlayerStatChangeOverlay, type PlayerStatChange, type PlayerStatChangePulse } from './game-event-feedback';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
@@ -50,22 +50,6 @@ function WealthCounter({ amount, compact = false }: { amount: number; compact?: 
   return <span className={compact ? 'wealth-number compact' : 'wealth-number'} data-testid="text-wealth-counter">{formatMoney(display)}</span>;
 }
 
-const spaceFeedbackTypes = new Set([
-  'BOARD_EFFECT_RESOLVED',
-  'WEALTH_CHANGED',
-  'AI_SKILL_CHANGED',
-  'FAME_CHANGED',
-  'LIFESTYLE_CHANGED',
-  'INFLUENCE_CHANGED',
-  'UPGRADE_TOKEN_GAINED',
-  'UPGRADE_TOKEN_SPENT',
-  'UPGRADE_TOKEN_HELD',
-  'ASSET_UPGRADED',
-  'MILESTONE',
-  'CAREER_CHANGE',
-  'SALARY_GATE',
-]);
-
 type PlayerCardLayout = 'compact' | 'wide';
 type PlayerCardDisclosure = { layout: PlayerCardLayout; open: boolean };
 
@@ -73,7 +57,7 @@ function ordinal(place: number): string {
   return `${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`;
 }
 
-function summarizeCardResolution(events: EventLogEntry[], playerId: string, players: { playerId: string; displayName: string }[]): string | undefined {
+function summarizeCardResolution(events: EventLogEntry[], playerId: string): string | undefined {
   let drawIndex = -1;
   for (let index = events.length - 1; index >= 0; index -= 1) {
     if (events[index].eventType === 'CARD_DRAW' && events[index].playerId === playerId) {
@@ -83,14 +67,8 @@ function summarizeCardResolution(events: EventLogEntry[], playerId: string, play
   }
   if (drawIndex < 0) return undefined;
   const results = events.slice(drawIndex + 1)
-    .filter(event => event.eventType === 'CARD_RESOLVED' || event.label.startsWith('GAMBLE ') || Boolean(formatEventTransition(event)) || event.source === 'ABILITY')
-    .map(event => {
-      const transition = formatEventTransition(event);
-      const who = players.find(player => player.playerId === event.playerId)?.displayName;
-      if (event.eventType === 'CARD_RESOLVED' || event.label.startsWith('GAMBLE ')) return event.detail;
-      if (event.source === 'ABILITY') return `${event.label}: ${transition ?? event.detail}`;
-      return transition ? `${who ? `${who}: ` : ''}${transition}` : '';
-    })
+    .filter(event => event.eventType === 'CARD_RESOLVED' || event.label.startsWith('GAMBLE '))
+    .map(event => event.detail)
     .filter(Boolean);
   return [...new Set(results)].slice(-6).join(' · ') || undefined;
 }
@@ -108,31 +86,11 @@ export function GameScreen() {
   const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : turnIndex;
   const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
-  const latestEvent: WealthEvent | undefined = match?.wealthEvents.filter(event => event.kind === 'PAYDAY').at(-1);
   const latestLogEventId = match?.eventLog.at(-1)?.id;
-  const latestAbilityEvent = match?.eventLog.filter(event => event.source === 'ABILITY').at(-1);
   const landedPlayer = match && match.lastLanding ? match.players[match.lastLanding.playerIndex] : undefined;
   const isCardLanding = match?.pending?.kind === 'CARD'
     || match?.lastLanding?.space.type === 'CARD'
     || match?.lastLanding?.space.type === 'GAMBLE';
-  const latestSpaceEvent = !isCardLanding && landedPlayer && match?.lastLanding
-    ? match.eventLog.slice().reverse().find(event =>
-      event.playerId === landedPlayer.playerId
-      && !event.abilityId
-      && spaceFeedbackTypes.has(event.eventType),
-    )
-    : undefined;
-  const lastSeenEvent = useRef(latestEvent?.id);
-  const lastSeenAbilityEvent = useRef(latestAbilityEvent?.id);
-  const lastSeenSpaceEvent = useRef(latestSpaceEvent?.id);
-  const [visibleEvent, setVisibleEvent] = useState<WealthEvent | null>(null);
-  const [abilityNotice, setAbilityNotice] = useState<AbilityFeedback | null>(null);
-  const [spaceNotice, setSpaceNotice] = useState<{
-    event: EventLogEntry;
-    playerName: string;
-    spaceLabel: string;
-    outcome: string;
-  } | null>(null);
   const [playerStatPulses, setPlayerStatPulses] = useState<Record<string, PlayerStatChangePulse>>({});
   const lastSeenStatChangeEventId = useRef(latestLogEventId);
   const pendingPlayerStatChanges = useRef(new Map<string, Array<PlayerStatChange & { expiresAt: number }>>());
@@ -281,50 +239,6 @@ export function GameScreen() {
   }, [purchaseNotice?.id]);
 
   useEffect(() => {
-    if (!latestEvent || latestEvent.id === lastSeenEvent.current) return;
-    lastSeenEvent.current = latestEvent.id;
-    setVisibleEvent(latestEvent);
-    const timer = window.setTimeout(() => setVisibleEvent((current) => current?.id === latestEvent.id ? null : current), 3800);
-    return () => window.clearTimeout(timer);
-  }, [latestEvent?.id]);
-
-  useEffect(() => {
-    if (!latestAbilityEvent || latestAbilityEvent.id === lastSeenAbilityEvent.current || !match) return;
-    lastSeenAbilityEvent.current = latestAbilityEvent.id;
-    const player = match.players.find(candidate => candidate.playerId === latestAbilityEvent.playerId);
-    if (!player) return;
-    const career = player.careerId ? getCareer(player.careerId) : undefined;
-    const abilityType = career?.abilityIds.includes(latestAbilityEvent.abilityId ?? '') ? 'CAREER' : 'CHARACTER';
-    const character = getCharacter(player.characterId);
-    setAbilityNotice({
-      event: latestAbilityEvent,
-      abilityType,
-      playerName: abilityType === 'CAREER' ? career?.name ?? player.displayName : character?.name ?? player.displayName,
-    });
-    const timer = window.setTimeout(() => {
-      setAbilityNotice(current => current?.event.id === latestAbilityEvent.id ? null : current);
-    }, 4200);
-    return () => window.clearTimeout(timer);
-  }, [latestAbilityEvent?.id]);
-
-  useEffect(() => {
-    if (!latestSpaceEvent || latestSpaceEvent.id === lastSeenSpaceEvent.current || !match?.lastLanding || !landedPlayer) return;
-    lastSeenSpaceEvent.current = latestSpaceEvent.id;
-    const character = getCharacter(landedPlayer.characterId);
-    setSpaceNotice({
-      event: latestSpaceEvent,
-      playerName: character?.name ?? landedPlayer.displayName,
-      spaceLabel: match.lastLanding.space.label,
-      outcome: formatSpaceFeedbackOutcome(latestSpaceEvent),
-    });
-    const timer = window.setTimeout(() => {
-      setSpaceNotice(current => current?.event.id === latestSpaceEvent.id ? null : current);
-    }, 3800);
-    return () => window.clearTimeout(timer);
-  }, [latestSpaceEvent?.id]);
-
-
-  useEffect(() => {
     if (!match) return;
     let delay: number;
     let callback: () => void;
@@ -378,7 +292,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       ? 'Available when your turn is ready'
       : undefined;
   const cardResultSummary = pending?.kind === 'CARD' && pending.stage === 'resolved'
-    ? summarizeCardResolution(match.eventLog, active.playerId, match.players)
+    ? summarizeCardResolution(match.eventLog, active.playerId)
     : undefined;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
@@ -399,7 +313,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       ? match.eventLog.slice().reverse().find((event) => event.eventType === 'FINAL_GAMBLE_RESOLVED')
       : undefined;
     const gambleResult = gambleEvent
-      ? [gambleEvent.detail, formatEventTransition(gambleEvent)].filter(Boolean).join(' · ')
+      ? gambleEvent.detail
       : undefined;
     return (
       <main className="game-screen game-screen-finish-line">
@@ -409,7 +323,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           endgame={active.endgame}
           finishPlace={match.finishOrder.indexOf(match.turnIndex) + 1}
           finishBonus={FINISH_ORDER_WEALTH_REWARDS[match.finishOrder.indexOf(match.turnIndex)] ?? 0}
-          abilityNotice={abilityNotice ?? undefined}
           onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
           onContinue={() => dispatchMatch({ type: 'NEXT_TURN' })}
         />
@@ -444,15 +357,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         </button>
       </section>
 
-      {visibleEvent && (
-        <div className={`payday-flash ${visibleEvent.amount < 0 ? 'negative' : ''}`} role="status" aria-live="polite" key={visibleEvent.id}>
-          <span className="mono">{match.players[visibleEvent.playerIndex]?.isCPU ? `CPU ${match.players[visibleEvent.playerIndex].slot} / PAYDAY` : 'YOUR PAYDAY'} // SPACE {String(visibleEvent.space).padStart(2, '0')}</span>
-          <strong>{visibleEvent.amount >= 0 ? '+' : '−'}{formatMoney(Math.abs(visibleEvent.amount))}</strong>
-          <span className="mono">WEALTH {visibleEvent.amount >= 0 ? 'INCREASED' : 'DECREASED'}</span>
-        </div>
-      )}
-      {spaceNotice && <SpaceRewardBanner {...spaceNotice} />}
-      {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
        {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong>{purchaseNotice.currentWealth !== undefined && <span className="mono">WEALTH NOW / {formatMoney(purchaseNotice.currentWealth)}</span>}</div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 

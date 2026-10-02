@@ -9,7 +9,6 @@ import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { assetValueAtLevel } from '@/game/upgrade-tokens';
 import { CharacterPortrait } from './character-portrait';
 import { AssetArtwork } from './asset-artwork';
-import { AbilityActivationBanner, type AbilityFeedback } from './game-event-feedback';
 import './finish-line-panel.css';
 
 export interface FinishLinePanelProps {
@@ -19,7 +18,6 @@ export interface FinishLinePanelProps {
   onContinue: () => void;
   finishPlace?: number;
   finishBonus?: number;
-  abilityNotice?: AbilityFeedback;
 }
 
 const assetSlots: readonly { slot: AssetSlot; label: string }[] = [
@@ -272,7 +270,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
   );
 }
 
-export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishPlace, finishBonus, abilityNotice }: FinishLinePanelProps) {
+export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
   const character = getCharacter(endgame.snapshot.characterId);
   const isResolved = endgame.status === 'RESOLVED';
 
@@ -313,7 +311,6 @@ export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishP
           <small>ADDED TO WEALTH BEFORE THE FINAL SNAPSHOT</small>
         </section>
       )}
-      {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
       <SnapshotLedger endgame={endgame} />
       {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : <PendingDecision endgame={endgame} onChoose={onChoose} />}
     </main>
