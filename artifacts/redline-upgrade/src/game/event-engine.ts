@@ -585,6 +585,8 @@ function applyCareerPackageSwap(
   return updated;
 }
 
+const STAT_LABELS: Partial<Record<PlayerStat, string>> = { aiSkill: 'AI Skill', fame: 'Fame', lifestyle: 'Lifestyle', influence: 'Influence' };
+
 function applyStatDelta(
   match: Match,
   queue: EventDraft[],
@@ -599,7 +601,7 @@ function applyStatDelta(
   const targetPlayer = match.players[target];
   const delta = baseDelta + (baseDelta > 0 ? getRewardBonus(match, targetPlayer.playerId, stat) : 0);
   if (!delta) return match;
-  if (stat === 'fame' && delta < 0 && targetPlayer.characterId === 'guardian_h') {
+  if (stat !== 'wealth' && delta < 0 && targetPlayer.characterId === 'guardian_h') {
     const guardedEvent: AnyGameEvent = {
       ...event,
       id: `${event.id}:guarded:${stat}:${target}`,
@@ -607,9 +609,9 @@ function applyStatDelta(
       targetPlayerId: targetPlayer.playerId,
       targetPlayerIndex: target,
       effectType,
-      description: `${targetPlayer.displayName} cannot lose Fame (Hold the Line).`,
+      description: `${targetPlayer.displayName} cannot lose ${STAT_LABELS[stat] ?? stat} (Hold the Line).`,
     };
-    return pushLog(match, guardedEvent, 'FAME PROTECTED', guardedEvent.description, delta, true);
+    return pushLog(match, guardedEvent, 'ATTRIBUTE PROTECTED', guardedEvent.description, delta, true);
   }
   if (isBlocked(match, targetPlayer.playerId, effectType, delta)) {
     const blockedEvent: AnyGameEvent = {
