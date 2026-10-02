@@ -54,7 +54,7 @@ export function MusicProvider({ mode, children }: { mode: MusicMode; children: R
       if (stopped) return;
       const track = pick(tracks, lastRef.current);
       lastRef.current = track;
-      audio.src = getPublicAssetUrl(`music/${encodeURIComponent(track)}`);
+      audio.src = getPublicAssetUrl(`music/${track.split("/").map(encodeURIComponent).join("/")}`);
       audio.loop = mode === 'lobby' && tracks.length === 1;
       audio.play().catch(() => undefined);
     };

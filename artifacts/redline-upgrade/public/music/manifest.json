@@ -1,4 +1,22 @@
 {
-  "lobby": [],
-  "game": []
+  "lobby": [
+    "lobby/competition-briefing-i-game-lobby-435660.mp3",
+    "lobby/cyberpunk-futuristic-background-349787.mp3",
+    "lobby/futuristic-179493.mp3",
+    "lobby/futuristic-motivation-synthwave-431078.mp3",
+    "lobby/hope-in-the-darkness-226465.mp3",
+    "lobby/luxury-lounge-jazz-groove-hotel-lobby-ambience-342592.mp3",
+    "lobby/mixkit-cyberpunk-city-2-141.mp3",
+    "lobby/mixkit-delirium-605.mp3",
+    "lobby/mixkit-mada-608.mp3",
+    "lobby/mixkit-see-line-funk-105.mp3",
+    "lobby/mixkit-vastness-184.mp3",
+    "lobby/night-detective-226857.mp3",
+    "lobby/ready-to-win-multiverse-fugitives-competitive-ost-269606.mp3"
+  ],
+  "game": [
+    "game/track1.mp3",
+    "game/track2.mp3",
+    "game/track3.mp3"
+  ]
 }
