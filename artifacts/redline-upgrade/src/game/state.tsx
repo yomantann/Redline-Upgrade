@@ -38,6 +38,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setPlayer(null);
     setMatch(null);
     setCareerRevealed(false);
+    setSelectedGameMode('SINGLE_PLAYER');
   }, []);
   const confirmCharacter = useCallback((characterId: string) => {
     setPlayer(createPlayer(characterId, 'You'));

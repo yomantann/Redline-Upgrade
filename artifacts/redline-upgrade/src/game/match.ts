@@ -27,6 +27,7 @@ import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } fro
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & {
   isCPU: boolean;
+  role: 'HOST' | 'PLAYER' | 'CPU';
   slot: number;
   status: PlayerMatchStatus;
   endgame: EndgameState | null;
@@ -311,6 +312,7 @@ export function createMatch(
       lifestyle: career.statModifiers.lifestyle ?? 0,
       influence: career.statModifiers.influence ?? 0,
       isCPU: slot !== 0,
+      role: slot === 0 ? 'HOST' as const : 'CPU' as const,
       slot,
       status: 'ACTIVE' as const,
       endgame: null,
@@ -382,6 +384,18 @@ export type MatchAction =
   | { type: 'AUTO_DECIDE' }
   | { type: 'CHOOSE_ENDGAME'; choice: EndgameChoice }
   | { type: 'NEXT_TURN' };
+
+/** Session setup actions and reducer actions have stable actor/match identities. */
+export type GameSessionAction =
+  | { type: 'JOIN_GAME'; playerId: string; displayName: string }
+  | { type: 'SELECT_CHARACTER'; playerId: string; characterId: string };
+
+/** Envelope used by a future transport/action log; not tied to a React component. */
+export interface MatchActionEnvelope {
+  matchId: string;
+  playerId: string;
+  action: MatchAction;
+}
 
 function milestoneSlot(space: number): AssetSlot | null {
   switch (space) {
