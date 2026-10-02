@@ -53,7 +53,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'ai-lab',
     spaceNumber: 13,
     label: 'AI LAB',
-    description: 'Gain 1 AI Skill. Digital careers gain 1 additional AI Skill.',
+    description: 'Gain 1 AI Skill. Digital / Risk careers gain 1 additional AI Skill.',
     icon: 'ai',
     tone: 'ai',
     effects: [
@@ -65,7 +65,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'lifestyle-upgrade',
     spaceNumber: 20,
     label: 'LIFESTYLE UPGRADE',
-    description: 'Gain 1 Lifestyle. Flexible careers gain 1 additional Lifestyle.',
+    description: 'Gain 1 Lifestyle. Flex / Gig careers gain 1 additional Lifestyle.',
     icon: 'lifestyle',
     tone: 'lifestyle',
     effects: [
@@ -77,7 +77,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'public-moment',
     spaceNumber: 24,
     label: 'PUBLIC MOMENT',
-    description: 'Gain 1 Fame. Media and fame careers gain 1 additional Fame.',
+    description: 'Gain 1 Fame. Media / Fame careers gain 1 additional Fame.',
     icon: 'fame',
     tone: 'fame',
     effects: [
@@ -98,7 +98,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'product-launch',
     spaceNumber: 33,
     label: 'PRODUCT LAUNCH',
-    description: 'Gain 1 AI Skill. Digital careers also gain $2,000 Wealth.',
+    description: 'Gain 1 AI Skill. Digital / Risk careers also gain $2,000 Wealth.',
     icon: 'ai',
     tone: 'ai',
     effects: [
@@ -110,7 +110,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'corporate-connection',
     spaceNumber: 37,
     label: 'CORPORATE CONNECTION',
-    description: 'Gain $3,000 Wealth. Business and professional careers gain $2,000 more.',
+    description: 'Gain $3,000 Wealth. Business and Professional careers gain $2,000 more.',
     icon: 'career',
     tone: 'career',
     effects: [
@@ -173,7 +173,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'final-spotlight',
     spaceNumber: 67,
     label: 'FINAL SPOTLIGHT',
-    description: 'Gain 1 Fame. Media and fame careers gain 1 additional Fame.',
+    description: 'Gain 1 Fame. Media / Fame careers gain 1 additional Fame.',
     icon: 'fame',
     tone: 'fame',
     effects: [
@@ -185,7 +185,7 @@ const allBoardEffectDefinitions: readonly BoardEffectDefinition[] = [
     id: 'deadline-cost',
     spaceNumber: 72,
     label: 'DEADLINE COST',
-    description: 'Pay $2,500 Wealth. Gig careers recover $1,500.',
+    description: 'Pay $2,500 Wealth. Flex / Gig careers recover $1,500.',
     icon: 'wealth',
     tone: 'risk',
     effects: [

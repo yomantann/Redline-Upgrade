@@ -147,13 +147,15 @@ function CharacterTile({
   character,
   selected,
   onSelect,
+  onConfirm,
 }: {
   character: CharacterDefinition;
   selected: boolean;
   onSelect: () => void;
+  onConfirm: () => void;
 }) {
   return (
-    <button className={`character-tile ${selected ? 'selected' : ''}`} type="button" onClick={onSelect} aria-pressed={selected} data-testid={`button-character-${character.id}`}>
+    <button className={`character-tile ${selected ? 'selected' : ''}`} type="button" onClick={onSelect} onDoubleClick={onConfirm} title="Double-click to lock in" aria-pressed={selected} data-testid={`button-character-${character.id}`}>
       {selected && <span className="tile-selected">SELECTED</span>}
       <CharacterPortrait character={character} className="tile-portrait" />
       <span className="tile-body">
@@ -233,6 +235,8 @@ function Characters() {
   const [selectedId, setSelectedId] = useState(characters[0].id);
   const selected = useMemo(() => getCharacter(selectedId) ?? characters[0], [selectedId]);
   const selectedIndex = characters.findIndex((character) => character.id === selected.id);
+  const { confirmCharacter } = useGame();
+  const [, navigate] = useLocation();
 
   return (
     <AppShell>
@@ -248,7 +252,7 @@ function Characters() {
           <div className="roster-list">
             <div className="roster-toolbar mono">
               <span><b>ROSTER</b> // 21 AVAILABLE</span>
-              <span className="lime">SELECT ONE</span>
+              <span className="lime">SELECT ONE / DOUBLE-CLICK TO LOCK IN</span>
             </div>
             <div className="roster-grid">
               {characters.map((character) => (
@@ -257,6 +261,7 @@ function Characters() {
                   character={character}
                   selected={character.id === selected.id}
                   onSelect={() => setSelectedId(character.id)}
+                  onConfirm={() => { confirmCharacter(character.id); navigate('/setup'); }}
                 />
               ))}
             </div>

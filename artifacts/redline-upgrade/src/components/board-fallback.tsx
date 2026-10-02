@@ -260,8 +260,8 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
           <line x1={poleBase.x} y1={poleBase.y} x2={poleTop.x} y2={poleTop.y} stroke="#26362d" strokeWidth="5" strokeLinecap="round" />
           <line x1={leftTop.x} y1={leftTop.y} x2={rightTop.x} y2={rightTop.y} stroke={color} strokeWidth="4" strokeLinecap="round" />
           <polygon points={`${leftTop.x},${leftTop.y} ${rightTop.x},${rightTop.y} ${rightBottom.x},${rightBottom.y} ${label.x},${rightBottom.y + 4} ${leftBottom.x},${leftBottom.y}`} fill="#18251e" stroke={color} strokeWidth="2.5" />
-          <text x={label.x} y={label.y - 2} textAnchor="middle" fill="#f0f0df" fontFamily="Barlow Condensed, sans-serif" fontSize="12" fontWeight="900">{zone}</text>
-          <text x={label.x} y={label.y + 8} textAnchor="middle" fill={color} fontFamily="Space Mono, monospace" fontSize="6" fontWeight="700">{`ZONE 0${i + 1}`}</text>
+          <text x={label.x} y={label.y - 3} textAnchor="middle" fill="#f0f0df" fontFamily="Barlow Condensed, sans-serif" fontSize="15" fontWeight="900">{zone}</text>
+          <text x={label.x} y={label.y + 11} textAnchor="middle" fill={color} fontFamily="Space Mono, monospace" fontSize="8" fontWeight="700">{`ZONE 0${i + 1}`}</text>
         </g>;
       })}
       {(() => {

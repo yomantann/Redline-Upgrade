@@ -1296,7 +1296,16 @@ function applyCardEffects(
     const effectSalt = `${salt}:${effectIndex}`;
     if (effect.kind === 'RISK') {
       if (effect.chance < 0 || effect.chance > 1) throw new Error(`Invalid risk chance on ${cardId}`);
-      const outcome = stableUnitValue(`${event.id}:${cardId}:${effectSalt}`) < effect.chance ? effect.win : effect.loss;
+      const won = stableUnitValue(`${event.id}:${cardId}:${effectSalt}`) < effect.chance;
+      const outcome = won ? effect.win : effect.loss;
+      const gambler = state.players[event.playerIndex];
+      state = pushLog(state, {
+        ...event,
+        id: `${event.id}:gamble:${effectSalt}`,
+        type: 'PLAYER_AFFECTED',
+        sourceEventId: event.id,
+        description: `${gambler.displayName} ${won ? 'won' : 'lost'} the Gamble on ${card.title}.`,
+      }, won ? 'GAMBLE WON' : 'GAMBLE LOST', `${gambler.displayName} ${won ? 'WON' : 'LOST'} the Gamble on ${card.title} (${Math.round(effect.chance * 100)}% to win).`);
       state = applyCardEffects(state, queue, event, cardId, outcome, effectSalt);
       return;
     }
