@@ -899,7 +899,7 @@ try {
       ['low_flame', 'wealth', 2500, [{ type: 'SALARY_GATE', playerIndex: 0, spaceNumber: 4, salaryAmount: 0 }]],
       ['wandering_eye', 'aiSkill', 5, [{ type: 'CAREER_CHANGE', playerIndex: 0, stage: 'RESOLVED', spaceNumber: 35, previousCareerId: 'lawyer', newCareerId: 'doctor' }]],
       ['anointed', 'fame', 2, [{ type: 'CAREER_CHANGE', playerIndex: 0, stage: 'RESOLVED', spaceNumber: 35, previousCareerId: 'lawyer', newCareerId: 'doctor' }]],
-      ['executive_p', 'influence', 2, [{ type: 'PASS_PLAYER', playerIndex: 0, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 }], true],
+      ['executive_p', 'influence', 1, [{ type: 'PASS_PLAYER', playerIndex: 0, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 }], true],
       ['hotwired', 'lifestyle', 1, [{ type: 'ASSET_PURCHASED', playerIndex: 0, assetId: 'x', assetName: 'X', previousWealth: 10, newWealth: 5 }]],
       ['panic_bot', 'influence', 1, [{ type: 'CARD_DRAW', playerIndex: 0, deck: 'gamble' }]],
       ['primate', 'lifestyle', 1, [{ type: 'DOUBLES_ROLLED', playerIndex: 0, total: 6, die1: 3, die2: 3 }]],
@@ -922,6 +922,12 @@ try {
         assert.equal(resolved.players[0][stat] - before, amount, `${characterId} permanent ${stat} value updated`);
       }
     }
+    let exec = startWithoutProtection(1);
+    exec = { ...exec, abilityUsage: {}, players: exec.players.map((p, i) => i === 0 ? { ...p, characterId: 'executive_p', careerId: null, influence: 2 } : { ...p, characterId: '__test_no_ability__', careerId: null, influence: 2 }) };
+    const passEvent = { type: 'PASS_PLAYER', playerIndex: 0, targetPlayerId: exec.players[1].playerId, targetPlayerIndex: 1, previousPosition: 1, newPosition: 2, targetPosition: 2 };
+    exec = resolveEventQueue(exec, [passEvent, passEvent]);
+    assert.equal(exec.players[1].influence, 1, 'Executive steals 1 Influence from the passed player');
+    assert.equal(exec.players[0].influence, 3, 'Executive steals Influence only once per turn');
     // Danger Zone also costs 1 Lifestyle.
     let danger = startWithoutProtection(1);
     danger = { ...danger, abilityUsage: {}, players: danger.players.map((p, i) => i === 0 ? { ...p, characterId: 'danger_zone', careerId: null, lifestyle: 3 } : { ...p, characterId: '__test_no_ability__', careerId: null }) };

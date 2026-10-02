@@ -112,7 +112,7 @@ const characterText = [
   ['wandering_eye', 'Peripheral Vision', 'Switching careers at Career Change earns you 5 AI Skill.'],
   ['the_rind', 'Hard Exterior', 'When another player lands on you, gain $2,500 Wealth once per round.'],
   ['anointed', 'Chosen Path', 'Locking in a career earns you 2 Fame once per game.'],
-  ['executive_p', 'Power Move', 'Passing another player earns you 1 Influence, plus a 1 Influence bonus once per turn.'],
+  ['executive_p', 'Power Move', 'Passing another player steals 1 Influence from them for yourself, once per turn.'],
   ['alpha_prime', 'Prime Directive', 'Your first roll permanently raises your salary by $5,000.'],
   ['roll_safe', 'Calculated Risk', 'A roll of 2 gives you one-use protection from a negative effect.'],
   ['hotwired', 'Jump Start', 'Buying an asset earns you 1 Lifestyle once per turn.'],
@@ -217,8 +217,8 @@ const overrides: Partial<Record<string, Omit<AbilityDefinition, 'id' | 'name' | 
     trigger: 'PASS_PLAYER',
     conditions: [{ kind: 'EVENT_ACTOR_IS_SELF' }, { kind: 'EVENT_HAS_TARGET_PLAYER' }],
     effects: [
+      { type: 'REMOVE_INFLUENCE', amount: 1, target: 'LANDED_ON_PLAYER', reason: 'Power Move' },
       { type: 'ADD_INFLUENCE', amount: 1, reason: 'Power Move' },
-      { type: 'ADD_INFLUENCE', amount: 1, reason: 'Power Move turn bonus' },
     ],
     mode: 'PASSIVE',
     usageLimits: { oncePerTurn: true },
