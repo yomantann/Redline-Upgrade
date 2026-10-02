@@ -30,3 +30,9 @@ Do not treat illustrative values, visual deck counts, investment passive descrip
 ## Phase 19 polish
 
 Optional music: `src/lib/music.tsx` plays a random `lobby` track outside a match and rotates random `game` tracks in a match; files and names live in `public/music/` (`manifest.json`). Header toggle persists in localStorage. Match results now list final Wealth, attributes, final choice and final Gamble per player; the board legend is open by default; round-1 how-to-play hint added.
+
+## Phase 20 board and multiplayer foundation
+
+`src/game/boards.ts` owns stable `REDLINE_UPGRADE` and `BIO_MODE` identifiers plus each board's data-set, ruleset, visual-theme, and availability metadata. The Home screen routes through board selection (`/boards`) and mode selection (`/mode`); Redline single player enters the unchanged character/setup/game flow, while BIO Mode and Multiplayer show player-facing Coming Soon screens. Add a board's data modules and mark it playable only when its board content and rules exist.
+
+Player records are already plain match data with stable player IDs, and gameplay changes already pass through serializable `MatchAction` values into `advanceMatch`. A `Match` now includes a match ID, selected board/mode, host player ID, player list, and current turn index; multiplayer work should build authorization and transport around this reducer boundary rather than duplicate game state in UI or rewrite the single-player reducer. The current match creator intentionally accepts only playable single-player configurations; no networking, authentication, or persistence is implemented.

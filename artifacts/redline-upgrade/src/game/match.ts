@@ -23,6 +23,7 @@ import {
 } from './endgame';
 import { evaluateEndGameTitle } from './endgame-titles';
 import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
+import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } from './boards';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & {
   isCPU: boolean;
@@ -99,6 +100,11 @@ export type AbilityPendingDecision = {
 );
 export type PendingDecision = BoardPendingDecision | AbilityPendingDecision;
 export interface Match {
+  /** Stable identifiers and host metadata form the future multiplayer/session boundary. */
+  matchId: string;
+  boardId: BoardId;
+  mode: GameMode;
+  hostPlayerId: string;
   players: MatchPlayer[];
   turnIndex: number;
   round: number;
@@ -279,30 +285,43 @@ function resetTurnScopedState(match: Match): Match {
   };
 }
 
-export function createMatch(characterId: string): Match {
+export function createMatch(
+  characterId: string,
+  boardId: BoardId = DEFAULT_BOARD_ID,
+  mode: GameMode = 'SINGLE_PLAYER',
+): Match {
+  const board = getBoardDefinition(boardId);
+  if (!board.playable || mode !== 'SINGLE_PLAYER') {
+    throw new Error(`${board.name} is not available in ${mode.toLowerCase().replace('_', ' ')} mode`);
+  }
   const ids = [characterId, ...pickUnique(characters.map(({ id }) => id).filter(id => id !== characterId), 3)];
   const assignedCareers = pickUnique(careers, 4);
+  const players = ids.map((id, slot) => {
+    const career = assignedCareers[slot];
+    const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
+    const salaryAmount = career.salaryTiers[salaryTier - 1];
+    return {
+      ...createPlayer(id, slot === 0 ? 'You' : `CPU ${slot}`),
+      careerId: career.id,
+      salaryTier,
+      salaryAmount,
+      wealth: startingWealth(career, salaryAmount),
+      aiSkill: 1 + (career.statModifiers.aiSkill ?? 0),
+      fame: career.statModifiers.fame ?? 0,
+      lifestyle: career.statModifiers.lifestyle ?? 0,
+      influence: career.statModifiers.influence ?? 0,
+      isCPU: slot !== 0,
+      slot,
+      status: 'ACTIVE' as const,
+      endgame: null,
+    };
+  });
   const match: Match = {
-    players: ids.map((id, slot) => {
-      const career = assignedCareers[slot];
-      const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
-      const salaryAmount = career.salaryTiers[salaryTier - 1];
-      return {
-        ...createPlayer(id, slot === 0 ? 'You' : `CPU ${slot}`),
-        careerId: career.id,
-        salaryTier,
-        salaryAmount,
-        wealth: startingWealth(career, salaryAmount),
-        aiSkill: 1 + (career.statModifiers.aiSkill ?? 0),
-        fame: career.statModifiers.fame ?? 0,
-        lifestyle: career.statModifiers.lifestyle ?? 0,
-        influence: career.statModifiers.influence ?? 0,
-        isCPU: slot !== 0,
-        slot,
-        status: 'ACTIVE' as const,
-        endgame: null,
-      };
-    }),
+    matchId: crypto.randomUUID(),
+    boardId,
+    mode,
+    hostPlayerId: players[0].playerId,
+    players,
     turnIndex: 0,
     round: 1,
     phase: 'ready',
@@ -339,6 +358,7 @@ export function rollD4(): number {
   return Math.floor(Math.random() * 4) + 1;
 }
 
+/** Plain, serializable gameplay intents; the reducer remains the source of truth. */
 export type MatchAction =
   | { type: 'ROLL'; result: DiceResult }
   | { type: 'REVEAL' }
