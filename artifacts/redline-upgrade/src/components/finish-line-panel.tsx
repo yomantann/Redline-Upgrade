@@ -344,7 +344,7 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
           <span className="eyebrow">MATCH OUTCOME // READ ONLY</span>
           <h2 id="finish-line-results-heading" className="display">Who held<br /><span>the line.</span></h2>
         </div>
-        <p>Every finish choice is resolved. The standings below are ordered by final game value.</p>
+        <p>{resolvedPlayers[0] ? `${getCharacter(resolvedPlayers[0].characterId)?.name ?? resolvedPlayers[0].displayName} wins with ${typeof resolvedPlayers[0].endgame?.finalGameValue === 'number' ? formatMoney(resolvedPlayers[0].endgame.finalGameValue) : 'the top final value'}. ` : ''}Every finish choice is resolved. Standings are ordered by final game value.</p>
       </section>
 
       {resolvedPlayers.length ? (
@@ -387,6 +387,15 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                   <span className="mono">FINAL GAME VALUE</span>
                   <strong>{typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'VALUE PENDING'}</strong>
                 </div>
+                 <div className="finish-line-result-ledger" aria-label={`${character?.name ?? player.displayName} final ledger`}>
+                   <div><span className="mono">FINAL WEALTH</span><strong>{formatMoney(endgame.snapshot.wealth)}</strong></div>
+                   <div><span className="mono">AI SKILL</span><strong>{endgame.snapshot.aiSkill.toLocaleString()}</strong></div>
+                   <div><span className="mono">FAME</span><strong>{endgame.snapshot.fame.toLocaleString()}</strong></div>
+                   <div><span className="mono">LIFESTYLE</span><strong>{endgame.snapshot.lifestyle.toLocaleString()}</strong></div>
+                   <div><span className="mono">INFLUENCE</span><strong>{endgame.snapshot.influence.toLocaleString()}</strong></div>
+                   <div><span className="mono">FINAL CHOICE</span><strong>{endgame.choice === 'CASH_OUT' ? 'CASH OUT' : endgame.choice === 'DOUBLE_DOWN' ? 'DOUBLE DOWN' : endgame.choice === 'FINAL_GAMBLE' ? 'FINAL GAMBLE' : 'NONE'}</strong>{endgame.choice === 'DOUBLE_DOWN' && endgame.multiplier !== undefined && <small>x{endgame.multiplier} multiplier</small>}</div>
+                   <div><span className="mono">FINAL GAMBLE</span><strong>{typeof endgame.gambleAdjustedDelta === 'number' ? `${endgame.gambleAdjustedDelta >= 0 ? '+' : '-'}${formatMoney(Math.abs(endgame.gambleAdjustedDelta))}` : 'NOT TAKEN'}</strong></div>
+                 </div>
                  <div className="finish-line-result-extra">
                    <div className="finish-line-result-verdict">
                      <span className="mono">FINAL SIGNAL</span>

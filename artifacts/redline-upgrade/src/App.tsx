@@ -91,7 +91,7 @@ function Home() {
           <div className="home-copy">
             <div className="home-meta mono">
               <span className="eyebrow">NEW GAME PROTOCOL</span>
-              <span>v.0.1 // ONLINE</span>
+              <span>LOCAL // 1 HUMAN + 3 CPU</span>
             </div>
             <h1 className="display home-title">
               <span>Redline</span>
@@ -99,7 +99,7 @@ function Home() {
             </h1>
             <p className="home-intro">
               Choose the identity that will take you past the limit.
-              A four-player race through 75 spaces begins here.
+              Roll two D4s, earn a salary, buy assets and race three CPU rivals through 75 spaces. Most Wealth at the finish wins.
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>

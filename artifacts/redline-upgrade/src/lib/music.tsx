@@ -24,7 +24,7 @@ export function MusicProvider({ mode, children }: { mode: MusicMode; children: R
   });
   const [manifest, setManifest] = useState<Manifest>({ lobby: [], game: [] });
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastRef = useRef<string>();
+  const lastRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;

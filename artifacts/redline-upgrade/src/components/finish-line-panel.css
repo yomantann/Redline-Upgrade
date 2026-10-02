@@ -578,3 +578,11 @@
   .finish-line-choice { transition: none; }
   .finish-line-processing i { animation: none; }
 }
+.finish-line-result-ledger { grid-column:1/-1; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:1px; background:#3c4941; border-top:1px solid #3c4941; }
+.finish-line-result-ledger > div { display:flex; flex-direction:column; gap:4px; min-width:0; padding:12px 14px; background:#14201a; border-right:0 !important; }
+.finish-line-result-ledger .mono { color:#9fb09f; font-size:10px; }
+.finish-line-result-ledger strong { color:#f2f0e4; font:800 clamp(20px,2.2vw,30px)/1 'Barlow Condensed',sans-serif; overflow-wrap:anywhere; }
+.finish-line-result-ledger small { color:#aebfac; font-size:11px; }
+.finish-line-result-row.winner .finish-line-result-ledger > div:first-child strong { color:#d4e981; }
+@media (max-width:1000px) { .finish-line-result-ledger { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:700px) { .finish-line-result-ledger { grid-column:2; grid-template-columns:repeat(2,minmax(0,1fr)); } }
