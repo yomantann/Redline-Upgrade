@@ -1,5 +1,7 @@
-import type { EventLogEntry } from '@/game/events/types';
+import type { EventLogEntry, GameEventType } from '@/game/events/types';
 import { formatMoney } from '@/game/careers';
+import { getAbility } from '@/game/abilities';
+import type { PlayerStat } from '@/game/player';
 
 function eventTransitionValues(event: EventLogEntry) {
   if (event.baseValue !== undefined && event.finalGameValue !== undefined) {
@@ -43,41 +45,142 @@ export function formatEventTransition(event: EventLogEntry): string | null {
   return `${signedDelta} ${label}`;
 }
 
-export const PLAYER_CHANGE_FEEDBACK_MS = 9000;
+export const PLAYER_CHANGE_FEEDBACK_MS = 10000;
+export const PLAYER_CHANGE_PULSE_MAX_MS = 2500;
 
-export type PlayerImpactChange = {
-  id: string;
-  text: string;
-  negative: boolean;
-};
-
-export type PlayerImpactNotice = {
-  id: string;
-  changes: PlayerImpactChange[];
-};
-
-export function formatPlayerImpactChange(event: EventLogEntry): PlayerImpactChange | null {
-  const text = formatEventTransition(event);
-  if (!text) return null;
-  return { id: event.id, text, negative: text.startsWith('−') };
+export function getPlayerStatChangePulseDuration(expiresAt: number, queuedExpirations: number[], now: number): number {
+  const sameDeadlineCount = 1 + queuedExpirations.filter(expiration => expiration <= expiresAt).length;
+  return Math.max(450, Math.min(PLAYER_CHANGE_PULSE_MAX_MS, Math.floor((expiresAt - now) / sameDeadlineCount)));
 }
 
-export function PlayerImpactFeedback({ notice, playerIndex }: { notice: PlayerImpactNotice; playerIndex: number }) {
+export type PlayerStatChange = {
+  id: string;
+  stat: PlayerStat;
+  delta: number;
+  amountText: string;
+  positive: boolean;
+  sourceLabel?: string;
+};
+
+export type PlayerStatChangePulse = PlayerStatChange & { durationMs: number };
+
+const statForEventType: Partial<Record<GameEventType, PlayerStat>> = {
+  WEALTH_CHANGED: 'wealth',
+  AI_SKILL_CHANGED: 'aiSkill',
+  FAME_CHANGED: 'fame',
+  LIFESTYLE_CHANGED: 'lifestyle',
+  INFLUENCE_CHANGED: 'influence',
+};
+
+function playerStatSourceLabel(event: EventLogEntry, eventLog: EventLogEntry[], delta: number): string | undefined {
+  const sourceEvent = event.sourceEventId
+    ? eventLog.find(entry => entry.id === event.sourceEventId)
+    : undefined;
+  const abilityId = event.abilityId ?? sourceEvent?.abilityId;
+  const ability = abilityId ? getAbility(abilityId) : undefined;
+  const labels: string[] = [];
+
+  if (abilityId) {
+    const family = abilityId.startsWith('career')
+      ? 'CAREER'
+      : abilityId.startsWith('character:')
+        ? 'CHARACTER'
+        : null;
+    if (ability?.mode === 'PASSIVE') labels.push(family ? `${family} PASSIVE` : 'PASSIVE');
+    else if (family) labels.push(`${family} ABILITY`);
+    else labels.push('ABILITY');
+  } else if (sourceEvent?.eventType === 'CARD_RESOLVED') {
+    labels.push(`${sourceEvent.deck?.replaceAll('-', ' ').toUpperCase() ?? 'CARD'} CARD`);
+  } else if (sourceEvent?.eventType === 'BOARD_EFFECT_RESOLVED') {
+    labels.push('BOARD EFFECT');
+  } else if (event.eventType === 'ASSET_PURCHASED') {
+    labels.push('ASSET PURCHASE');
+  } else if (event.reason?.toLowerCase() === 'salary gate') {
+    labels.push('PASSIVE');
+  }
+
+  if (event.baseDelta !== undefined && event.baseDelta > 0 && delta > event.baseDelta) {
+    labels.push('CAREER BONUS');
+  }
+  return labels.length ? labels.join(' · ') : undefined;
+}
+
+function formatWealthDelta(amount: number): string {
+  const units = [
+    { scale: 1_000_000_000, suffix: 'B' },
+    { scale: 1_000_000, suffix: 'M' },
+    { scale: 1_000, suffix: 'K' },
+  ];
+  for (const unit of units) {
+    const scaled = amount / unit.scale;
+    if (scaled >= 1 && scaled < 1000 && Number.isInteger(scaled * 1000)) {
+      return `$${scaled.toLocaleString('en-US', { maximumFractionDigits: 3 })}${unit.suffix}`;
+    }
+  }
+  return `$${amount.toLocaleString('en-US')}`;
+}
+
+export function formatPlayerStatChange(event: EventLogEntry, eventLog: EventLogEntry[]): PlayerStatChange | null {
+  if (!statForEventType[event.eventType] && event.eventType !== 'ASSET_PURCHASED') return null;
+  const stat = event.stat ?? statForEventType[event.eventType] ?? (event.eventType === 'ASSET_PURCHASED' ? 'wealth' : undefined);
+  if (!stat) return null;
+
+  const previous = event.previousValue ?? (stat === 'wealth' ? event.previousWealth : undefined);
+  const next = event.newValue ?? (stat === 'wealth' ? event.newWealth : undefined);
+  if (previous === undefined || next === undefined) return null;
+  const delta = event.delta ?? next - previous;
+  if (!delta) return null;
+
+  const amount = stat === 'wealth'
+    ? formatWealthDelta(Math.abs(delta))
+    : Math.abs(delta).toLocaleString('en-US');
+  return {
+    id: event.id,
+    stat,
+    delta,
+    amountText: `${delta > 0 ? '+' : '−'}${amount}`,
+    positive: delta > 0,
+    sourceLabel: playerStatSourceLabel(event, eventLog, delta),
+  };
+}
+
+export function groupPlayerStatChangesByPlayer(
+  newEvents: EventLogEntry[],
+  eventLog: EventLogEntry[],
+  playerIds: ReadonlySet<string>,
+): Map<string, PlayerStatChange[]> {
+  const changesByPlayer = new Map<string, PlayerStatChange[]>();
+  for (const event of newEvents) {
+    const change = formatPlayerStatChange(event, eventLog);
+    if (!change || !playerIds.has(event.playerId)) continue;
+    const changes = changesByPlayer.get(event.playerId) ?? [];
+    changes.push(change);
+    changesByPlayer.set(event.playerId, changes);
+  }
+  return changesByPlayer;
+}
+
+export function PlayerStatChangeOverlay({
+  change,
+  playerIndex,
+  surface,
+}: {
+  change: PlayerStatChangePulse;
+  playerIndex: number;
+  surface: 'summary' | 'detail';
+}) {
   return (
-    <div
-      className="game-player-summary-impact"
+    <span
+      className={`player-stat-change-pulse ${change.positive ? 'positive' : 'negative'}`}
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      data-testid={`player-impact-${playerIndex}`}
+      data-testid={`player-stat-change-${playerIndex}-${change.stat}-${surface}`}
+      style={{ animationDuration: `${change.durationMs}ms` }}
     >
-      <span className="game-player-summary-impact-label mono">RECENT IMPACT</span>
-      <span className="game-player-summary-impact-list">
-        {notice.changes.map(change => (
-          <b className={change.negative ? 'negative' : ''} key={change.id}>{change.text}</b>
-        ))}
-      </span>
-    </div>
+      <b>{change.amountText}</b>
+      {change.sourceLabel && <small className="mono">{change.sourceLabel}</small>}
+    </span>
   );
 }
 

@@ -2,3 +2,4 @@
 - [Game harness setup](game-harness.md) — run the Vite SSR harness from the artifact directory and make fixtures explicit around randomized careers.
 - [Asset progression evidence](asset-progression.md) — distinct hashes do not prove meaningful upgrade art; inspect representative renders for each category and level.
 - [Deferred ability decisions](ability-decision-ownership.md) — resolve prompts for `pending.playerIndex`; it can differ from the active turn.
+- [Player stat feedback](player-stat-feedback.md) — keep transient changes on the affected value; do not add a separate effects panel or log.

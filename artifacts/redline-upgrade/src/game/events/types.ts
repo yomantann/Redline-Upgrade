@@ -69,6 +69,7 @@ export interface GameEvent {
   round: number;
   sourceEventId?: string;
   abilityId?: string;
+  baseDelta?: number;
   die1?: number;
   die2?: number;
   total?: number;
@@ -120,9 +121,13 @@ export interface EventLogEntry {
   kind: 'EVENT';
   eventType: GameEventType;
   source: EventSource;
+  sourceEventId?: string;
   playerId: string;
   targetPlayerId?: string;
   abilityId?: string;
+  effectId?: string;
+  cardId?: string;
+  deck?: DeckId;
   label: string;
   detail: string;
   amount?: number;
@@ -139,6 +144,7 @@ export interface EventLogEntry {
   previousValue?: number;
   newValue?: number;
   delta?: number;
+  baseDelta?: number;
   baseValue?: number;
   finalGameValue?: number;
   reason?: string;

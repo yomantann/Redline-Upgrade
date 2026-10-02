@@ -33,6 +33,7 @@ export interface EventDraft {
   source?: EventSource;
   sourceEventId?: string;
   abilityId?: string;
+  baseDelta?: number;
   depth?: number;
   die1?: number;
   die2?: number;
@@ -244,9 +245,13 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     kind: 'EVENT',
     eventType: event.type,
     source: event.source,
+    sourceEventId: event.sourceEventId,
     playerId: event.playerId,
     targetPlayerId: event.targetPlayerId,
     abilityId: event.abilityId,
+    effectId: event.effectId,
+    cardId: event.cardId,
+    deck: event.deck,
     label,
     detail,
     amount: amount ?? event.delta,
@@ -263,6 +268,7 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     previousValue,
     newValue,
     delta: event.delta ?? (previousValue !== undefined && newValue !== undefined ? newValue - previousValue : undefined),
+    baseDelta: event.baseDelta,
     baseValue: event.baseValue,
     finalGameValue: event.finalGameValue,
     reason: event.reason,
@@ -618,6 +624,7 @@ function applyStatDelta(
     previousValue,
     newValue: nextValue,
     delta: nextValue - previousValue,
+    baseDelta,
     reason,
   });
   return updated;

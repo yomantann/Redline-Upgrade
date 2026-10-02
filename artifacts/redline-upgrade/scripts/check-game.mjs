@@ -35,7 +35,7 @@ try {
   const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
   const { RedlineCard } = await vite.ssrLoadModule('/src/components/redline-card.tsx');
   const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
-  const { AbilityActivationBanner, PlayerImpactFeedback, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerImpactChange, formatSpaceFeedbackOutcome } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
+  const { AbilityActivationBanner, PlayerStatChangeOverlay, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerStatChange, formatSpaceFeedbackOutcome, getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
@@ -102,17 +102,44 @@ try {
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'AI_SKILL_CHANGED', amount: 2 }), /\+2 AI SKILL/);
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'UPGRADE_TOKEN_GAINED', amount: 1 }), /\+1 UPGRADE TOKEN/);
   assert.match(formatSpaceFeedbackOutcome({ ...feedbackEvent, eventType: 'WEALTH_CHANGED', amount: 20000 }), /WEALTH/);
-  const influenceImpact = formatPlayerImpactChange({ ...feedbackEvent, id: 'phase15-influence', eventType: 'INFLUENCE_CHANGED', previousValue: 2, newValue: 3, delta: 1 });
-  const wealthImpact = formatPlayerImpactChange({ ...feedbackEvent, id: 'phase15-wealth', eventType: 'WEALTH_CHANGED', previousWealth: 50000, newWealth: 60000, delta: 10000 });
-  assert.equal(influenceImpact?.text, '+1 INFLUENCE', 'player impact feedback keeps attribute changes readable');
-  assert.equal(wealthImpact?.text, '+$10K WEALTH', 'player impact feedback keeps wealth changes readable');
-  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 9000, 'player card impact feedback remains visible long enough to read');
-  assert(influenceImpact && wealthImpact, 'both sample player impacts are available for rendering');
-  const playerImpactMarkup = renderToStaticMarkup(React.createElement(PlayerImpactFeedback, {
-    playerIndex: 0,
-    notice: { id: 'phase15-player-impact', changes: [influenceImpact, wealthImpact] },
+  const cardSourceEvent = { ...feedbackEvent, id: 'phase15-card-source', eventType: 'CARD_RESOLVED', source: 'GAME', abilityId: undefined, deck: 'wealth', cardId: 'wealth-card' };
+  const careerSourceEvent = { ...feedbackEvent, id: 'phase15-career-source', eventType: 'CAREER_CHANGE', source: 'ABILITY', abilityId: 'career:sample' };
+  const influenceEvent = { ...feedbackEvent, id: 'phase15-influence', eventType: 'INFLUENCE_CHANGED', stat: 'influence', previousValue: 2, newValue: 3, delta: 1 };
+  const wealthEvent = { ...feedbackEvent, id: 'phase15-wealth', eventType: 'WEALTH_CHANGED', source: 'EFFECT', sourceEventId: cardSourceEvent.id, abilityId: undefined, stat: 'wealth', previousValue: 50000, newValue: 60000, delta: 10000, baseDelta: 8000 };
+  const targetedFameEvent = { ...feedbackEvent, id: 'phase15-targeted-fame', playerId: 'recipient-player', eventType: 'FAME_CHANGED', source: 'EFFECT', sourceEventId: careerSourceEvent.id, abilityId: careerSourceEvent.abilityId, stat: 'fame', previousValue: 3, newValue: 1, delta: -2 };
+  const influenceImpact = formatPlayerStatChange(influenceEvent, [influenceEvent]);
+  const wealthImpact = formatPlayerStatChange(wealthEvent, [cardSourceEvent, wealthEvent]);
+  const exactWealthImpact = formatPlayerStatChange({ ...wealthEvent, id: 'phase15-exact-wealth', previousValue: 0, newValue: 12345, delta: 12345, baseDelta: 12345 }, [cardSourceEvent]);
+  const targetedFameImpact = formatPlayerStatChange(targetedFameEvent, [careerSourceEvent, targetedFameEvent]);
+  assert.equal(influenceImpact?.amountText, '+1', 'attribute feedback shows its exact signed delta');
+  assert.equal(wealthImpact?.amountText, '+$10K', 'Wealth feedback includes the signed currency delta');
+  assert.equal(exactWealthImpact?.amountText, '+$12.345K', 'non-round Wealth amounts use a lossless compact label');
+  assert.equal(wealthImpact?.sourceLabel, 'WEALTH CARD · CAREER BONUS', 'card source and career reward modifier remain identifiable');
+  assert.equal(targetedFameImpact?.amountText, '−2', 'negative attribute feedback uses a signed negative delta');
+  assert.equal(targetedFameImpact?.sourceLabel, 'CAREER ABILITY', 'ability-driven changes name their source family');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 10000, 'each change has a bounded display window');
+  assert.equal(getPlayerStatChangePulseDuration(11000, [11000, 11000, 11000, 11000], 1000), 2000, 'same-player changes receive sequential time within the shared display window');
+  assert.equal(getPlayerStatChangePulseDuration(11000, [13000], 1000), 2500, 'a change is capped at a readable pulse duration');
+  assert(influenceImpact && wealthImpact && targetedFameImpact, 'all sample player stat changes are available for rendering');
+  const groupedImpacts = groupPlayerStatChangesByPlayer(
+    [targetedFameEvent, { ...targetedFameEvent, id: 'phase15-unknown-player', playerId: 'unknown-player' }],
+    [careerSourceEvent, targetedFameEvent],
+    new Set(['recipient-player']),
+  );
+  assert.equal(groupedImpacts.get('recipient-player')?.length, 1, 'an effect is attributed to the affected player card');
+  assert(!groupedImpacts.has('unknown-player'), 'stat changes for players outside the match are ignored');
+  const playerStatMarkup = renderToStaticMarkup(React.createElement(PlayerStatChangeOverlay, {
+    playerIndex: 1,
+    surface: 'summary',
+    change: { ...wealthImpact, durationMs: 2000 },
   }));
-  assert(playerImpactMarkup.includes('RECENT IMPACT') && playerImpactMarkup.includes('+1 INFLUENCE') && playerImpactMarkup.includes('+$10K WEALTH'), 'player cards show every recent stat and wealth change together');
+  assert(playerStatMarkup.includes('+$10K') && playerStatMarkup.includes('WEALTH CARD') && playerStatMarkup.includes('player-stat-change-1-wealth-summary'), 'stat pulse includes the exact delta, source, and affected card');
+  const negativeStatMarkup = renderToStaticMarkup(React.createElement(PlayerStatChangeOverlay, {
+    playerIndex: 2,
+    surface: 'detail',
+    change: { ...targetedFameImpact, durationMs: 2000 },
+  }));
+  assert(negativeStatMarkup.includes('negative') && negativeStatMarkup.includes('−2') && negativeStatMarkup.includes('CAREER ABILITY'), 'negative styling and source remain visible on the changed attribute');
   const rewardBannerMarkup = renderToStaticMarkup(React.createElement(SpaceRewardBanner, {
     event: feedbackEvent,
     playerName: 'Guardian H',
