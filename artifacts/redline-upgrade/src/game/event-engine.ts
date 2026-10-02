@@ -3,6 +3,7 @@ import { careerAbilityId, getAbility, type EffectDefinition, type EffectType } f
 import { getSpace } from './board-data';
 import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
 import { careers, getCareer } from './careers';
+import { getCareerDeckAffinity } from './career-affinities';
 import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 import { getCharacter } from './characters';
 import { getCard, type CardEffect, type CardTarget } from './cards';
@@ -1529,6 +1530,68 @@ function runAbilities(match: Match, queue: EventDraft[], event: AnyGameEvent): M
   return next;
 }
 
+const COMBO_STAT: Record<string, { stat: PlayerStat; amount: number; label: string }> = {
+  wealth: { stat: 'wealth', amount: 7500, label: '$7,500 Wealth' },
+  ai: { stat: 'aiSkill', amount: 1, label: '+1 AI Skill' },
+  fame: { stat: 'fame', amount: 1, label: '+1 Fame' },
+  lifestyle: { stat: 'lifestyle', amount: 1, label: '+1 Lifestyle' },
+  influence: { stat: 'influence', amount: 1, label: '+1 Influence' },
+  gamble: { stat: 'wealth', amount: 10000, label: '$10,000 Wealth' },
+};
+
+function queueBonus(match: Match, queue: EventDraft[], event: AnyGameEvent, playerIndex: number, stat: PlayerStat, amount: number, reason: string, label: string): Match {
+  const player = match.players[playerIndex];
+  const previousValue = player[stat];
+  const newValue = previousValue + amount;
+  const state = updatePlayer(match, playerIndex, (item) => ({ ...item, [stat]: newValue }));
+  queue.push({
+    type: statEventType(stat),
+    playerIndex,
+    source: 'EFFECT',
+    sourceEventId: event.id,
+    depth: event.depth + 1,
+    stat,
+    previousValue,
+    newValue,
+    delta: amount,
+    reason,
+  });
+  return pushLog(state, {
+    ...event,
+    id: `${event.id}:${label}`,
+    type: 'PLAYER_AFFECTED',
+    sourceEventId: event.id,
+    description: reason,
+  }, label, reason, amount);
+}
+
+/** Combo: a card from the deck matching the career's primary affinity pays off when the player already invests in it. */
+function applyDeckCombo(match: Match, queue: EventDraft[], event: AnyGameEvent, cardTitle: string): Match {
+  const player = match.players[event.playerIndex];
+  if (!player?.careerId || !event.deck) return match;
+  const affinity = getCareerDeckAffinity(player.careerId);
+  const combo = COMBO_STAT[event.deck];
+  if (affinity.primary !== event.deck || !combo) return match;
+  const invested = event.deck === 'wealth' || event.deck === 'gamble'
+    ? Object.keys(player.assetLevels).length >= 1
+    : player[combo.stat] >= 3;
+  if (!invested) return match;
+  return queueBonus(match, queue, event, event.playerIndex, combo.stat, combo.amount,
+    `COMBO! ${player.displayName}'s career, deck and ${event.deck === 'wealth' || event.deck === 'gamble' ? 'assets' : 'attributes'} line up on ${cardTitle}: ${combo.label}.`, 'COMBO');
+}
+
+/** Influence-oriented careers turn player encounters into social power. */
+function applyEncounterBonus(match: Match, queue: EventDraft[], event: AnyGameEvent): Match {
+  const player = match.players[event.playerIndex];
+  const other = event.targetPlayerIndex === undefined ? undefined : match.players[event.targetPlayerIndex];
+  if (!player?.careerId || !other) return match;
+  const affinity = getCareerDeckAffinity(player.careerId);
+  if (affinity.primary !== 'influence' && affinity.secondary !== 'influence') return match;
+  const verb = event.type === 'PASS_PLAYER' ? 'passed' : 'landed on';
+  return queueBonus(match, queue, event, event.playerIndex, 'influence', 1,
+    `${player.displayName} ${verb} ${other.displayName} — ${player.displayName} gains +1 Influence.`, 'SOCIAL POWER');
+}
+
 export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
   let state = match;
   const queue = [...drafts];
@@ -1543,6 +1606,10 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);
       state = applyCardEffects(state, queue, event, card.id, card.effects);
+      state = applyDeckCombo(state, queue, event, card.title);
+    }
+    if (event.type === 'PASS_PLAYER' || event.type === 'LAND_ON_PLAYER') {
+      state = applyEncounterBonus(state, queue, event);
     }
     if (event.type === 'UPGRADE_TOKEN_GAINED' && Number.isInteger(event.delta) && (event.delta ?? 0) > 0) {
       state = updatePlayer(state, event.playerIndex, (player) => ({

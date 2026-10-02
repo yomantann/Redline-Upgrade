@@ -832,7 +832,8 @@ try {
     spaceNumber: 1,
     description: 'Pattern Found: Gain 3 AI Skill.',
   }]);
-  assert.equal(affinity.players[0].aiSkill, cardEffectBefore + 3, 'existing card effects still resolve through the event engine');
+  assert.equal(affinity.players[0].aiSkill, cardEffectBefore + 4, 'card effects resolve through the event engine and an invested primary-affinity deck adds a +1 COMBO');
+  assert.ok(affinity.eventLog.some((entry) => entry.label === 'COMBO'), 'combo bonus is logged as its own event');
 
   let carPurchase = startWithoutProtection(8);
   carPurchase = {
