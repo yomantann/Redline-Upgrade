@@ -81,7 +81,7 @@ function AssetTrophy({ slot, label, eyebrow, assetId, assetLevel }: (typeof asse
         {!asset && <span className="mono endgame-trophy-pending">OPEN SLOT</span>}
       </div>
       <div className="endgame-trophy-copy">
-        <span className="mono">{label}</span>
+        <span className="mono">{label}{asset ? ` / LEVEL ${level}` : ''}</span>
         <strong data-testid={`endgame-asset-name-${slot}`}>{asset?.name ?? 'NOT ACQUIRED'}</strong>
         {asset && <small>{asset.description}</small>}
       </div>

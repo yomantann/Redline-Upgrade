@@ -146,7 +146,7 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
 
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
   const lines = useMemo(() => [name, `ZONE 0${index + 1}`], [index, name]);
-  const texture = useMemo(() => graphic(lines, color), [lines, color]);
+  const texture = useMemo(() => graphic(lines, '#f4f1e1'), [lines]);
   const banner = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-1.34, 0.42);
@@ -169,7 +169,7 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.14} metalness={0.7} roughness={0.3} />
     </mesh>
     <mesh position={[0, 1.08, 0]} geometry={banner} castShadow>
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} roughness={0.72} side={THREE.DoubleSide} />
+      <meshStandardMaterial color="#18251e" roughness={0.72} side={THREE.DoubleSide} />
     </mesh>
     <mesh position={[0, 1.08, 0.055]}>
       <planeGeometry args={[2.55, 0.62]} />

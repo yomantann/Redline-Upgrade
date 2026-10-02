@@ -66,20 +66,14 @@ const spaceFeedbackTypes = new Set([
   'SALARY_GATE',
 ]);
 
-const boardZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'] as const;
 type PlayerCardLayout = 'compact' | 'wide';
 type PlayerCardDisclosure = { layout: PlayerCardLayout; open: boolean };
-
-function boardZone(position: number): string {
-  if (position <= 0) return 'LAUNCH PAD';
-  return boardZones[Math.min(boardZones.length - 1, Math.floor((position - 1) / 15))];
-}
 
 function ordinal(place: number): string {
   return `${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`;
 }
 
-function summarizeCardResolution(events: EventLogEntry[], playerId: string): string | undefined {
+function summarizeCardResolution(events: EventLogEntry[], playerId: string, players: { playerId: string; displayName: string }[]): string | undefined {
   let drawIndex = -1;
   for (let index = events.length - 1; index >= 0; index -= 1) {
     if (events[index].eventType === 'CARD_DRAW' && events[index].playerId === playerId) {
@@ -89,12 +83,13 @@ function summarizeCardResolution(events: EventLogEntry[], playerId: string): str
   }
   if (drawIndex < 0) return undefined;
   const results = events.slice(drawIndex + 1)
-    .filter(event => event.eventType === 'CARD_RESOLVED' || Boolean(formatEventTransition(event)) || event.source === 'ABILITY')
+    .filter(event => event.eventType === 'CARD_RESOLVED' || event.label.startsWith('GAMBLE ') || Boolean(formatEventTransition(event)) || event.source === 'ABILITY')
     .map(event => {
       const transition = formatEventTransition(event);
-      if (event.eventType === 'CARD_RESOLVED') return event.detail;
+      const who = players.find(player => player.playerId === event.playerId)?.displayName;
+      if (event.eventType === 'CARD_RESOLVED' || event.label.startsWith('GAMBLE ')) return event.detail;
       if (event.source === 'ABILITY') return `${event.label}: ${transition ?? event.detail}`;
-      return transition ?? '';
+      return transition ? `${who ? `${who}: ` : ''}${transition}` : '';
     })
     .filter(Boolean);
   return [...new Set(results)].slice(-6).join(' · ') || undefined;
@@ -146,8 +141,6 @@ export function GameScreen() {
   const statFeedbackLifecycle = useRef(0);
   const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
   const [purchaseNotice, setPurchaseNotice] = useState<{ id: string; name: string; player: string; currentWealth?: number } | null>(null);
-  const [zoneNotice, setZoneNotice] = useState<{ id: string; playerName: string; zone: string } | null>(null);
-  const previousZonePosition = useRef<{ playerId: string; position: number } | null>(null);
   const previousDecision = useRef<PendingDecision | null>(pending ?? null);
   const [careerLocked, setCareerLocked] = useState(false);
   const currentPlayerId = match?.players[match.turnIndex]?.playerId ?? null;
@@ -330,23 +323,6 @@ export function GameScreen() {
     return () => window.clearTimeout(timer);
   }, [latestSpaceEvent?.id]);
 
-  useEffect(() => {
-    const activePlayer = match?.players[match.turnIndex];
-    if (!activePlayer) {
-      previousZonePosition.current = null;
-      return;
-    }
-    const previous = previousZonePosition.current;
-    previousZonePosition.current = { playerId: activePlayer.playerId, position: activePlayer.position };
-    if (!previous || previous.playerId !== activePlayer.playerId || previous.position === activePlayer.position) return;
-    const previousZone = boardZone(previous.position);
-    const nextZone = boardZone(activePlayer.position);
-    if (previousZone === nextZone) return;
-    const noticeId = `${activePlayer.playerId}-${activePlayer.position}`;
-    setZoneNotice({ id: noticeId, playerName: activePlayer.isCPU ? `CPU ${activePlayer.slot}` : 'YOU', zone: nextZone });
-    const timer = window.setTimeout(() => setZoneNotice(current => current?.id === noticeId ? null : current), 3000);
-    return () => window.clearTimeout(timer);
-  }, [match?.players[match?.turnIndex ?? 0]?.playerId, match?.players[match?.turnIndex ?? 0]?.position, match?.turnIndex]);
 
   useEffect(() => {
     if (!match) return;
@@ -402,7 +378,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       ? 'Available when your turn is ready'
       : undefined;
   const cardResultSummary = pending?.kind === 'CARD' && pending.stage === 'resolved'
-    ? summarizeCardResolution(match.eventLog, active.playerId)
+    ? summarizeCardResolution(match.eventLog, active.playerId, match.players)
     : undefined;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
@@ -462,6 +438,10 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           <span className="eyebrow">MATCH 01 / LOCAL TABLETOP</span>
           <h1 className="display">The <span>board.</span></h1>
         </div>
+        <button className="quit-to-menu" type="button" onClick={() => navigate('/')} title="Quit to Menu" aria-label="Quit to Menu" data-testid="button-quit-to-menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+          <span className="quit-to-menu-tip mono" role="tooltip">Quit to Menu</span>
+        </button>
       </section>
 
       {visibleEvent && (
@@ -475,7 +455,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       {abilityNotice && <AbilityActivationBanner notice={abilityNotice} />}
        {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong>{purchaseNotice.currentWealth !== undefined && <span className="mono">WEALTH NOW / {formatMoney(purchaseNotice.currentWealth)}</span>}</div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
-       {zoneNotice && <div className="zone-transition-flash" role="status" aria-live="polite" key={zoneNotice.id}><span className="mono">{zoneNotice.playerName} / ROUTE UPDATE</span><strong>{zoneNotice.zone}</strong><span className="mono">NEW BOARD SECTION</span></div>}
 
  {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} />}
 

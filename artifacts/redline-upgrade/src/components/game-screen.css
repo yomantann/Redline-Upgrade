@@ -192,9 +192,6 @@
 .asset-purchase-flash strong { font:900 45px/.9 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .career-locked-flash { position:fixed; z-index:52; left:clamp(20px,4.2vw,72px); top:100px; width:min(370px,calc(100vw - 40px)); padding:17px 20px; background:#203027; border:1px solid #d4e981; border-left:5px solid #d4e981; display:flex; flex-direction:column; gap:5px; box-shadow:12px 12px 0 rgba(0,0,0,.25); pointer-events:none; }
 .career-locked-flash strong { color:#d4e981; font:900 43px/.9 'Barlow Condensed',sans-serif; }
-.zone-transition-flash { position:fixed; z-index:53; left:50%; top:clamp(90px,13vh,150px); width:min(360px,calc(100vw - 40px)); transform:translateX(-50%); padding:14px 18px; display:flex; flex-direction:column; gap:5px; border:1px solid #7d986e; border-top:3px solid #d4e981; color:#e9e7dc; background:#1b2920; box-shadow:10px 12px 0 rgba(0,0,0,.2); pointer-events:none; text-align:center; }
-.zone-transition-flash .mono { color:#aebeaa; font-size:8px; }
-.zone-transition-flash strong { color:#d4e981; font:900 33px/.95 'Barlow Condensed',sans-serif; }
 .game-screen:has(.milestone-choice) .turn-roll { opacity:.45; }
 .game-tabletop { display:grid; grid-template-columns:minmax(0,1fr) minmax(265px,clamp(265px,23vw,345px)); gap:16px; align-items:start; }
 .game-tabletop-board { min-width:0; }
@@ -235,7 +232,7 @@
 .game-player-expanded .game-player-top { padding-top:12px; }
 @media(max-width:1000px) { .game-tabletop { grid-template-columns:1fr; } .game-tabletop > .card-draw-panel { grid-row:auto; } .game-tabletop:has(.card-draw-panel) > .game-tabletop-board,.game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-row:auto; } .tabletop-decks { width:100%; } }
 @media(max-width:600px) { .game-player-identity { grid-template-columns:84px minmax(0,1fr); min-height:94px; } .game-player-portrait { height:94px; } .game-player-name { font-size:36px !important; } .asset-purchase-flash,.career-locked-flash { top:76px; } }
-@media(max-width:600px) { .game-player-summary { min-height:190px; padding-inline:12px; } .game-player-summary-values b { font-size:22px; } .zone-transition-flash { top:78px; } }
+@media(max-width:600px) { .game-player-summary { min-height:190px; padding-inline:12px; } .game-player-summary-values b { font-size:22px; } }
 @media(prefers-reduced-motion:no-preference) { .asset-purchase-flash,.career-locked-flash { animation:payday-in .35s cubic-bezier(.2,.9,.2,1) both; } }
 .game-player-stats > div[data-stat="ai-skill"] .mono,
 .game-player-stats > div[data-stat="ai-skill"] .mono svg,
@@ -409,3 +406,8 @@
   .game-tabletop > .tabletop-decks,
   .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1; grid-row:3; width:100%; }
 }
+.game-head { position:relative; }
+.quit-to-menu { position:absolute; top:8px; right:8px; width:36px; height:36px; display:grid; place-items:center; color:#e9e7dc; background:#1b2920; border:1px solid #7d986e; cursor:pointer; z-index:5; }
+.quit-to-menu:hover, .quit-to-menu:focus-visible { color:#d4e981; border-color:#d4e981; }
+.quit-to-menu-tip { position:absolute; top:calc(100% + 6px); right:0; padding:5px 8px; font-size:10px; white-space:nowrap; color:#16211b; background:#d4e981; opacity:0; pointer-events:none; transition:opacity .12s; }
+.quit-to-menu:hover .quit-to-menu-tip, .quit-to-menu:focus-visible .quit-to-menu-tip { opacity:1; }

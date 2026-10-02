@@ -25,7 +25,11 @@ try {
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
-  const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
+  for (const career of careers) {
+    const points = Object.values(career.statModifiers).reduce((sum, value) => sum + value, 0);
+    assert.equal(points, STARTING_ATTRIBUTE_POINTS, `${career.id} starts with the shared ${STARTING_ATTRIBUTE_POINTS} career attribute points`);
+  }
   const { getPublicAssetUrl } = await vite.ssrLoadModule('/src/lib/public-asset-url.ts');
   const { CharacterPortrait } = await vite.ssrLoadModule('/src/components/character-portrait.tsx');
   const { AssetArtwork } = await vite.ssrLoadModule('/src/components/asset-artwork.tsx');

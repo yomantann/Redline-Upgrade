@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useLocation } from 'wouter';
-import { getCareer, formatMoney, SALARY_TIERS } from '@/game/careers';
+import { getCareer, formatMoney, SALARY_TIERS, STARTING_ATTRIBUTE_POINTS } from '@/game/careers';
 import { getDeck } from '@/game/decks';
 import { useGame } from '@/game/state';
 import { SpaceIcon } from './space-icon';
@@ -90,6 +90,10 @@ export function CareerReveal() {
                 </div>
               ))}
             </div>
+          </div>
+          <div className="career-ability" data-testid="text-starting-attributes">
+            <span className="mono">STARTING ATTRIBUTES / +{STARTING_ATTRIBUTE_POINTS} CAREER POINTS</span>
+            <p>AI Skill {player.aiSkill} · Fame {player.fame} · Lifestyle {player.lifestyle} · Influence {player.influence}. Every career grants the same total; only the split differs.</p>
           </div>
           <div className="career-bank">
             <div><span className="mono">STARTING WEALTH</span><small>Balance at the starting line</small></div>
