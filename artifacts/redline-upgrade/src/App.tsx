@@ -10,6 +10,7 @@ import { MusicProvider, useMusic } from '@/lib/music';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
+import { boards, getBoardDefinition, type GameMode } from '@/game/boards';
 
 function Artwork({
   index = 0,
@@ -77,11 +78,10 @@ function AppShell({ children }: { children: ReactNode }) {
 
 function Home() {
   const [, navigate] = useLocation();
-  const { startNewGame, match } = useGame();
+  const { match } = useGame();
 
   const start = () => {
-    startNewGame();
-    navigate('/characters');
+    navigate('/boards');
   };
 
   return (
@@ -90,20 +90,19 @@ function Home() {
         <section className="home-hero">
           <div className="home-copy">
             <div className="home-meta mono">
-              <span className="eyebrow">NEW GAME PROTOCOL</span>
-              <span>LOCAL // 1 HUMAN + 3 CPU</span>
+              <span className="eyebrow">CHOOSE YOUR GAME</span>
+              <span>01 // BOARD SELECTION</span>
             </div>
             <h1 className="display home-title">
               <span>Redline</span>
               <span className="title-outline">Upgrade</span>
             </h1>
             <p className="home-intro">
-              Choose the identity that will take you past the limit.
-              Roll two D4s, earn a salary, buy assets and race three CPU rivals through 75 spaces. Most Wealth at the finish wins.
+              Choose a board, then choose how to play. Redline Upgrade is ready for a local single-player run; more experiences are on the way.
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>
-                Start New Game <span aria-hidden="true">↗</span>
+                Play <span aria-hidden="true">↗</span>
               </button>
               {match && <button className="action secondary" type="button" onClick={() => navigate('/board')}>Continue game <span aria-hidden="true">→</span></button>}
               <button className="text-link" type="button" onClick={() => navigate('/characters')}>
@@ -111,8 +110,8 @@ function Home() {
               </button>
             </div>
             <div className="home-low mono">
-              <span>LOCAL SESSION</span>
-              <span>NO NETWORK REQUIRED</span>
+              <span>BOARD / MODE SELECTION</span>
+              <span>SOLO PLAY / MULTIPLAYER</span>
             </div>
           </div>
           <div className="home-visual" aria-label="Redline Upgrade abstract title art">
@@ -129,18 +128,143 @@ function Home() {
         </section>
         <section className="home-strip" aria-label="Game foundation status">
           <div className="strip-cell">
-            <span className="strip-number">21</span>
-            <span><strong>Playable identities</strong><span>Every path starts somewhere</span></span>
+            <span className="strip-number">02</span>
+            <span><strong>Distinct boards</strong><span>Two separate game experiences</span></span>
           </div>
           <div className="strip-cell">
-              <span className="strip-number">04</span>
-              <span><strong>Local players</strong><span>You versus three CPU opponents</span></span>
+            <span className="strip-number">01</span>
+            <span><strong>Playable board</strong><span>Redline Upgrade single player</span></span>
           </div>
           <div className="strip-cell">
-              <span className="strip-number">75</span>
-              <span><strong>Board spaces</strong><span>Two D4s drive every turn</span></span>
+            <span className="strip-number">02</span>
+            <span><strong>Play modes</strong><span>Single player and multiplayer setup</span></span>
           </div>
         </section>
+      </main>
+    </AppShell>
+  );
+}
+
+function BoardSelection() {
+  const [, navigate] = useLocation();
+  const { selectBoard } = useGame();
+
+  const chooseBoard = (boardId: (typeof boards)[number]['id']) => {
+    selectBoard(boardId);
+    navigate('/mode');
+  };
+
+  return (
+    <AppShell>
+      <main className="selection-page">
+        <section className="roster-heading">
+          <div className="eyebrow">NEW GAME // STEP 01</div>
+          <div className="roster-heading-row">
+            <h1 className="display roster-title">Choose<br /><span className="title-outline">your board</span></h1>
+            <p className="roster-subtitle">Each board is its own game experience. Select a world to see its available play modes.</p>
+          </div>
+        </section>
+        <section className="board-choice-grid" aria-label="Available boards">
+          {boards.map((board, index) => (
+            <button
+              className={`board-choice ${board.id === 'BIO_MODE' ? 'bio-choice' : 'redline-choice'}`}
+              type="button"
+              key={board.id}
+              onClick={() => chooseBoard(board.id)}
+              data-testid={`button-board-${board.id.toLowerCase()}`}
+            >
+              <span className="board-choice-visual" aria-hidden="true">
+                <span className="board-choice-index mono">BOARD // 0{index + 1}</span>
+                <span className="board-choice-mark">{board.id === 'BIO_MODE' ? 'B' : 'R'}</span>
+                <span className="board-choice-tag mono">{board.playable ? 'READY TO PLAY' : 'IN DEVELOPMENT'}</span>
+              </span>
+              <span className="board-choice-copy">
+                <span className="mono board-choice-kicker">{board.tagline}</span>
+                <strong>{board.name}</strong>
+                <span>{board.description}</span>
+                <span className="board-choice-link">View game modes <span aria-hidden="true">↗</span></span>
+              </span>
+            </button>
+          ))}
+        </section>
+        <div className="selection-back">
+          <button className="text-link" type="button" onClick={() => navigate('/')}>← Home</button>
+        </div>
+      </main>
+    </AppShell>
+  );
+}
+
+function GameModeSelection() {
+  const [, navigate] = useLocation();
+  const { selectedBoardId, selectGameMode, startNewGame } = useGame();
+  const board = getBoardDefinition(selectedBoardId);
+
+  const chooseMode = (mode: GameMode) => {
+    selectGameMode(mode);
+    if (mode === 'MULTIPLAYER') {
+      navigate('/multiplayer');
+    } else if (board.playable) {
+      startNewGame();
+      navigate('/characters');
+    } else {
+      navigate('/board-coming-soon');
+    }
+  };
+
+  return (
+    <AppShell>
+      <main className="selection-page mode-page">
+        <section className="roster-heading">
+          <div className="eyebrow">NEW GAME // STEP 02</div>
+          <div className="roster-heading-row">
+            <h1 className="display roster-title">How will<br /><span className="title-outline">you play?</span></h1>
+            <p className="roster-subtitle"><span className="mono lime">SELECTED BOARD</span><br />{board.name} — {board.tagline}</p>
+          </div>
+        </section>
+        <section className="mode-choice-grid" aria-label="Choose a play mode">
+          <button className="mode-choice" type="button" onClick={() => chooseMode('SINGLE_PLAYER')} data-testid="button-mode-single-player">
+            <span className="mono mode-choice-index">MODE // 01</span>
+            <strong>Single Player</strong>
+            <span>{board.playable ? 'Start a local game against three CPU rivals.' : 'This board is not playable yet.'}</span>
+            <span className={`mode-choice-status ${board.playable ? 'lime' : ''}`}>{board.playable ? 'AVAILABLE' : 'COMING SOON'}</span>
+          </button>
+          <button className="mode-choice multiplayer-choice" type="button" onClick={() => chooseMode('MULTIPLAYER')} data-testid="button-mode-multiplayer">
+            <span className="mono mode-choice-index">MODE // 02</span>
+            <strong>Multiplayer</strong>
+            <span>Play with other people. Multiplayer is coming soon.</span>
+            <span className="mode-choice-status">COMING SOON</span>
+          </button>
+        </section>
+        <div className="selection-back">
+          <button className="text-link" type="button" onClick={() => navigate('/boards')}>← Change board</button>
+        </div>
+      </main>
+    </AppShell>
+  );
+}
+
+function ComingSoon({ multiplayer = false }: { multiplayer?: boolean }) {
+  const [, navigate] = useLocation();
+  const { selectedBoardId } = useGame();
+  const board = getBoardDefinition(selectedBoardId);
+
+  return (
+    <AppShell>
+      <main className="setup-main coming-soon-page">
+        <section className="setup-content">
+          <div className="eyebrow">{multiplayer ? 'MULTIPLAYER' : board.name.toUpperCase()} // COMING SOON</div>
+          <h1 className="display setup-title">{multiplayer ? <>Play<br /><span className="title-outline">together.</span></> : <>{board.name}<br /><span className="title-outline">in development.</span></>}</h1>
+          <p className="setup-lede">{multiplayer ? 'This game mode is not available yet. Your single-player game remains ready whenever you are.' : `${board.description} This board will have its own board, rules, and game content when it is ready.`}</p>
+          <div className="setup-actions">
+            <button className="action" type="button" onClick={() => navigate('/mode')}>Back to game modes <span aria-hidden="true">←</span></button>
+            <button className="text-link" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">→</span></button>
+          </div>
+        </section>
+        <div className={`coming-soon-visual ${board.id === 'BIO_MODE' ? 'bio-coming-visual' : ''}`} aria-hidden="true">
+          <span>{board.id === 'BIO_MODE' ? 'B' : 'R'}</span>
+          <i />
+        </div>
       </main>
     </AppShell>
   );
@@ -382,12 +506,16 @@ function Router() {
     <MusicProvider mode={inGame ? 'game' : 'lobby'}>
     <RoutedErrorBoundary>
       {location === '/' && <Home />}
+      {location === '/boards' && <BoardSelection />}
+      {location === '/mode' && <GameModeSelection />}
+      {location === '/multiplayer' && <ComingSoon multiplayer />}
+      {location === '/board-coming-soon' && <ComingSoon />}
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
       {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
       {location === '/board-preview' && <BoardVisualPreview />}
-      {!['/', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
+      {!['/', '/boards', '/mode', '/multiplayer', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
     </MusicProvider>
   );

@@ -45,8 +45,8 @@ export function formatEventTransition(event: EventLogEntry): string | null {
   return `${signedDelta} ${label}`;
 }
 
-export const PLAYER_CHANGE_FEEDBACK_MS = 10000;
-export const PLAYER_CHANGE_PULSE_MAX_MS = 2500;
+export const PLAYER_CHANGE_FEEDBACK_MS = 20000;
+export const PLAYER_CHANGE_PULSE_MAX_MS = 5000;
 
 export function getPlayerStatChangePulseDuration(expiresAt: number, queuedExpirations: number[], now: number): number {
   const sameDeadlineCount = 1 + queuedExpirations.filter(expiration => expiration <= expiresAt).length;
