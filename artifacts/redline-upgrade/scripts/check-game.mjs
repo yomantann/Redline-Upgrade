@@ -140,8 +140,9 @@ try {
   assert.equal(getPlayerStatChangePulseDuration(11000, [13000], 1000), 5000, 'a change is capped at a readable pulse duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
-    assert.match(affinityCard?.description ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
-    assert.doesNotMatch(affinityCard?.description ?? '', /Performance careers/i);
+    assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
+    assert.doesNotMatch(affinityCard?.effect ?? '', /Performance careers/i);
+    assert(affinityCard?.effects.some(effect => effect.kind === 'STAT' && effect.careerTag === 'performance'), `${cardId} keeps its existing eligible careers`);
   }
   assert(influenceImpact && wealthImpact && targetedFameImpact, 'all sample player stat changes are available for rendering');
   const groupedImpacts = groupPlayerStatChangesByPlayer(
