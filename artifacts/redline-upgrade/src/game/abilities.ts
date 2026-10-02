@@ -102,7 +102,7 @@ export const characterAbilityId = (characterId: string) => `character:${characte
 export const careerAbilityId = (careerId: string) => `career:${careerId}`;
 
 const characterText = [
-  ['guardian_h', 'Hold the Line', 'You can never lose Fame.'],
+  ['guardian_h', 'Hold the Line', 'Your AI Skill, Fame, Lifestyle and Influence can never be lost or reduced below zero.'],
   ['click_click', 'Quick Draw', 'Landing on another player earns you 1 Influence.'],
   ['frostbyte', 'Deep Freeze', 'When you lose AI Skill, gain 1 Influence once per round.'],
   ['sadman', 'Last Laugh', 'Any roll of 2 earns you 2 Influence.'],

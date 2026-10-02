@@ -973,6 +973,16 @@ try {
     assert(normalHit.players[0].fame < guardianFameBefore, 'control: the Fame-loss card normally lowers Fame');
     guardian = guardianHit;
     assert(guardian.players[0].fame >= guardianFameBefore, 'Guardian fame never decreases');
+    for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence']) {
+      const base = { ...guardian, abilityUsage: {}, players: guardian.players.map((p, i) => i === 0 ? { ...p, [stat]: 1 } : p) };
+      const hit = resolveEventQueue(base, [{ type: 'PLAYER_AFFECTED', playerIndex: 1, targetPlayerId: base.players[0].playerId, targetPlayerIndex: 0, effectType: 'REMOVE_' + stat.toUpperCase(), spaceNumber: 1 }]);
+      assert(hit.players[0][stat] >= 0, `Guardian ${stat} never goes negative`);
+    }
+    const statLossCards = cards.filter(c => c.effects.some(e => e.kind === 'STAT' && e.stat !== 'wealth' && e.amount < 0 && (e.target ?? 'SELF') === 'SELF'));
+    for (const card of statLossCards) {
+      const g = resolveEventQueue(guardian, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: card.deck, cardId: card.id, spaceNumber: 1 }]);
+      for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence']) assert(g.players[0][stat] >= guardian.players[0][stat], `Guardian ${stat} not reduced by ${card.id}`);
+    }
   }
 
   const paydayStart = start(4);
