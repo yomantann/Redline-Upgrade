@@ -199,6 +199,11 @@ export async function joinRoomByCode(userId: string, rawCode: string): Promise<R
         .where(and(eq(roomPlayersTable.roomId, room.id), eq(roomPlayersTable.userId, userId)))
         .limit(1);
       if (previous) {
+        const [match] = await tx.select().from(roomMatchesTable).where(eq(roomMatchesTable.roomId, room.id)).limit(1);
+        const kicked = (match?.state as { kicked?: string[] } | undefined)?.kicked ?? [];
+        if (kicked.includes(userId)) {
+          return { kind: "forbidden", message: "You were removed from this match for missing too many turns." };
+        }
         await tx
           .update(roomPlayersTable)
           .set({ status: "joined", lastSeenAt: new Date() })

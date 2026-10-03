@@ -129,7 +129,7 @@ export async function getMatchForMember(roomId: string, userId: string): Promise
     await tx
       .update(roomPlayersTable)
       .set({ lastSeenAt: new Date(), status: "joined" })
-      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
+      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId), ne(roomPlayersTable.status, "left")));
     const settled = await settleIdle(tx, roomId, loaded.row, loaded.state);
     if (settled.state.kicked.includes(userId)) return { kind: "forbidden", message: KICKED_MESSAGE };
     return {

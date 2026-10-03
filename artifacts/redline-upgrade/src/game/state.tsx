@@ -73,6 +73,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const snapshotRef = useRef<MatchSnapshot | null>(null);
+  const sendChain = useRef<Promise<void>>(Promise.resolve());
   const setRemoteSnapshot = useCallback((next: MatchSnapshot | null) => {
     // Never go backwards: a slow poll must not overwrite a newer action response.
     if (next && snapshotRef.current && next.roomId === snapshotRef.current.roomId && next.version < snapshotRef.current.version) return;
@@ -101,12 +102,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (current) {
       const clientAction = toClientAction(action);
       if (!clientAction) return;
-      void submitMatchAction(current.roomId, { action: clientAction, expectedVersion: current.version })
-        .then((next) => { setRemoteError(null); setRemoteSnapshot(next); })
-        .catch((error) => {
+      // Requests are sent one at a time, each against the newest known version, so rapid clicks or
+      // timers never race each other into stale-version errors.
+      sendChain.current = sendChain.current.then(async () => {
+        const latest = snapshotRef.current;
+        if (!latest) return;
+        try {
+          const next = await submitMatchAction(latest.roomId, { action: clientAction, expectedVersion: latest.version });
+          setRemoteError(null);
+          setRemoteSnapshot(next);
+        } catch (error) {
           const data = error instanceof ApiError ? (error.data as { error?: string } | null) : null;
           setRemoteError(data?.error ?? 'Could not reach the server.');
-        });
+        }
+      });
       return;
     }
     setMatch((existing) => existing ? advanceMatch(existing, action) : null);
