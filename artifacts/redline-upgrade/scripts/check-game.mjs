@@ -65,6 +65,7 @@ try {
     cashOutValue,
     doubleDownValue,
     finalGambleValue,
+    resolveFinalGambleStake,
     createFinishSnapshot,
   } = await vite.ssrLoadModule('/src/game/endgame.ts');
   const { availableUpgradeTokens, getEligibleRecoveryMilestones } = await vite.ssrLoadModule('/src/game/upgrade-tokens.ts');
@@ -673,7 +674,9 @@ try {
   function validateCardEffects(effects, cardId) {
     assert(effects.length > 0, `${cardId} has a gameplay effect`);
     for (const effect of effects) {
-      if (effect.kind === 'RISK') {
+      if (effect.kind === 'DOUBLE_OR_NOTHING') {
+        assert(effect.chance > 0 && effect.chance < 1, `${cardId} has a valid double-or-nothing probability`);
+      } else if (effect.kind === 'RISK') {
         assert(effect.chance >= 0 && effect.chance <= 1, `${cardId} has a valid risk probability`);
         validateCardEffects(effect.win, cardId);
         validateCardEffects(effect.loss, cardId);
@@ -1510,6 +1513,27 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   assert.equal(doubleDownValue(100000, 8).multiplier, 2.75);
   assert.equal(finalGambleValue(100000, 10000).adjustedDelta, 10000);
   assert.equal(finalGambleValue(100000, -10000).adjustedDelta, -10000);
+  assert.equal(finalGambleValue(100000, 10000, 50000).adjustedDelta, 60000, 'the all-in stake adds to the card delta');
+  {
+    const stakePlayer = { wealth: 100000, equipment: { car: null }, assetLevels: {}, upgradeTokens: 2 };
+    const stakeWin = resolveFinalGambleStake(stakePlayer, () => 0.1);
+    assert(stakeWin.won && stakeWin.delta === 100000 + 2 * 20000, 'winning doubles staked Wealth and pays out held Upgrade Tokens');
+    const stakeLoss = resolveFinalGambleStake(stakePlayer, () => 0.9);
+    assert(!stakeLoss.won && stakeLoss.delta === -100000, 'losing forfeits the staked Wealth');
+  }
+  {
+    const don = createMatch(characters[0].id);
+    const donPlayer = { ...don.players[0], wealth: 50000, aiSkill: 3, fame: 2, upgradeTokens: 0 };
+    const withAsset = withoutAbilities({ ...don, players: don.players.map((p, i) => i === 0 ? donPlayer : p) }, 0);
+    const outcomes = new Set();
+    for (let i = 0; i < 40; i += 1) {
+      const r = resolveEventQueue({ ...withAsset, eventCursor: (withAsset.eventCursor ?? 0) + i * 7 }, [{ type: 'CARD_RESOLVED', playerIndex: 0, deck: 'gamble', cardId: 'gamble-call', spaceNumber: 1, id: `don-${i}` }]);
+      const p = r.players[0];
+      if (p.wealth === 100000) { outcomes.add('win'); assert.equal(p.aiSkill, 3, 'Double Or Nothing win keeps attributes'); }
+      else { outcomes.add('lose'); assert.equal(p.wealth, 50000, 'Double Or Nothing loss keeps Wealth'); assert.equal(p.aiSkill + p.fame + p.lifestyle + p.influence, 0, 'loss clears attributes'); assert(Object.values(p.equipment).every(v => !v), 'loss clears assets'); }
+    }
+    assert(outcomes.has('win') && outcomes.has('lose'), 'Double Or Nothing resolves both ways');
+  }
   const cashResult = advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' });
   assert.equal(cashResult.phase, 'landed');
   assert.equal(cashResult.players[0].endgame.status, 'RESOLVED');

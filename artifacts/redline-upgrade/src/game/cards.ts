@@ -12,6 +12,7 @@ export type CardEffect =
   | { kind: 'MODIFY_SALARY'; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
   | { kind: 'PROTECT'; amount?: number; target?: CardTarget; careerTag?: CareerCategoryTag; blockedEffectTypes?: EffectType[]; reason?: string }
   | { kind: 'REWARD_MODIFIER'; stat: PlayerStat; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
+  | { kind: 'DOUBLE_OR_NOTHING'; chance: number; reason?: string }
   | { kind: 'RISK'; chance: number; win: readonly CardEffect[]; loss: readonly CardEffect[]; reason?: string };
 
 export interface CardDefinition {
@@ -149,7 +150,7 @@ export const cards: readonly CardDefinition[] = [
   card('influence-ghosted', 'influence', 'Ghosted by the Network', 'A door quietly closes for the person who thought it was guaranteed.', 'The Wealth trailer loses 3 Influence; you gain 2 Influence.', 'trailer -3 / +2 INFL.', [stat('influence', -3, 'WEALTH_TRAILER'), stat('influence', 2)], 'A glowing contact map drops one isolated figure from its network while another gains a bright connection.'),
 
   // GAMBLE
-  card('gamble-call', 'gamble', 'Double Or Nothing', 'The next move asks for nerve, not certainty.', '50%: gain $37,000 Wealth. Otherwise lose $18,500.', '+$37,000 or -$18,500', [risk(0.5, [stat('wealth', 37000)], [stat('wealth', -18500)])], 'A roulette wheel spins between a towering pile of gold and a red-lit empty table.', 'RARE'),
+  card('gamble-call', 'gamble', 'Double Or Nothing', 'The next move asks for nerve, not certainty.', '50%: double your current Wealth. Otherwise lose all attributes and assets, but keep your Wealth.', 'x2 WEALTH or LOSE ALL', [{ kind: 'DOUBLE_OR_NOTHING', chance: 0.5 }], 'A roulette wheel spins between a towering pile of gold and a red-lit empty table.', 'RARE'),
   card('gamble-edge', 'gamble', 'Against The Odds', 'A narrow opening and a very loud clock.', '35%: gain $36,750 Wealth. Otherwise lose $12,250.', '+$36,750 or -$12,250', [risk(0.35, [stat('wealth', 36750)], [stat('wealth', -12250)])], 'A lone gambler reaches toward a thin glowing bridge above a deep red casino void.', 'RARE'),
   card('gamble-coin-flip', 'gamble', 'Coin-Flip Fame', 'The stunt either lands perfectly or lives forever for the wrong reason.', '50%: gain 4 Fame. Otherwise lose 3 Fame.', '+4 or -3 FAME', [risk(0.5, [stat('fame', 4)], [stat('fame', -3)])], 'A spinning coin hangs between a cheering crowd and a wall of laughing reaction screens.'),
   card('gamble-prediction-market', 'gamble', 'Prediction Market', 'You put a number on the future and the future notices.', '60%: gain $20,000 Wealth. Otherwise lose $10,000; Digital / Risk careers gain 1 AI Skill.', '+$20,000 or -$10,000', [risk(0.6, [stat('wealth', 20000)], [stat('wealth', -10000), stat('aiSkill', 1, 'SELF', 'digital')])], 'A holographic futures market charts a green upward arc above a crowded prediction terminal.', 'RARE'),

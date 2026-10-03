@@ -38,6 +38,15 @@ export interface EndgameDice {
   doubles: boolean;
 }
 
+export interface FinalGambleStake {
+  wealth: number;
+  assetValue: number;
+  tokens: number;
+  tokenValue: number;
+  won: boolean;
+  delta: number;
+}
+
 export interface EndgameState {
   status: 'PENDING' | 'RESOLVED';
   snapshot: FinishSnapshot;
@@ -51,6 +60,7 @@ export interface EndgameState {
   gambleCardId?: string;
   gambleRawDelta?: number;
   gambleAdjustedDelta?: number;
+  gambleStake?: FinalGambleStake;
   endGameTitle?: string;
   endGameTitleDescription?: string;
 }
@@ -62,6 +72,8 @@ export const ENDGAME_BALANCE = {
     lifestyle: 10_000,
     influence: 7_500,
   },
+  finalGambleTokenValue: 20_000,
+  finalGambleWinChance: 0.5,
   doubleDownBands: [
     { maxRoll: 3, multiplier: 0.25 },
     { maxRoll: 4, multiplier: 0.5 },
@@ -72,14 +84,18 @@ export const ENDGAME_BALANCE = {
   ] as const,
 } as const;
 
-export function calculateEndgameBaseValue(player: Player): number {
-  const assetValue = Object.values(player.equipment).reduce((total, assetId) => {
+export function calculateAssetValue(player: Pick<Player, 'equipment' | 'assetLevels'>): number {
+  return Object.values(player.equipment).reduce((total, assetId) => {
     if (!assetId) return total;
     const asset = getAsset(assetId);
     if (!asset) return total;
     const level = (player.assetLevels[assetId] ?? 1) as AssetLevel;
     return total + assetValueAtLevel(asset, level);
   }, 0);
+}
+
+export function calculateEndgameBaseValue(player: Player): number {
+  const assetValue = calculateAssetValue(player);
   const statValue =
     player.aiSkill * ENDGAME_BALANCE.statValues.aiSkill +
     player.fame * ENDGAME_BALANCE.statValues.fame +
@@ -151,13 +167,38 @@ export function doubleDownValue(
 export function finalGambleValue(
   baseValue: number,
   rawDelta: number,
+  stakeDelta = 0,
 ): { adjustedDelta: number; multiplier: number; finalGameValue: number } {
   const multiplier = 1;
-  const adjustedDelta = Math.round(rawDelta);
+  const adjustedDelta = Math.round(rawDelta + stakeDelta);
   return {
     adjustedDelta,
     multiplier,
     finalGameValue: Math.max(0, baseValue + adjustedDelta),
+  };
+}
+
+/**
+ * The Final Gamble puts Wealth, owned assets and any Upgrade Tokens on the table.
+ * Win: the staked Wealth and assets are doubled and each token pays its value.
+ * Lose: the staked Wealth and assets are forfeited and the tokens are lost.
+ */
+export function resolveFinalGambleStake(
+  player: Pick<Player, 'wealth' | 'equipment' | 'assetLevels' | 'upgradeTokens'>,
+  random: () => number = Math.random,
+): FinalGambleStake {
+  const wealth = Math.max(0, Math.round(player.wealth));
+  const assetValue = calculateAssetValue(player);
+  const tokens = Math.max(0, player.upgradeTokens);
+  const tokenValue = tokens * ENDGAME_BALANCE.finalGambleTokenValue;
+  const won = random() < ENDGAME_BALANCE.finalGambleWinChance;
+  return {
+    wealth,
+    assetValue,
+    tokens,
+    tokenValue,
+    won,
+    delta: won ? wealth + assetValue + tokenValue : -(wealth + assetValue),
   };
 }
 
