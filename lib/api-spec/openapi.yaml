@@ -129,6 +129,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/join:
+    post:
+      tags: [Rooms]
+      operationId: joinRoom
+      summary: Join a waiting room by room code
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRoomInput"
+      responses:
+        "200":
+          description: Membership created or already present.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetails"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found or user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Room state does not allow this action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/leave:
+    post:
+      tags: [Rooms]
+      operationId: leaveRoom
+      summary: Leave a room; host leaving transfers host
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: Room after the player left.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetails"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found or user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/ready:
+    post:
+      tags: [Rooms]
+      operationId: setRoomReady
+      summary: Set the caller's ready state
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadyInput"
+      responses:
+        "200":
+          description: Updated room.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetails"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found or user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Room state does not allow this action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/start:
+    post:
+      tags: [Rooms]
+      operationId: startRoom
+      summary: Host-only start of the match
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: Room moved to in_progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetails"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Action not permitted for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found or user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Room state does not allow this action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /rooms/{roomId}:
     get:
       tags: [Rooms]
@@ -262,11 +429,19 @@ components:
       enum: [joined, disconnected, left]
     Room:
       type: object
-      required: [id, hostUserId, boardId, mode, status, createdAt, updatedAt]
+      required: [id, code, hostUserId, boardId, mode, status, minPlayers, maxPlayers, createdAt, updatedAt]
       properties:
         id:
           type: string
           format: uuid
+        code:
+          type: string
+        minPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+        maxPlayers:
+          type: integer
         hostUserId:
           type: string
         boardId:
@@ -283,9 +458,11 @@ components:
           format: date-time
     RoomPlayer:
       type: object
-      required: [userId, slot, status, selectedCharacterId, ready, joinedAt, updatedAt]
+      required: [userId, displayName, slot, status, selectedCharacterId, ready, joinedAt, updatedAt]
       properties:
         userId:
+          type: string
+        displayName:
           type: string
         slot:
           type: integer
@@ -325,10 +502,28 @@ components:
           type: string
           minLength: 1
           maxLength: 40
+    JoinRoomInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 4
+          maxLength: 12
+    ReadyInput:
+      type: object
+      required: [ready]
+      properties:
+        ready:
+          type: boolean
     RoomSettingsInput:
       type: object
       minProperties: 1
       properties:
+        minPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
         boardId:
           type: string
           minLength: 1

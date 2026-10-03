@@ -262,10 +262,12 @@ export function GameScreen() {
     } else if (phase === 'landed') {
       if (match.players[match.turnIndex].endgame?.status === 'RESOLVED' && !isCPU) return;
       const resolvedGamble = match.players[match.turnIndex].endgame?.gambleCardId;
-      delay = isCPU && resolvedGamble ? 5200 : turnIndex === 0 ? 2300 : 1700;
+      const cpuFinishResolved = isCPU && match.players[match.turnIndex].endgame?.status === 'RESOLVED';
+      // CPU end-of-line screens stay up three times as long; the player can also close them with Continue.
+      delay = cpuFinishResolved ? (resolvedGamble ? 5200 : 1700) * 3 : turnIndex === 0 ? 2300 : 1700;
       callback = () => dispatchMatch({ type: 'NEXT_TURN' });
     } else if (phase === 'endgame' && isCPU) {
-      delay = 1150;
+      delay = 1150 * 3;
       callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
     } else return;
     const timer = window.setTimeout(callback, delay);

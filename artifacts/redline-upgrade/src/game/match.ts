@@ -17,6 +17,7 @@ import {
   createFinishSnapshot,
   doubleDownValue,
   finalGambleValue,
+  resolveFinalGambleStake,
   type EndgameChoice,
   type EndgameState,
   type PlayerMatchStatus,
@@ -1025,7 +1026,8 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
   }]);
   const finalPlayer = gambled.players[playerIndex];
   const rawDelta = calculateEndgameBaseValue(finalPlayer) - selectedEndgame.baseValue;
-  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta);
+  const stake = resolveFinalGambleStake(finalPlayer);
+  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta, stake.delta);
   const completed = resolvedEndgamePlayer(gambled, playerIndex, {
     ...selectedEndgame,
     status: 'RESOLVED',
@@ -1033,6 +1035,7 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     gambleCardId: draw.cardId,
     gambleRawDelta: rawDelta,
     gambleAdjustedDelta: outcome.adjustedDelta,
+    gambleStake: stake,
     multiplier: outcome.multiplier,
     finalGameValue: outcome.finalGameValue,
   });
@@ -1047,7 +1050,7 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
       finalGameValue: outcome.finalGameValue,
       delta: outcome.adjustedDelta,
       multiplier: outcome.multiplier,
-      description: `${player.displayName} resolved ${card.title}: ${outcome.adjustedDelta >= 0 ? '+' : ''}${formatAssetValue(outcome.adjustedDelta)} adjusted value.`,
+      description: `${player.displayName} put their Wealth, assets${stake.tokens ? ' and Upgrade Tokens' : ''} on the line and ${stake.won ? 'WON' : 'LOST'}. ${card.title}: ${outcome.adjustedDelta >= 0 ? '+' : ''}${formatAssetValue(outcome.adjustedDelta)} adjusted value.`,
     },
     {
       type: 'ENDGAME_COMPLETED',

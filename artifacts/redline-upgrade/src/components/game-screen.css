@@ -142,9 +142,9 @@
 @media (prefers-reduced-motion:no-preference) {
   .game-player.active { animation:player-active .4s ease-out both; }
   .payday-flash { animation:payday-in .35s cubic-bezier(.2,.9,.2,1) both; }
-  .player-stat-changing.positive { animation:player-stat-highlight-positive 2.5s ease-out both; }
-  .player-stat-changing.negative { animation:player-stat-highlight-negative 2.5s ease-out both; }
-  .player-stat-change-pulse { animation:player-stat-pulse 2.5s ease-out both; }
+  .player-stat-changing.positive { animation:player-stat-highlight-positive 5s ease-out both; }
+  .player-stat-changing.negative { animation:player-stat-highlight-negative 5s ease-out both; }
+  .player-stat-change-pulse { animation:player-stat-pulse 5s ease-out both; }
   @keyframes player-active { from { opacity:.65; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
   @keyframes payday-in { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
   @keyframes player-stat-highlight-positive {

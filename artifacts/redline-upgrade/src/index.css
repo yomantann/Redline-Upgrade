@@ -229,7 +229,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Board and play-mode selection */
 .selection-page { min-height: calc(100dvh - 149px); }
-.board-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; padding: 34px clamp(22px,4.2vw,72px) 15px; }
+.board-choice-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,460px),1fr)); gap: 18px; padding: 34px clamp(22px,4.2vw,72px) 15px; }
 .board-choice { display: grid; grid-template-columns: .9fr 1.1fr; min-height: 350px; padding: 0; overflow: hidden; text-align: left; color: #e9e7dc; background: #121a18; border: 1px solid #38443e; cursor: pointer; transition: border-color .2s, transform .2s; }
 .board-choice:hover, .board-choice:focus-visible { border-color: #d4e981; transform: translateY(-3px); outline: none; }
 .board-choice-visual { min-height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; padding: 18px; background: radial-gradient(circle at 50% 48%,#35403a,#141c19 65%); }
@@ -238,6 +238,10 @@ a { color: inherit; text-decoration: none; }
 .board-choice-mark { position: absolute; top: 50%; left: 50%; transform: translate(-57%,-50%); color: #f96346; font: 900 clamp(150px,20vw,260px)/.8 'Barlow Condensed',sans-serif; text-shadow: 13px 13px 0 #6b342b; }
 .bio-choice .board-choice-visual { background: radial-gradient(circle at 50% 48%,#263c33,#101b18 66%); }
 .bio-choice .board-choice-mark { color: #91d1a1; text-shadow: 13px 13px 0 #315745; }
+.haunted-choice .board-choice-visual { background: radial-gradient(circle at 50% 48%,#30263f,#120f1a 66%); }
+.haunted-choice .board-choice-mark { color: #b79cf0; text-shadow: 13px 13px 0 #3e2f66; }
+.board-unavailable .board-choice-tag { color: #d4e981; }
+.board-unavailable .board-choice-visual { filter: saturate(.75); }
 .board-choice-copy { display: flex; flex-direction: column; align-items: flex-start; padding: 29px 25px; }
 .board-choice-kicker { color: #a5b5a8; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
 .board-choice-copy strong { margin-top: 18px; font: 800 clamp(33px,4vw,52px)/.95 'Barlow Condensed',sans-serif; text-transform: uppercase; }
@@ -261,6 +265,8 @@ a { color: inherit; text-decoration: none; }
 .coming-soon-visual > span { z-index: 1; color: #f96346; font: 900 clamp(260px,35vw,540px)/.8 'Barlow Condensed',sans-serif; text-shadow: 20px 20px 0 #a0382c; }
 .coming-soon-visual i { position: absolute; width: 80%; aspect-ratio: 1; border: 1px solid rgba(212,233,129,.5); border-radius: 50%; transform: rotate(-21deg); }
 .bio-coming-visual > span { color: #91d1a1; text-shadow: 20px 20px 0 #315745; }
+.haunted-coming-visual { background: radial-gradient(circle at 48% 40%,#2b2338,#120f1a 55%,#0b0a11 78%); }
+.haunted-coming-visual > span { color: #b79cf0; text-shadow: 20px 20px 0 #3e2f66; }
 
 /* Roster */
 .roster-heading { padding: 48px clamp(22px,4.2vw,72px) 39px; border-bottom: 1px solid #303a37; }

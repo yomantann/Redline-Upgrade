@@ -11,6 +11,11 @@ import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
 import { boards, getBoardDefinition, type GameMode } from '@/game/boards';
+import { AppShell } from '@/components/app-shell';
+import { MultiplayerPage } from '@/pages/multiplayer';
+import { ProfilePage } from '@/pages/profile';
+import { ShopPage } from '@/pages/shop';
+import { boardAvailabilityLabel } from '@/game/boards';
 import { useAuth } from '@workspace/replit-auth-web';
 
 function Artwork({
@@ -33,71 +38,15 @@ function Artwork({
   );
 }
 
-function Header() {
-  const [location, navigate] = useLocation();
-  const { match } = useGame();
-  const { enabled, setEnabled, hasTracks } = useMusic();
-  const { user, isLoading, login, logout } = useAuth(import.meta.env.BASE_URL);
-  const activeRoster = location === '/characters' || location === '/setup';
-
-  return (
-    <header className="site-header">
-      <button className="brand" type="button" onClick={() => navigate('/')}>
-        <span className="brand-mark" aria-hidden="true" />
-        REDLINE <span className="muted">/</span> UPGRADE
-      </button>
-      <div className="header-right mono">
-        <span className="header-phase">REDLINE // TABLETOP</span>
-        <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
-          ROSTER
-        </button>
-        <button className={`header-link header-board-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>
-          {match ? 'BOARD' : <><span className="header-board-wide">BOARD PREVIEW</span><span className="header-board-compact">BOARD</span></>}
-        </button>
-        <button className="header-link header-music-link" type="button" onClick={() => setEnabled(!enabled)} aria-pressed={enabled} title={hasTracks ? 'Toggle music' : 'No music tracks installed (see public/music/README.md)'} aria-label={enabled ? 'Turn music off' : 'Turn music on'}>
-          <span className="header-music-wide">{enabled ? 'MUSIC: ON' : 'MUSIC: OFF'}</span>
-          <span className="header-music-compact">{enabled ? 'M:ON' : 'M:OFF'}</span>
-        </button>
-        <span className="header-index"><i /> LOCAL MATCH</span>
-        <span className="header-auth" aria-live="polite">
-          {isLoading ? (
-            <span className="header-auth-state">ACCOUNT …</span>
-          ) : user ? (
-            <>
-              <span className="header-auth-user">{user.firstName || 'ACCOUNT'}</span>
-              <button className="header-link" type="button" onClick={logout}>SIGN OUT</button>
-            </>
-          ) : (
-            <button className="header-link" type="button" onClick={login}>SIGN IN</button>
-          )}
-        </span>
-      </div>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="page-footer mono">
-      <span>REDLINE UPGRADE // LOCAL MATCH</span>
-      <span>21 IDENTITIES // 75 SPACES // 2 × D4</span>
-    </footer>
-  );
-}
-
-function AppShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="app-shell">
-      <Header />
-      {children}
-      <Footer />
-    </div>
-  );
-}
-
 function Home() {
   const [, navigate] = useLocation();
   const { match } = useGame();
+  const { user, login } = useAuth(import.meta.env.BASE_URL);
+
+  const openProfile = () => {
+    if (user) navigate('/profile');
+    else login();
+  };
 
   const start = () => {
     navigate('/boards');
@@ -117,13 +66,15 @@ function Home() {
               <span className="title-outline">Upgrade</span>
             </h1>
             <p className="home-intro">
-              Choose a board, then choose how to play. Redline Upgrade is ready for a local single-player run; more experiences are on the way.
+              A multi-board game platform. Choose a board, then play solo or create a room with friends. Redline Upgrade is ready to race; Bio Upgrade and Haunted Upgrade are on the way.
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>
                 Play <span aria-hidden="true">↗</span>
               </button>
               {match && <button className="action secondary" type="button" onClick={() => navigate('/board')}>Continue game <span aria-hidden="true">→</span></button>}
+              <button className="action secondary" type="button" onClick={openProfile} data-testid="button-profile">Profile</button>
+              <button className="action secondary" type="button" onClick={() => navigate('/shop')} data-testid="button-shop">Shop</button>
               <button className="text-link" type="button" onClick={() => navigate('/characters')}>
                 Browse identities <span aria-hidden="true">→</span>
               </button>
@@ -147,8 +98,8 @@ function Home() {
         </section>
         <section className="home-strip" aria-label="Game foundation status">
           <div className="strip-cell">
-            <span className="strip-number">02</span>
-            <span><strong>Distinct boards</strong><span>Two separate game experiences</span></span>
+            <span className="strip-number">03</span>
+            <span><strong>Distinct boards</strong><span>Redline, Bio and Haunted Upgrade</span></span>
           </div>
           <div className="strip-cell">
             <span className="strip-number">01</span>
@@ -156,7 +107,7 @@ function Home() {
           </div>
           <div className="strip-cell">
             <span className="strip-number">02</span>
-            <span><strong>Play modes</strong><span>Single player and multiplayer setup</span></span>
+            <span><strong>Play modes</strong><span>Single player and online rooms</span></span>
           </div>
         </section>
       </main>
@@ -168,9 +119,9 @@ function BoardSelection() {
   const [, navigate] = useLocation();
   const { selectBoard } = useGame();
 
-  const chooseBoard = (boardId: (typeof boards)[number]['id']) => {
-    selectBoard(boardId);
-    navigate('/mode');
+  const chooseBoard = (board: (typeof boards)[number]) => {
+    selectBoard(board.id);
+    navigate(board.availability === 'COMING_SOON' ? '/board-coming-soon' : '/mode');
   };
 
   return (
@@ -186,22 +137,23 @@ function BoardSelection() {
         <section className="board-choice-grid" aria-label="Available boards">
           {boards.map((board, index) => (
             <button
-              className={`board-choice ${board.id === 'BIO_MODE' ? 'bio-choice' : 'redline-choice'}`}
+              className={`board-choice ${board.artwork.themeClass} ${board.availability === 'AVAILABLE' ? '' : 'board-unavailable'}`}
               type="button"
               key={board.id}
-              onClick={() => chooseBoard(board.id)}
+              onClick={() => chooseBoard(board)}
+              data-board-id={board.id}
               data-testid={`button-board-${board.id.toLowerCase()}`}
             >
               <span className="board-choice-visual" aria-hidden="true">
                 <span className="board-choice-index mono">BOARD // 0{index + 1}</span>
-                <span className="board-choice-mark">{board.id === 'BIO_MODE' ? 'B' : 'R'}</span>
-                <span className="board-choice-tag mono">{board.playable ? 'READY TO PLAY' : 'IN DEVELOPMENT'}</span>
+                <span className="board-choice-mark">{board.artwork.mark}</span>
+                <span className="board-choice-tag mono">{boardAvailabilityLabel(board)}</span>
               </span>
               <span className="board-choice-copy">
                 <span className="mono board-choice-kicker">{board.tagline}</span>
                 <strong>{board.name}</strong>
                 <span>{board.description}</span>
-                <span className="board-choice-link">View game modes <span aria-hidden="true">↗</span></span>
+                <span className="board-choice-link">{board.availability === 'COMING_SOON' ? 'Preview' : 'View game modes'} <span aria-hidden="true">↗</span></span>
               </span>
             </button>
           ))}
@@ -222,7 +174,7 @@ function GameModeSelection() {
   const chooseMode = (mode: GameMode) => {
     selectGameMode(mode);
     if (mode === 'MULTIPLAYER') {
-      navigate('/multiplayer');
+      navigate(board.multiplayerAvailable ? '/multiplayer' : '/board-coming-soon');
     } else if (board.playable) {
       startNewGame();
       navigate('/characters');
@@ -251,8 +203,8 @@ function GameModeSelection() {
           <button className="mode-choice multiplayer-choice" type="button" onClick={() => chooseMode('MULTIPLAYER')} data-testid="button-mode-multiplayer">
             <span className="mono mode-choice-index">MODE // 02</span>
             <strong>Multiplayer</strong>
-            <span>Play with other people. Multiplayer is coming soon.</span>
-            <span className="mode-choice-status">COMING SOON</span>
+            <span>{board.multiplayerAvailable ? 'Create or join a room and gather in a lobby. Sign-in required.' : 'Multiplayer is not available for this board yet.'}</span>
+            <span className={`mode-choice-status ${board.multiplayerAvailable ? 'lime' : ''}`}>{board.multiplayerAvailable ? 'LOBBY AVAILABLE' : 'COMING SOON'}</span>
           </button>
         </section>
         <div className="selection-back">
@@ -263,25 +215,26 @@ function GameModeSelection() {
   );
 }
 
-function ComingSoon({ multiplayer = false }: { multiplayer?: boolean }) {
+function ComingSoon() {
   const [, navigate] = useLocation();
   const { selectedBoardId } = useGame();
   const board = getBoardDefinition(selectedBoardId);
+  const label = board.availability === 'COMING_SOON' ? 'COMING SOON' : 'IN DEVELOPMENT';
 
   return (
     <AppShell>
       <main className="setup-main coming-soon-page">
         <section className="setup-content">
-          <div className="eyebrow">{multiplayer ? 'MULTIPLAYER' : board.name.toUpperCase()} // COMING SOON</div>
-          <h1 className="display setup-title">{multiplayer ? <>Play<br /><span className="title-outline">together.</span></> : <>{board.name}<br /><span className="title-outline">in development.</span></>}</h1>
-          <p className="setup-lede">{multiplayer ? 'This game mode is not available yet. Your single-player game remains ready whenever you are.' : `${board.description} This board will have its own board, rules, and game content when it is ready.`}</p>
+          <div className="eyebrow">{board.name.toUpperCase()} // {label}</div>
+          <h1 className="display setup-title">{board.name}<br /><span className="title-outline">{board.availability === 'COMING_SOON' ? 'coming soon.' : 'in development.'}</span></h1>
+          <p className="setup-lede">{board.description} This board will have its own board, rules, cards, characters and assets when it is ready. Redline Upgrade remains ready to play.</p>
           <div className="setup-actions">
-            <button className="action" type="button" onClick={() => navigate('/mode')}>Back to game modes <span aria-hidden="true">←</span></button>
-            <button className="text-link" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">→</span></button>
+            <button className="action" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">←</span></button>
+            <button className="text-link" type="button" onClick={() => navigate('/')}>Home <span aria-hidden="true">→</span></button>
           </div>
         </section>
-        <div className={`coming-soon-visual ${board.id === 'BIO_MODE' ? 'bio-coming-visual' : ''}`} aria-hidden="true">
-          <span>{board.id === 'BIO_MODE' ? 'B' : 'R'}</span>
+        <div className={`coming-soon-visual ${board.artwork.themeClass.replace('-choice', '-coming-visual')}`} aria-hidden="true">
+          <span>{board.artwork.mark}</span>
           <i />
         </div>
       </main>
@@ -527,14 +480,16 @@ function Router() {
       {location === '/' && <Home />}
       {location === '/boards' && <BoardSelection />}
       {location === '/mode' && <GameModeSelection />}
-      {location === '/multiplayer' && <ComingSoon multiplayer />}
+      {location === '/multiplayer' && <MultiplayerPage />}
+      {location === '/profile' && <ProfilePage />}
+      {location === '/shop' && <ShopPage />}
       {location === '/board-coming-soon' && <ComingSoon />}
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
       {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
       {location === '/board-preview' && <BoardVisualPreview />}
-      {!['/', '/boards', '/mode', '/multiplayer', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
+      {!['/', '/boards', '/mode', '/multiplayer', '/profile', '/shop', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
     </MusicProvider>
   );

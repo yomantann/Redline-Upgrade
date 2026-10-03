@@ -1326,6 +1326,45 @@ function applyCardEffects(
       return;
     }
 
+    if (effect.kind === 'DOUBLE_OR_NOTHING') {
+      const won = stableUnitValue(`${event.id}:${cardId}:${effectSalt}`) < effect.chance;
+      const gambler = state.players[event.playerIndex];
+      state = pushLog(state, {
+        ...event,
+        id: `${event.id}:gamble:${effectSalt}`,
+        type: 'PLAYER_AFFECTED',
+        sourceEventId: event.id,
+        description: `${gambler.displayName} ${won ? 'won' : 'lost'} the Gamble on ${card.title}.`,
+      }, won ? 'GAMBLE WON' : 'GAMBLE LOST', `${gambler.displayName} ${won ? 'WON' : 'LOST'} the Gamble on ${card.title} (${Math.round(effect.chance * 100)}% to win).`);
+      const actorIndex = event.playerIndex;
+      if (won) {
+        const currentWealth = state.players[actorIndex].wealth;
+        state = applyStatDelta(state, queue, event, state.players[actorIndex], 'wealth', currentWealth, 'ADD_WEALTH', actorIndex, card.title);
+      } else {
+        for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+          const value = state.players[actorIndex][stat];
+          if (value > 0) state = applyStatDelta(state, queue, event, state.players[actorIndex], stat, -value, cardStatEffectType(stat, -value), actorIndex, card.title);
+        }
+        const lost = state.players[actorIndex];
+        if (Object.values(lost.equipment).some(Boolean)) {
+          state = {
+            ...state,
+            players: state.players.map((player, index) => index === actorIndex
+              ? { ...player, equipment: Object.fromEntries(Object.keys(player.equipment).map(slot => [slot, null])) as typeof player.equipment, assetLevels: {} }
+              : player),
+          };
+          state = pushLog(state, {
+            ...event,
+            id: `${event.id}:gamble-assets:${effectSalt}`,
+            type: 'PLAYER_AFFECTED',
+            sourceEventId: event.id,
+            description: `${lost.displayName} lost every asset to ${card.title}.`,
+          }, 'ASSETS LOST', `${lost.displayName} lost every asset to ${card.title}.`);
+        }
+      }
+      return;
+    }
+
     const target = effect.kind === 'TRANSFER_WEALTH' ? effect.target : 'target' in effect ? effect.target ?? 'SELF' : 'SELF';
     const careerTag = effect.kind === 'TRANSFER_WEALTH' || !('careerTag' in effect) ? undefined : effect.careerTag;
     const targets = cardTargetIndices(state, state.players[event.playerIndex], event, target, careerTag, effectSalt);

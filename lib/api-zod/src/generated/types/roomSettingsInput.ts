@@ -8,6 +8,11 @@
 
 export interface RoomSettingsInput {
   /**
+     * @minimum 2
+     * @maximum 4
+     */
+  minPlayers?: number;
+  /**
      * @minLength 1
      * @maxLength 80
      */

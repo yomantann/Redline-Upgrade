@@ -77,6 +77,9 @@ export const CreateRoomBody = zod.object({
   "mode": zod.string().min(1).max(createRoomBodyModeMax)
 })
 
+export const createRoomResponseRoomMinPlayersMin = 2;
+export const createRoomResponseRoomMinPlayersMax = 4;
+
 export const createRoomResponsePlayersItemSlotMin = 0;
 export const createRoomResponsePlayersItemSlotMax = 3;
 
@@ -85,6 +88,9 @@ export const createRoomResponsePlayersItemSlotMax = 3;
 export const CreateRoomResponse = zod.object({
   "room": zod.object({
   "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(createRoomResponseRoomMinPlayersMin).max(createRoomResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
   "hostUserId": zod.string(),
   "boardId": zod.string(),
   "mode": zod.string(),
@@ -94,7 +100,181 @@ export const CreateRoomResponse = zod.object({
 }),
   "players": zod.array(zod.object({
   "userId": zod.string(),
+  "displayName": zod.string(),
   "slot": zod.number().int().min(createRoomResponsePlayersItemSlotMin).max(createRoomResponsePlayersItemSlotMax),
+  "status": zod.enum(['joined', 'disconnected', 'left']),
+  "selectedCharacterId": zod.string().nullable(),
+  "ready": zod.boolean(),
+  "joinedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Join a waiting room by room code
+ */
+export const joinRoomBodyCodeMin = 4;
+export const joinRoomBodyCodeMax = 12;
+
+
+
+export const JoinRoomBody = zod.object({
+  "code": zod.string().min(joinRoomBodyCodeMin).max(joinRoomBodyCodeMax)
+})
+
+export const joinRoomResponseRoomMinPlayersMin = 2;
+export const joinRoomResponseRoomMinPlayersMax = 4;
+
+export const joinRoomResponsePlayersItemSlotMin = 0;
+export const joinRoomResponsePlayersItemSlotMax = 3;
+
+
+
+export const JoinRoomResponse = zod.object({
+  "room": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(joinRoomResponseRoomMinPlayersMin).max(joinRoomResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
+  "hostUserId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "status": zod.enum(['waiting', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "slot": zod.number().int().min(joinRoomResponsePlayersItemSlotMin).max(joinRoomResponsePlayersItemSlotMax),
+  "status": zod.enum(['joined', 'disconnected', 'left']),
+  "selectedCharacterId": zod.string().nullable(),
+  "ready": zod.boolean(),
+  "joinedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Leave a room; host leaving transfers host
+ */
+export const LeaveRoomParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const leaveRoomResponseRoomMinPlayersMin = 2;
+export const leaveRoomResponseRoomMinPlayersMax = 4;
+
+export const leaveRoomResponsePlayersItemSlotMin = 0;
+export const leaveRoomResponsePlayersItemSlotMax = 3;
+
+
+
+export const LeaveRoomResponse = zod.object({
+  "room": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(leaveRoomResponseRoomMinPlayersMin).max(leaveRoomResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
+  "hostUserId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "status": zod.enum(['waiting', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "slot": zod.number().int().min(leaveRoomResponsePlayersItemSlotMin).max(leaveRoomResponsePlayersItemSlotMax),
+  "status": zod.enum(['joined', 'disconnected', 'left']),
+  "selectedCharacterId": zod.string().nullable(),
+  "ready": zod.boolean(),
+  "joinedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Set the caller's ready state
+ */
+export const SetRoomReadyParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const SetRoomReadyBody = zod.object({
+  "ready": zod.boolean()
+})
+
+export const setRoomReadyResponseRoomMinPlayersMin = 2;
+export const setRoomReadyResponseRoomMinPlayersMax = 4;
+
+export const setRoomReadyResponsePlayersItemSlotMin = 0;
+export const setRoomReadyResponsePlayersItemSlotMax = 3;
+
+
+
+export const SetRoomReadyResponse = zod.object({
+  "room": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(setRoomReadyResponseRoomMinPlayersMin).max(setRoomReadyResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
+  "hostUserId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "status": zod.enum(['waiting', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "slot": zod.number().int().min(setRoomReadyResponsePlayersItemSlotMin).max(setRoomReadyResponsePlayersItemSlotMax),
+  "status": zod.enum(['joined', 'disconnected', 'left']),
+  "selectedCharacterId": zod.string().nullable(),
+  "ready": zod.boolean(),
+  "joinedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Host-only start of the match
+ */
+export const StartRoomParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const startRoomResponseRoomMinPlayersMin = 2;
+export const startRoomResponseRoomMinPlayersMax = 4;
+
+export const startRoomResponsePlayersItemSlotMin = 0;
+export const startRoomResponsePlayersItemSlotMax = 3;
+
+
+
+export const StartRoomResponse = zod.object({
+  "room": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(startRoomResponseRoomMinPlayersMin).max(startRoomResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
+  "hostUserId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "status": zod.enum(['waiting', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "slot": zod.number().int().min(startRoomResponsePlayersItemSlotMin).max(startRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
   "ready": zod.boolean(),
@@ -111,6 +291,9 @@ export const GetRoomParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const getRoomResponseRoomMinPlayersMin = 2;
+export const getRoomResponseRoomMinPlayersMax = 4;
+
 export const getRoomResponsePlayersItemSlotMin = 0;
 export const getRoomResponsePlayersItemSlotMax = 3;
 
@@ -119,6 +302,9 @@ export const getRoomResponsePlayersItemSlotMax = 3;
 export const GetRoomResponse = zod.object({
   "room": zod.object({
   "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(getRoomResponseRoomMinPlayersMin).max(getRoomResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
   "hostUserId": zod.string(),
   "boardId": zod.string(),
   "mode": zod.string(),
@@ -128,6 +314,7 @@ export const GetRoomResponse = zod.object({
 }),
   "players": zod.array(zod.object({
   "userId": zod.string(),
+  "displayName": zod.string(),
   "slot": zod.number().int().min(getRoomResponsePlayersItemSlotMin).max(getRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
@@ -145,6 +332,9 @@ export const UpdateRoomSettingsParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const updateRoomSettingsBodyMinPlayersMin = 2;
+export const updateRoomSettingsBodyMinPlayersMax = 4;
+
 export const updateRoomSettingsBodyBoardIdMax = 80;
 
 export const updateRoomSettingsBodyModeMax = 40;
@@ -152,9 +342,13 @@ export const updateRoomSettingsBodyModeMax = 40;
 
 
 export const UpdateRoomSettingsBody = zod.object({
+  "minPlayers": zod.number().int().min(updateRoomSettingsBodyMinPlayersMin).max(updateRoomSettingsBodyMinPlayersMax).optional(),
   "boardId": zod.string().min(1).max(updateRoomSettingsBodyBoardIdMax).optional(),
   "mode": zod.string().min(1).max(updateRoomSettingsBodyModeMax).optional()
 })
+
+export const updateRoomSettingsResponseRoomMinPlayersMin = 2;
+export const updateRoomSettingsResponseRoomMinPlayersMax = 4;
 
 export const updateRoomSettingsResponsePlayersItemSlotMin = 0;
 export const updateRoomSettingsResponsePlayersItemSlotMax = 3;
@@ -164,6 +358,9 @@ export const updateRoomSettingsResponsePlayersItemSlotMax = 3;
 export const UpdateRoomSettingsResponse = zod.object({
   "room": zod.object({
   "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(updateRoomSettingsResponseRoomMinPlayersMin).max(updateRoomSettingsResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
   "hostUserId": zod.string(),
   "boardId": zod.string(),
   "mode": zod.string(),
@@ -173,6 +370,7 @@ export const UpdateRoomSettingsResponse = zod.object({
 }),
   "players": zod.array(zod.object({
   "userId": zod.string(),
+  "displayName": zod.string(),
   "slot": zod.number().int().min(updateRoomSettingsResponsePlayersItemSlotMin).max(updateRoomSettingsResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),

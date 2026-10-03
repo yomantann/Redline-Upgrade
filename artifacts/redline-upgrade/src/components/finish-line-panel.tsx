@@ -52,7 +52,7 @@ const choices: readonly {
     id: 'FINAL_GAMBLE',
     number: '03',
     title: 'FINAL GAMBLE',
-    description: 'Draw one Gamble card and apply its effect to the recorded value.',
+    description: 'Draw a Gamble card, then risk your Wealth, assets and Upgrade Tokens on a 50/50 flip: double the stake or lose it all.',
     accent: 'gamble',
   },
 ];
@@ -259,6 +259,12 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
             <strong>{card?.title ?? (endgame.gambleCardId ? `CARD ${endgame.gambleCardId}` : 'CARD NOT SUPPLIED')}</strong>
             {typeof endgame.gambleAdjustedDelta === 'number' && <small>OUTCOME / {formatSignedMoney(endgame.gambleAdjustedDelta)}</small>}
             {card && <small>{card.effect}</small>}
+            {endgame.gambleStake && (
+              <>
+                <small data-testid="finish-gamble-stake">ALL-IN FLIP / {endgame.gambleStake.won ? 'WON' : 'LOST'} — STAKE {formatMoney(endgame.gambleStake.wealth)} WEALTH + {formatMoney(endgame.gambleStake.assetValue)} ASSETS{endgame.gambleStake.tokens ? ` + ${endgame.gambleStake.tokens} UPGRADE TOKEN${endgame.gambleStake.tokens === 1 ? '' : 'S'}` : ''}</small>
+                <small>STAKE RESULT / {formatSignedMoney(endgame.gambleStake.delta)}</small>
+              </>
+            )}
           </div>
         )}
         {!endgame.choice && <p className="finish-line-result-missing">The engine resolved this finish without a named choice.</p>}
