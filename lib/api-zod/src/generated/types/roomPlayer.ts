@@ -9,6 +9,7 @@ import type { RoomPlayerStatus } from './roomPlayerStatus';
 
 export interface RoomPlayer {
   userId: string;
+  displayName: string;
   /**
      * @minimum 0
      * @maximum 3

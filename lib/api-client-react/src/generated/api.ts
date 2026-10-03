@@ -25,7 +25,9 @@ import type {
   ErrorEnvelope,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  JoinRoomInput,
   LogoutBrowserSessionParams,
+  ReadyInput,
   RoomDetails,
   RoomInput,
   RoomSettingsInput
@@ -551,6 +553,331 @@ export const useCreateRoom = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getCreateRoomMutationOptions(options));
+    }
+
+export const getJoinRoomUrl = () => {
+
+
+
+
+  return `/api/rooms/join`
+}
+
+/**
+ * @summary Join a waiting room by room code
+ */
+export const joinRoom = async (joinRoomInput: JoinRoomInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomDetails> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomDetails>(getJoinRoomUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(joinRoomInput)
+  }
+);}
+
+
+
+
+
+export const getJoinRoomMutationKey = () => ['joinRoom'] as const;
+
+export const getJoinRoomMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinRoom>>, TError,JoinRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinRoom>>, TError,JoinRoomMutationVariables, TContext> => {
+
+const mutationKey = getJoinRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinRoom>>, JoinRoomMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinRoom(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinRoomMutationResult = NonNullable<Awaited<ReturnType<typeof joinRoom>>>
+    export type JoinRoomMutationBody = BodyType<JoinRoomInput>
+    export type JoinRoomMutationError = ErrorType<ErrorEnvelope>
+    export type JoinRoomMutationVariables = {data: BodyType<JoinRoomInput>}
+
+    /**
+ * @summary Join a waiting room by room code
+ */
+export const useJoinRoom = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinRoom>>, TError,JoinRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof joinRoom>>,
+        TError,
+        JoinRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getJoinRoomMutationOptions(options));
+    }
+
+export const getLeaveRoomUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/rooms/${roomId}/leave`
+}
+
+/**
+ * @summary Leave a room; host leaving transfers host
+ */
+export const leaveRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<RoomDetails> => {
+
+  return customFetch<RoomDetails>(getLeaveRoomUrl(roomId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLeaveRoomMutationKey = () => ['leaveRoom'] as const;
+
+export const getLeaveRoomMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveRoom>>, TError,LeaveRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveRoom>>, TError,LeaveRoomMutationVariables, TContext> => {
+
+const mutationKey = getLeaveRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveRoom>>, LeaveRoomMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  leaveRoom(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveRoomMutationResult = NonNullable<Awaited<ReturnType<typeof leaveRoom>>>
+
+    export type LeaveRoomMutationError = ErrorType<ErrorEnvelope>
+    export type LeaveRoomMutationVariables = {roomId: string}
+
+    /**
+ * @summary Leave a room; host leaving transfers host
+ */
+export const useLeaveRoom = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveRoom>>, TError,LeaveRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof leaveRoom>>,
+        TError,
+        LeaveRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLeaveRoomMutationOptions(options));
+    }
+
+export const getSetRoomReadyUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/rooms/${roomId}/ready`
+}
+
+/**
+ * @summary Set the caller's ready state
+ */
+export const setRoomReady = async (roomId: string,
+    readyInput: ReadyInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomDetails> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomDetails>(getSetRoomReadyUrl(roomId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(readyInput)
+  }
+);}
+
+
+
+
+
+export const getSetRoomReadyMutationKey = () => ['setRoomReady'] as const;
+
+export const getSetRoomReadyMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setRoomReady>>, TError,SetRoomReadyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setRoomReady>>, TError,SetRoomReadyMutationVariables, TContext> => {
+
+const mutationKey = getSetRoomReadyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setRoomReady>>, SetRoomReadyMutationVariables> = (props) => {
+          const {roomId,data} = props ?? {};
+
+          return  setRoomReady(roomId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetRoomReadyMutationResult = NonNullable<Awaited<ReturnType<typeof setRoomReady>>>
+    export type SetRoomReadyMutationBody = BodyType<ReadyInput>
+    export type SetRoomReadyMutationError = ErrorType<ErrorEnvelope>
+    export type SetRoomReadyMutationVariables = {roomId: string;data: BodyType<ReadyInput>}
+
+    /**
+ * @summary Set the caller's ready state
+ */
+export const useSetRoomReady = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setRoomReady>>, TError,SetRoomReadyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setRoomReady>>,
+        TError,
+        SetRoomReadyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetRoomReadyMutationOptions(options));
+    }
+
+export const getStartRoomUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/rooms/${roomId}/start`
+}
+
+/**
+ * @summary Host-only start of the match
+ */
+export const startRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<RoomDetails> => {
+
+  return customFetch<RoomDetails>(getStartRoomUrl(roomId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStartRoomMutationKey = () => ['startRoom'] as const;
+
+export const getStartRoomMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startRoom>>, TError,StartRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startRoom>>, TError,StartRoomMutationVariables, TContext> => {
+
+const mutationKey = getStartRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startRoom>>, StartRoomMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  startRoom(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartRoomMutationResult = NonNullable<Awaited<ReturnType<typeof startRoom>>>
+
+    export type StartRoomMutationError = ErrorType<ErrorEnvelope>
+    export type StartRoomMutationVariables = {roomId: string}
+
+    /**
+ * @summary Host-only start of the match
+ */
+export const useStartRoom = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startRoom>>, TError,StartRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startRoom>>,
+        TError,
+        StartRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartRoomMutationOptions(options));
     }
 
 export const getGetRoomUrl = (roomId: string,) => {

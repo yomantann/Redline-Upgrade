@@ -9,6 +9,13 @@ import type { RoomStatus } from './roomStatus';
 
 export interface Room {
   id: string;
+  code: string;
+  /**
+     * @minimum 2
+     * @maximum 4
+     */
+  minPlayers: number;
+  maxPlayers: number;
   hostUserId: string;
   boardId: string;
   mode: string;

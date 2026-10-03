@@ -46,6 +46,13 @@ export const RoomPlayerStatus = {
 
 export interface Room {
   id: string;
+  code: string;
+  /**
+     * @minimum 2
+     * @maximum 4
+     */
+  minPlayers: number;
+  maxPlayers: number;
   hostUserId: string;
   boardId: string;
   mode: string;
@@ -56,6 +63,7 @@ export interface Room {
 
 export interface RoomPlayer {
   userId: string;
+  displayName: string;
   /**
      * @minimum 0
      * @maximum 3
@@ -87,7 +95,24 @@ export interface RoomInput {
   mode: string;
 }
 
+export interface JoinRoomInput {
+  /**
+     * @minLength 4
+     * @maxLength 12
+     */
+  code: string;
+}
+
+export interface ReadyInput {
+  ready: boolean;
+}
+
 export interface RoomSettingsInput {
+  /**
+     * @minimum 2
+     * @maximum 4
+     */
+  minPlayers?: number;
   /**
      * @minLength 1
      * @maxLength 80

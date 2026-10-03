@@ -32,19 +32,24 @@ export const gameRoomsTable = pgTable(
   "game_rooms",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 12 }).notNull().unique(),
     hostUserId: varchar("host_user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     boardId: varchar("board_id", { length: 80 }).notNull(),
     mode: varchar("mode", { length: 40 }).notNull(),
     status: roomStatusEnum("status").notNull().default("waiting"),
+    minPlayers: smallint("min_players").notNull().default(2),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [index("game_rooms_host_user_idx").on(table.hostUserId)],
+  (table) => [
+    check("game_rooms_min_players_range", sql`${table.minPlayers} >= 2 AND ${table.minPlayers} <= 4`),
+    index("game_rooms_host_user_idx").on(table.hostUserId),
+  ],
 );
 
 export const roomPlayersTable = pgTable(
@@ -61,6 +66,7 @@ export const roomPlayersTable = pgTable(
     status: roomPlayerStatusEnum("status").notNull().default("joined"),
     selectedCharacterId: varchar("selected_character_id", { length: 80 }),
     ready: boolean("ready").notNull().default(false),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
