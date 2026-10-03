@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   ApiError,
   createRoom,
   getRoom,
+  getRoomMatch,
+  setRoomSelection,
   joinRoom,
   leaveRoom,
   setRoomReady,
@@ -14,11 +16,15 @@ import {
 import { useAuth } from '@workspace/replit-auth-web';
 import { AppShell } from '@/components/app-shell';
 import { useGame } from '@/game/state';
+import { GameScreen } from '@/components/game-screen';
+import { characters } from '@/game/characters';
+import { careers } from '@/game/careers';
 import { findBoardDefinition, getBoardDefinition } from '@/game/boards';
 import './pages.css';
 
 const ROOM_STORAGE_KEY = 'redline.activeRoomId';
 const POLL_MS = 3000;
+const MATCH_POLL_MS = 1500;
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -145,8 +151,8 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
       {room.status === 'in_progress' ? (
         <div className="platform-card match-entry" data-testid="panel-match-entry">
           <span className="mono platform-kicker">GAME ENTRY</span>
-          <strong>The host started the game</strong>
-          <span>Everyone is in. Synchronized gameplay for online matches arrives in a following phase — the room stays reserved for this group.</span>
+          <strong>The game is in progress</strong>
+          <span>Connecting you to the match …</span>
         </div>
       ) : room.status === 'cancelled' ? (
         <div className="platform-card"><strong>This room has closed.</strong></div>
@@ -159,6 +165,7 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
             {player ? (
               <>
                 <strong>{player.displayName}{player.userId === userId ? ' (you)' : ''}</strong>
+                <span className="mono" data-testid={`text-selection-${slot}`}>{[player.selectedCharacterId ? characters.find((c) => c.id === player.selectedCharacterId)?.name : 'Random character', player.selectedCareerId ? careers.find((c) => c.id === player.selectedCareerId)?.name : 'Random career'].join(' · ')}</span>
                 <span className="lobby-tags mono">
                   {player.userId === room.hostUserId && <b className="tag-host">HOST</b>}
                   {player.status === 'disconnected' ? <b className="tag-off">DISCONNECTED</b> : player.userId === room.hostUserId ? <b className="tag-ready">READY</b> : player.ready ? <b className="tag-ready">READY</b> : <b>NOT READY</b>}
@@ -170,6 +177,27 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
           </li>
         ))}
       </ul>
+
+      {room.status === 'waiting' && me && (
+        <div className="lobby-setting mono" data-testid="panel-selection">
+          <span>YOUR CHARACTER</span>
+          <select className="platform-input" value={me.selectedCharacterId ?? ''} disabled={busy} onChange={(event) => event.target.value && void run(() => setRoomSelection(room.id, { characterId: event.target.value }))} data-testid="select-character">
+            <option value="">Random</option>
+            {characters.map((character) => {
+              const takenBy = players.find((player) => player.userId !== userId && player.selectedCharacterId === character.id);
+              return <option key={character.id} value={character.id} disabled={Boolean(takenBy)}>{character.name}{takenBy ? ` (${takenBy.displayName})` : ''}</option>;
+            })}
+          </select>
+          <span>YOUR CAREER</span>
+          <select className="platform-input" value={me.selectedCareerId ?? ''} disabled={busy} onChange={(event) => event.target.value && void run(() => setRoomSelection(room.id, { careerId: event.target.value }))} data-testid="select-career">
+            <option value="">Random</option>
+            {careers.map((career) => {
+              const takenBy = players.find((player) => player.userId !== userId && player.selectedCareerId === career.id);
+              return <option key={career.id} value={career.id} disabled={Boolean(takenBy)}>{career.name}{takenBy ? ` (${takenBy.displayName})` : ''}</option>;
+            })}
+          </select>
+        </div>
+      )}
 
       {room.status === 'waiting' && (
         <>
@@ -216,6 +244,7 @@ export function MultiplayerPage() {
   const [details, setDetails] = useState<RoomDetails | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [, navigate] = useLocation();
+  const { remote, setRemoteSnapshot } = useGame();
 
   const enter = useCallback((next: RoomDetails) => {
     sessionStorage.setItem(ROOM_STORAGE_KEY, next.room.id);
@@ -253,7 +282,51 @@ export function MultiplayerPage() {
     };
   }, [user, roomId, exit]);
 
+  // While the room's match runs, poll the authoritative state. A refresh lands here too: the stored
+  // room ID plus the user's seat restores the same slot and the current game state.
+  const roomStatus = details?.room.status;
+  const matchRunning = roomStatus === 'in_progress' || roomStatus === 'completed';
+  const statusRef = useRef(roomStatus);
+  statusRef.current = roomStatus;
+  useEffect(() => {
+    if (!user || !roomId || !matchRunning) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const snapshot = await getRoomMatch(roomId);
+        if (!cancelled) setRemoteSnapshot(snapshot);
+      } catch (err) {
+        if (cancelled || !(err instanceof ApiError)) return;
+        if (err.status === 403) {
+          setRemoteSnapshot(null);
+          exit((err.data as { error?: string } | null)?.error ?? 'You were removed from this match.');
+        } else if (err.status === 404) {
+          setRemoteSnapshot(null);
+        }
+      }
+    };
+    void load();
+    const timer = window.setInterval(load, MATCH_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [user, roomId, matchRunning, exit, setRemoteSnapshot]);
+
+  useEffect(() => () => {
+    setRemoteSnapshot(null);
+    // A finished match is not resumed on the next visit.
+    if (statusRef.current === 'completed') sessionStorage.removeItem(ROOM_STORAGE_KEY);
+  }, [setRemoteSnapshot]);
+
   let content;
+  if (remote && roomId && matchRunning) {
+    return (
+      <AppShell>
+        <GameScreen />
+      </AppShell>
+    );
+  }
   if (isLoading) {
     content = <section className="platform-panel"><div className="eyebrow">CONNECTING …</div></section>;
   } else if (!user) {

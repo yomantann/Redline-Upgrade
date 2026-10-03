@@ -206,6 +206,129 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/selection:
+    post:
+      tags: [Rooms]
+      operationId: setRoomSelection
+      summary: Select the caller's character and/or career before the match starts
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectionInput"
+      responses:
+        "200":
+          description: Updated room.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetails"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found or user is not a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Room state does not allow this action, or the pick is taken.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/match:
+    get:
+      tags: [Match]
+      operationId: getRoomMatch
+      summary: Get the canonical match state (also the caller's heartbeat and reconnect recovery)
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: Current authoritative match snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSnapshot"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found, not a member, or match not started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /rooms/{roomId}/match/actions:
+    post:
+      tags: [Match]
+      operationId: submitMatchAction
+      summary: Request a game action; the server decides whether it is legal
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchActionInput"
+      responses:
+        "200":
+          description: Action accepted; the new authoritative snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSnapshot"
+        "400":
+          description: Malformed action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: It is not the caller's turn, or the caller was removed for inactivity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Room not found, not a member, or match not started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Illegal action, stale version, or match over.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /rooms/{roomId}/ready:
     post:
       tags: [Rooms]
@@ -458,7 +581,7 @@ components:
           format: date-time
     RoomPlayer:
       type: object
-      required: [userId, displayName, slot, status, selectedCharacterId, ready, joinedAt, updatedAt]
+      required: [userId, displayName, slot, status, selectedCharacterId, selectedCareerId, ready, joinedAt, updatedAt]
       properties:
         userId:
           type: string
@@ -471,6 +594,8 @@ components:
         status:
           $ref: "#/components/schemas/RoomPlayerStatus"
         selectedCharacterId:
+          type: [string, "null"]
+        selectedCareerId:
           type: [string, "null"]
         ready:
           type: boolean
@@ -510,6 +635,92 @@ components:
           type: string
           minLength: 4
           maxLength: 12
+    SelectionInput:
+      type: object
+      minProperties: 1
+      properties:
+        characterId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        careerId:
+          type: string
+          minLength: 1
+          maxLength: 80
+    MatchActionInput:
+      type: object
+      required: [action]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+          description: Optional; the action is rejected with 409 if the state has moved on.
+        action:
+          type: object
+          required: [type]
+          additionalProperties: true
+          description: Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).
+          properties:
+            type:
+              type: string
+              minLength: 1
+              maxLength: 40
+    MatchSeat:
+      type: object
+      required: [userId, playerId, playerIndex, displayName, connected, missedTurns, kicked]
+      properties:
+        userId:
+          type: string
+        playerId:
+          type: string
+        playerIndex:
+          type: integer
+        displayName:
+          type: string
+        connected:
+          type: boolean
+        missedTurns:
+          type: integer
+        kicked:
+          type: boolean
+    MatchSnapshot:
+      type: object
+      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, seats, match]
+      properties:
+        roomId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        you:
+          type: object
+          required: [userId, playerId, playerIndex]
+          properties:
+            userId:
+              type: string
+            playerId:
+              type: string
+            playerIndex:
+              type: integer
+        currentPlayerIndex:
+          type: integer
+        currentUserId:
+          type: [string, "null"]
+        actionAt:
+          type: integer
+          description: Epoch ms of the last action; the acting player's autoplay clock runs from here.
+        autoplayAfterMs:
+          type: integer
+        maxMissedTurns:
+          type: integer
+        seats:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSeat"
+        match:
+          type: object
+          additionalProperties: true
+          description: The canonical Match (same shape as the single-player reducer state, including eventLog).
     ReadyInput:
       type: object
       required: [ready]

@@ -287,6 +287,13 @@ function resetTurnScopedState(match: Match): Match {
   };
 }
 
+export interface MatchSeatSetup {
+  characterId: string;
+  displayName: string;
+  careerId: string;
+  isCPU: boolean;
+}
+
 export function createMatch(
   characterId: string,
   boardId: BoardId = DEFAULT_BOARD_ID,
@@ -298,12 +305,47 @@ export function createMatch(
   }
   const ids = [characterId, ...pickUnique(characters.map(({ id }) => id).filter(id => id !== characterId), 3)];
   const assignedCareers = pickUnique(careers, 4);
-  const players = ids.map((id, slot) => {
-    const career = assignedCareers[slot];
+  return buildMatch(boardId, mode, ids.map((id, slot) => ({
+    characterId: id,
+    displayName: slot === 0 ? 'You' : `CPU ${slot}`,
+    careerId: assignedCareers[slot].id,
+    isCPU: slot !== 0,
+  })));
+}
+
+/**
+ * Builds a multiplayer match for the given seats (slot order = turn order). Seats left without a
+ * character or career are filled with unique random choices; explicit picks must be unique.
+ */
+export function createMultiplayerMatch(
+  seats: ReadonlyArray<{ characterId: string | null; careerId: string | null; displayName: string }>,
+  boardId: BoardId = DEFAULT_BOARD_ID,
+): Match {
+  const board = getBoardDefinition(boardId);
+  if (!board.playable || !board.multiplayerAvailable) throw new Error(`${board.name} is not available in multiplayer mode`);
+  if (seats.length < 2 || seats.length > 4) throw new Error('A multiplayer match needs 2-4 players');
+  const chosenCharacters = seats.flatMap(({ characterId }) => characterId ? [characterId] : []);
+  const chosenCareers = seats.flatMap(({ careerId }) => careerId ? [careerId] : []);
+  if (new Set(chosenCharacters).size !== chosenCharacters.length) throw new Error('Characters must be unique');
+  if (new Set(chosenCareers).size !== chosenCareers.length) throw new Error('Careers must be unique');
+  const freeCharacters = pickUnique(characters.map(({ id }) => id).filter(id => !chosenCharacters.includes(id)), seats.filter(seat => !seat.characterId).length);
+  const freeCareers = pickUnique(careers.map(({ id }) => id).filter(id => !chosenCareers.includes(id)), seats.filter(seat => !seat.careerId).length);
+  return buildMatch(boardId, 'MULTIPLAYER', seats.map((seat) => ({
+    characterId: seat.characterId ?? freeCharacters.pop()!,
+    displayName: seat.displayName,
+    careerId: seat.careerId ?? freeCareers.pop()!,
+    isCPU: false,
+  })));
+}
+
+function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]): Match {
+  const players = setups.map((setup, slot) => {
+    const career = careers.find((item) => item.id === setup.careerId);
+    if (!career) throw new Error(`Unknown career: ${setup.careerId}`);
     const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
     const salaryAmount = career.salaryTiers[salaryTier - 1];
     return {
-      ...createPlayer(id, slot === 0 ? 'You' : `CPU ${slot}`),
+      ...createPlayer(setup.characterId, setup.displayName),
       careerId: career.id,
       salaryTier,
       salaryAmount,
@@ -312,8 +354,8 @@ export function createMatch(
       fame: career.statModifiers.fame ?? 0,
       lifestyle: career.statModifiers.lifestyle ?? 0,
       influence: career.statModifiers.influence ?? 0,
-      isCPU: slot !== 0,
-      role: slot === 0 ? 'HOST' as const : 'CPU' as const,
+      isCPU: setup.isCPU,
+      role: slot === 0 ? 'HOST' as const : setup.isCPU ? 'CPU' as const : 'PLAYER' as const,
       slot,
       status: 'ACTIVE' as const,
       endgame: null,

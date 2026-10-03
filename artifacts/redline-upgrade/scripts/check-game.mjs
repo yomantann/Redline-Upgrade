@@ -1811,6 +1811,95 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     [],
     'Space 1 Open Road has no event effect',
   );
+  // Phase 22: server-authoritative multiplayer layer reuses the reducer and event engine.
+  {
+    const { createMultiplayerMatch } = await vite.ssrLoadModule('/src/game/match.ts');
+    const { applyPlayerAction, createMultiplayerState, describeTurn, autoplayIfStale, AUTOPLAY_AFTER_MS } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
+    const mpMatch = createMultiplayerMatch([
+      { characterId: null, careerId: null, displayName: 'A' },
+      { characterId: null, careerId: null, displayName: 'B' },
+    ]);
+    assert.equal(mpMatch.mode, 'MULTIPLAYER');
+    assert.equal(mpMatch.players.length, 2);
+    assert.ok(mpMatch.players.every(player => !player.isCPU));
+    assert.notEqual(mpMatch.players[0].characterId, mpMatch.players[1].characterId);
+    assert.throws(() => createMultiplayerMatch([
+      { characterId: 'x', careerId: null, displayName: 'A' },
+    ]), /2-4 players/);
+    let state = createMultiplayerState(mpMatch, ['u0', 'u1']);
+    assert.equal(describeTurn(state).currentUserId, 'u0');
+    const offTurn = applyPlayerAction(state, 'u1', { type: 'ROLL_DICE' });
+    assert.deepEqual([offTurn.ok, offTurn.reason], [false, 'NOT_YOUR_TURN']);
+    assert.equal(applyPlayerAction(state, 'stranger', { type: 'ROLL_DICE' }).reason, 'NOT_A_PLAYER');
+    assert.equal(applyPlayerAction(state, 'u0', { type: 'NOPE' }).reason, 'INVALID_ACTION');
+    assert.equal(applyPlayerAction(state, 'u0', { type: 'MOVE' }).reason, 'ILLEGAL_ACTION', 'cannot move before rolling');
+    assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'ILLEGAL_ACTION');
+    const rolled = applyPlayerAction(state, 'u0', { type: 'ROLL_DICE' });
+    assert.equal(rolled.ok, true);
+    assert.equal(rolled.state.match.phase, 'reveal');
+    assert.equal(applyPlayerAction(rolled.state, 'u0', { type: 'ROLL_DICE' }).reason, 'ILLEGAL_ACTION', 'cannot roll twice');
+    assert.equal(state.match.phase, 'ready', 'rejected and accepted actions do not mutate the input state');
+    // Drive a full game through the action API only; every human decision is made via client actions.
+    state = createMultiplayerState(mpMatch, ['u0', 'u1']);
+    const owner = (s) => describeTurn(s).currentUserId;
+    for (let i = 0; i < 4000 && state.match.phase !== 'complete'; i += 1) {
+      const m = state.match;
+      const user = m.phase === 'complete' ? null : owner(state);
+      let action;
+      if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+      else if (m.phase === 'reveal') action = { type: 'MOVE' };
+      else if (m.phase === 'landed') action = { type: 'END_TURN' };
+      else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
+      else if (m.pending?.kind === 'CARD') action = { type: m.pending.stage === 'draw' ? 'DRAW_CARD' : 'ACKNOWLEDGE_CARD' };
+      else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
+      else if (m.pending?.kind === 'CAREER') action = { type: 'CHANGE_CAREER', step: m.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
+      else if (m.pending?.kind === 'ABILITY') {
+        const d = m.pending.decision;
+        action = { type: 'USE_ABILITY', resolution: d === 'STAT_DESTINATION' ? { kind: d, stat: m.pending.sourceStat } : d === 'ASSET_INTERACTION' ? { kind: d, choice: 'DECLINE' } : { kind: 'CAREER_SWAP', accept: false } };
+      } else assert.fail(`stuck in ${m.phase}`);
+      const result = applyPlayerAction(state, user, action);
+      assert.equal(result.ok, true, `${JSON.stringify(action)} in ${m.phase}: ${result.message}`);
+      state = result.state;
+    }
+    assert.equal(state.match.phase, 'complete', 'a multiplayer match completes through client actions alone');
+    assert.ok(state.match.eventLog.length > 0, 'actions flow through the shared event log');
+    assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'MATCH_COMPLETE');
+    // Idle players: autoplay after a minute, kick after three missed turns, ghost seats play instantly.
+    {
+      const t0 = 1_000_000;
+      let idle = createMultiplayerState(createMultiplayerMatch([
+        { characterId: null, careerId: null, displayName: 'A' },
+        { characterId: null, careerId: null, displayName: 'B' },
+      ]), ['u0', 'u1'], t0);
+      assert.equal(autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS - 1).changed, false, 'no autoplay before one minute');
+      let auto = autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS);
+      assert.equal(auto.changed, true);
+      assert.equal(auto.state.missedTurns.u0, 1);
+      assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay finishes the idle turn and passes it on');
+      assert.ok(auto.state.match.eventLog.some(entry => entry.eventType === 'DICE_ROLL'), 'autoplay goes through the shared event log');
+      let now = t0 + AUTOPLAY_AFTER_MS;
+      idle = auto.state;
+      // u1 keeps acting (resets nothing for u0); u0 stays idle until kicked.
+      for (let i = 0; i < 400 && !idle.kicked.includes('u0') && idle.match.phase !== 'complete'; i += 1) {
+        if (describeTurn(idle).currentUserId === 'u1') {
+          const m = idle.match;
+          const step = m.phase === 'ready' ? { type: 'ROLL_DICE' } : m.phase === 'reveal' ? { type: 'MOVE' } : m.phase === 'landed' ? { type: 'END_TURN' } : m.phase === 'endgame' ? { type: 'GAMBLE', choice: 'CASH_OUT' } : null;
+          if (step) { const r = applyPlayerAction(idle, 'u1', step, now); assert.equal(r.ok, true); idle = r.state; continue; }
+        }
+        now += AUTOPLAY_AFTER_MS;
+        idle = autoplayIfStale(idle, now).state;
+      }
+      assert.ok(idle.kicked.includes('u0') || idle.match.phase === 'complete', 'three missed turns remove the player');
+      if (idle.kicked.includes('u0')) {
+        assert.equal(applyPlayerAction(idle, 'u0', { type: 'ROLL_DICE' }, now).reason, 'KICKED');
+        assert.equal(idle.missedTurns.u0, 3);
+      }
+      let ghosts = createMultiplayerState(mpMatch, ['u0', 'u1'], t0);
+      ghosts = { ...ghosts, kicked: ['u0', 'u1'] };
+      const done = autoplayIfStale(ghosts, t0 + 1);
+      assert.ok(done.changed);
+    }
+  }
   console.log('CARD ARTWORK AUDIT');
   console.log('DECK | TOTAL | WITH IMAGE | MISSING');
   for (const deck of decks) {

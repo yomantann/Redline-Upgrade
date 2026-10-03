@@ -72,6 +72,8 @@ export interface RoomPlayer {
   status: RoomPlayerStatus;
   /** @nullable */
   selectedCharacterId: string | null;
+  /** @nullable */
+  selectedCareerId: string | null;
   ready: boolean;
   joinedAt: string;
   updatedAt: string;
@@ -101,6 +103,78 @@ export interface JoinRoomInput {
      * @maxLength 12
      */
   code: string;
+}
+
+export interface SelectionInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  characterId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  careerId?: string;
+}
+
+/**
+ * Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).
+ */
+export type MatchActionInputAction = {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  type: string;
+  [key: string]: unknown;
+ };
+
+export interface MatchActionInput {
+  /**
+     * Optional; the action is rejected with 409 if the state has moved on.
+     * @minimum 0
+     */
+  expectedVersion?: number;
+  /** Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...). */
+  action: MatchActionInputAction;
+}
+
+export interface MatchSeat {
+  userId: string;
+  playerId: string;
+  playerIndex: number;
+  displayName: string;
+  connected: boolean;
+  missedTurns: number;
+  kicked: boolean;
+}
+
+export type MatchSnapshotYou = {
+  userId: string;
+  playerId: string;
+  playerIndex: number;
+};
+
+/**
+ * The canonical Match (same shape as the single-player reducer state, including eventLog).
+ */
+export type MatchSnapshotMatch = { [key: string]: unknown };
+
+export interface MatchSnapshot {
+  roomId: string;
+  version: number;
+  you: MatchSnapshotYou;
+  currentPlayerIndex: number;
+  /** @nullable */
+  currentUserId: string | null;
+  /** Epoch ms of the last action; the acting player's autoplay clock runs from here. */
+  actionAt: number;
+  autoplayAfterMs: number;
+  maxMissedTurns: number;
+  seats: MatchSeat[];
+  /** The canonical Match (same shape as the single-player reducer state, including eventLog). */
+  match: MatchSnapshotMatch;
 }
 
 export interface ReadyInput {

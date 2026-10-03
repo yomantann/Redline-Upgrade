@@ -413,3 +413,5 @@
 .quit-to-menu:hover .quit-to-menu-tip, .quit-to-menu:focus-visible .quit-to-menu-tip { opacity:1; }
 
 .how-to-roll { display:block; margin-top:6px; padding:8px 10px; border-left:3px solid #d4e981; background:rgba(212,233,129,.08); color:#e9e7dc; font-size:12px; line-height:1.4; }
+
+.remote-status { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding: 0.5rem 0.75rem; font-size: 0.75rem; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.15); margin-bottom: 0.75rem; }
