@@ -136,6 +136,10 @@ a { color: inherit; text-decoration: none; }
 .header-link:hover, .header-link.active { color: #f96346; }
 .header-index { display: inline-flex; align-items: center; gap: 8px; color: #d4e981; }
 .header-index i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px rgba(212,233,129,.12); }
+.header-auth { display: inline-flex; align-items: center; gap: clamp(8px,1vw,14px); white-space: nowrap; }
+.header-auth-user { max-width: 92px; overflow: hidden; color: #d4e981; text-overflow: ellipsis; }
+.header-auth-state { color: #929b96; }
+.header-board-compact, .header-music-compact { display: none; }
 .page-footer { border-top: 1px solid #303a37; min-height: 66px; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 16px clamp(22px,4.2vw,72px); color: #77817c; }
 
 .action { border: 0; display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 58px; padding: 0 20px 0 24px; background: #f96346; color: #101210; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; transition: transform .2s, background .2s; }
@@ -327,8 +331,12 @@ a { color: inherit; text-decoration: none; }
   .brand { font-size: 18px; gap: 9px; white-space: nowrap; }
   .brand-mark { width: 20px; height: 20px; }
   .header-phase, .header-index { display: none; }
-  .header-right { gap: 12px; flex-shrink: 0; }
+  .header-right { gap: 8px; flex-shrink: 0; }
   .header-link { font-size: 8px; white-space: nowrap; }
+  .header-auth { gap: 7px; }
+  .header-auth-user { display: none; }
+  .header-board-wide { display: none; }
+  .header-board-compact { display: inline; }
   .page-footer { font-size: 9px; flex-wrap: wrap; }
   .home-hero { display: flex; flex-direction: column; min-height: 0; }
   .home-copy { padding-top: 55px; min-height: 550px; }
@@ -373,8 +381,11 @@ a { color: inherit; text-decoration: none; }
   .site-header { padding-inline: 12px; }
   .brand { font-size: 16px; gap: 7px; }
   .brand-mark { width: 18px; height: 18px; }
-  .header-right { gap: 7px; }
+  .header-right { gap: 5px; }
   .header-link { font-size: 7px; }
+  .header-auth { gap: 6px; }
+  .header-music-wide { display: none; }
+  .header-music-compact { display: inline; }
   .home-title { font-size: 26vw; }
   .home-actions { align-items: flex-start; flex-direction: column; }
   .roster-grid { gap: 7px; }

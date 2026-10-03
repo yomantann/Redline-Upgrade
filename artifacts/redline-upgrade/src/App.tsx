@@ -11,6 +11,7 @@ import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
 import { boards, getBoardDefinition, type GameMode } from '@/game/boards';
+import { useAuth } from '@workspace/replit-auth-web';
 
 function Artwork({
   index = 0,
@@ -36,6 +37,7 @@ function Header() {
   const [location, navigate] = useLocation();
   const { match } = useGame();
   const { enabled, setEnabled, hasTracks } = useMusic();
+  const { user, isLoading, login, logout } = useAuth(import.meta.env.BASE_URL);
   const activeRoster = location === '/characters' || location === '/setup';
 
   return (
@@ -49,9 +51,26 @@ function Header() {
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
-        <button className={`header-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>{match ? 'BOARD' : 'BOARD PREVIEW'}</button>
-        <button className="header-link" type="button" onClick={() => setEnabled(!enabled)} aria-pressed={enabled} title={hasTracks ? 'Toggle music' : 'No music tracks installed (see public/music/README.md)'} aria-label={enabled ? 'Turn music off' : 'Turn music on'}>{enabled ? 'MUSIC: ON' : 'MUSIC: OFF'}</button>
+        <button className={`header-link header-board-link ${location === '/board' || location === '/board-preview' ? 'active' : ''}`} type="button" onClick={() => navigate(match ? '/board' : '/board-preview')} aria-label={match ? 'Open current game board' : 'Open board visual preview'}>
+          {match ? 'BOARD' : <><span className="header-board-wide">BOARD PREVIEW</span><span className="header-board-compact">BOARD</span></>}
+        </button>
+        <button className="header-link header-music-link" type="button" onClick={() => setEnabled(!enabled)} aria-pressed={enabled} title={hasTracks ? 'Toggle music' : 'No music tracks installed (see public/music/README.md)'} aria-label={enabled ? 'Turn music off' : 'Turn music on'}>
+          <span className="header-music-wide">{enabled ? 'MUSIC: ON' : 'MUSIC: OFF'}</span>
+          <span className="header-music-compact">{enabled ? 'M:ON' : 'M:OFF'}</span>
+        </button>
         <span className="header-index"><i /> LOCAL MATCH</span>
+        <span className="header-auth" aria-live="polite">
+          {isLoading ? (
+            <span className="header-auth-state">ACCOUNT …</span>
+          ) : user ? (
+            <>
+              <span className="header-auth-user">{user.firstName || 'ACCOUNT'}</span>
+              <button className="header-link" type="button" onClick={logout}>SIGN OUT</button>
+            </>
+          ) : (
+            <button className="header-link" type="button" onClick={login}>SIGN IN</button>
+          )}
+        </span>
       </div>
     </header>
   );
