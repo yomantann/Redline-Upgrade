@@ -18,6 +18,8 @@ export interface RoomPlayer {
   status: RoomPlayerStatus;
   /** @nullable */
   selectedCharacterId: string | null;
+  /** @nullable */
+  selectedCareerId: string | null;
   ready: boolean;
   joinedAt: Date;
   updatedAt: Date;

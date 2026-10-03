@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import {
   db,
   gameRoomsTable,
+  roomMatchesTable,
   roomPlayersTable,
   usersTable,
   type GameRoom,
@@ -16,6 +17,11 @@ import {
   isKnownBoard,
   isMultiplayerBoardAvailable,
 } from "./boards";
+import { characters } from "../../../redline-upgrade/src/game/characters";
+import { careers } from "../../../redline-upgrade/src/game/careers";
+import { createMultiplayerMatch } from "../../../redline-upgrade/src/game/match";
+import type { BoardId } from "../../../redline-upgrade/src/game/boards";
+import { createMultiplayerState } from "../../../redline-upgrade/src/game/multiplayer";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -90,6 +96,7 @@ async function buildDetails(tx: Tx | typeof db, room: GameRoom): Promise<RoomDet
           ? "disconnected"
           : player.status,
       selectedCharacterId: player.selectedCharacterId,
+      selectedCareerId: player.selectedCareerId,
       ready: player.ready,
       joinedAt: player.joinedAt,
       updatedAt: player.updatedAt,
@@ -183,6 +190,21 @@ export async function joinRoomByCode(userId: string, rawCode: string): Promise<R
       // Duplicate join is idempotent: the user is already in this room.
       await touch(tx, room.id, userId);
       return { kind: "ok", details: await buildDetails(tx, room) };
+    }
+    if (room.status === "in_progress") {
+      // Reconnect: a player who left (or lost their session) reclaims their seat in a running match.
+      const [previous] = await tx
+        .select()
+        .from(roomPlayersTable)
+        .where(and(eq(roomPlayersTable.roomId, room.id), eq(roomPlayersTable.userId, userId)))
+        .limit(1);
+      if (previous) {
+        await tx
+          .update(roomPlayersTable)
+          .set({ status: "joined", lastSeenAt: new Date() })
+          .where(eq(roomPlayersTable.id, previous.id));
+        return { kind: "ok", details: await buildDetails(tx, room) };
+      }
     }
     if (room.status !== "waiting") {
       return { kind: "conflict", message: "This room has already started or closed." };
@@ -358,6 +380,24 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
       return { kind: "conflict", message: "All players must be ready." };
     }
 
+    const seated = players.slice(0, MAX_ROOM_PLAYERS);
+    const names = new Map(
+      (await loadPlayers(tx, roomId)).map(({ player, firstName, lastName }) => [
+        player.userId,
+        [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
+      ]),
+    );
+    const match = createMultiplayerMatch(
+      seated.map((player) => ({
+        characterId: player.selectedCharacterId,
+        careerId: player.selectedCareerId,
+        displayName: names.get(player.userId) ?? `Player ${player.slot + 1}`,
+      })),
+      room.boardId as BoardId,
+    );
+    const state = createMultiplayerState(match, seated.map((player) => player.userId));
+    await tx.insert(roomMatchesTable).values({ roomId, version: 0, state });
+
     const [started] = await tx
       .update(gameRoomsTable)
       .set({ status: "in_progress", updatedAt: new Date() })
@@ -368,5 +408,50 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
       .set({ lastSeenAt: new Date() })
       .where(inArray(roomPlayersTable.id, players.map((player) => player.id)));
     return { kind: "ok", details: await buildDetails(tx, started) };
+  });
+}
+
+export async function setSelection(
+  roomId: string,
+  userId: string,
+  selection: { characterId?: string; careerId?: string },
+): Promise<RoomResult> {
+  return db.transaction(async (tx): Promise<RoomResult> => {
+    const room = await lockRoom(tx, eq(gameRoomsTable.id, roomId));
+    if (!room) return { kind: "not_found" };
+    const players = await activePlayers(tx, roomId);
+    if (!players.some((player) => player.userId === userId)) return { kind: "not_found" };
+    if (room.status !== "waiting") {
+      return { kind: "conflict", message: "Selections cannot change after the room starts." };
+    }
+    const { characterId, careerId } = selection;
+    if (characterId !== undefined) {
+      if (!characters.some((character) => character.id === characterId)) {
+        return { kind: "invalid", message: "Unknown character." };
+      }
+      if (players.some((player) => player.userId !== userId && player.selectedCharacterId === characterId)) {
+        return { kind: "conflict", message: "That character is already taken." };
+      }
+    }
+    if (careerId !== undefined) {
+      if (!careers.some((career) => career.id === careerId)) {
+        return { kind: "invalid", message: "Unknown career." };
+      }
+      if (players.some((player) => player.userId !== userId && player.selectedCareerId === careerId)) {
+        return { kind: "conflict", message: "That career is already taken." };
+      }
+    }
+    await tx
+      .update(roomPlayersTable)
+      .set({
+        ...(characterId !== undefined ? { selectedCharacterId: characterId } : {}),
+        ...(careerId !== undefined ? { selectedCareerId: careerId } : {}),
+        // A changed pick invalidates the player's earlier ready-up.
+        ready: false,
+        lastSeenAt: new Date(),
+        status: "joined",
+      })
+      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
+    return { kind: "ok", details: await buildDetails(tx, room) };
   });
 }

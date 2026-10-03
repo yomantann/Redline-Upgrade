@@ -4,8 +4,9 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node"]
+    "rootDir": "..",
+    "types": ["node"],
+    "paths": { "@/*": ["../redline-upgrade/src/*"] }
   },
   "include": ["src"],
   "references": [

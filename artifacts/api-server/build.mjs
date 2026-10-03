@@ -20,6 +20,8 @@ async function buildAll() {
     bundle: true,
     format: "esm",
     outdir: distDir,
+    // The shared game rules live in the redline-upgrade artifact and use its "@/" alias.
+    alias: { "@": path.resolve(artifactDir, "../redline-upgrade/src") },
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.

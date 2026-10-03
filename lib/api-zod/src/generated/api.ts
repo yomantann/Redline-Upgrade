@@ -104,6 +104,7 @@ export const CreateRoomResponse = zod.object({
   "slot": zod.number().int().min(createRoomResponsePlayersItemSlotMin).max(createRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -150,6 +151,7 @@ export const JoinRoomResponse = zod.object({
   "slot": zod.number().int().min(joinRoomResponsePlayersItemSlotMin).max(joinRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -191,10 +193,133 @@ export const LeaveRoomResponse = zod.object({
   "slot": zod.number().int().min(leaveRoomResponsePlayersItemSlotMin).max(leaveRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }))
+})
+
+
+/**
+ * @summary Select the caller's character and/or career before the match starts
+ */
+export const SetRoomSelectionParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const setRoomSelectionBodyCharacterIdMax = 80;
+
+export const setRoomSelectionBodyCareerIdMax = 80;
+
+
+
+export const SetRoomSelectionBody = zod.object({
+  "characterId": zod.string().min(1).max(setRoomSelectionBodyCharacterIdMax).optional(),
+  "careerId": zod.string().min(1).max(setRoomSelectionBodyCareerIdMax).optional()
+})
+
+export const setRoomSelectionResponseRoomMinPlayersMin = 2;
+export const setRoomSelectionResponseRoomMinPlayersMax = 4;
+
+export const setRoomSelectionResponsePlayersItemSlotMin = 0;
+export const setRoomSelectionResponsePlayersItemSlotMax = 3;
+
+
+
+export const SetRoomSelectionResponse = zod.object({
+  "room": zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string(),
+  "minPlayers": zod.number().int().min(setRoomSelectionResponseRoomMinPlayersMin).max(setRoomSelectionResponseRoomMinPlayersMax),
+  "maxPlayers": zod.number().int(),
+  "hostUserId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "status": zod.enum(['waiting', 'in_progress', 'completed', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "players": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "slot": zod.number().int().min(setRoomSelectionResponsePlayersItemSlotMin).max(setRoomSelectionResponsePlayersItemSlotMax),
+  "status": zod.enum(['joined', 'disconnected', 'left']),
+  "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
+  "ready": zod.boolean(),
+  "joinedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get the canonical match state (also the caller's heartbeat and reconnect recovery)
+ */
+export const GetRoomMatchParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const GetRoomMatchResponse = zod.object({
+  "roomId": zod.string().uuid(),
+  "version": zod.number().int(),
+  "you": zod.object({
+  "userId": zod.string(),
+  "playerId": zod.string(),
+  "playerIndex": zod.number().int()
+}),
+  "currentPlayerIndex": zod.number().int(),
+  "currentUserId": zod.string().nullable(),
+  "seats": zod.array(zod.object({
+  "userId": zod.string(),
+  "playerId": zod.string(),
+  "playerIndex": zod.number().int(),
+  "displayName": zod.string(),
+  "connected": zod.boolean()
+})),
+  "match": zod.record(zod.string(), zod.unknown()).describe('The canonical Match (same shape as the single-player reducer state, including eventLog).')
+})
+
+
+/**
+ * @summary Request a game action; the server decides whether it is legal
+ */
+export const SubmitMatchActionParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const submitMatchActionBodyExpectedVersionMin = 0;
+
+export const submitMatchActionBodyActionTypeMax = 40;
+
+
+
+export const SubmitMatchActionBody = zod.object({
+  "expectedVersion": zod.number().int().min(submitMatchActionBodyExpectedVersionMin).optional().describe('Optional; the action is rejected with 409 if the state has moved on.'),
+  "action": zod.object({
+  "type": zod.string().min(1).max(submitMatchActionBodyActionTypeMax)
+}).describe('Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).')
+})
+
+export const SubmitMatchActionResponse = zod.object({
+  "roomId": zod.string().uuid(),
+  "version": zod.number().int(),
+  "you": zod.object({
+  "userId": zod.string(),
+  "playerId": zod.string(),
+  "playerIndex": zod.number().int()
+}),
+  "currentPlayerIndex": zod.number().int(),
+  "currentUserId": zod.string().nullable(),
+  "seats": zod.array(zod.object({
+  "userId": zod.string(),
+  "playerId": zod.string(),
+  "playerIndex": zod.number().int(),
+  "displayName": zod.string(),
+  "connected": zod.boolean()
+})),
+  "match": zod.record(zod.string(), zod.unknown()).describe('The canonical Match (same shape as the single-player reducer state, including eventLog).')
 })
 
 
@@ -236,6 +361,7 @@ export const SetRoomReadyResponse = zod.object({
   "slot": zod.number().int().min(setRoomReadyResponsePlayersItemSlotMin).max(setRoomReadyResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -277,6 +403,7 @@ export const StartRoomResponse = zod.object({
   "slot": zod.number().int().min(startRoomResponsePlayersItemSlotMin).max(startRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -318,6 +445,7 @@ export const GetRoomResponse = zod.object({
   "slot": zod.number().int().min(getRoomResponsePlayersItemSlotMin).max(getRoomResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -374,6 +502,7 @@ export const UpdateRoomSettingsResponse = zod.object({
   "slot": zod.number().int().min(updateRoomSettingsResponsePlayersItemSlotMin).max(updateRoomSettingsResponsePlayersItemSlotMax),
   "status": zod.enum(['joined', 'disconnected', 'left']),
   "selectedCharacterId": zod.string().nullable(),
+  "selectedCareerId": zod.string().nullable(),
   "ready": zod.boolean(),
   "joinedAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()

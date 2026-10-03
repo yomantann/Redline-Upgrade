@@ -1,6 +1,8 @@
 import {
   CreateRoomBody,
   CreateRoomResponse,
+  GetRoomMatchParams,
+  GetRoomMatchResponse,
   GetRoomParams,
   GetRoomResponse,
   JoinRoomBody,
@@ -10,8 +12,14 @@ import {
   SetRoomReadyBody,
   SetRoomReadyParams,
   SetRoomReadyResponse,
+  SetRoomSelectionBody,
+  SetRoomSelectionParams,
+  SetRoomSelectionResponse,
   StartRoomParams,
   StartRoomResponse,
+  SubmitMatchActionBody,
+  SubmitMatchActionParams,
+  SubmitMatchActionResponse,
   UpdateRoomSettingsBody,
   UpdateRoomSettingsParams,
   UpdateRoomSettingsResponse,
@@ -23,10 +31,12 @@ import {
   joinRoomByCode,
   leaveRoom,
   setReady,
+  setSelection,
   startRoomAsHost,
   updateRoomSettingsAsHost,
   type RoomResult,
 } from "../lib/rooms";
+import { getMatchForMember, submitMatchAction, type MatchResult } from "../lib/match";
 
 const router: IRouter = Router();
 
@@ -69,6 +79,19 @@ function send(
       sendError(res, 400, result.message);
       return;
   }
+}
+
+function sendMatch(
+  res: Response,
+  result: MatchResult,
+  parse: (value: unknown) => unknown,
+): void {
+  if (result.kind === "ok") {
+    res.status(200).json(parse(result.snapshot));
+    return;
+  }
+  const status = { not_found: 404, forbidden: 403, conflict: 409, invalid: 400 }[result.kind];
+  sendError(res, status, result.kind === "not_found" ? "Match not found." : result.message);
 }
 
 router.post("/rooms", async (req: Request, res: Response): Promise<void> => {
@@ -139,6 +162,52 @@ router.post("/rooms/:roomId/ready", async (req: Request, res: Response): Promise
     res,
     await setReady(params.data.roomId, req.user.id, body.data.ready),
     (v) => SetRoomReadyResponse.parse(v),
+  );
+});
+
+router.post("/rooms/:roomId/selection", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+
+  const params = SetRoomSelectionParams.safeParse(req.params);
+  const body = SetRoomSelectionBody.safeParse(req.body);
+  if (!params.success || !body.success || Object.keys(body.data).length === 0) {
+    sendError(res, 400, "Invalid selection.");
+    return;
+  }
+
+  send(
+    res,
+    await setSelection(params.data.roomId, req.user.id, body.data),
+    (v) => SetRoomSelectionResponse.parse(v),
+  );
+});
+
+router.get("/rooms/:roomId/match", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+
+  const parsed = GetRoomMatchParams.safeParse(req.params);
+  if (!parsed.success) {
+    sendError(res, 400, "Invalid room ID.");
+    return;
+  }
+
+  sendMatch(res, await getMatchForMember(parsed.data.roomId, req.user.id), (v) => GetRoomMatchResponse.parse(v));
+});
+
+router.post("/rooms/:roomId/match/actions", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+
+  const params = SubmitMatchActionParams.safeParse(req.params);
+  const body = SubmitMatchActionBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    sendError(res, 400, "Invalid action request.");
+    return;
+  }
+
+  sendMatch(
+    res,
+    await submitMatchAction(params.data.roomId, req.user.id, body.data.action, body.data.expectedVersion),
+    (v) => SubmitMatchActionResponse.parse(v),
   );
 });
 

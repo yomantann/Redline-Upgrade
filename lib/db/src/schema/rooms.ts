@@ -4,6 +4,8 @@ import {
   boolean,
   check,
   index,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   smallint,
@@ -65,6 +67,7 @@ export const roomPlayersTable = pgTable(
     slot: smallint("slot").notNull(),
     status: roomPlayerStatusEnum("status").notNull().default("joined"),
     selectedCharacterId: varchar("selected_character_id", { length: 80 }),
+    selectedCareerId: varchar("selected_career_id", { length: 80 }),
     ready: boolean("ready").notNull().default(false),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
@@ -81,6 +84,16 @@ export const roomPlayersTable = pgTable(
   ],
 );
 
+/** Canonical, server-owned match state for a room; `version` increments on every accepted action. */
+export const roomMatchesTable = pgTable("room_matches", {
+  roomId: uuid("room_id")
+    .primaryKey()
+    .references(() => gameRoomsTable.id, { onDelete: "cascade" }),
+  version: integer("version").notNull().default(0),
+  state: jsonb("state").$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertGameRoomSchema = createInsertSchema(gameRoomsTable).omit({
   id: true,
   createdAt: true,
@@ -96,5 +109,6 @@ export type GameRoom = typeof gameRoomsTable.$inferSelect;
 export type NewGameRoom = z.infer<typeof insertGameRoomSchema>;
 export type RoomPlayer = typeof roomPlayersTable.$inferSelect;
 export type NewRoomPlayer = z.infer<typeof insertRoomPlayerSchema>;
+export type RoomMatch = typeof roomMatchesTable.$inferSelect;
 export type RoomStatus = (typeof roomStatusEnum.enumValues)[number];
 export type RoomPlayerStatus = (typeof roomPlayerStatusEnum.enumValues)[number];
