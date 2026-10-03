@@ -172,11 +172,11 @@ a { color: inherit; text-decoration: none; }
 
 /* Portraits are reference art in the UI; only the WebGL scene is a board figurine. */
 .character-portrait { position: relative; overflow: hidden; background: #1d2927; }
-.character-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.character-portrait img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center top; }
 .portrait-error { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; color: #d4e981; text-align: center; font: 10px 'Space Mono',monospace; }
 .tile-portrait { height: clamp(150px,13vw,190px); border-bottom: 1px solid #34403a; }
 .tile-portrait img { transition: transform .35s ease; }
-.character-tile:hover .tile-portrait img { transform: scale(1.07); }
+.character-tile:hover .tile-portrait img { transform: none; }
 .character-piece-stage { position: relative; isolation: isolate; overflow: hidden; min-height: 130px; background: radial-gradient(circle at 50% 38%,#364747 0%,#1a2927 40%,#0c1412 85%); }
 .character-piece-stage::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .22; background: repeating-linear-gradient(0deg, transparent 0 30px, #8ea09a 31px, transparent 32px), repeating-linear-gradient(90deg, transparent 0 30px, #8ea09a 31px, transparent 32px); }
 .character-piece-stage::after { content: ''; position: absolute; left: 50%; bottom: 13%; width: 50%; height: 8%; transform: translateX(-50%); border-radius: 50%; background: #010606; filter: blur(16px); opacity: .72; pointer-events: none; }
