@@ -244,7 +244,7 @@ export function MultiplayerPage() {
   const [details, setDetails] = useState<RoomDetails | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [, navigate] = useLocation();
-  const { remote, setRemoteSnapshot } = useGame();
+  const { remote, setRemoteSnapshot, setRemoteConnected } = useGame();
 
   const enter = useCallback((next: RoomDetails) => {
     sessionStorage.setItem(ROOM_STORAGE_KEY, next.room.id);
@@ -294,9 +294,10 @@ export function MultiplayerPage() {
     const load = async () => {
       try {
         const snapshot = await getRoomMatch(roomId);
-        if (!cancelled) setRemoteSnapshot(snapshot);
+        if (!cancelled) { setRemoteSnapshot(snapshot); setRemoteConnected(true); }
       } catch (err) {
-        if (cancelled || !(err instanceof ApiError)) return;
+        if (cancelled) return;
+        if (!(err instanceof ApiError) || err.status >= 500) { setRemoteConnected(false); return; }
         if (err.status === 403) {
           setRemoteSnapshot(null);
           exit((err.data as { error?: string } | null)?.error ?? 'You were removed from this match.');
@@ -311,7 +312,7 @@ export function MultiplayerPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [user, roomId, matchRunning, exit, setRemoteSnapshot]);
+  }, [user, roomId, matchRunning, exit, setRemoteSnapshot, setRemoteConnected]);
 
   useEffect(() => () => {
     setRemoteSnapshot(null);

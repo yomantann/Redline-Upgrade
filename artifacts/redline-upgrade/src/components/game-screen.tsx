@@ -73,7 +73,7 @@ function summarizeCardResolution(events: EventLogEntry[], playerId: string): str
   return [...new Set(results)].slice(-6).join(' · ') || undefined;
 }
 
-function RemoteStatus({ remote, error, players }: { remote: NonNullable<ReturnType<typeof useGame>['remote']>; error: string | null; players: Match['players'] }) {
+function RemoteStatus({ remote, error, players, match, connected }: { remote: NonNullable<ReturnType<typeof useGame>['remote']>; error: string | null; players: Match['players']; match: Match; connected: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -82,12 +82,32 @@ function RemoteStatus({ remote, error, players }: { remote: NonNullable<ReturnTy
   const acting = remote.seats.find((seat) => seat.playerIndex === remote.currentPlayerIndex);
   const secondsLeft = Math.max(0, Math.ceil((remote.actionAt + remote.autoplayAfterMs - now) / 1000));
   const mine = remote.seats.find((seat) => seat.playerIndex === remote.youIndex);
+  const myTurn = remote.currentPlayerIndex === remote.youIndex;
+  const me = players[remote.youIndex];
+  const iFinished = me?.status === 'FINISHED';
+  const over = match.phase === 'endgame';
+  const nameById = new Map(players.map((player) => [player.playerId, player.displayName]));
+  const activity = match.eventLog.slice(-4).reverse();
+  let banner: string;
+  if (over) banner = 'MATCH COMPLETE';
+  else if (myTurn) banner = 'YOUR TURN';
+  else if (iFinished) banner = `SPECTATING // WAITING FOR ${(acting?.displayName ?? 'PLAYERS').toUpperCase()}`;
+  else banner = `WAITING FOR ${(acting?.displayName ?? 'PLAYER').toUpperCase()}${acting && !acting.connected ? ' (OFFLINE)' : ''}`;
   return (
-    <section className="remote-status mono" aria-live="polite" data-testid="panel-remote-status">
-      <span>ONLINE // {acting ? `${acting.displayName.toUpperCase()}${acting.playerIndex === remote.youIndex ? ' (YOU)' : ''} ACTING` : '—'}{acting?.kicked ? ' // REMOVED' : acting && !acting.connected ? ' // DISCONNECTED' : ''}</span>
-      {acting && !acting.kicked && <span data-testid="text-autoplay-countdown">AUTOPLAY IN {secondsLeft}s</span>}
+    <section className={`remote-status mono ${myTurn && !over ? 'my-turn' : ''}`} aria-live="polite" data-testid="panel-remote-status">
+      {!connected && <div className="remote-reconnect platform-error" role="alert" data-testid="text-reconnecting">CONNECTION LOST — RECONNECTING… YOUR SEAT IS SAVED</div>}
+      <div className="remote-banner" data-testid="text-turn-banner">{banner}</div>
+      <span>ONLINE // {acting ? `${acting.displayName.toUpperCase()}${acting.playerIndex === remote.youIndex ? ' (YOU)' : ''} ACTING` : '—'}{acting?.kicked ? ' // REMOVED' : acting && !acting.connected ? ' // DISCONNECTED' : ''} // ROUND {match.round}</span>
+      {acting && !acting.kicked && !over && <span data-testid="text-autoplay-countdown">AUTOPLAY IN {secondsLeft}s</span>}
       {mine && mine.missedTurns > 0 && <span className="platform-error" data-testid="text-missed-turns">MISSED TURNS {mine.missedTurns}/{remote.maxMissedTurns} — {remote.maxMissedTurns} IN A ROW REMOVES YOU</span>}
-      <span>{players.map((player, index) => `${player.displayName}${remote.seats[index]?.kicked ? ' (removed)' : remote.seats[index]?.connected === false ? ' (offline)' : ''}`).join(' · ')}</span>
+      <ul className="remote-players" data-testid="list-remote-players">
+        {players.map((player, index) => {
+          const seat = remote.seats[index];
+          const state = seat?.kicked ? 'REMOVED' : player.status === 'FINISHED' ? 'FINISHED' : seat?.connected === false ? 'OFFLINE' : index === remote.currentPlayerIndex ? 'ACTING' : 'WAITING';
+          return <li key={player.playerId} className={`${index === remote.currentPlayerIndex ? 'acting' : ''} ${index === remote.youIndex ? 'you' : ''}`} data-testid={`remote-player-${index}`}><b>{player.displayName.toUpperCase()}{index === remote.youIndex ? ' (YOU)' : ''}</b><span>SPACE {player.position}/75 // {state}</span></li>;
+        })}
+      </ul>
+      {activity.length > 0 && <ol className="remote-activity" data-testid="list-remote-activity">{activity.map((event) => <li key={event.id}>{nameById.get(event.playerId) ?? 'PLAYER'}: {event.label}{event.detail ? ` — ${event.detail}` : ''}</li>)}</ol>}
       {error && <span className="platform-error" role="alert" data-testid="text-remote-error">{error}</span>}
     </section>
   );
@@ -95,7 +115,7 @@ function RemoteStatus({ remote, error, players }: { remote: NonNullable<ReturnTy
 
 export function GameScreen() {
   const [, navigate] = useLocation();
-  const { match, dispatchMatch, rollDice, remote, remoteError } = useGame();
+  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected } = useGame();
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
@@ -388,7 +408,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   return (
     <main className="game-screen">
-      {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} />}
+      {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
       <section className="game-head">
         <div>
           <span className="eyebrow">{remote ? 'ONLINE MATCH' : 'MATCH 01 / LOCAL TABLETOP'}</span>
