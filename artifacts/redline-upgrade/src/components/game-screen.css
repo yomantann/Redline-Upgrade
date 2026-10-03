@@ -415,3 +415,16 @@
 .how-to-roll { display:block; margin-top:6px; padding:8px 10px; border-left:3px solid #d4e981; background:rgba(212,233,129,.08); color:#e9e7dc; font-size:12px; line-height:1.4; }
 
 .remote-status { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding: 0.5rem 0.75rem; font-size: 0.75rem; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.15); margin-bottom: 0.75rem; }
+
+.remote-status { flex-direction: column; gap: 0.4rem; }
+.remote-status.my-turn { border-color: #d4e981; box-shadow: 0 0 0 1px rgba(212, 233, 129, 0.4); }
+.remote-banner { font-size: 0.95rem; font-weight: 700; color: #e9e7dc; }
+.remote-status.my-turn .remote-banner { color: #d4e981; }
+.remote-reconnect { padding: 0.35rem 0.5rem; border: 1px solid currentColor; }
+.remote-players, .remote-activity { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
+.remote-players li { display: flex; flex-direction: column; padding: 0.25rem 0.5rem; border-left: 3px solid rgba(255, 255, 255, 0.2); }
+.remote-players li.acting { border-left-color: #d4e981; }
+.remote-players li.you b { color: #d4e981; }
+.remote-activity { flex-direction: column; opacity: 0.75; }
+@media (prefers-reduced-motion: no-preference) { .remote-status.my-turn .remote-banner { animation: payday-in .35s ease both; } }
+@media (max-width: 600px) { .remote-status { font-size: 0.68rem; padding: 0.4rem 0.5rem; } .remote-players { flex-direction: column; gap: 0.2rem; } .remote-activity li:nth-child(n+3) { display: none; } }

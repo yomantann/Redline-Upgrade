@@ -23,6 +23,9 @@ interface GameStateValue {
   /** Set while a server-authoritative multiplayer match is shown; `match` then mirrors the server. */
   remote: RemoteInfo | null;
   remoteError: string | null;
+  /** False while polling the server is failing (connection lost); cleared on the next successful poll. */
+  remoteConnected: boolean;
+  setRemoteConnected: (connected: boolean) => void;
   setRemoteSnapshot: (snapshot: MatchSnapshot | null) => void;
 }
 
@@ -72,6 +75,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [player, match, selectedBoardId, selectedGameMode]);
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [remoteError, setRemoteError] = useState<string | null>(null);
+  const [remoteConnected, setRemoteConnected] = useState(true);
   const snapshotRef = useRef<MatchSnapshot | null>(null);
   const sendChain = useRef<Promise<void>>(Promise.resolve());
   const setRemoteSnapshot = useCallback((next: MatchSnapshot | null) => {
@@ -79,7 +83,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (next && snapshotRef.current && next.roomId === snapshotRef.current.roomId && next.version < snapshotRef.current.version) return;
     snapshotRef.current = next;
     setSnapshot(next);
-    if (!next) setRemoteError(null);
+    if (!next) { setRemoteError(null); setRemoteConnected(true); }
   }, []);
   const remoteMatch = useMemo<Match | null>(() => {
     if (!snapshot) return null;
@@ -127,8 +131,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [dispatchMatch]);
   const shownMatch = remoteMatch ?? match;
   const value = useMemo(
-    () => ({ player, match: shownMatch, remote, remoteError, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice }),
-    [player, shownMatch, remote, remoteError, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice],
+    () => ({ player, match: shownMatch, remote, remoteError, remoteConnected, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice }),
+    [player, shownMatch, remote, remoteError, remoteConnected, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
