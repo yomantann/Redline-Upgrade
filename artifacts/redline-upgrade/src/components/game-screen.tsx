@@ -4,7 +4,7 @@ import { getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { CARD_READ_MINIMUM_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
-import type { MatchAction, PendingDecision, WealthEvent } from '@/game/match';
+import type { Match, MatchAction, PendingDecision, WealthEvent } from '@/game/match';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
@@ -73,9 +73,30 @@ function summarizeCardResolution(events: EventLogEntry[], playerId: string): str
   return [...new Set(results)].slice(-6).join(' · ') || undefined;
 }
 
+function RemoteStatus({ remote, error, players }: { remote: NonNullable<ReturnType<typeof useGame>['remote']>; error: string | null; players: Match['players'] }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const acting = remote.seats.find((seat) => seat.playerIndex === remote.currentPlayerIndex);
+  const secondsLeft = Math.max(0, Math.ceil((remote.actionAt + remote.autoplayAfterMs - now) / 1000));
+  const mine = remote.seats.find((seat) => seat.playerIndex === remote.youIndex);
+  return (
+    <section className="remote-status mono" aria-live="polite" data-testid="panel-remote-status">
+      <span>ONLINE // {acting ? `${acting.displayName.toUpperCase()}${acting.playerIndex === remote.youIndex ? ' (YOU)' : ''} ACTING` : '—'}{acting?.kicked ? ' // REMOVED' : acting && !acting.connected ? ' // DISCONNECTED' : ''}</span>
+      {acting && !acting.kicked && <span data-testid="text-autoplay-countdown">AUTOPLAY IN {secondsLeft}s</span>}
+      {mine && mine.missedTurns > 0 && <span className="platform-error" data-testid="text-missed-turns">MISSED TURNS {mine.missedTurns}/{remote.maxMissedTurns} — {remote.maxMissedTurns} IN A ROW REMOVES YOU</span>}
+      <span>{players.map((player, index) => `${player.displayName}${remote.seats[index]?.kicked ? ' (removed)' : remote.seats[index]?.connected === false ? ' (offline)' : ''}`).join(' · ')}</span>
+      {error && <span className="platform-error" role="alert" data-testid="text-remote-error">{error}</span>}
+    </section>
+  );
+}
+
 export function GameScreen() {
   const [, navigate] = useLocation();
-  const { match, dispatchMatch, rollDice } = useGame();
+  const { match, dispatchMatch, rollDice, remote, remoteError } = useGame();
+  const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
   const phase = match?.phase;
@@ -222,7 +243,7 @@ export function GameScreen() {
           if (asset) notice = {
             id: `${player.playerId}-${id}`,
             name: asset.name,
-            player: player.isCPU ? `CPU ${player.slot}` : 'YOU',
+            player: player.isCPU ? seatName(player) : 'YOU',
              currentWealth: player.wealth,
           };
         }
@@ -242,6 +263,8 @@ export function GameScreen() {
     if (!match) return;
     let delay: number;
     let callback: () => void;
+    // Multiplayer: the server drives everything except the local player's own pacing steps.
+    if (remote && (phase === 'ready' || phase === 'decision' || phase === 'endgame' || isCPU)) return;
     if (phase === 'ready' && isCPU) {
       delay = 850;
       callback = rollDice;
@@ -272,7 +295,7 @@ export function GameScreen() {
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-}, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch]);
+}, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch, remote !== null]);
 
   useEffect(() => {
     if (!phase || window.matchMedia('(min-width: 1001px)').matches) return;
@@ -353,7 +376,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             cardPiles={match.cardPiles}
             isCPU={active.isCPU}
             actorName={currentCharacter?.name ?? active.displayName}
-            actorLabel={active.isCPU ? `CPU ${active.slot}` : 'YOU'}
+            actorLabel={active.isCPU ? seatName(active) : 'YOU'}
             resultSummary={gambleResult}
             showDeckBay={false}
             onAcknowledge={() => dispatchMatch({ type: 'NEXT_TURN' })}
@@ -365,9 +388,10 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   return (
     <main className="game-screen">
+      {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} />}
       <section className="game-head">
         <div>
-          <span className="eyebrow">MATCH 01 / LOCAL TABLETOP</span>
+          <span className="eyebrow">{remote ? 'ONLINE MATCH' : 'MATCH 01 / LOCAL TABLETOP'}</span>
           <h1 className="display">The <span>board.</span></h1>
         </div>
         <button className="quit-to-menu" type="button" onClick={() => navigate('/')} title="Quit to Menu" aria-label="Quit to Menu" data-testid="button-quit-to-menu">
@@ -413,7 +437,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           const savedDisclosure = playerCardDisclosure[contestant.playerId];
           const playerCardOpen = savedDisclosure?.layout === cardLayout ? savedDisclosure.open : !compactPlayerLayout;
           return (
-             <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${index === 0 ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? `CPU ${contestant.slot}` : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
+             <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${(remote ? index === remote.youIndex : index === 0) ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? seatName(contestant) : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
                 <details
                   className="game-player-details"
                   open={playerCardOpen}
@@ -428,8 +452,8 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                 >
                  <summary className="game-player-summary" data-testid={`button-toggle-player-status-${index}`}>
                     <div className="game-player-summary-top">
-                      <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span>
-                      {index === match.turnIndex && <span className={`game-player-summary-active ${contestant.isCPU ? 'cpu' : ''}`} data-testid={`status-active-player-${index}`}>{contestant.isCPU ? `CPU ${contestant.slot} ACTIVE` : 'YOUR TURN'}</span>}
+                      <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? seatName(contestant) : 'YOU'}</span>
+                      {index === match.turnIndex && <span className={`game-player-summary-active ${contestant.isCPU ? 'cpu' : ''}`} data-testid={`status-active-player-${index}`}>{contestant.isCPU ? `${seatName(contestant)} ACTIVE` : 'YOUR TURN'}</span>}
                       <span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                     </div>
                    <div className="game-player-summary-identity">
@@ -457,13 +481,13 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                  </summary>
                  <div className="game-player-expanded">
                <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}>
-                 <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? `CPU ${contestant.slot}` : 'YOU'}</span>
+                 <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? seatName(contestant) : 'YOU'}</span>
                   <span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{contestant.status === 'FINISHED' ? ' / FINISHED' : ''}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                </div>
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
                  {character && <CharacterPortrait character={character} className="game-player-portrait" />}
-                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `CPU ${contestant.slot} // ` : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}</small></div>
+                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}</small></div>
                </div>
               <div className="game-player-career">
                 <CareerGlyph icon={career?.icon || career?.name || 'career'} />
@@ -530,8 +554,8 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
        /></div>
         <aside className="game-dice-panel" aria-label="Turn status and dice">
           <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
-            <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF 4</span>
-            <strong className="display">{active.isCPU ? `CPU ${active.slot}'S TURN` : 'YOUR TURN'}</strong>
+            <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
+            <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
             <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
             {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO PLAY / Press ROLL to throw two D4s and move that many spaces. Reach space 75 with the most Wealth. Check the board legend for what each space does.</small>}
             {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
@@ -555,7 +579,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
           actorName={currentCharacter?.name ?? active.displayName}
-         actorLabel={active.isCPU ? `CPU ${active.slot}` : 'YOU'}
+         actorLabel={active.isCPU ? seatName(active) : 'YOU'}
           resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}

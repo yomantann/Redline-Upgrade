@@ -87,7 +87,7 @@ export function MilestoneChoice({ pending, player, players, onAction }: Props) {
   if (player.isCPU) {
     return (
       <section className="milestone-choice" aria-live="polite" data-testid="status-cpu-decision">
-        <Header space={pending.space} eyebrow="AUTOMATIC DECISION" title={`CPU ${player.slot} is`} highlighted="choosing." description="Their move is being resolved. The player sheet will update when the decision is complete." />
+        <Header space={pending.space} eyebrow="AUTOMATIC DECISION" title={`${player.displayName} is`} highlighted="choosing." description="Their move is being resolved. The player sheet will update when the decision is complete." />
         <div className="milestone-cpu"><strong>Calculating<br />next move.</strong><i aria-hidden="true" /><p className="mono">DECISION IN PROGRESS // BOARD PAUSED</p></div>
       </section>
     );

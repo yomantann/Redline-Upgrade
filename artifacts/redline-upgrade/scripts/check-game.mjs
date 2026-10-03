@@ -1814,7 +1814,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
   // Phase 22: server-authoritative multiplayer layer reuses the reducer and event engine.
   {
     const { createMultiplayerMatch } = await vite.ssrLoadModule('/src/game/match.ts');
-    const { applyPlayerAction, createMultiplayerState, describeTurn } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
+    const { applyPlayerAction, createMultiplayerState, describeTurn, autoplayIfStale, AUTOPLAY_AFTER_MS } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
     const mpMatch = createMultiplayerMatch([
       { characterId: null, careerId: null, displayName: 'A' },
       { characterId: null, careerId: null, displayName: 'B' },
@@ -1864,6 +1864,41 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     assert.equal(state.match.phase, 'complete', 'a multiplayer match completes through client actions alone');
     assert.ok(state.match.eventLog.length > 0, 'actions flow through the shared event log');
     assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'MATCH_COMPLETE');
+    // Idle players: autoplay after a minute, kick after three missed turns, ghost seats play instantly.
+    {
+      const t0 = 1_000_000;
+      let idle = createMultiplayerState(createMultiplayerMatch([
+        { characterId: null, careerId: null, displayName: 'A' },
+        { characterId: null, careerId: null, displayName: 'B' },
+      ]), ['u0', 'u1'], t0);
+      assert.equal(autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS - 1).changed, false, 'no autoplay before one minute');
+      let auto = autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS);
+      assert.equal(auto.changed, true);
+      assert.equal(auto.state.missedTurns.u0, 1);
+      assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay finishes the idle turn and passes it on');
+      assert.ok(auto.state.match.eventLog.some(entry => entry.eventType === 'DICE_ROLL'), 'autoplay goes through the shared event log');
+      let now = t0 + AUTOPLAY_AFTER_MS;
+      idle = auto.state;
+      // u1 keeps acting (resets nothing for u0); u0 stays idle until kicked.
+      for (let i = 0; i < 400 && !idle.kicked.includes('u0') && idle.match.phase !== 'complete'; i += 1) {
+        if (describeTurn(idle).currentUserId === 'u1') {
+          const m = idle.match;
+          const step = m.phase === 'ready' ? { type: 'ROLL_DICE' } : m.phase === 'reveal' ? { type: 'MOVE' } : m.phase === 'landed' ? { type: 'END_TURN' } : m.phase === 'endgame' ? { type: 'GAMBLE', choice: 'CASH_OUT' } : null;
+          if (step) { const r = applyPlayerAction(idle, 'u1', step, now); assert.equal(r.ok, true); idle = r.state; continue; }
+        }
+        now += AUTOPLAY_AFTER_MS;
+        idle = autoplayIfStale(idle, now).state;
+      }
+      assert.ok(idle.kicked.includes('u0') || idle.match.phase === 'complete', 'three missed turns remove the player');
+      if (idle.kicked.includes('u0')) {
+        assert.equal(applyPlayerAction(idle, 'u0', { type: 'ROLL_DICE' }, now).reason, 'KICKED');
+        assert.equal(idle.missedTurns.u0, 3);
+      }
+      let ghosts = createMultiplayerState(mpMatch, ['u0', 'u1'], t0);
+      ghosts = { ...ghosts, kicked: ['u0', 'u1'] };
+      const done = autoplayIfStale(ghosts, t0 + 1);
+      assert.ok(done.changed);
+    }
   }
   console.log('CARD ARTWORK AUDIT');
   console.log('DECK | TOTAL | WITH IMAGE | MISSING');

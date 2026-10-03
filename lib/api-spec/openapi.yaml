@@ -312,7 +312,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "403":
-          description: It is not the caller's turn.
+          description: It is not the caller's turn, or the caller was removed for inactivity.
           content:
             application/json:
               schema:
@@ -667,7 +667,7 @@ components:
               maxLength: 40
     MatchSeat:
       type: object
-      required: [userId, playerId, playerIndex, displayName, connected]
+      required: [userId, playerId, playerIndex, displayName, connected, missedTurns, kicked]
       properties:
         userId:
           type: string
@@ -679,9 +679,13 @@ components:
           type: string
         connected:
           type: boolean
+        missedTurns:
+          type: integer
+        kicked:
+          type: boolean
     MatchSnapshot:
       type: object
-      required: [roomId, version, you, currentPlayerIndex, currentUserId, seats, match]
+      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, seats, match]
       properties:
         roomId:
           type: string
@@ -702,6 +706,13 @@ components:
           type: integer
         currentUserId:
           type: [string, "null"]
+        actionAt:
+          type: integer
+          description: Epoch ms of the last action; the acting player's autoplay clock runs from here.
+        autoplayAfterMs:
+          type: integer
+        maxMissedTurns:
+          type: integer
         seats:
           type: array
           items:

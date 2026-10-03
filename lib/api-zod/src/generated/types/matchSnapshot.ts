@@ -16,6 +16,10 @@ export interface MatchSnapshot {
   currentPlayerIndex: number;
   /** @nullable */
   currentUserId: string | null;
+  /** Epoch ms of the last action; the acting player's autoplay clock runs from here. */
+  actionAt: number;
+  autoplayAfterMs: number;
+  maxMissedTurns: number;
   seats: MatchSeat[];
   /** The canonical Match (same shape as the single-player reducer state, including eventLog). */
   match: MatchSnapshotMatch;

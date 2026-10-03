@@ -12,4 +12,6 @@ export interface MatchSeat {
   playerIndex: number;
   displayName: string;
   connected: boolean;
+  missedTurns: number;
+  kicked: boolean;
 }
