@@ -1,0 +1,80 @@
+PHASE 20.5 — AUTHENTICATION & DATABASE FOUNDATION
+
+Establish the production-ready authentication and database foundation for Redline Upgrade using Replit's existing authentication/server infrastructure.
+
+Important: First inspect the current project. If authentication or database infrastructure already exists, reuse and properly configure it rather than creating a duplicate system. Do not break the existing Single Player game.
+
+1. Authentication
+
+Establish Replit Auth as the game's primary authenticated user identity.
+Users should be able to sign in/sign out through the existing Replit-supported authentication flow.
+Every authenticated user should have a stable unique user ID.
+Keep authentication identity separate from:
+Character
+Career
+Current game/match
+Player slot
+Make the authenticated user identity available to the server/game layer for future multiplayer.
+
+2. Database
+
+Establish a persistent database using the database technology already supported/configured by the Replit project.
+Create a clean schema that can support the game now and multiplayer later.
+At minimum prepare models/tables for:
+Users — authenticated player identity
+Game Rooms / Matches — room ID, host, board/mode, status, timestamps
+Room Players — user ID, room ID, player status/slot, selected character, ready state
+Do not store unnecessary gameplay data yet.
+
+3. Multiplayer Preparation
+Design the database so it can eventually support:
+
+Create room
+Join room
+Leave room
+Host transfer
+Player reconnect
+Selected board
+Player list
+Match status
+Future persistent match/game state
+
+4. Security
+
+Server-side authentication must be authoritative.
+Never trust a client-provided user ID.
+Verify that a user belongs to a room before allowing room-specific actions.
+Only the room host should be able to perform host-only actions.
+Do not expose sensitive authentication/database information to the client.
+
+5. Current Game
+
+Existing Redline Upgrade Single Player must continue working exactly as it does now.
+CPU players should remain completely unaffected.
+Do not convert the existing local game into multiplayer yet.
+Do not change cards, careers, abilities, assets, Upgrade Tokens, Gamble, or endgame mechanics.
+
+6. Developer Setup
+
+Configure all required Replit environment variables/secrets and database connection settings using Replit's supported mechanisms.
+Do not hard-code credentials or connection strings.
+Add the necessary database migration/schema setup so the environment can be recreated reliably.
+Keep the database layer isolated behind a clean server-side data-access layer.
+
+7. Verification
+Test:
+
+New user authentication
+Existing user authentication
+Sign out/sign back in
+Stable user ID
+Database connection
+Creating/retrieving a user record
+Creating/retrieving a test room record
+Room-player relationship
+Unauthorized users cannot access another user's protected room data
+Existing Single Player game still works
+
+Run typecheck, build, and existing tests.
+
+Do not build the multiplayer lobby yet. This phase is only establishing a clean, secure foundation for authentication, persistent user identity, and database storage so Phase 21 can build the multiplayer room/lobby system on top of it.
