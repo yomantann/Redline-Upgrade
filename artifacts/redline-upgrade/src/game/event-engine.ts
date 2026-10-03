@@ -1,8 +1,8 @@
-import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
+import { getAsset, type AssetCategory, type AssetSlot } from './assets';
 import { careerAbilityId, getAbility, type EffectDefinition, type EffectType } from './abilities';
-import { getSpace } from './board-data';
+import { boardAssetOptions, getBoardContent, getBoardSpace } from './board-content';
 import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
-import { careers, getCareer } from './careers';
+import { getCareer } from './careers';
 import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 import { getCharacter } from './characters';
 import { getCard, type CardEffect, type CardTarget } from './cards';
@@ -667,7 +667,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       newPosition: nextPosition,
       distance: direction,
     });
-    const space = getSpace(nextPosition);
+    const space = getBoardSpace(match.boardId, nextPosition);
     if (!space) continue;
     queue.push({
       type: 'PASS_SPACE',
@@ -776,7 +776,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     }
   }
   const finalPosition = state.players[targetIndex].position;
-  const finalSpace = getSpace(finalPosition);
+  const finalSpace = getBoardSpace(match.boardId, finalPosition);
   if (finalSpace) {
     const landing = { playerIndex: targetIndex, space: finalSpace };
     const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
@@ -909,7 +909,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           spaceNumber: state.players[index].position,
           cardId: draw.cardId,
         });
-        const landingSpace = getSpace(state.players[index].position);
+        const landingSpace = getBoardSpace(match.boardId, state.players[index].position);
         return {
           ...state,
           cardPiles: draw.cardPiles,

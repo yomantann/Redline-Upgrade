@@ -1,8 +1,8 @@
-import { characters } from './characters';
 import { createPlayer, effectiveSalaryAmount, type PlayerStat } from './player';
-import { getSpace, type BoardSpace } from './board-data';
-import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
-import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
+import type { BoardSpace } from './board-data';
+import { boardAssetOptions, getBoardContent, getBoardSpace } from './board-content';
+import { FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
+import { getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
@@ -215,7 +215,7 @@ function finishPlayersAtLine(match: Match): Match {
     };
   });
   const currentPlayerFinished = newlyFinished.includes(match.turnIndex);
-  const currentSpace = getSpace(75);
+  const currentSpace = getBoardSpace(match.boardId, 75);
   if (currentPlayerFinished) {
     drafts.push({ type: 'TURN_END', playerIndex: match.turnIndex });
   }
@@ -303,8 +303,10 @@ export function createMatch(
   if (!board.playable || mode !== 'SINGLE_PLAYER') {
     throw new Error(`${board.name} is not available in ${mode.toLowerCase().replace('_', ' ')} mode`);
   }
-  const ids = [characterId, ...pickUnique(characters.map(({ id }) => id).filter(id => id !== characterId), 3)];
-  const assignedCareers = pickUnique(careers, 4);
+  const content = getBoardContent(boardId);
+  if (!content.characters.some(({ id }) => id === characterId)) throw new Error(`Character ${characterId} does not belong to ${board.name}`);
+  const ids = [characterId, ...pickUnique(content.characters.map(({ id }) => id).filter(id => id !== characterId), 3)];
+  const assignedCareers = pickUnique(content.careers, 4);
   return buildMatch(boardId, mode, ids.map((id, slot) => ({
     characterId: id,
     displayName: slot === 0 ? 'You' : `CPU ${slot}`,
@@ -324,12 +326,15 @@ export function createMultiplayerMatch(
   const board = getBoardDefinition(boardId);
   if (!board.playable || !board.multiplayerAvailable) throw new Error(`${board.name} is not available in multiplayer mode`);
   if (seats.length < 2 || seats.length > 4) throw new Error('A multiplayer match needs 2-4 players');
+  const content = getBoardContent(boardId);
   const chosenCharacters = seats.flatMap(({ characterId }) => characterId ? [characterId] : []);
   const chosenCareers = seats.flatMap(({ careerId }) => careerId ? [careerId] : []);
+  if (chosenCharacters.some((id) => !content.characters.some((character) => character.id === id))) throw new Error(`Characters must belong to ${board.name}`);
+  if (chosenCareers.some((id) => !content.careers.some((career) => career.id === id))) throw new Error(`Careers must belong to ${board.name}`);
   if (new Set(chosenCharacters).size !== chosenCharacters.length) throw new Error('Characters must be unique');
   if (new Set(chosenCareers).size !== chosenCareers.length) throw new Error('Careers must be unique');
-  const freeCharacters = pickUnique(characters.map(({ id }) => id).filter(id => !chosenCharacters.includes(id)), seats.filter(seat => !seat.characterId).length);
-  const freeCareers = pickUnique(careers.map(({ id }) => id).filter(id => !chosenCareers.includes(id)), seats.filter(seat => !seat.careerId).length);
+  const freeCharacters = pickUnique(content.characters.map(({ id }) => id).filter(id => !chosenCharacters.includes(id)), seats.filter(seat => !seat.characterId).length);
+  const freeCareers = pickUnique(content.careers.map(({ id }) => id).filter(id => !chosenCareers.includes(id)), seats.filter(seat => !seat.careerId).length);
   return buildMatch(boardId, 'MULTIPLAYER', seats.map((seat) => ({
     characterId: seat.characterId ?? freeCharacters.pop()!,
     displayName: seat.displayName,
@@ -340,7 +345,7 @@ export function createMultiplayerMatch(
 
 function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]): Match {
   const players = setups.map((setup, slot) => {
-    const career = careers.find((item) => item.id === setup.careerId);
+    const career = getBoardContent(boardId).careers.find((item) => item.id === setup.careerId);
     if (!career) throw new Error(`Unknown career: ${setup.careerId}`);
     const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
     const salaryAmount = career.salaryTiers[salaryTier - 1];
@@ -383,10 +388,10 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     abilityUsage: {},
     effectProtections: {},
     rewardModifiers: {},
-    cardPiles: createCardPiles(),
+    cardPiles: createCardPiles(getBoardContent(boardId).cards),
   };
   const startingTokenEvents = match.players.flatMap((player, playerIndex) => {
-    const career = careers.find((item) => item.id === player.careerId);
+    const career = getBoardContent(boardId).careers.find((item) => item.id === player.careerId);
     const amount = career?.acquisitionUpgradeTokens ?? 0;
     return amount > 0 ? [{
       type: 'UPGRADE_TOKEN_GAINED' as const,
@@ -460,8 +465,8 @@ function milestoneType(space: number): 'car' | 'lifestyle' | 'companion' | 'prop
   }
 }
 
-function drawAssets(category: AssetCategory): string[] {
-  return pickUnique(assetOptions(category), 3).map(asset => asset.id);
+function drawAssets(boardId: BoardId, category: AssetCategory): string[] {
+  return pickUnique(boardAssetOptions(boardId, category), 3).map(asset => asset.id);
 }
 
 function land(match: Match, space: BoardSpace, previousPosition: number): Match {
@@ -505,7 +510,7 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
     });
   }
   if (slot && !match.players[match.turnIndex].equipment[slot]) {
-    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
+    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(match.boardId, slot) } }, drafts);
   }
   if (space.deck) {
     const draw = drawCardFromPiles(match.cardPiles, space.deck);
@@ -525,19 +530,19 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
 function resume(match: Match): Match {
   const current = match.players[match.turnIndex];
   if (match.stepsRemaining > 0 && current.position < 75) return { ...match, phase: 'moving', pending: null };
-  const space = getSpace(current.position);
+  const space = getBoardSpace(match.boardId, current.position);
   if (!space) throw new Error('Missing decision space');
   return { ...match, phase: 'landed', stepsRemaining: 0, lastLanding: { playerIndex: match.turnIndex, space }, pending: null };
 }
 
-function careerOffers(currentId: string, secondCareerId?: string | null): [string, string] {
-  const other = pickUnique(careers.filter(career => career.id !== currentId && career.id !== secondCareerId), 2);
+function careerOffers(boardId: BoardId, currentId: string, secondCareerId?: string | null): [string, string] {
+  const other = pickUnique(getBoardContent(boardId).careers.filter(career => career.id !== currentId && career.id !== secondCareerId), 2);
   return [other[0].id, other[1].id];
 }
 
 function assignNewCareer(match: Match, careerId: string): [Match, EventDraft[]] {
   const current = match.players[match.turnIndex];
-  const career = careers.find(item => item.id === careerId);
+  const career = getBoardContent(match.boardId).careers.find(item => item.id === careerId);
   if (!career || careerId === current.careerId || careerId === current.secondCareer?.careerId) return [match, []];
   const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
   const players = match.players.map((player, index) => index === match.turnIndex
@@ -559,7 +564,7 @@ function assignNewCareer(match: Match, careerId: string): [Match, EventDraft[]] 
 function finishStep(match: Match, previousPosition: number): Match {
   if (match.phase !== 'moving') return match;
   const current = match.players[match.turnIndex];
-  const space = getSpace(current.position);
+  const space = getBoardSpace(match.boardId, current.position);
   if (!space) throw new Error(`Invalid movement position: ${current.position}`);
   if (space.type === 'CAREER_CHANGE') {
     if (space.number === 35 && current.careerId === 'gig-worker' && current.secondCareer) {
@@ -1147,7 +1152,7 @@ function autoDecide(match: Match): Match {
     const categories: AssetCategory[] = pending.slot === 'companion'
       ? (player.careerId === 'degen-trader' || player.careerId === 'real-estate-investor' ? ['investment'] : ['pet'])
       : [pending.slot];
-    const offers = pending.offeredAssetIds ?? drawAssets(categories[0]);
+    const offers = pending.offeredAssetIds ?? drawAssets(match.boardId, categories[0]);
     const available = offers.map(id => getAsset(id)).filter((asset): asset is NonNullable<typeof asset> => !!asset)
       .filter(asset => asset.cost <= player.wealth);
     if (!available.length) return resume(match);
@@ -1165,8 +1170,8 @@ function autoDecide(match: Match): Match {
     return purchase({ ...match, pending: { ...pending, offeredAssetIds: offers, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } }, chosen.id);
   }
   if (Math.random() > 0.42) return resume(match);
-  const options = careerOffers(player.careerId ?? '', player.secondCareer?.careerId);
-  const chosen = options.map(id => careers.find(career => career.id === id)!)
+  const options = careerOffers(match.boardId, player.careerId ?? '', player.secondCareer?.careerId);
+  const chosen = options.map(id => getBoardContent(match.boardId).careers.find(career => career.id === id)!)
     .sort((a, b) => (b.salaryTiers[1] + Math.random() * 80000) - (a.salaryTiers[1] + Math.random() * 80000))[0];
   const [updated, acquisitionEvents] = assignNewCareer(match, chosen.id);
   const withCareerEvent = emit({ ...updated, pending: null }, [
@@ -1193,7 +1198,7 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
     newPosition: position,
     spaceNumber: position,
   }];
-  const space = getSpace(position);
+  const space = getBoardSpace(match.boardId, position);
   if (!space) return drafts;
   if (hitPayday) {
     drafts.push({
@@ -1256,7 +1261,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'MOVE': {
       if (match.phase !== 'reveal' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       if (match.players[match.turnIndex].position < 75) return { ...match, phase: 'moving' };
-      const space = getSpace(75);
+      const space = getBoardSpace(match.boardId, 75);
       if (!space) throw new Error('Missing finish space');
       return land(match, space, 75);
     }
@@ -1265,7 +1270,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const current = match.players[match.turnIndex];
       const previousPosition = current.position;
       const position = Math.min(75, current.position + 1);
-      const space = getSpace(position);
+      const space = getBoardSpace(match.boardId, position);
       if (!space) throw new Error(`Invalid movement position: ${position}`);
       let moved: Match = {
         ...match,
@@ -1297,7 +1302,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
-        ? { ...match, pending: { ...match.pending, category: action.category, offeredAssetIds: drawAssets(action.category) } } : match;
+        ? { ...match, pending: { ...match.pending, category: action.category, offeredAssetIds: drawAssets(match.boardId, action.category) } } : match;
     case 'BUY_ASSET':
       return purchase(match, action.assetId);
     case 'UPGRADE_ASSET':
@@ -1318,7 +1323,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         pending: {
           ...match.pending,
           stage: 'offers',
-          options: careerOffers(current.careerId ?? '', current.secondCareer?.careerId),
+          options: careerOffers(match.boardId, current.careerId ?? '', current.secondCareer?.careerId),
         },
       };
     }

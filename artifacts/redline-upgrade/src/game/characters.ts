@@ -1,4 +1,5 @@
 import { characterAbilityId, getAbility } from './abilities';
+import { bioCharacters } from './bio-upgrade';
 
 export interface CharacterDefinition {
   id: string;
@@ -77,5 +78,5 @@ export const characters: CharacterDefinition[] = roster.map(
 );
 
 export function getCharacter(id: string): CharacterDefinition | undefined {
-  return characters.find((character) => character.id === id);
+  return characters.find((character) => character.id === id) ?? bioCharacters.find((character) => character.id === id);
 }

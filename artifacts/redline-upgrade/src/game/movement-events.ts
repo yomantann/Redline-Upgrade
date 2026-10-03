@@ -1,4 +1,4 @@
-import { getSpace } from './board-data';
+import { getBoardSpace } from './board-content';
 import type { EventDraft } from './event-engine';
 import type { Match } from './match';
 import { effectiveSalaryAmount } from './player';
@@ -17,7 +17,7 @@ export function applySalaryGate(
   position: number,
   context: EventContext = {},
 ): { match: Match; drafts: EventDraft[] } {
-  const space = getSpace(position);
+  const space = getBoardSpace(match.boardId, position);
   if (!space?.payday || position <= previousPosition) return { match, drafts: [] };
   const player = match.players[playerIndex];
   const previousWealth = player.wealth;

@@ -1,4 +1,4 @@
-import { cards, getCard, cardsForDeck } from './cards';
+import { cards, getCard, cardsForDeck, type CardDefinition } from './cards';
 import { decks, type DeckId } from './decks';
 
 export interface CardPile {
@@ -18,9 +18,9 @@ function shuffle<T>(items: readonly T[]): T[] {
   return shuffled;
 }
 
-export function createCardPiles(): CardPileMap {
+export function createCardPiles(boardCards: readonly CardDefinition[] = cards): CardPileMap {
   const createPile = (deck: DeckId): CardPile => ({
-    drawPile: shuffle(cardsForDeck(deck).map(card => card.id)),
+    drawPile: shuffle(cardsForDeck(deck, boardCards).map(card => card.id)),
     discardPile: [],
     inFlight: [],
   });
@@ -71,13 +71,13 @@ export function discardCardToPiles(piles: CardPileMap, deck: DeckId, cardId: str
   };
 }
 
-export function assertCompleteCardPiles(piles: CardPileMap): void {
+export function assertCompleteCardPiles(piles: CardPileMap, boardCards: readonly CardDefinition[] = cards): void {
   const seen = new Set<string>();
   for (const deck of decks) {
     const pile = piles[deck.id];
     if (!pile) throw new Error(`Missing ${deck.id} card pile`);
     const ids = [...pile.drawPile, ...pile.discardPile, ...pile.inFlight];
-    const expected = cards.filter(card => card.deck === deck.id);
+    const expected = boardCards.filter(card => card.deck === deck.id);
     if (ids.length !== expected.length || new Set(ids).size !== expected.length) {
       throw new Error(`${deck.id} card pile does not contain each card exactly once`);
     }
@@ -87,5 +87,5 @@ export function assertCompleteCardPiles(piles: CardPileMap): void {
       seen.add(id);
     }
   }
-  if (seen.size !== cards.length) throw new Error('Card piles do not contain the full card set');
+  if (seen.size !== boardCards.length) throw new Error('Card piles do not contain the full card set');
 }

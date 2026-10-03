@@ -1,4 +1,5 @@
 import { careerAbilityId, getAbility } from './abilities';
+import { bioCareers } from './bio-upgrade';
 import {
   careerAffinityAbilityIds,
   getCareerDeckAffinity,
@@ -85,7 +86,7 @@ export function startingWealth(_career: Career, salary: number): number {
 /** Wealth awarded once, in actual arrival order, when a player reaches space 75. */
 export const FINISH_ORDER_WEALTH_REWARDS = [100_000, 75_000, 50_000, 25_000] as const;
 export function getCareer(id: string): Career | undefined {
-  return careers.find(career => career.id === id);
+  return careers.find(career => career.id === id) ?? bioCareers.find(career => career.id === id);
 }
 export function getCategory(id: string): CareerCategory | undefined {
   return categories.find(category => category.id === id);

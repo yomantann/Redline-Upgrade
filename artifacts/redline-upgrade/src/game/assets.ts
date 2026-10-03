@@ -1,5 +1,6 @@
 import type { CareerStat } from './careers';
 import { additionalAssets } from './assets-extra';
+import { bioAssets } from './bio-upgrade';
 
 export type AssetCategory = 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
 export type AssetSlot = 'car' | 'lifestyle' | 'companion' | 'property';
@@ -56,5 +57,5 @@ export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({
   },
 }));
 
-export const getAsset = (id: string): AssetDefinition | undefined => assets.find(asset => asset.id === id);
+export const getAsset = (id: string): AssetDefinition | undefined => assets.find(asset => asset.id === id) ?? bioAssets.find(asset => asset.id === id);
 export const assetOptions = (category: AssetCategory): readonly AssetDefinition[] => assets.filter(asset => asset.category === category);

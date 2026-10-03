@@ -2,6 +2,7 @@ import type { CareerCategoryTag } from './careers';
 import type { EffectType } from './abilities';
 import type { DeckId } from './decks';
 import type { PlayerStat } from './player';
+import { bioCards } from './bio-upgrade';
 
 export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER' | 'ALL_OPPONENTS';
 
@@ -173,6 +174,6 @@ export const cards: readonly CardDefinition[] = [
   card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, recover a missed milestone at random, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
 ];
 
-export const cardsForDeck = (deck: DeckId): readonly CardDefinition[] => cards.filter(card => card.deck === deck);
+export const cardsForDeck = (deck: DeckId, boardCards: readonly CardDefinition[] = cards): readonly CardDefinition[] => boardCards.filter(card => card.deck === deck);
 export const examplesForDeck = cardsForDeck;
-export const getCard = (cardId: string): CardDefinition | undefined => cards.find(card => card.id === cardId);
+export const getCard = (cardId: string): CardDefinition | undefined => cards.find(card => card.id === cardId) ?? bioCards.find(card => card.id === cardId);
