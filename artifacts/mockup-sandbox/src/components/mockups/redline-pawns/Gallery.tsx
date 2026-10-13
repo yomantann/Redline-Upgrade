@@ -11,6 +11,8 @@ export const pawnCatalog = [
   ['idol_core', 'Idol Core'], ['danger_zone', 'Danger Zone'], ['the_tank', 'The Tank'],
 ] as const;
 
+export type PawnId = (typeof pawnCatalog)[number][0];
+
 export function Gallery({
   Pawn,
   eyebrow,

@@ -1,10 +1,12 @@
+import type { PawnId } from '../Gallery';
+
 /**
  * Redline collectible pawn set.
  * The plinth is shared; every silhouette above it is authored around the
  * character concept rather than a shared humanoid rig.
  */
 export interface PawnModelProps {
-  characterId: string;
+  characterId: PawnId;
   selected?: boolean;
 }
 
@@ -29,6 +31,9 @@ const LIME = '#a9e77b';
 const VIOLET = '#af91ee';
 const ORANGE = '#ff9a57';
 const ICE = '#9ff4ff';
+const GUARDIAN_BLUE = '#183960';
+const GUARDIAN_LIGHT = '#3b75ad';
+const GUARDIAN_DARK = '#101b2d';
 
 function Mat({ color = IRON, glow, metalness = 0.34, roughness = 0.48 }: MaterialProps) {
   return <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} emissive={glow || '#000000'} emissiveIntensity={glow ? 0.58 : 0} />;
@@ -89,20 +94,74 @@ function Cable({ from, to, color = RED, thickness = .045 }: { from: V3; to: V3; 
   return <Cylinder position={mid} scale={[thickness, Math.sqrt(dx * dx + dy * dy) * 1.04, thickness]} rotation={[0, 0, -Math.atan2(dx, dy)]} color={color} glow={color} sides={8} />;
 }
 
-function Signature({ id, accent }: { id: string; accent: string }) {
+function Signature({ id, accent }: { id: PawnId; accent: string }) {
   switch (id) {
     case 'guardian_h': return <group>
-      <Boots accent={accent} wide /><Core accent={accent} width={1.3} height={1.05} />
-      <Ball position={[0, 1.97, 0]} scale={[.72, .66, .65]} color={SHADOW} />
-      <Ball position={[-.47, 1.99, .12]} scale={[.18, .2, .18]} color={SHADOW} /><Ball position={[.47, 1.99, .12]} scale={[.18, .2, .18]} color={SHADOW} />
-      <Ball position={[0, 1.82, .48]} scale={[.43, .27, .22]} color={EDGE} /><Ball position={[0, 1.94, .68]} scale={[.14, .08, .06]} color={SHADOW} />
-      <Ball position={[-.2, 2.04, .43]} scale={[.075, .06, .045]} color={CYAN} glow={CYAN} /><Ball position={[.2, 2.04, .43]} scale={[.075, .06, .045]} color={CYAN} glow={CYAN} />
-      <Block position={[0, 1.69, .57]} scale={[.3, .05, .04]} color={SHADOW} />
-      <Block position={[0, 2.39, -.02]} scale={[.22, .38, .28]} rotation={[0, 0, -.05]} color={'#512c43'} />
-      <Ball position={[-.72, 1.62, 0]} scale={[.46, .42, .52]} color={IRON} /><Ball position={[.72, 1.62, 0]} scale={[.46, .42, .52]} color={IRON} />
-      <Block position={[-.85, 1.13, .13]} scale={[.3, .68, .34]} rotation={[0, 0, -.08]} color={SHADOW} /><Block position={[.85, 1.13, .13]} scale={[.3, .68, .34]} rotation={[0, 0, .08]} color={SHADOW} />
-      <Ball position={[-.85, .74, .32]} scale={[.3, .25, .34]} color={EDGE} /><Ball position={[.85, .74, .32]} scale={[.3, .25, .34]} color={EDGE} />
-      <Block position={[0, 1.37, .42]} scale={[.62, .1, .06]} color={SILVER} /><Gem position={[0, 1.2, .48]} scale={[.14, .14, .08]} color={CYAN} glow={CYAN} />
+      <Block position={[0, 1.53, -.43]} scale={[.82, .78, .36]} color={GUARDIAN_DARK} />
+      <Cylinder position={[0, 1.37, -.02]} scale={[1.28, 1.06, .82]} sides={8} color={GUARDIAN_DARK} />
+      <Block position={[0, 1.42, .36]} scale={[1.04, .75, .22]} color={GUARDIAN_BLUE} />
+      <Block position={[-.22, 1.7, .49]} scale={[.49, .26, .13]} rotation={[0, 0, -.12]} color="#b88961" />
+      <Block position={[.18, 1.68, .49]} scale={[.43, .24, .13]} rotation={[0, 0, .1]} color="#c49a6c" />
+      <Block position={[-.02, 1.25, .49]} scale={[.7, .18, .12]} color={IRON} />
+      <Gem position={[-.22, 1.31, .58]} scale={[.11, .16, .08]} color={PINK} glow={PINK} />
+      <Gem position={[.18, 1.31, .58]} scale={[.11, .16, .08]} color={CYAN} glow={CYAN} />
+
+      <Block position={[0, .94, -.02]} scale={[1.02, .26, .7]} color={SHADOW} />
+      {[-1, 1].map((side) => <group key={`guardian-leg-${side}`}>
+        <Block position={[side * .34, .7, .01]} scale={[.42, .48, .48]} rotation={[0, 0, side * -.04]} color={GUARDIAN_BLUE} />
+        <Block position={[side * .34, .57, .31]} scale={[.4, .28, .17]} color={GUARDIAN_LIGHT} />
+        <Block position={[side * .34, .4, .18]} scale={[.55, .25, .68]} color={GUARDIAN_DARK} />
+        <Block position={[side * .34, .36, .48]} scale={[.53, .16, .26]} color={GUARDIAN_BLUE} />
+        <Block position={[side * .34, .74, .42]} scale={[.22, .08, .05]} color={CYAN} glow={CYAN} />
+      </group>)}
+
+      <Block position={[0, 1.52, -.76]} scale={[.84, .72, .34]} color={GUARDIAN_DARK} />
+      {[-1, 1].map((side) => <group key={`guardian-back-unit-${side}`}>
+        <Cylinder position={[side * .42, 1.62, -.68]} scale={[.22, .68, .23]} sides={8} color={GUARDIAN_BLUE} />
+        <Block position={[side * .42, 1.64, -.82]} scale={[.13, .36, .04]} color={EDGE} />
+        <Block position={[side * .42, 1.48, -.85]} scale={[.11, .045, .035]} color={CYAN} glow={CYAN} />
+      </group>)}
+
+      {[-1, 1].map((side) => <group key={`guardian-arm-${side}`}>
+        <Ball position={[side * .84, 1.77, .02]} scale={[.55, .5, .58]} color={GUARDIAN_BLUE} />
+        <Block position={[side * .87, 1.86, .28]} scale={[.59, .32, .34]} rotation={[0, 0, side * -.11]} color={GUARDIAN_LIGHT} />
+        <Block position={[side * .87, 1.84, .47]} scale={[.35, .12, .055]} rotation={[0, 0, side * -.11]} color={CYAN} glow={CYAN} />
+        <Cylinder position={[side * .91, 1.35, .02]} scale={[.38, .53, .39]} rotation={[0, 0, side * -.2]} sides={8} color={GUARDIAN_DARK} />
+        <Block position={[side * .94, 1.18, .24]} scale={[.39, .23, .39]} rotation={[0, 0, side * -.13]} color={GUARDIAN_BLUE} />
+        <Ball position={[side * .94, 1.03, .31]} scale={[.27, .21, .27]} color={IRON} />
+        <Block position={[side * .94, 1.48, .29]} scale={[.28, .11, .07]} color={EDGE} />
+        <Block position={[side * .94, 1.48, .34]} scale={[.11, .07, .045]} color={CYAN} glow={CYAN} />
+      </group>)}
+
+      <Ball position={[0, 2.25, -.08]} scale={[.77, .72, .69]} color={GUARDIAN_BLUE} />
+      <Block position={[0, 2.64, .05]} scale={[.89, .18, .76]} color={GUARDIAN_LIGHT} />
+      <Block position={[0, 2.59, .41]} scale={[.78, .13, .16]} color={GUARDIAN_BLUE} />
+      {[-1, 1].map((side) => <group key={`guardian-hood-${side}`}>
+        <Block position={[side * .51, 2.28, .31]} scale={[.21, .61, .23]} color={GUARDIAN_LIGHT} />
+        <Block position={[side * .51, 2.28, .44]} scale={[.08, .46, .055]} color={CYAN} glow={CYAN} />
+        <Ball position={[side * .43, 2.11, .42]} scale={[.16, .2, .16]} color={SHADOW} />
+      </group>)}
+      <Ball position={[0, 2.18, .3]} scale={[.52, .52, .49]} color="#252a34" />
+      <Ball position={[0, 2.03, .61]} scale={[.39, .25, .3]} color="#68717a" />
+      <Ball position={[0, 2.18, .83]} scale={[.16, .1, .1]} color={SHADOW} />
+      <Ball position={[-.21, 2.28, .68]} scale={[.055, .045, .035]} color={GOLD} glow={GOLD} />
+      <Ball position={[.21, 2.28, .68]} scale={[.055, .045, .035]} color={GOLD} glow={GOLD} />
+      <Block position={[0, 2.39, .65]} scale={[.58, .1, .08]} color={GUARDIAN_DARK} />
+      <Block position={[0, 1.88, .6]} scale={[.28, .06, .06]} color={SHADOW} />
+
+      <Block position={[.83, 1.08, .58]} scale={[.5, 1.12, .2]} rotation={[0, 0, -.08]} color={GUARDIAN_DARK} />
+      <Block position={[.83, 1.08, .71]} scale={[.39, 1.01, .09]} rotation={[0, 0, -.08]} color={GUARDIAN_LIGHT} />
+      <Block position={[.83, 1.08, .77]} scale={[.25, .83, .045]} rotation={[0, 0, -.08]} color={GUARDIAN_BLUE} />
+      {[-1, 1].map((side) => <Block
+        key={`guardian-shield-rail-${side}`}
+        position={[.83 + side * .13, 1.08, .81]}
+        scale={[.045, .88, .035]}
+        rotation={[0, 0, -.08]}
+        color={CYAN}
+        glow={CYAN}
+      />)}
+      <Block position={[.83, 1.08, .82]} scale={[.3, .055, .035]} rotation={[0, 0, -.08]} color={CYAN} glow={CYAN} />
+      <Block position={[.83, .58, .65]} scale={[.34, .12, .13]} rotation={[0, 0, -.08]} color={EDGE} />
     </group>;
     case 'click_click': return <group>
       <Cylinder position={[0, .83, -.03]} scale={[1.1, .52, .72]} sides={10} color={'#626a77'} />
@@ -409,7 +468,7 @@ function Spikes({ color = EDGE, count = 3 }: { color?: string; count?: number })
   return <group>{Array.from({ length: count }, (_, i) => <Cone key={i} position={[(i - (count - 1) / 2) * .22, 2.48 + (i % 2) * .08, -.04]} scale={[.16, .4, .16]} color={color} />)}</group>;
 }
 
-const accents: Record<string, string> = {
+const accents: Record<PawnId, string> = {
   guardian_h: CYAN, click_click: PINK, frostbyte: CYAN, sadman: LIME, rainbow_dash: ORANGE, accuser: RED, low_flame: ORANGE, wandering_eye: ORANGE, the_rind: CYAN, anointed: GOLD, executive_p: CYAN, alpha_prime: CYAN, roll_safe: ORANGE, hotwired: RED, panic_bot: RED, primate: PINK, pain_hider: CYAN, prom_king: VIOLET, idol_core: PINK, danger_zone: RED, the_tank: VIOLET,
 };
 

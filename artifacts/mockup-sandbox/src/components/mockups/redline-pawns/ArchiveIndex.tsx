@@ -1,7 +1,7 @@
 import './archive-index.css';
 import { Component, useMemo, useState, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { pawnCatalog } from './Gallery';
+import { pawnCatalog, type PawnId } from './Gallery';
 import { PawnModel } from './_shared/PawnModel3D';
 
 const notes: Record<string, { description: string; role: string; finish: string }> = {
@@ -50,7 +50,7 @@ function supportsWebGL() {
   }
 }
 
-function ArchivePawn({ characterId, spin }: { characterId: string; spin: number }) {
+function ArchivePawn({ characterId, spin }: { characterId: PawnId; spin: number }) {
   return (
     <group rotation={[0, spin, 0]} position={[0, -1.42, 0]} scale={1.05}>
       <PawnModel characterId={characterId} selected />
@@ -111,7 +111,7 @@ class WebGLBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 
 export function ArchiveIndex() {
   const [webgl] = useState(supportsWebGL);
-  const [activeId, setActiveId] = useState<string>(pawnCatalog[0][0]);
+  const [activeId, setActiveId] = useState<PawnId>(pawnCatalog[0][0]);
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'all' | 'saved'>('all');
   const [saved, setSaved] = useState<string[]>([]);

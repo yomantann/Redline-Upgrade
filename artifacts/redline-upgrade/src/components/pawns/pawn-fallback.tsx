@@ -126,8 +126,21 @@ export function PawnFallback({ characterId, selected = false }: PawnFallbackProp
   return <svg className="pawn-fallback" viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true"
     aria-label={`${characterId.replaceAll('_', ' ')} geometric tabletop pawn`} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id={`pawn-sheen-${uid}`} x1="0" x2="1" y1="0" y2="1"><stop stopColor="#8ca0ad" /><stop offset=".3" stopColor="#415361" /><stop offset="1" stopColor="#182530" /></linearGradient></defs>
-    <Base accent={accent} selected={selected} />
-    <Signature id={characterId} accent={accent} />
+    {characterId === 'guardian_h' ? (
+      <image
+        href={`${import.meta.env.BASE_URL}characters/guardian_h_reimagined.png`}
+        x="0"
+        y="35"
+        width="250"
+        height="250"
+        preserveAspectRatio="xMidYMid meet"
+      />
+    ) : (
+      <>
+        <Base accent={accent} selected={selected} />
+        <Signature id={characterId} accent={accent} />
+      </>
+    )}
   </svg>;
 }
 

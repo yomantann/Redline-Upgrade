@@ -3,10 +3,13 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 // @ts-expect-error Three.js is supplied by React Three Fiber in this sandbox, but has no declaration package here.
 import * as THREE from 'three';
-import { pawnCatalog } from './Gallery';
+import { pawnCatalog, type PawnId } from './Gallery';
+import { PawnModel } from './_shared/PawnModel3D';
 
 const ROUTE_LENGTH = pawnCatalog.length;
-const PIECE_TEXTURE = (id: string) => `/__mockup/images/redline-pawns/${id}.png`;
+const PIECE_TEXTURE = (id: string) => id === 'guardian_h'
+  ? '/__mockup/images/redline-pawns/reimagined/guardian_h.png'
+  : `/__mockup/images/redline-pawns/${id}.png`;
 
 function routePoint(index: number) {
   const angle = -Math.PI / 2 + (index / ROUTE_LENGTH) * Math.PI * 2;
@@ -26,127 +29,31 @@ function supportsWebGL() {
   }
 }
 
-function createAlphaOutline(image: CanvasImageSource, width: number, height: number, size: number): any | null {
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) return null;
-    context.drawImage(image, 0, 0, width, height);
-    const pixels = context.getImageData(0, 0, width, height).data;
-    let minX = width;
-    let maxX = 0;
-    let minY = height;
-    let maxY = 0;
-
-    for (let y = 0; y < height; y += 3) {
-      for (let x = 0; x < width; x += 3) {
-        if (pixels[(y * width + x) * 4 + 3] > 30) {
-          minX = Math.min(minX, x);
-          maxX = Math.max(maxX, x);
-          minY = Math.min(minY, y);
-          maxY = Math.max(maxY, y);
-        }
-      }
-    }
-    if (maxX <= minX || maxY <= minY) return null;
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const searchRadius = Math.hypot(width, height) * 0.51;
-    const outline = new THREE.Shape();
-    const samples = 144;
-    let found = 0;
-    for (let sample = 0; sample < samples; sample++) {
-      const angle = (sample / samples) * Math.PI * 2;
-      let outerRadius = 0;
-      for (let radius = 0; radius < searchRadius; radius += 2) {
-        const x = Math.round(centerX + Math.cos(angle) * radius);
-        const y = Math.round(centerY + Math.sin(angle) * radius);
-        if (x < 0 || x >= width || y < 0 || y >= height) break;
-        if (pixels[(y * width + x) * 4 + 3] > 30) outerRadius = radius;
-      }
-      if (outerRadius < 1) continue;
-      const px = centerX + Math.cos(angle) * (outerRadius + 2);
-      const py = centerY + Math.sin(angle) * (outerRadius + 2);
-      const x = ((px / width) - 0.5) * size;
-      const y = (0.5 - (py / height)) * size;
-      if (found === 0) outline.moveTo(x, y);
-      else outline.lineTo(x, y);
-      found++;
-    }
-    if (found < 12) return null;
-    outline.closePath();
-    return new THREE.ExtrudeGeometry(outline, {
-      depth: 0.12,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      bevelSize: 0.035,
-      bevelThickness: 0.025,
-      curveSegments: 3,
-    });
-  } catch {
-    // If a browser cannot expose the alpha channel, the textured cutout still renders.
-    return null;
-  }
-}
-
-function PawnCutout({
+function PawnRunner({
   characterId,
   step,
   reducedMotion,
+  turnAngle,
+  tiltAngle,
 }: {
-  characterId: string;
+  characterId: PawnId;
   step: number;
   reducedMotion: boolean;
+  turnAngle: number;
+  tiltAngle: number;
 }) {
   const { viewport } = useThree();
   const groupRef = useRef<any>(null);
-  const textureRef = useRef<any>(null);
-  const [texture, setTexture] = useState<any | null>(null);
-  const [outline, setOutline] = useState<any | null>(null);
+  const modelRef = useRef<any>(null);
   const startedAt = useRef(0);
   const previousStep = useRef(step);
   const radiusX = viewport.width * 0.39;
   const radiusY = viewport.height * 0.3;
-  const imageSize = Math.min(2.55, radiusX * 0.44);
   const destination = routePoint(step % ROUTE_LENGTH);
   const target = useMemo(
-    () => new THREE.Vector3(destination.x * radiusX, destination.y * radiusY + imageSize * 0.43, 0.3),
-    [destination.x, destination.y, radiusX, radiusY, imageSize],
+    () => new THREE.Vector3(destination.x * radiusX, destination.y * radiusY, 0.3),
+    [destination.x, destination.y, radiusX, radiusY],
   );
-
-  useEffect(() => {
-    setTexture(null);
-    setOutline(null);
-    const loader = new THREE.TextureLoader();
-    let active = true;
-    const loaded = loader.load(
-      PIECE_TEXTURE(characterId),
-      (nextTexture: any) => {
-        if (!active) {
-          nextTexture.dispose();
-          return;
-        }
-        nextTexture.colorSpace = THREE.SRGBColorSpace;
-        nextTexture.anisotropy = 4;
-        textureRef.current = nextTexture;
-        setTexture(nextTexture);
-        const image = nextTexture.image as CanvasImageSource & { width: number; height: number };
-        const width = image.width || 512;
-        const height = image.height || 512;
-        setOutline(createAlphaOutline(image, width, height, imageSize));
-      },
-      undefined,
-      () => setTexture(null),
-    );
-    return () => {
-      active = false;
-      loaded.dispose();
-      textureRef.current = null;
-    };
-  }, [characterId, imageSize]);
 
   useEffect(() => {
     if (step !== previousStep.current) {
@@ -155,14 +62,13 @@ function PawnCutout({
     }
   }, [step]);
 
-  useEffect(() => () => outline?.dispose(), [outline]);
-
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     const group = groupRef.current;
     if (reducedMotion) {
       group.position.copy(target);
-      group.rotation.set(0, -0.08, 0);
+      group.rotation.set(0, 0, 0);
+      if (modelRef.current) modelRef.current.rotation.set(tiltAngle, turnAngle, 0);
       return;
     }
     if (startedAt.current === 0) startedAt.current = state.clock.elapsedTime;
@@ -172,32 +78,22 @@ function PawnCutout({
     if (elapsed < 0.64) {
       const lift = Math.sin((elapsed / 0.64) * Math.PI);
       group.position.y = THREE.MathUtils.damp(group.position.y, target.y + lift * 0.45, 10, delta);
-      group.rotation.y = THREE.MathUtils.damp(group.rotation.y, -0.08 + Math.sin(elapsed * 8) * 0.17, 9, delta);
       group.rotation.z = THREE.MathUtils.damp(group.rotation.z, Math.sin(elapsed * 7) * 0.035, 9, delta);
     } else {
       group.position.y = THREE.MathUtils.damp(group.position.y, target.y, 6, delta);
-      group.rotation.y = THREE.MathUtils.damp(group.rotation.y, -0.08, 6, delta);
       group.rotation.z = THREE.MathUtils.damp(group.rotation.z, 0, 6, delta);
+    }
+    if (modelRef.current) {
+      const hopTurn = elapsed < 0.64 ? Math.sin(elapsed * 8) * 0.12 : 0;
+      modelRef.current.rotation.set(tiltAngle, turnAngle + hopTurn, 0);
     }
   });
 
   return (
-    <group ref={groupRef} position={[target.x, target.y, target.z]} rotation={[0, -0.08, 0]}>
-      {outline && (
-        <mesh
-          geometry={outline}
-          position={[0, 0, -0.11]}
-          castShadow
-        >
-          <meshStandardMaterial color="#25383c" metalness={0.46} roughness={0.42} />
-        </mesh>
-      )}
-      {texture && (
-        <mesh position={[0, 0, 0.06]} castShadow>
-          <planeGeometry args={[imageSize, imageSize]} />
-          <meshBasicMaterial map={texture} transparent alphaTest={0.015} depthWrite={false} toneMapped={false} />
-        </mesh>
-      )}
+    <group ref={groupRef} position={[target.x, target.y, target.z]}>
+      <group ref={modelRef} scale={0.78}>
+        <PawnModel characterId={characterId} selected />
+      </group>
     </group>
   );
 }
@@ -206,10 +102,14 @@ function MiniatureRoute({
   characterId,
   step,
   reducedMotion,
+  turnAngle,
+  tiltAngle,
 }: {
-  characterId: string;
+  characterId: PawnId;
   step: number;
   reducedMotion: boolean;
+  turnAngle: number;
+  tiltAngle: number;
 }) {
   const { viewport } = useThree();
   const radiusX = viewport.width * 0.39;
@@ -231,6 +131,7 @@ function MiniatureRoute({
       <ambientLight intensity={1.12} color="#fff7e8" />
       <directionalLight position={[-4, 6, 9]} intensity={1.8} color="#fff8e7" />
       <directionalLight position={[5, -3, 5]} intensity={0.58} color="#d8e7df" />
+      <directionalLight position={[3, 4, -7]} intensity={1.15} color="#c8d8dd" />
 
       <mesh position={[0, 0, -0.45]} scale={[radiusX * 1.12, radiusY * 1.31, 1]}>
         <circleGeometry args={[1, 96]} />
@@ -265,7 +166,13 @@ function MiniatureRoute({
           </group>
         );
       })}
-      <PawnCutout characterId={characterId} step={step} reducedMotion={reducedMotion} />
+      <PawnRunner
+        characterId={characterId}
+        step={step}
+        reducedMotion={reducedMotion}
+        turnAngle={turnAngle}
+        tiltAngle={tiltAngle}
+      />
     </>
   );
 }
@@ -390,10 +297,47 @@ function MoveControls({
   );
 }
 
+function TurnControls({
+  turnAngle,
+  tiltAngle,
+  onTurn,
+  onTilt,
+  onReset,
+  enabled,
+}: {
+  turnAngle: number;
+  tiltAngle: number;
+  onTurn: (direction: -1 | 1) => void;
+  onTilt: (direction: -1 | 1) => void;
+  onReset: () => void;
+  enabled: boolean;
+}) {
+  const degrees = ((Math.round((turnAngle * 180) / Math.PI) % 360) + 360) % 360;
+  const tiltDegrees = Math.round((tiltAngle * 180) / Math.PI);
+
+  return (
+    <div className="redline-moving__turn-controls" role="group" aria-label="Inspect the selected miniature">
+      <div className="redline-moving__turn-status" aria-live="polite">
+        <strong>Model view</strong>
+        <span>{enabled ? `${String(degrees).padStart(3, '0')}° turn · ${tiltDegrees}° tilt` : '3D view needs WebGL'}</span>
+      </div>
+      <div className="redline-moving__turn-actions">
+        <button type="button" aria-label="Turn miniature left 45 degrees" onClick={() => onTurn(-1)} disabled={!enabled}>Turn left</button>
+        <button type="button" aria-label="Reset miniature to front view" onClick={onReset} disabled={!enabled}>Front</button>
+        <button type="button" aria-label="Turn miniature right 45 degrees" onClick={() => onTurn(1)} disabled={!enabled}>Turn right</button>
+        <button type="button" aria-label="Tilt miniature upward 15 degrees" onClick={() => onTilt(-1)} disabled={!enabled}>Tilt up</button>
+        <button type="button" aria-label="Tilt miniature downward 15 degrees" onClick={() => onTilt(1)} disabled={!enabled}>Tilt down</button>
+      </div>
+    </div>
+  );
+}
+
 export function MovingPieces() {
-  const [selectedId, setSelectedId] = useState<string>(pawnCatalog[0][0]);
+  const [selectedId, setSelectedId] = useState<PawnId>(pawnCatalog[0][0]);
   const [step, setStep] = useState(0);
   const [hopSignal, setHopSignal] = useState(0);
+  const [turnAngle, setTurnAngle] = useState(0);
+  const [tiltAngle, setTiltAngle] = useState(0);
   const [webglAvailable] = useState(supportsWebGL);
   const [canvasFailed, setCanvasFailed] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -457,12 +401,36 @@ export function MovingPieces() {
                       gl.setClearColor('#e8e7dd', 0);
                     }}
                   >
-                    <MiniatureRoute characterId={selectedId} step={step} reducedMotion={reducedMotion} />
+                    <MiniatureRoute
+                      characterId={selectedId}
+                      step={step}
+                      reducedMotion={reducedMotion}
+                      turnAngle={turnAngle}
+                      tiltAngle={tiltAngle}
+                    />
                   </Canvas>
-                  <span className="redline-moving__scene-caption">Printed cutout · shallow relief backer</span>
+                  <span className="redline-moving__scene-caption">
+                    {selectedId === 'guardian_h' ? 'Reimagined Guardian H pilot' : 'Full-volume model'} · 45° turn controls
+                  </span>
                 </div>
               </SceneBoundary>
             )}
+            {showFallback && (
+              <div className="redline-moving__fallback-caption">
+                Reference image shown because this browser cannot render the 3D model.
+              </div>
+            )}
+            <TurnControls
+              turnAngle={turnAngle}
+              tiltAngle={tiltAngle}
+              onTurn={(direction) => setTurnAngle((angle) => angle + direction * (Math.PI / 4))}
+              onTilt={(direction) => setTiltAngle((angle) => THREE.MathUtils.clamp(angle + direction * (Math.PI / 12), -Math.PI / 3, Math.PI / 3))}
+              onReset={() => {
+                setTurnAngle(0);
+                setTiltAngle(0);
+              }}
+              enabled={!showFallback}
+            />
             <MoveControls step={step} onAdvance={advance} onReset={reset} />
           </section>
 
@@ -479,7 +447,11 @@ export function MovingPieces() {
                   type="button"
                   aria-pressed={selectedId === id}
                   aria-label={`${name}${selectedId === id ? ', selected' : ', select piece'}`}
-                  onClick={() => setSelectedId(id)}
+                  onClick={() => {
+                    setSelectedId(id);
+                    setTurnAngle(0);
+                    setTiltAngle(0);
+                  }}
                 >
                   <span className="redline-moving__roster-index">{String(index + 1).padStart(2, '0')}</span>
                   <span className="redline-moving__roster-name">{name}</span>
@@ -490,7 +462,7 @@ export function MovingPieces() {
           </aside>
         </div>
         <footer className="redline-moving__note">
-          <span>Art remains paired to its catalog name <strong>·</strong> select any piece to swap the runner</span>
+          <span>Each sculpt follows its catalog ID and name <strong>·</strong> select any piece to swap the runner</span>
           <span>Movement is a visual test, not game rules</span>
         </footer>
       </div>
