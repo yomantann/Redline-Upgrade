@@ -37,7 +37,7 @@ const roster = [
 ] as const;
 
 const imageFileById: Record<string, string> = {
-  guardian_h: 'guardian_h_reimagined.png',
+  guardian_h: 'guardian_h.png',
   click_click: 'click_click.png',
   frostbyte: 'frostbyte.png',
   sadman: 'sadman.png',
