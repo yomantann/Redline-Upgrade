@@ -1,0 +1,25 @@
+## Standard Board Game — 3D Pawn Test: The Accuser
+
+I have uploaded new character pawn PNG images into the folder `standard pawns`.
+
+I want to test replacing **The Accuser's existing geometric pawn** with a detailed 3D character pawn that looks as close as possible to the supplied PNG.
+
+### Instructions
+
+1. **Locate The Accuser PNG** inside `standard pawns` and use it as the primary visual reference.
+2. Inspect the existing 3D board, pawn rendering, movement, and character assignment code before making changes.
+3. Create a detailed 3D character model matching the PNG's appearance, including clothing, colors, facial features, accessories, pose, and base.
+4. **Do not recreate the character using generic geometric shapes** such as cylinders, spheres, cubes, or stacked primitive meshes.
+5. Use an image-to-3D modeling workflow to generate a real 3D model, preferably in `.glb` format. If an image-to-3D service is unavailable, do not substitute a generic geometric pawn or pretend the PNG is a complete 3D model. Explain what is needed.
+6. Connect the resulting model to The Accuser's existing pawn instance, preserving its position, scale, movement animations, board interactions, and game logic.
+7. Ensure the character remains recognizable when viewed from the board's normal camera angle and is appropriately sized for a board-game piece.
+8. **Only modify The Accuser.** Leave every other pawn, the board layout, game mechanics, and existing movement system unchanged.
+
+### Success criteria
+
+- The Accuser appears as a recognizable 3D miniature matching the supplied PNG.
+- The pawn can move between board spaces exactly as before.
+- The model can be viewed from different camera angles without appearing flat.
+- No other characters or game systems are affected.
+
+**Important:** Prioritize visual accuracy over speed. Do not replace my custom character artwork with a simplified geometric interpretation. If true 3D generation is not possible with the available tools, report that limitation before implementing an alternative.
