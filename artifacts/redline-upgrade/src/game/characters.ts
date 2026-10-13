@@ -1,4 +1,5 @@
 import { characterAbilityId, getAbility } from './abilities';
+import type { BoardId } from './boards';
 
 export interface CharacterDefinition {
   id: string;
@@ -60,6 +61,30 @@ const imageFileById: Record<string, string> = {
   the_tank: 'the_tank.png',
 };
 
+const bioImageFileById: Record<string, string> = {
+  accuser: 'bio_accuser.png',
+  alpha_prime: 'bio_alpha.png',
+  anointed: 'bio_anointed.png',
+  click_click: 'bio_click.png',
+  danger_zone: 'bio_danger.png',
+  rainbow_dash: 'bio_dash.png',
+  executive_p: 'bio_executive.png',
+  frostbyte: 'bio_frostbyte_v4.png',
+  guardian_h: 'bio_guardian.png',
+  hotwired: 'bio_hotwired.png',
+  idol_core: 'bio_idol_core.png',
+  low_flame: 'bio_low_flame.png',
+  pain_hider: 'bio_pain.png',
+  panic_bot: 'bio_panic_bot.png',
+  primate: 'bio_primate.png',
+  prom_king: 'bio_prom.png',
+  the_rind: 'bio_rind.png',
+  roll_safe: 'bio_roll.png',
+  sadman: 'bio_sadman.png',
+  the_tank: 'bio_tank.png',
+  wandering_eye: 'bio_wandering.png',
+};
+
 export const characters: CharacterDefinition[] = roster.map(
   ([id, name, description]) => {
    const abilityId = characterAbilityId(id);
@@ -78,4 +103,14 @@ export const characters: CharacterDefinition[] = roster.map(
 
 export function getCharacter(id: string): CharacterDefinition | undefined {
   return characters.find((character) => character.id === id);
+}
+
+export function getCharacterImagePath(characterId: string, boardId: BoardId): string {
+  const character = getCharacter(characterId);
+  if (!character) throw new Error(`Unknown character: ${characterId}`);
+  if (boardId !== 'BIO_UPGRADE') return character.imagePath;
+
+  const bioImage = bioImageFileById[character.id];
+  if (!bioImage) throw new Error(`Missing Bio Upgrade portrait for ${character.id}`);
+  return `characters/bio-upgrade/${bioImage}`;
 }

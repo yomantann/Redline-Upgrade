@@ -5,27 +5,30 @@ import { getPublicAssetUrl } from '@/lib/public-asset-url';
 /** The original artwork stays in player-facing UI, never as pawn geometry. */
 export function CharacterPortrait({
   character,
+  imagePath = character.imagePath,
   className = '',
 }: {
   character: CharacterDefinition;
+  imagePath?: string;
   className?: string;
 }) {
-  const [failedCharacterId, setFailedCharacterId] = useState<string | null>(null);
-  const failed = failedCharacterId === character.id;
+  const imageKey = `${character.id}:${imagePath}`;
+  const [failedImageKey, setFailedImageKey] = useState<string | null>(null);
+  const failed = failedImageKey === imageKey;
   useEffect(() => {
-    setFailedCharacterId(null);
-  }, [character.id]);
+    setFailedImageKey(null);
+  }, [imageKey]);
   return (
     <div className={`character-portrait ${className}`} data-testid={`portrait-${character.id}`}>
       {failed ? (
         <span className="portrait-error">Portrait unavailable</span>
       ) : (
         <img
-          src={getPublicAssetUrl(character.imagePath)}
+          src={getPublicAssetUrl(imagePath)}
           alt={`${character.name} artwork`}
           loading="eager"
           decoding="async"
-          onError={() => setFailedCharacterId(character.id)}
+          onError={() => setFailedImageKey(imageKey)}
         />
       )}
     </div>
