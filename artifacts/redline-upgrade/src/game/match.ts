@@ -413,7 +413,6 @@ export type MatchAction =
   | { type: 'BUY_ASSET'; assetId: string }
   | { type: 'UPGRADE_ASSET'; assetId: string }
   | { type: 'RECOVER_MILESTONE' }
-  | { type: 'HOLD_UPGRADE_TOKEN' }
   | { type: 'SKIP_ASSET' }
   | { type: 'KEEP_CAREER' }
   | { type: 'SWITCH_CAREER' }
@@ -669,9 +668,9 @@ function resolveAbilityAssetInteraction(
   const targetIndex = match.players.findIndex((player) => player.playerId === pending.targetPlayerId);
   const actor = match.players[actorIndex];
   const target = match.players[targetIndex];
-  if (!actor || !target || target.equipment[pending.category] !== pending.targetAssetId) return match;
-  if (pending.ownAssetId && actor.equipment[pending.category] !== pending.ownAssetId) return match;
-  if (!pending.ownAssetId && actor.equipment[pending.category]) return match;
+  if (!actor || !target || target.equipment[pending.category] !== pending.targetAssetId) return resumeAbilityDecision(match);
+  if (pending.ownAssetId && actor.equipment[pending.category] !== pending.ownAssetId) return resumeAbilityDecision(match);
+  if (!pending.ownAssetId && actor.equipment[pending.category]) return resumeAbilityDecision(match);
 
   const targetLevel = target.assetLevels[pending.targetAssetId] ?? 1;
   const ownLevel = pending.ownAssetId ? actor.assetLevels[pending.ownAssetId] ?? 1 : null;
@@ -882,22 +881,6 @@ function recoverMissedMilestone(match: Match, random: () => number = Math.random
   ]);
 }
 
-function holdUpgradeToken(match: Match): Match {
-  if (match.phase !== 'ready') return match;
-  const player = match.players[match.turnIndex];
-  if (availableUpgradeTokens(player) < 1) return match;
-  const nextPlayer = { ...player, heldUpgradeTokens: player.heldUpgradeTokens + 1 };
-  return emit({
-    ...match,
-    players: match.players.map((item, index) => index === match.turnIndex ? nextPlayer : item),
-  }, [{
-    type: 'UPGRADE_TOKEN_HELD',
-    playerIndex: match.turnIndex,
-    delta: 1,
-    description: `${player.displayName} reserved 1 Upgrade Token for the future endgame.`,
-  }]);
-}
-
 function autoUseUpgradeToken(match: Match): Match {
   if (match.phase !== 'ready') return match;
   const player = match.players[match.turnIndex];
@@ -913,7 +896,7 @@ function autoUseUpgradeToken(match: Match): Match {
     )[0];
     return upgradeOwnedAsset(match, chosen.id);
   }
-  return holdUpgradeToken(match);
+  return match;
 }
 
 function resolveCardDecision(match: Match): Match {
@@ -1162,7 +1145,9 @@ function autoDecide(match: Match): Match {
       + Math.random() * 8;
     const chosen = available.map(asset => ({ asset, weight: score(asset) }))
       .sort((a, b) => b.weight - a.weight)[0].asset;
-    return purchase({ ...match, pending: { ...pending, offeredAssetIds: offers, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } }, chosen.id);
+    const offerMatch = { ...match, pending: { ...pending, offeredAssetIds: offers, category: chosen.category === 'pet' || chosen.category === 'investment' ? chosen.category : undefined } };
+    const selected = purchase(offerMatch, chosen.id);
+    return selected === offerMatch ? resume(offerMatch) : selected;
   }
   if (Math.random() > 0.42) return resume(match);
   const options = careerOffers(player.careerId ?? '', player.secondCareer?.careerId);
@@ -1304,8 +1289,6 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return upgradeOwnedAsset(match, action.assetId);
     case 'RECOVER_MILESTONE':
       return recoverMissedMilestone(match);
-    case 'HOLD_UPGRADE_TOKEN':
-      return holdUpgradeToken(match);
     case 'SKIP_ASSET':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' ? resume(match) : match;
     case 'KEEP_CAREER':

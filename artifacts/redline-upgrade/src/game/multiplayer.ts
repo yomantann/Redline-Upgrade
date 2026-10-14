@@ -43,7 +43,7 @@ export type ClientAction =
   | { type: 'BUY_ASSET'; assetId: string }
   | { type: 'SKIP_ASSET' }
   | { type: 'USE_UPGRADE_TOKEN'; mode: 'UPGRADE_ASSET'; assetId: string }
-  | { type: 'USE_UPGRADE_TOKEN'; mode: 'RECOVER_MILESTONE' | 'HOLD' }
+  | { type: 'USE_UPGRADE_TOKEN'; mode: 'RECOVER_MILESTONE' }
   | { type: 'GAMBLE'; choice: EndgameChoice }
   | { type: 'CHANGE_CAREER'; step: 'KEEP' | 'SWITCH' | 'ACKNOWLEDGE' }
   | { type: 'CHANGE_CAREER'; step: 'SELECT'; careerId: string }
@@ -97,7 +97,6 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'SKIP_ASSET': return { type: 'SKIP_ASSET' };
     case 'UPGRADE_ASSET': return { type: 'USE_UPGRADE_TOKEN', mode: 'UPGRADE_ASSET', assetId: action.assetId };
     case 'RECOVER_MILESTONE': return { type: 'USE_UPGRADE_TOKEN', mode: 'RECOVER_MILESTONE' };
-    case 'HOLD_UPGRADE_TOKEN': return { type: 'USE_UPGRADE_TOKEN', mode: 'HOLD' };
     case 'KEEP_CAREER': return { type: 'CHANGE_CAREER', step: 'KEEP' };
     case 'SWITCH_CAREER': return { type: 'CHANGE_CAREER', step: 'SWITCH' };
     case 'SELECT_CAREER': return { type: 'CHANGE_CAREER', step: 'SELECT', careerId: action.careerId };
@@ -141,7 +140,6 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'USE_UPGRADE_TOKEN':
       if (action.mode === 'UPGRADE_ASSET') return isString(action.assetId) ? [{ type: 'UPGRADE_ASSET', assetId: action.assetId }] : null;
       if (action.mode === 'RECOVER_MILESTONE') return [{ type: 'RECOVER_MILESTONE' }];
-      if (action.mode === 'HOLD') return [{ type: 'HOLD_UPGRADE_TOKEN' }];
       return null;
     case 'GAMBLE':
       return ENDGAME_CHOICES.includes(action.choice) ? [{ type: 'CHOOSE_ENDGAME', choice: action.choice }] : null;

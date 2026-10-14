@@ -73,18 +73,8 @@ export function UpgradeTokenControls({
             : <span id="upgrade-recovery-disabled-reason">No passed milestone with an empty asset slot is eligible.</span>}</small>
         </button>
 
-        <button
-          type="button"
-          className="upgrade-token-action upgrade-token-hold"
-          data-testid="hold-upgrade-token"
-          onClick={() => onAction({ type: 'HOLD_UPGRADE_TOKEN' })}
-        >
-          <span className="upgrade-token-option-title mono">03 / SAVE FOR LATER</span>
-          <strong>Hold for the endgame</strong>
-          <small>Reserve 1 Upgrade Token for the endgame. It stays held on your player record until the closing choice.</small>
-        </button>
       </div>
-      <p className="upgrade-token-note">Upgrades repeat the asset’s listed effects and add one base cost to its displayed value. Recovery is random; no asset choice screen is used.</p>
+      <p className="upgrade-token-note">Unused tokens remain available and carry through to the endgame. You can roll without spending one. Upgrades repeat listed effects and add one base cost to asset value; recovery is random.</p>
     </section>
   );
 }

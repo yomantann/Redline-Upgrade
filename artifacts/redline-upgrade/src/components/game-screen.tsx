@@ -9,6 +9,7 @@ import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
 import { FINISH_ORDER_WEALTH_REWARDS, formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
+import { availableUpgradeTokens } from '@/game/upgrade-tokens';
 import { useGame } from '@/game/state';
 import { CareerGlyph } from './career-reveal';
 import { CharacterPortrait } from './character-portrait';
@@ -143,6 +144,7 @@ export function GameScreen() {
   const pending = match?.pending;
   const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : turnIndex;
   const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
+  const hasTurnStartToken = Boolean(match && availableUpgradeTokens(match.players[match.turnIndex]) > 0);
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
   const toggleAutoScroll = useCallback(() => {
     if (autoScrollEnabled) window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'auto' });
@@ -342,14 +344,16 @@ export function GameScreen() {
     if (!phase || !autoScrollEnabled) return;
     const desktop = window.matchMedia('(min-width: 1001px)').matches;
     const target = desktop
-      ? phase === 'ready' || phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
+      ? phase === 'ready' && hasTurnStartToken ? '.upgrade-token-panel'
+        : phase === 'ready' || phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
         : phase === 'moving' ? '.game-tabletop-board'
         : phase === 'decision' ? pending?.kind === 'CARD' ? '.card-draw-panel' : '.milestone-choice'
         : phase === 'landed' ? active.endgame?.status === 'RESOLVED' ? '.finish-line-panel' : '.game-player[data-active="true"]'
         : phase === 'endgame' ? '.finish-line-panel'
         : phase === 'complete' ? '.finish-line-results-intro'
         : null
-      : phase === 'ready' ? '.game-dice-panel'
+      : phase === 'ready' && hasTurnStartToken ? '.upgrade-token-panel'
+        : phase === 'ready' ? '.game-dice-panel'
         : phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
         : phase === 'moving' ? '.game-tabletop-board'
         : phase === 'landed' ? '.game-player[data-active="true"]'
@@ -362,7 +366,7 @@ export function GameScreen() {
       element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: target === '.game-tabletop-board' ? 'center' : desktop ? 'nearest' : 'start' });
     }, phase === 'landed' ? 600 : 150);
     return () => window.clearTimeout(timer);
-  }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, autoScrollEnabled]);
+  }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, hasTurnStartToken, autoScrollEnabled]);
 
   if (!match) return (
     <main className="game-gate">
@@ -589,7 +593,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                    );
                  })}
               </div>
-               <PlayerAssets equipment={contestant.equipment} assetLevels={contestant.assetLevels} upgradeTokens={contestant.upgradeTokens} heldUpgradeTokens={contestant.heldUpgradeTokens} playerIndex={index} />
+               <PlayerAssets equipment={contestant.equipment} assetLevels={contestant.assetLevels} upgradeTokens={contestant.upgradeTokens} playerIndex={index} />
                  </div>
                </details>
             </article>

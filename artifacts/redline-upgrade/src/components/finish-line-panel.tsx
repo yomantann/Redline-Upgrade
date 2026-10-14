@@ -100,7 +100,6 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
     ? SALARY_TIERS[snapshot.secondCareer.salaryTier - 1] ?? 'UNASSIGNED'
     : SALARY_TIERS[snapshot.salaryTier - 1] ?? 'UNASSIGNED';
   const paydaySalary = effectiveSalaryAmount(snapshot);
-  const availableTokens = Math.max(0, snapshot.upgradeTokens - snapshot.heldUpgradeTokens);
 
   return (
     <section className="finish-line-ledger" aria-labelledby="finish-line-ledger-heading">
@@ -138,9 +137,9 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           </div>
         </div>
         <div className="finish-line-token-readout">
-          <span className="mono">HELD TOKENS / FUTURE CREDITS</span>
-          <strong>{snapshot.heldUpgradeTokens} HELD</strong>
-          <small>{availableTokens} available · {snapshot.history.upgradeTokensSpent} spent · held tokens are not included in this match value</small>
+          <span className="mono">UPGRADE TOKENS / FINAL GAMBLE</span>
+          <strong>{snapshot.upgradeTokens} CARRY OVER</strong>
+          <small>Unused tokens remain available for the final gamble · {snapshot.history.upgradeTokensSpent} spent during the match</small>
         </div>
       </div>
       <div className="finish-line-assets" aria-label="Captured assets">
@@ -359,7 +358,6 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
             const endgame = player.endgame!;
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
-            const availableTokens = Math.max(0, endgame.snapshot.upgradeTokens - endgame.snapshot.heldUpgradeTokens);
             const finishPlace = finishOrder.indexOf(player.slot) + 1;
             const finishBonus = finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0;
             return (
@@ -385,9 +383,9 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                   <strong>{career?.name ?? 'UNASSIGNED'}</strong>
                 </div>
                 <div className="finish-line-result-token">
-                   <span className="mono">HELD TOKENS / FUTURE CREDITS</span>
-                  <strong>{endgame.snapshot.heldUpgradeTokens} HELD</strong>
-                  <small>{availableTokens} available · {endgame.snapshot.history.upgradeTokensSpent} spent · held tokens are not included in this match value</small>
+                   <span className="mono">UPGRADE TOKENS / FINAL GAMBLE</span>
+                  <strong>{endgame.snapshot.upgradeTokens} CARRY OVER</strong>
+                  <small>Unused tokens remain available for the final gamble · {endgame.snapshot.history.upgradeTokensSpent} spent during the match</small>
                 </div>
                 <div className="finish-line-result-value">
                   <span className="mono">FINAL GAME VALUE</span>

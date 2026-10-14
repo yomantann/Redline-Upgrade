@@ -17,17 +17,14 @@ export function PlayerAssets({
   equipment,
   assetLevels,
   upgradeTokens,
-  heldUpgradeTokens,
   playerIndex,
 }: {
   equipment: Record<AssetSlot, string | null>;
   assetLevels: Record<string, number>;
   upgradeTokens: number;
-  heldUpgradeTokens: number;
   playerIndex: number;
 }) {
   const count = slots.filter(({ slot }) => equipment[slot]).length;
-  const availableTokens = Math.max(0, upgradeTokens - heldUpgradeTokens);
   return (
     <section className="player-assets" aria-label={`Player ${playerIndex + 1} collected assets`}>
       <div className="player-assets-head mono">
@@ -69,7 +66,7 @@ export function PlayerAssets({
       </div>
       <div className="player-token-count" data-testid={`tokens-player-${playerIndex}`}>
         <span><SpaceIcon name="upgrade-token" size={14} /> TOKENS</span>
-        <b><strong>{String(availableTokens).padStart(2, '0')}</strong> AVAILABLE <i>·</i> <strong>{String(heldUpgradeTokens).padStart(2, '0')}</strong> HELD</b>
+        <b><strong>{String(upgradeTokens).padStart(2, '0')}</strong> CARRY TO ENDGAME</b>
       </div>
     </section>
   );

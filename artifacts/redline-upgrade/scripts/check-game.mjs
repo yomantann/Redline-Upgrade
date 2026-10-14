@@ -406,6 +406,14 @@ try {
   const cpuRaceResolved = advanceMatch(cpuRacePending, { type: 'AUTO_DECIDE' });
   assert.equal(cpuRaceResolved.players[0].equipment.car, cars[1].id, 'CPU Race Driver choices resolve automatically');
   assert.equal(cpuRaceResolved.players[1].equipment.car, null);
+  const staleCpuRacePending = {
+    ...cpuRacePending,
+    players: cpuRacePending.players.map((player, index) => index === 1
+      ? { ...player, equipment: { ...player.equipment, car: null } }
+      : player),
+  };
+  const staleCpuRaceResolved = advanceMatch(staleCpuRacePending, { type: 'AUTO_DECIDE' });
+  assert.equal(staleCpuRaceResolved.pending, null, 'a stale CPU asset choice resumes the paused event queue instead of stalling');
 
   const propertyInvestor = abilityFixture(['real-estate-investor']);
   propertyInvestor.players[1].equipment.property = properties[0].id;
@@ -1110,7 +1118,6 @@ try {
     equipment: playerAssetFixture,
     assetLevels: playerAssetLevels,
     upgradeTokens: 2,
-    heldUpgradeTokens: 0,
     playerIndex: 0,
   }));
   for (const category of ['car', 'lifestyle', 'pet', 'property']) {
@@ -1169,7 +1176,6 @@ try {
   assert.equal(tokenSpaceLanding.players[0].position, 14);
   assert.equal(tokenSpaceLanding.players[0].upgradeTokens, 1, 'landing on a token space grants one token');
   assert.equal(countEvent(tokenSpaceLanding, 'UPGRADE_TOKEN_GAINED'), 1);
-  assert.equal(advanceMatch(tokenSpaceLanding, { type: 'HOLD_UPGRADE_TOKEN' }), tokenSpaceLanding, 'token actions are blocked outside the ready phase');
 
   const upgradeReady = readyWithPlayer(purchased, 0, { upgradeTokens: 1, heldUpgradeTokens: 0 });
   const upgradeBasePlayer = upgradeReady.players[0];
@@ -1217,13 +1223,6 @@ try {
   const notPassed = readyWithPlayer(recoverBase, 0, { position: 9 });
   assert.equal(advanceMatch(notPassed, { type: 'RECOVER_MILESTONE' }), notPassed, 'future milestone assets cannot be recovered');
 
-  const holdStart = readyWithPlayer(start(10), 0, { upgradeTokens: 1, heldUpgradeTokens: 0 });
-  const held = advanceMatch(holdStart, { type: 'HOLD_UPGRADE_TOKEN' });
-  assert.equal(held.players[0].upgradeTokens, 1, 'holding preserves the match token total');
-  assert.equal(held.players[0].heldUpgradeTokens, 1);
-  assert.equal(availableUpgradeTokens(held.players[0]), 0);
-  assert.equal(advanceMatch(held, { type: 'HOLD_UPGRADE_TOKEN' }), held, 'a reserved token cannot be held twice');
-
   const cpuTurnStart = {
     ...purchased,
     phase: 'landed',
@@ -1248,6 +1247,21 @@ try {
   assert.equal(cpuTurn.turnIndex, 1);
   assert.equal(cpuTurn.players[1].assetLevels[offeredCar.id], 2, 'CPU spends its available token when starting a turn');
   assert.equal(cpuTurn.players[1].upgradeTokens, 0);
+  const cpuNoOptionsStart = {
+    ...cpuTurnStart,
+    players: cpuTurnStart.players.map((player, index) => index === 1
+      ? { ...player, equipment: { ...player.equipment, car: null }, assetLevels: {} }
+      : player),
+  };
+  let cpuNoOptionsTurn;
+  try {
+    Math.random = () => 0.99;
+    cpuNoOptionsTurn = advanceMatch(cpuNoOptionsStart, { type: 'NEXT_TURN' });
+  } finally {
+    Math.random = previousRandom;
+  }
+  assert.equal(cpuNoOptionsTurn.players[1].upgradeTokens, 1, 'an unused CPU token stays available for the endgame');
+  assert.equal(cpuNoOptionsTurn.players[1].heldUpgradeTokens, 0, 'CPU does not create a separate held-token state');
 
   match = move(withoutAbilities(start(28), 0), 2);
   assert.equal(match.pending.slot, 'lifestyle');
@@ -1713,7 +1727,7 @@ try {
   );
   assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
-  assert(resultsMarkup.includes('HELD TOKENS / FUTURE CREDITS') && resultsMarkup.includes('held tokens are not included in this match value'), 'final records explain that held tokens carry forward without affecting match value');
+  assert(resultsMarkup.includes('UPGRADE TOKENS / FINAL GAMBLE') && resultsMarkup.includes('Unused tokens remain available for the final gamble'), 'final records show unused tokens carrying through to the final gamble');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('1ST TO FINISH') && resultsMarkup.includes('FINISH BONUS'), 'final records distinguish arrival order from final-value placement');
 
@@ -1727,7 +1741,7 @@ try {
     onContinue: () => {},
   }));
   assert(finishPanelMarkup.includes('4TH TO FINISH!') && finishPanelMarkup.includes('FINISH BONUS'), 'finish screen announces arrival place and the Wealth bonus');
-  assert(finishPanelMarkup.includes('HELD TOKENS / FUTURE CREDITS'), 'the finish screen labels held tokens as future Credits conversion');
+  assert(finishPanelMarkup.includes('UPGRADE TOKENS / FINAL GAMBLE'), 'the finish screen shows unused tokens carrying into the final gamble');
 
   const cpuFinishStart = withoutAbilities(start(73, 1), 1);
   const cpuPending = move(cpuFinishStart, 2);
