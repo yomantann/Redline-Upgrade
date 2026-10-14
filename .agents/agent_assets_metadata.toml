@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "faS5g07dBox6almmIqCmb"
+uri = "file://artifacts/redline-upgrade/public/board-cosmetics/obsidian-frequency.png"
+type = "image"
+title = "Obsidian Frequency — Board Cosmetic"
+description = "1024 × 670 PNG base-deck texture reference for Redline Upgrade."
+logical_id = "8a3dc332-598a-4989-9391-3212d73fdb1b"
+content_hash = "sha256:7a5c023d21055e098d0c97e637d4cd281a4e37db7067ba7b29c891243ccee1b4"
+size = 932274
+mtime_ms = 1792006642175
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/8a3dc332-598a-4989-9391-3212d73fdb1b/cba8b52a-1973-488c-932c-0091277b321a"
+storage_version_token = "1792006689860291"
+content_type = "image/png"
