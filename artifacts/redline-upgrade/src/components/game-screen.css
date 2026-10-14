@@ -41,6 +41,9 @@
 .readout-landing p { font-size: 12px; line-height: 1.5; color: #a5b2a6; margin: 6px 0 0; }
 .game-gate { min-height: 70vh; padding: 90px clamp(20px,4.2vw,72px); }
 .game-gate h1 { font-size: clamp(85px,12vw,160px); }
+.auto-scroll-toggle { position:fixed; z-index:650; right:clamp(10px,2vw,24px); bottom:clamp(10px,2vw,24px); min-height:38px; padding:0 12px; border:1px solid #82936f; color:#e8efdd; background:rgba(20,31,25,.94); box-shadow:0 4px 18px rgba(0,0,0,.35); font-size:9px; font-weight:700; letter-spacing:.04em; cursor:pointer; }
+.auto-scroll-toggle:hover,.auto-scroll-toggle:focus-visible { border-color:#d4e981; color:#d4e981; outline:2px solid transparent; }
+.auto-scroll-toggle[aria-pressed="false"] { border-color:#f96346; color:#ff9a88; }
 .board-preview-banner {
   margin: 0 0 14px;
   padding: 10px 13px;

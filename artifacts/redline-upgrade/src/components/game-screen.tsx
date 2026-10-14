@@ -57,6 +57,22 @@ function ordinal(place: number): string {
   return `${place}${place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH'}`;
 }
 
+function AutoScrollToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="auto-scroll-toggle mono"
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Stop automatic scrolling' : 'Resume automatic scrolling'}
+      title={enabled ? 'Stop automatic scrolling' : 'Resume automatic scrolling'}
+      data-testid="button-toggle-auto-scroll"
+      onClick={onToggle}
+    >
+      AUTO-SCROLL / {enabled ? 'ON' : 'OFF'}
+    </button>
+  );
+}
+
 function summarizeCardResolution(events: EventLogEntry[], playerId: string): string | undefined {
   let drawIndex = -1;
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -116,6 +132,7 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
 export function GameScreen() {
   const [, navigate] = useLocation();
   const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected } = useGame();
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
@@ -127,6 +144,10 @@ export function GameScreen() {
   const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : turnIndex;
   const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
+  const toggleAutoScroll = useCallback(() => {
+    if (autoScrollEnabled) window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'auto' });
+    setAutoScrollEnabled(enabled => !enabled);
+  }, [autoScrollEnabled]);
   const latestLogEventId = match?.eventLog.at(-1)?.id;
   const landedPlayer = match && match.lastLanding ? match.players[match.lastLanding.playerIndex] : undefined;
   const isCardLanding = match?.pending?.kind === 'CARD'
@@ -318,7 +339,7 @@ export function GameScreen() {
 }, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch, remote !== null]);
 
   useEffect(() => {
-    if (!phase) return;
+    if (!phase || !autoScrollEnabled) return;
     const desktop = window.matchMedia('(min-width: 1001px)').matches;
     const target = desktop
       ? phase === 'ready' || phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
@@ -341,7 +362,7 @@ export function GameScreen() {
       element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: target === '.game-tabletop-board' ? 'center' : desktop ? 'nearest' : 'start' });
     }, phase === 'landed' ? 600 : 150);
     return () => window.clearTimeout(timer);
-  }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status]);
+  }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, autoScrollEnabled]);
 
   if (!match) return (
     <main className="game-gate">
@@ -371,6 +392,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   if (match.phase === 'complete') {
     return (
       <main className="game-screen game-screen-finish-line">
+        <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} />
       </main>
@@ -388,6 +410,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       : undefined;
     return (
       <main className="game-screen game-screen-finish-line">
+        <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <FinishLinePanel
           player={active}
@@ -417,6 +440,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   return (
     <main className="game-screen">
+      <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
       {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
       <section className="game-head">
         <div>

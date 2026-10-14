@@ -136,9 +136,9 @@ try {
   assert.equal(wealthImpact?.sourceLabel, 'WEALTH CARD · CAREER BONUS', 'card source and career reward modifier remain identifiable');
   assert.equal(targetedFameImpact?.amountText, '−2', 'negative attribute feedback uses a signed negative delta');
   assert.equal(targetedFameImpact?.sourceLabel, 'CAREER ABILITY', 'ability-driven changes name their source family');
-  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 120000, 'each change remains visible for three times the original display window');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 60000, 'Wealth and attribute feedback shares a 60-second display window');
   assert.equal(getPlayerStatChangePulseDuration(31000, [31000, 31000, 31000, 31000], 1000), 6000, 'same-player changes receive sequential time within the shared display window');
-  assert.equal(getPlayerStatChangePulseDuration(31000, [33000], 1000), 30000, 'a change is capped at a readable pulse duration');
+  assert.equal(getPlayerStatChangePulseDuration(61000, [], 1000), 60000, 'a single Wealth or attribute change remains visible for the full 60 seconds');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
     assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);

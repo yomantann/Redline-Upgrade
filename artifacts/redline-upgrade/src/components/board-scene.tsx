@@ -147,8 +147,12 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
   const lines = useMemo(() => [name, `ZONE 0${index + 1}`], [index, name]);
   // These two flags sit on the camera-facing side of the circuit and need their
-  // printed face turned outward; keep the flag geometry and position unchanged.
+  // printed face turned outward; the final flag is turned face-on to avoid an
+  // edge-on view. Keep all flag positions and geometry unchanged.
   const cameraFacingBack = index === 1 || index === 3;
+  const labelYaw = index === 4
+    ? Math.atan2(2 - x, 37 - z)
+    : Math.atan2(-x, -z);
   const texture = useMemo(() => graphic(lines, '#f4f1e1'), [lines]);
   const banner = useMemo(() => {
     const shape = new THREE.Shape();
@@ -162,7 +166,7 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
   }, []);
   useEffect(() => () => texture.dispose(), [texture]);
   useEffect(() => () => banner.dispose(), [banner]);
-  return <group position={[x, 0.14, z]} rotation={[0, Math.atan2(-x, -z), 0]}>
+  return <group position={[x, 0.14, z]} rotation={[0, labelYaw, 0]}>
     <mesh position={[-1.1, 0.72, 0]} castShadow>
       <boxGeometry args={[0.075, 1.44, 0.085]} />
       <meshStandardMaterial color="#35453d" metalness={0.78} roughness={0.32} />
