@@ -8,9 +8,11 @@ import { RedlineCard } from './redline-card';
 type Props = {
   activeDeck?: DeckId;
   activeCard?: CardDefinition;
-  cardStage?: 'draw' | 'resolved';
+  offeredCards?: CardDefinition[];
+  cardStage?: 'choice' | 'draw' | 'resolved';
   cardPiles?: CardPileMap;
   onResolveCard?: () => void;
+  onChooseGambleCard?: (cardId: string) => void;
   onAcknowledge?: () => void;
   isCPU?: boolean;
   actorName?: string;
@@ -22,9 +24,11 @@ type Props = {
 export function CardTabletop({
   activeDeck,
   activeCard,
+  offeredCards,
   cardStage,
   cardPiles,
   onResolveCard,
+  onChooseGambleCard,
   onAcknowledge,
   isCPU = false,
   actorName = isCPU ? 'CPU' : 'You',
@@ -44,7 +48,7 @@ export function CardTabletop({
   }, [activeDeck, activeCard?.id, cardStage, drawReadTimeMs]);
 
   const activeCardResolved = cardStage === 'resolved' && activeCard;
-  const presentationStep = activeCardResolved ? 3 : activeCard ? 2 : 0;
+  const presentationStep = activeCardResolved ? 3 : cardStage === 'choice' ? 1 : activeCard ? 2 : 0;
   return (
     <>
       {activeDeck && (
@@ -56,7 +60,7 @@ export function CardTabletop({
           data-testid="section-card-draw"
           data-card-stage={activeCardResolved ? 'result' : 'reveal'}
         >
-          <div className="card-draw-modal-card">
+          <div className={`card-draw-modal-card ${cardStage === 'choice' ? 'choosing-gamble' : ''}`}>
             <ol className="card-presentation-sequence" aria-label="Card resolution sequence">
               {[isCPU ? 'CPU ACTION' : 'PLAYER ACTION', 'CARD REVEAL', 'CARD EFFECT', 'RESULT'].map((step, index) => (
                 <li className={index < presentationStep ? 'complete' : index === presentationStep ? 'current' : ''} key={step}>{step}</li>
@@ -64,15 +68,27 @@ export function CardTabletop({
             </ol>
           <div className="card-draw-copy">
             <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
-            <h2>{activeCard?.title ?? 'Draw your card.'}</h2>
+            <h2>{cardStage === 'choice' ? 'Choose your Gamble card.' : activeCard?.title ?? 'Draw your card.'}</h2>
             <p><b>{actorLabel}</b> / {actorName} drew this card.</p>
-            <p>{activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.'}</p>
+            <p>{cardStage === 'choice' ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.' : activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.'}</p>
           </div>
-          <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}>
-            <RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} />
-          </div>
+          {cardStage === 'choice' && offeredCards?.length ? (
+            <div className="card-choice-grid" data-testid="gamble-card-choices">
+              {offeredCards.map((card) => isCPU ? (
+                <div className="card-choice-option" key={card.id}><RedlineCard deck="gamble" face="front" card={card} /><span>{card.title}</span></div>
+              ) : (
+                <button className="card-choice-option" type="button" key={card.id} disabled={!minimumReadTimeComplete} onClick={() => onChooseGambleCard?.(card.id)} data-testid={`choose-gamble-${card.id}`}>
+                  <RedlineCard deck="gamble" face="front" card={card} /><span>{card.title}</span><b>CHOOSE THIS CARD</b>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}>
+              <RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} />
+            </div>
+          )}
           <div className="card-draw-action">
-             {isCPU ? (
+              {isCPU ? (
                <>
                  <p className="mono">{activeCardResolved ? 'RESULT RECORDED // CPU CONTINUES AUTOMATICALLY' : 'CPU ACTION // CARD READ IN PROGRESS'}</p>
                  <div className={`card-cpu-progress ${activeCardResolved ? 'resolved' : 'draw'}`} role="progressbar" aria-label={activeCardResolved ? 'CPU continuing after card result' : 'CPU reviewing card'} aria-valuetext={activeCardResolved ? `Auto-continue in about ${CPU_CARD_RESULT_SECONDS} seconds` : `Card read in progress for about ${drawReadTimeSeconds} seconds`} key={`${activeCard?.id ?? activeDeck}-${cardStage ?? 'draw'}`}>
@@ -80,7 +96,9 @@ export function CardTabletop({
                  </div>
                   <small className="card-cpu-progress-label mono">{activeCardResolved ? `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC` : `CARD READ / ${drawReadTimeSeconds} SEC`}</small>
                </>
-             ) : activeCardResolved
+              ) : cardStage === 'choice'
+               ? <p className="mono">CHOOSE ONE CARD TO RESOLVE</p>
+               : activeCardResolved
               ? <button type="button" className="action lime-action" onClick={onAcknowledge} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
               : onResolveCard
                 ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>

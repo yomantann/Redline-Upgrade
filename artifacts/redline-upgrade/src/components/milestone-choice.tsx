@@ -93,6 +93,26 @@ export function MilestoneChoice({ pending, player, players, onAction }: Props) {
     );
   }
 
+  if (pending.kind === 'SALARY_GATE') {
+    const targets = players.filter(candidate => candidate.playerId !== player.playerId && candidate.status === 'ACTIVE' && candidate.position < 75);
+    return (
+      <section className="milestone-choice" aria-live="polite" data-testid="panel-salary-gate-choice">
+        <Header space={pending.space} eyebrow="PAYDAY GATE" title="Choose your" highlighted="move." description="Take your payday and end this landing, or give it up to send an active opponent back four spaces." />
+        <div className="ability-decision-actions" role="group" aria-label="Choose salary gate action">
+          <button className="action lime-action" type="button" onClick={() => onAction({ type: 'TAKE_PAYDAY' })} data-testid="button-take-payday">
+            TAKE PAYDAY / {formatMoney(effectiveSalaryAmount(player))}
+          </button>
+          {targets.map(target => (
+            <button className="milestone-skip" type="button" key={target.playerId} onClick={() => onAction({ type: 'PUSH_PLAYER_BACK', targetPlayerId: target.playerId })} data-testid={`button-push-back-${target.playerId}`}>
+              FORGO PAYDAY / SEND {target.displayName} BACK 4
+            </button>
+          ))}
+          {!targets.length && <p>No active opponent can be sent back; take the payday instead.</p>}
+        </div>
+      </section>
+    );
+  }
+
   if (pending.kind === 'ABILITY') {
     const ability = getAbility(pending.abilityId);
     const targetPlayer = pending.decision === 'ASSET_INTERACTION' || pending.decision === 'CAREER_SWAP'

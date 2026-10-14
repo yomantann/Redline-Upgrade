@@ -1360,7 +1360,9 @@ try {
   assertCompleteCardPiles(reshuffled.cardPiles);
   match = move(withoutAbilities(start(13, 1), 1), 2);
   assert.equal(match.pending.deck, 'gamble');
-  const cpuCardId = match.pending.cardId;
+  const cpuOfferedIds = [...match.pending.offeredCardIds];
+  assert.equal(new Set(cpuOfferedIds).size, 2, 'Gamble landing reveals two distinct cards');
+  assertCompleteCardPiles(match.cardPiles);
   const cpuCardResult = advanceMatch(match, { type: 'AUTO_DECIDE' });
   assert.equal(cpuCardResult.phase, 'decision', 'CPU card result stays visible before acknowledgement');
   assert.equal(cpuCardResult.pending.stage, 'resolved');
@@ -1368,9 +1370,42 @@ try {
   match = advanceMatch(cpuCardResult, { type: 'AUTO_DECIDE' });
   assert.equal(match.phase, 'landed', 'the second timed CPU stage resumes the turn');
   assert(eventTypes(match).includes('CARD_RESOLVED'));
-  assert(match.cardPiles.gamble.discardPile.includes(cpuCardId));
+  const cpuChosenId = cpuCardResult.pending.cardId;
+  const cpuUnchosenId = cpuOfferedIds.find(id => id !== cpuChosenId);
+  assert(match.cardPiles.gamble.discardPile.includes(cpuChosenId), 'the selected Gamble card resolves and is discarded');
+  assert(match.cardPiles.gamble.drawPile.includes(cpuUnchosenId), 'the unchosen Gamble card returns to the bottom of its draw pile');
   assert.equal(match.cardPiles.gamble.inFlight.length, 0);
   assertCompleteCardPiles(match.cardPiles);
+
+  const firstPaydaySpace = [...PAYDAY_SPACES][0];
+  const paydayFixture = withoutAbilities(start(firstPaydaySpace - 2, 0));
+  const paydayLanding = move(paydayFixture, 2);
+  assert.equal(paydayLanding.pending?.kind, 'SALARY_GATE', 'landing exactly on payday pauses for a choice');
+  const salaryBefore = paydayLanding.players[0].wealth;
+  const tookPayday = advanceMatch(paydayLanding, { type: 'TAKE_PAYDAY' });
+  assert.equal(tookPayday.players[0].wealth, salaryBefore + effectiveSalaryAmount(paydayLanding.players[0]));
+  assert.equal(tookPayday.phase, 'landed');
+  const shoveFixture = {
+    ...paydayFixture,
+    players: paydayFixture.players.map((player, index) => index === 1 ? { ...player, position: 2 } : player),
+  };
+  const shoveLanding = move(shoveFixture, 2);
+  const shovedPlayerId = shoveLanding.players[1].playerId;
+  const shoved = advanceMatch(shoveLanding, { type: 'PUSH_PLAYER_BACK', targetPlayerId: shovedPlayerId });
+  assert.equal(shoved.players[1].position, 0, 'backward displacement clamps at Start');
+  assert.equal(shoved.players[0].wealth, shoveLanding.players[0].wealth, 'choosing the shove forgoes payday');
+  const crossedGateFixture = {
+    ...paydayFixture,
+    players: paydayFixture.players.map((player, index) => index === 1 ? { ...player, position: 10 } : player),
+  };
+  const crossedGateLanding = move(crossedGateFixture, 2);
+  const targetWealthBeforeShove = crossedGateLanding.players[1].wealth;
+  const landedBackOnGate = advanceMatch(crossedGateLanding, { type: 'PUSH_PLAYER_BACK', targetPlayerId: crossedGateLanding.players[1].playerId });
+  assert.equal(landedBackOnGate.players[1].position, 6);
+  assert.equal(landedBackOnGate.players[1].wealth, targetWealthBeforeShove, 'forced backward movement does not pay the destination salary gate');
+  assert(!landedBackOnGate.eventLog.some(event => event.eventType === 'SALARY_GATE' && event.playerId === landedBackOnGate.players[1].playerId), 'forced movement does not trigger salary-gate events');
+  const finishedTarget = { ...shoveLanding, players: shoveLanding.players.map((player, index) => index === 1 ? { ...player, status: 'FINISHED' } : player) };
+  assert.equal(advanceMatch(finishedTarget, { type: 'PUSH_PLAYER_BACK', targetPlayerId: shovedPlayerId }), finishedTarget, 'finished players cannot be displaced');
 
   let consecutiveCpuMatch = withoutAbilities(start(1, 1));
   const consecutiveCardStops = [
@@ -1874,7 +1909,10 @@ try {
       else if (m.phase === 'reveal') action = { type: 'MOVE' };
       else if (m.phase === 'landed') action = { type: 'END_TURN' };
       else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
-      else if (m.pending?.kind === 'CARD') action = { type: m.pending.stage === 'draw' ? 'DRAW_CARD' : 'ACKNOWLEDGE_CARD' };
+      else if (m.pending?.kind === 'CARD') action = m.pending.stage === 'choice'
+        ? { type: 'CHOOSE_GAMBLE_CARD', cardId: m.pending.offeredCardIds[0] }
+        : { type: m.pending.stage === 'draw' ? 'DRAW_CARD' : 'ACKNOWLEDGE_CARD' };
+      else if (m.pending?.kind === 'SALARY_GATE') action = { type: 'TAKE_PAYDAY' };
       else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
       else if (m.pending?.kind === 'CAREER') action = { type: 'CHANGE_CAREER', step: m.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
       else if (m.pending?.kind === 'ABILITY') {

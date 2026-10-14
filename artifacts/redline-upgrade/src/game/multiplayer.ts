@@ -37,7 +37,10 @@ export type ClientAction =
   | { type: 'ROLL_DICE' }
   | { type: 'MOVE' }
   | { type: 'DRAW_CARD' }
+  | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
   | { type: 'ACKNOWLEDGE_CARD' }
+  | { type: 'TAKE_PAYDAY' }
+  | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
   | { type: 'USE_ABILITY'; resolution: AbilityResolution }
   | { type: 'CHOOSE_ASSET_CATEGORY'; category: 'pet' | 'investment' }
   | { type: 'BUY_ASSET'; assetId: string }
@@ -91,7 +94,10 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'ROLL': return { type: 'ROLL_DICE' };
     case 'MOVE': return { type: 'MOVE' };
     case 'RESOLVE_CARD': return { type: 'DRAW_CARD' };
+    case 'CHOOSE_GAMBLE_CARD': return { type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId };
     case 'ACKNOWLEDGE_CARD': return { type: 'ACKNOWLEDGE_CARD' };
+    case 'TAKE_PAYDAY': return { type: 'TAKE_PAYDAY' };
+    case 'PUSH_PLAYER_BACK': return { type: 'PUSH_PLAYER_BACK', targetPlayerId: action.targetPlayerId };
     case 'CHOOSE_ASSET_CATEGORY': return { type: 'CHOOSE_ASSET_CATEGORY', category: action.category };
     case 'BUY_ASSET': return { type: 'BUY_ASSET', assetId: action.assetId };
     case 'SKIP_ASSET': return { type: 'SKIP_ASSET' };
@@ -118,7 +124,10 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
       return [{ type: 'ROLL', result: serverRollDice() }, { type: 'REVEAL' }];
     case 'MOVE': return [{ type: 'MOVE' }];
     case 'DRAW_CARD': return [{ type: 'RESOLVE_CARD' }];
+    case 'CHOOSE_GAMBLE_CARD': return isString(action.cardId) ? [{ type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId }] : null;
     case 'ACKNOWLEDGE_CARD': return [{ type: 'ACKNOWLEDGE_CARD' }];
+    case 'TAKE_PAYDAY': return [{ type: 'TAKE_PAYDAY' }];
+    case 'PUSH_PLAYER_BACK': return isString(action.targetPlayerId) ? [{ type: 'PUSH_PLAYER_BACK', targetPlayerId: action.targetPlayerId }] : null;
     case 'USE_ABILITY': {
       const resolution = action.resolution;
       if (resolution?.kind === 'STAT_DESTINATION' && ['aiSkill', 'fame', 'influence'].includes(resolution.stat)) {

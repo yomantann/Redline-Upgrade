@@ -390,6 +390,9 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   const cardResultSummary = pending?.kind === 'CARD' && pending.stage === 'resolved'
     ? summarizeCardResolution(match.eventLog, active.playerId)
     : undefined;
+  const offeredGambleCards = pending?.kind === 'CARD' && pending.offeredCardIds
+    ? pending.offeredCardIds.map(id => getCard(id)).filter((card): card is NonNullable<typeof card> => Boolean(card))
+    : undefined;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
 
@@ -632,6 +635,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
        <CardTabletop
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
          activeCard={match.phase === 'decision' && pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined}
+         offeredCards={offeredGambleCards}
          cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
@@ -639,6 +643,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
          actorLabel={active.isCPU ? seatName(active) : 'YOU'}
           resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
+         onChooseGambleCard={cardId => dispatchMatch({ type: 'CHOOSE_GAMBLE_CARD', cardId })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />
        </div>}

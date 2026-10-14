@@ -1,3 +1,10 @@
+.card-choice-grid { grid-column:2; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; }
+.card-choice-option { display:flex; min-width:0; flex-direction:column; align-items:center; gap:8px; border:1px solid #5d7464; padding:10px; background:#17211c; color:#f0eee4; cursor:pointer; text-align:center; }
+.card-choice-option .redline-card { width:min(100%,220px); }
+.card-choice-option:hover,.card-choice-option:focus-visible { border-color:#d4e981; outline:2px solid #d4e981; }
+.card-choice-option:disabled { cursor:wait; opacity:.7; }
+.card-choice-option span,.card-choice-option b { font:700 11px/1.2 'Space Mono',monospace; }
+@media(max-width:720px) { .card-choice-grid { grid-column:1; width:100%; gap:7px; } .card-choice-option { padding:6px; } }
 .redline-card { --deck-color:#d8e78b; position:relative; isolation:isolate; display:flex; flex-direction:column; min-width:0; aspect-ratio: .69; overflow:hidden; color:#e9e7dc; background:#17211f; border:1px solid var(--deck-color); border-radius:9px 9px 13px 13px; box-shadow:2px 3px 0 #0c1312,6px 9px 0 rgba(0,0,0,.35),10px 15px 24px rgba(0,0,0,.3); }
 .redline-card::before { content:''; position:absolute; inset:5px; border:1px solid color-mix(in srgb,var(--deck-color) 40%,transparent); border-radius:5px 5px 9px 9px; pointer-events:none; z-index:3; }
 .redline-card.back { background:repeating-linear-gradient(135deg,transparent 0 17px,color-mix(in srgb,var(--deck-color) 10%,transparent) 18px,transparent 19px),radial-gradient(circle at 50% 44%,color-mix(in srgb,var(--deck-color) 24%,#17211f),#14201e 68%); }
@@ -129,3 +136,8 @@
   .card-draw-stage { width:min(44vw,200px,30dvh); margin-inline:auto; }
   .card-draw-copy,.card-draw-action { width:100%; }
 }
+.card-draw-modal-card.choosing-gamble { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto; }
+.card-draw-modal-card.choosing-gamble .card-draw-copy { grid-column:1; grid-row:2; align-self:start; }
+.card-draw-modal-card.choosing-gamble .card-choice-grid { grid-column:1; grid-row:3; }
+.card-draw-modal-card.choosing-gamble .card-choice-option .redline-card { max-width:190px; }
+.card-draw-modal-card.choosing-gamble .card-draw-action { grid-column:1; grid-row:4; }

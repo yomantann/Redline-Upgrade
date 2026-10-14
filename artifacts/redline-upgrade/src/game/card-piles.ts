@@ -71,6 +71,15 @@ export function discardCardToPiles(piles: CardPileMap, deck: DeckId, cardId: str
   };
 }
 
+export function returnCardToBottom(piles: CardPileMap, deck: DeckId, cardId: string): CardPileMap {
+  const current = piles[deck];
+  if (!current.inFlight.includes(cardId)) throw new Error(`Card ${cardId} is not in flight from the ${deck} deck`);
+  return {
+    ...piles,
+    [deck]: { ...current, drawPile: [...current.drawPile, cardId], inFlight: current.inFlight.filter(id => id !== cardId) },
+  };
+}
+
 export function assertCompleteCardPiles(piles: CardPileMap): void {
   const seen = new Set<string>();
   for (const deck of decks) {

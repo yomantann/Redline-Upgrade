@@ -8,7 +8,7 @@ import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
 import type { EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
-import { createCardPiles, discardCardToPiles, drawCardFromPiles, type CardPileMap } from './card-piles';
+import { createCardPiles, discardCardToPiles, drawCardFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
 import { getCard } from './cards';
 import {
   calculateEndgameBaseValue,
@@ -83,7 +83,8 @@ export interface WealthEvent { id: number; playerIndex: number; amount: number; 
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type BoardPendingDecision =
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
-  | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'draw' | 'resolved' }
+  | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'choice' | 'draw' | 'resolved'; offeredCardIds?: string[] }
+  | { kind: 'SALARY_GATE'; space: number; previousPosition: number }
   | { kind: 'CAREER'; space: number; stage: 'choice' | 'offers' | 'salary'; options?: [string, string]; selectedCareerId?: string; previousCareerId?: string }
   | { kind: 'GIG_WORKER'; space: number };
 export type AbilityPendingDecision = {
@@ -419,7 +420,10 @@ export type MatchAction =
   | { type: 'SELECT_CAREER'; careerId: string }
   | { type: 'ACKNOWLEDGE_CAREER' }
   | { type: 'RESOLVE_CARD' }
+  | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
   | { type: 'ACKNOWLEDGE_CARD' }
+  | { type: 'TAKE_PAYDAY' }
+  | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
   | { type: 'RESOLVE_ABILITY_STAT_DESTINATION'; stat: 'aiSkill' | 'fame' | 'influence' }
   | { type: 'RESOLVE_ABILITY_ASSET_INTERACTION'; choice: 'STEAL' | 'SWAP' | 'DECLINE' }
   | { type: 'RESOLVE_ABILITY_CAREER_SWAP'; accept: boolean }
@@ -466,7 +470,14 @@ function drawAssets(category: AssetCategory): string[] {
 function land(match: Match, space: BoardSpace, previousPosition: number): Match {
   const slot = space.type === 'MILESTONE' ? milestoneSlot(space.number) : null;
   const landing = { playerIndex: match.turnIndex, space };
-  const drafts: EventDraft[] = [{ type: 'LAND_ON_SPACE', playerIndex: match.turnIndex, previousPosition, newPosition: space.number, spaceNumber: space.number }];
+  if (space.payday) return emit({
+    ...match,
+    phase: 'decision',
+    stepsRemaining: 0,
+    lastLanding: landing,
+    pending: { kind: 'SALARY_GATE', space: space.number, previousPosition },
+  }, [{ type: 'LAND_ON_SPACE', playerIndex: match.turnIndex, previousPosition, newPosition: space.number, spaceNumber: space.number }]);
+    const drafts: EventDraft[] = [{ type: 'LAND_ON_SPACE', playerIndex: match.turnIndex, previousPosition, newPosition: space.number, spaceNumber: space.number }];
   if (space.type === 'UPGRADE_TOKEN') {
     drafts.push({
       type: 'UPGRADE_TOKEN_GAINED',
@@ -507,15 +518,18 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
     return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }
   if (space.deck) {
-    const draw = drawCardFromPiles(match.cardPiles, space.deck);
-    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: draw.cardId });
+    const first = drawCardFromPiles(match.cardPiles, space.deck);
+    const draw = space.deck === 'gamble' ? drawCardFromPiles(first.cardPiles, space.deck) : first;
+    const offeredCardIds = space.deck === 'gamble' ? [first.cardId, draw.cardId] : undefined;
+    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: first.cardId });
+    if (offeredCardIds) drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: draw.cardId });
     return emit({
       ...match,
       cardPiles: draw.cardPiles,
       phase: 'decision',
       stepsRemaining: 0,
       lastLanding: landing,
-      pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: draw.cardId, stage: 'draw' },
+      pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: first.cardId, stage: offeredCardIds ? 'choice' : 'draw', offeredCardIds },
     }, drafts);
   }
   return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
@@ -1120,9 +1134,42 @@ function autoDecide(match: Match): Match {
     }]);
   }
   if (pending.kind === 'CARD') {
+    if (pending.stage === 'choice' && pending.offeredCardIds?.length) {
+      const choices = pending.offeredCardIds.map(id => getCard(id)).filter((card): card is NonNullable<typeof card> => !!card);
+      const averageOpponentPosition = match.players
+        .filter((candidate, index) => index !== decisionPlayerIndex && candidate.status === 'ACTIVE')
+        .reduce((total, candidate, _, opponents) => total + candidate.position / Math.max(1, opponents.length), 0);
+      const riskBias = player.position < averageOpponentPosition - 3 ? 0.12 : player.position > averageOpponentPosition + 3 ? -0.12 : 0;
+      const expected = (card: NonNullable<typeof choices[number]>) => {
+        const score = (effect: (typeof card.effects)[number]): number => {
+          if (effect.kind === 'STAT') return effect.stat === 'wealth' ? effect.amount / Math.max(1, player.wealth * 0.00005) : effect.amount * 8;
+          if (effect.kind === 'RISK') {
+            const win = effect.win.reduce((sum, item) => sum + score(item), 0);
+            const loss = effect.loss.reduce((sum, item) => sum + score(item), 0);
+            return effect.chance * win + (1 - effect.chance) * loss + riskBias * Math.abs(win - loss);
+          }
+          if (effect.kind === 'UPGRADE_TOKEN') return effect.amount * 20;
+          if (effect.kind === 'TRANSFER_WEALTH') return effect.amount / Math.max(1, player.wealth * 0.00005);
+          if (effect.kind === 'DOUBLE_OR_NOTHING') return effect.chance * player.wealth / Math.max(1, player.wealth * 0.00005) - (1 - effect.chance) * 30;
+          return 0;
+        };
+        return card.effects.reduce((sum, effect) => sum + score(effect), 0);
+      };
+      const chosen = choices.sort((a, b) => expected(b) - expected(a))[0];
+      return chosen ? advanceMatch(match, { type: 'CHOOSE_GAMBLE_CARD', cardId: chosen.id }) : match;
+    }
     return pending.stage === 'draw'
       ? resolveCardDecision(match)
       : acknowledgeCardDecision(match);
+  }
+  if (pending.kind === 'SALARY_GATE') {
+    const opponents = match.players.filter((candidate, index) => index !== decisionPlayerIndex && candidate.status === 'ACTIVE');
+    const leadingOpponent = opponents.sort((a, b) => (b.position + b.wealth / 100_000) - (a.position + a.wealth / 100_000))[0];
+    const salary = effectiveSalaryAmount(player);
+    if (leadingOpponent && leadingOpponent.position >= player.position + 4 && salary < 40_000) {
+      return advanceMatch(match, { type: 'PUSH_PLAYER_BACK', targetPlayerId: leadingOpponent.playerId });
+    }
+    return advanceMatch(match, { type: 'TAKE_PAYDAY' });
   }
   if (pending.kind === 'ASSET') {
     // The slot can be filled after the offer opens (e.g. by an event resolved on landing); never stall.
@@ -1330,9 +1377,35 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'RESOLVE_CARD':
       if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.players[match.turnIndex].isCPU) return match;
       return resolveCardDecision(match);
+    case 'CHOOSE_GAMBLE_CARD': {
+      const pending = match.pending;
+      if (match.phase !== 'decision' || pending?.kind !== 'CARD' || pending.deck !== 'gamble' || pending.stage !== 'choice' || !pending.offeredCardIds?.includes(action.cardId)) return match;
+      const unchosen = pending.offeredCardIds.find(id => id !== action.cardId);
+      if (!unchosen) return match;
+      const cardPiles = returnCardToBottom(match.cardPiles, 'gamble', unchosen);
+      return resolveCardDecision({ ...match, cardPiles, pending: { ...pending, cardId: action.cardId, stage: 'draw' } });
+    }
     case 'ACKNOWLEDGE_CARD':
       if (match.players[match.turnIndex]?.isCPU) return match;
       return acknowledgeCardDecision(match);
+    case 'TAKE_PAYDAY': {
+      const pending = match.pending;
+      if (match.phase !== 'decision' || pending?.kind !== 'SALARY_GATE') return match;
+      const gate = applySalaryGate(match, match.turnIndex, pending.previousPosition, pending.space);
+      const salaryAmount = effectiveSalaryAmount(match.players[match.turnIndex]);
+      return emit({ ...gate.match, phase: 'landed', pending: null, wealthEvents: [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: salaryAmount, kind: 'PAYDAY', space: pending.space }] }, gate.drafts);
+    }
+    case 'PUSH_PLAYER_BACK': {
+      const pending = match.pending;
+      const targetIndex = match.players.findIndex(player => player.playerId === action.targetPlayerId);
+      const target = match.players[targetIndex];
+      if (match.phase !== 'decision' || pending?.kind !== 'SALARY_GATE' || !target || targetIndex === match.turnIndex || target.status !== 'ACTIVE' || target.position >= 75) return match;
+      const newPosition = Math.max(0, target.position - 4);
+      return emit({
+        ...match, phase: 'landed', pending: null,
+        players: match.players.map((player, index) => index === targetIndex ? { ...player, position: newPosition } : player),
+      }, [{ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, targetPlayerId: target.playerId, previousPosition: target.position, newPosition, description: `${match.players[match.turnIndex].displayName} gave up the payday and sent ${target.displayName} back four spaces to ${newPosition === 0 ? 'Start' : `space ${newPosition}`}.` }]);
+    }
     case 'RESOLVE_ABILITY_STAT_DESTINATION':
       if (match.players[match.pending?.kind === 'ABILITY' ? match.pending.playerIndex : match.turnIndex]?.isCPU) return match;
       return resolveAbilityStatDestination(match, action.stat);
