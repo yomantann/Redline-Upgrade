@@ -584,17 +584,27 @@ try {
   assert(BOARD_SPACES.filter(space => space.type === 'UPGRADE_TOKEN').every(space => space.trigger === 'LAND' && getSpaceVisual(space).className === 'upgrade'), 'token spaces award only on landing and have a distinct visual');
   assert.equal(BOARD_SPACES.filter(space => space.type === 'NORMAL').length, 28, 'Open Road remains no-effect and the route retains 75 spaces');
 
-  assert.equal(cards.length, 96, 'the full card set has 96 cards');
-  assert.equal(new Set(cards.map(card => card.id)).size, 96, 'card IDs are unique');
-  assert.equal(new Set(cards.map(card => card.title)).size, 96, 'card names are unique');
-  assert.equal(new Set(cards.filter(card => !card.id.endsWith('upgrade-token')).map(card => JSON.stringify(card.effects))).size, 90, 'the original 90 card outcomes remain unique');
-  assert.equal(new Set(cards.map(card => card.artCue)).size, 96, 'card art concepts are unique');
+  const newCardIds = new Set([
+    'wealth-cash-me-outside', 'wealth-croissant-recovery', 'wealth-roadwork-ahead',
+    'ai-what-are-those', 'ai-american-assumption', 'ai-wtf-richard',
+    'fame-chicken-feed', 'fame-chicken-feed-encore', 'fame-so-no-head',
+    'lifestyle-raven-birthday', 'lifestyle-potato-chaos', 'lifestyle-potato-chaos-encore',
+    'influence-why-you-always-lying', 'gamble-krispy-kreme', 'gamble-wow',
+  ]);
+  assert.equal(newCardIds.size, 15);
+  const originalCards = cards.filter(card => !newCardIds.has(card.id));
+  assert.equal(cards.length, 111, 'the full card set includes the 15 new cards');
+  assert.equal(new Set(cards.map(card => card.id)).size, 111, 'card IDs are unique');
+  assert.equal(new Set(cards.map(card => card.title)).size, 111, 'card names are unique');
+  assert.equal(new Set(originalCards.filter(card => !card.id.endsWith('upgrade-token')).map(card => JSON.stringify(card.effects))).size, 90, 'the original 90 card outcomes remain unique');
+  assert.equal(new Set(cards.map(card => card.artCue)).size, 111, 'card art concepts are unique');
   const tokenCards = cards.filter(card => card.id.endsWith('upgrade-token'));
   assert.equal(tokenCards.length, 6, 'there is one Upgrade Token card in each deck');
   assert.deepEqual([...tokenCards.map(card => card.deck)].sort(), ['ai', 'fame', 'gamble', 'influence', 'lifestyle', 'wealth']);
+  const expectedDeckCounts = { wealth: 19, ai: 19, fame: 19, lifestyle: 19, influence: 17, gamble: 18 };
   for (const deck of decks) {
-    assert.equal(cardsForDeck(deck.id).length, 16, `${deck.name} contains 16 cards`);
-    assert.equal(deck.count, 16, `${deck.name} reports 16 cards`);
+    assert.equal(cardsForDeck(deck.id).length, expectedDeckCounts[deck.id], `${deck.name} contains its updated cards`);
+    assert.equal(deck.count, expectedDeckCounts[deck.id], `${deck.name} reports its updated card count`);
   }
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
@@ -1330,7 +1340,7 @@ try {
     },
   };
   const reshuffled = drawCardFromPiles(reshuffleTestPile, 'wealth');
-assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
+  assert.equal(reshuffled.cardPiles.wealth.drawPile.length, cardsForDeck('wealth').length - 1);
   assert.equal(reshuffled.cardPiles.wealth.discardPile.length, 0);
   assert.equal(reshuffled.cardPiles.wealth.inFlight.length, 1);
   assertCompleteCardPiles(reshuffled.cardPiles);
@@ -1900,6 +1910,10 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
       assert.ok(done.changed);
     }
   }
+  assert.equal(cards.length, 111, 'the six production decks include all 15 added cards');
+  for (const deck of decks) {
+    assert.equal(deck.count, cardsForDeck(deck.id).length, `${deck.name} deck count matches its draw rotation`);
+  }
   console.log('CARD ARTWORK AUDIT');
   console.log('DECK | TOTAL | WITH IMAGE | MISSING');
   for (const deck of decks) {
@@ -1911,7 +1925,7 @@ assert.equal(reshuffled.cardPiles.wealth.drawPile.length, 15);
     assert.equal(withImages, deckCards.length, `${deck.name} deck has a mapped, existing image for every draw card`);
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
-  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 96 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
+  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 111 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
 } finally {
   await vite.close();
 }
