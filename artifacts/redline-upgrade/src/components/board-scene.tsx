@@ -146,6 +146,9 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
 
 function StandingLabel({ name, index, x, z, color }: { name: string; index: number; x: number; z: number; color: string }) {
   const lines = useMemo(() => [name, `ZONE 0${index + 1}`], [index, name]);
+  // These two flags sit on the camera-facing side of the circuit and need their
+  // printed face turned outward; keep the flag geometry and position unchanged.
+  const cameraFacingBack = index === 1 || index === 3;
   const texture = useMemo(() => graphic(lines, '#f4f1e1'), [lines]);
   const banner = useMemo(() => {
     const shape = new THREE.Shape();
@@ -171,7 +174,7 @@ function StandingLabel({ name, index, x, z, color }: { name: string; index: numb
     <mesh position={[0, 1.08, 0]} geometry={banner} castShadow>
       <meshStandardMaterial color="#18251e" roughness={0.72} side={THREE.DoubleSide} />
     </mesh>
-    <mesh position={[0, 1.08, 0.055]}>
+     <mesh position={[0, 1.08, cameraFacingBack ? -0.055 : 0.055]} rotation={cameraFacingBack ? [0, Math.PI, 0] : undefined}>
       <planeGeometry args={[2.55, 0.62]} />
       <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} depthWrite={false} />
     </mesh>

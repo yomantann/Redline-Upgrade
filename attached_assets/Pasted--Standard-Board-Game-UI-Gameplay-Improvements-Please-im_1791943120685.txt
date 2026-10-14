@@ -1,0 +1,30 @@
+## Standard Board Game — UI & Gameplay Improvements
+
+Please implement the following four improvements to the existing Standard board game without restructuring the game or changing existing mechanics.
+
+**1. Automatic Scrolling on PC**
+- Desktop should automatically scroll between the board, player stats, and relevant game sections based on what is happening.
+- Mobile already handles this correctly. Use the existing mobile behavior as a reference.
+- Ensure smooth scrolling so players can easily follow gameplay.
+- Do not disrupt manual scrolling or existing mobile functionality.
+
+**2. Fix Board Flag Text**
+- Two board flags currently have their text displayed on the wrong side, making them unreadable.
+- Identify and correct their text orientation so all flags are readable from the intended board camera view.
+- Do not change flag positions or designs.
+
+**3. Explain How to Win**
+- Add a short, clear explanation of the game's winning strategy near the beginning of each game, preferably in the existing introduction or starting overlay.
+- Explain that the objective is to accumulate the most Wealth.
+- Higher attributes help players earn more money and improve their opportunities throughout the game.
+- Finishing the board earlier can also provide an advantage.
+- Keep the explanation concise and visually consistent with the existing UI. Verify the exact win conditions and bonuses against the game logic before displaying them.
+
+**4. Increase Popup Visibility Duration**
+- **CPU card draw popup:** Display for **2× its current duration**.
+- **Player stat/wealth change popup:** Display for **3× its current duration** whenever a player gains or loses Wealth or attributes through passive abilities, cards, or other effects.
+- Keep existing animations and designs unchanged.
+- Ensure popups remain readable and don't overlap or interfere with subsequent game events.
+
+### Important
+Make targeted changes only. Preserve all existing gameplay, board movement, animations, mobile behavior, and visual styling. Test all four improvements on desktop and mobile before completing.

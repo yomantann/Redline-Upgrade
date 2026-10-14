@@ -32,7 +32,7 @@ try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
   const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
-  const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
+  const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
   const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
@@ -136,9 +136,9 @@ try {
   assert.equal(wealthImpact?.sourceLabel, 'WEALTH CARD · CAREER BONUS', 'card source and career reward modifier remain identifiable');
   assert.equal(targetedFameImpact?.amountText, '−2', 'negative attribute feedback uses a signed negative delta');
   assert.equal(targetedFameImpact?.sourceLabel, 'CAREER ABILITY', 'ability-driven changes name their source family');
-  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 40000, 'each change has a bounded display window');
-  assert.equal(getPlayerStatChangePulseDuration(11000, [11000, 11000, 11000, 11000], 1000), 2000, 'same-player changes receive sequential time within the shared display window');
-  assert.equal(getPlayerStatChangePulseDuration(11000, [13000], 1000), 10000, 'a change is capped at a readable pulse duration');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 120000, 'each change remains visible for three times the original display window');
+  assert.equal(getPlayerStatChangePulseDuration(31000, [31000, 31000, 31000, 31000], 1000), 6000, 'same-player changes receive sequential time within the shared display window');
+  assert.equal(getPlayerStatChangePulseDuration(31000, [33000], 1000), 30000, 'a change is capped at a readable pulse duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
     assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
@@ -172,8 +172,8 @@ try {
     outcome: '+1 UPGRADE TOKEN',
   }));
   assert(rewardBannerMarkup.includes('+1 UPGRADE TOKEN') && rewardBannerMarkup.includes('UPGRADE TOKEN'));
-  assert.equal(CPU_CARD_AUTO_CONTINUE_MS, 4600, 'CPU card reveal and result stages fit within the five-second target');
-  assert(CPU_CARD_AUTO_CONTINUE_MS <= 5000, 'CPU card reveal cannot block gameplay beyond five seconds');
+  assert.equal(CPU_CARD_AUTO_CONTINUE_MS, 6800, 'CPU card draw is doubled while preserving the result read window');
+  assert(CPU_CARD_AUTO_CONTINUE_MS <= 7000, 'CPU card presentation remains below the seven-second target');
 
   for (const deck of decks) {
     const deckCards = cardsForDeck(deck.id);
@@ -197,7 +197,7 @@ try {
       assert(!cardMarkup.includes(`button-preview-deck-${deck.id}`), `${deck.name} deck card is not a preview button`);
       assert(!cardMarkup.includes('PREVIEW NEXT CARD') && !cardMarkup.includes('tabletop-preview'), 'card previews and next-card controls are absent');
       assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
-      assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CARD_READ_MINIMUM_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
+      assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CPU_CARD_DRAW_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
       if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);
       assert(cardStage === 'draw'
         ? cardMarkup.includes('card is revealed to the table')

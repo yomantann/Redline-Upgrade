@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
-import { CARD_READ_MINIMUM_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
+import { CARD_READ_MINIMUM_MS, CPU_CARD_DRAW_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
 import type { Match, MatchAction, PendingDecision, WealthEvent } from '@/game/match';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
@@ -296,7 +296,7 @@ export function GameScreen() {
       callback = () => dispatchMatch({ type: 'STEP' });
   } else if (phase === 'decision' && decisionIsCPU && pending) {
       if (pending.kind === 'CARD') {
-        delay = pending.stage === 'draw' ? CARD_READ_MINIMUM_MS : CPU_CARD_RESULT_MS;
+        delay = pending.stage === 'draw' ? CPU_CARD_DRAW_MS : CPU_CARD_RESULT_MS;
         callback = () => dispatchMatch({ type: 'AUTO_DECIDE' });
       } else {
         delay = 1050;
@@ -318,21 +318,30 @@ export function GameScreen() {
 }, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch, remote !== null]);
 
   useEffect(() => {
-    if (!phase || window.matchMedia('(min-width: 1001px)').matches) return;
-    const target = phase === 'ready' ? '.game-dice-panel'
-      : phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
-      : phase === 'moving' ? '.game-tabletop-board'
-      : phase === 'landed' ? '.game-player[data-active="true"]'
-      : null;
+    if (!phase) return;
+    const desktop = window.matchMedia('(min-width: 1001px)').matches;
+    const target = desktop
+      ? phase === 'ready' || phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
+        : phase === 'moving' ? '.game-tabletop-board'
+        : phase === 'decision' ? pending?.kind === 'CARD' ? '.card-draw-panel' : '.milestone-choice'
+        : phase === 'landed' ? active.endgame?.status === 'RESOLVED' ? '.finish-line-panel' : '.game-player[data-active="true"]'
+        : phase === 'endgame' ? '.finish-line-panel'
+        : phase === 'complete' ? '.finish-line-results-intro'
+        : null
+      : phase === 'ready' ? '.game-dice-panel'
+        : phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
+        : phase === 'moving' ? '.game-tabletop-board'
+        : phase === 'landed' ? '.game-player[data-active="true"]'
+        : null;
     if (!target) return;
     const timer = window.setTimeout(() => {
       const element = document.querySelector(target);
       if (!element) return;
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: target === '.game-tabletop-board' ? 'center' : 'start' });
+      element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: target === '.game-tabletop-board' ? 'center' : desktop ? 'nearest' : 'start' });
     }, phase === 'landed' ? 600 : 150);
     return () => window.clearTimeout(timer);
-  }, [phase, turnIndex]);
+  }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status]);
 
   if (!match) return (
     <main className="game-gate">
@@ -577,7 +586,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
             <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
             <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
-            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO PLAY / Press ROLL to throw two D4s and move that many spaces. Reach space 75 with the most Wealth. Check the board legend for what each space does.</small>}
+            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO WIN / Highest final value wins: Wealth + assets + attributes. Each attribute leader adds $50,000; ties go to the earlier finisher. Finish rewards are $100,000 / $75,000 / $50,000 / $25,000. Better attributes improve opportunities. Press ROLL to move with two D4s.</small>}
             {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
           </div>
           <DiceRoller
