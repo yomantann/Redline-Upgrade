@@ -227,9 +227,14 @@ function ComingSoon() {
         <section className="setup-content">
           <div className="eyebrow">{board.name.toUpperCase()} // {label}</div>
           <h1 className="display setup-title">{board.name}<br /><span className="title-outline">{board.availability === 'COMING_SOON' ? 'coming soon.' : 'in development.'}</span></h1>
-          <p className="setup-lede">{board.id === 'BIO_UPGRADE' ? 'The Bio Upgrade board and its rules are still in development. You can preview and save a Bio character identity now; Redline Upgrade remains ready to play.' : `${board.description} This board will have its own board, rules, cards, characters and assets when it is ready. Redline Upgrade remains ready to play.`}</p>
+          <p className="setup-lede">{board.id === 'BIO_UPGRADE'
+            ? 'The Bio Upgrade board and its rules are still in development. You can preview and save a Bio character identity now; Redline Upgrade remains ready to play.'
+            : board.id === 'HAUNTED_UPGRADE'
+              ? 'The Haunted Upgrade board and its rules are still in development. You can preview and save a Haunted character identity now; Redline Upgrade remains ready to play.'
+              : `${board.description} This board will have its own board, rules, cards, characters and assets when it is ready. Redline Upgrade remains ready to play.`}</p>
           <div className="setup-actions">
             {board.id === 'BIO_UPGRADE' && <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Choose Bio identity <span aria-hidden="true">↗</span></button>}
+            {board.id === 'HAUNTED_UPGRADE' && <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Choose Haunted identity <span aria-hidden="true">↗</span></button>}
             <button className="action" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">←</span></button>
             <button className="text-link" type="button" onClick={() => navigate('/')}>Home <span aria-hidden="true">→</span></button>
           </div>
@@ -264,7 +269,7 @@ function CharacterTile({
       <CharacterPortrait character={character} imagePath={imagePath} className="tile-portrait" />
       <span className="tile-body">
         <span className="tile-name">{character.name}</span>
-        <span className="tile-ability">{boardId === 'BIO_UPGRADE' ? 'Bio identity' : character.abilityName}</span>
+      <span className="tile-ability">{boardId === 'BIO_UPGRADE' ? 'Bio identity' : boardId === 'HAUNTED_UPGRADE' ? 'Haunted identity' : character.abilityName}</span>
       </span>
     </button>
   );
@@ -279,6 +284,8 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
   const [, navigate] = useLocation();
   const { confirmCharacter } = useGame();
   const isBioBoard = boardId === 'BIO_UPGRADE';
+  const isHauntedBoard = boardId === 'HAUNTED_UPGRADE';
+  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
   const [motion, setMotion] = useState<PawnMotion>('idle');
   const timers = useRef<number[]>([]);
 
@@ -307,34 +314,34 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
     <aside className="preview-column">
       <div className="preview-inner">
         <div className="preview-kicker mono">
-          <span>{isBioBoard ? 'BIO UPGRADE IDENTITY' : 'ACTIVE IDENTITY'}</span>
+          <span>{isBioBoard ? 'BIO UPGRADE IDENTITY' : isHauntedBoard ? 'HAUNTED UPGRADE IDENTITY' : 'ACTIVE IDENTITY'}</span>
           <span className="lime">{String(index + 1).padStart(2, '0')} / 21</span>
         </div>
-        <div className={`preview-visual ${isBioBoard ? 'bio-preview-visual' : ''}`}>
+        <div className={`preview-visual ${isBioBoard ? 'bio-preview-visual' : isHauntedBoard ? 'haunted-preview-visual' : ''}`}>
           <CharacterPortrait character={character} imagePath={imagePath} className="preview-portrait" />
-          {!isBioBoard && <CharacterPiece characterId={character.id} name={character.name} selected motion={motion} className="preview-pawn" />}
+          {!isPreviewOnlyBoard && <CharacterPiece characterId={character.id} name={character.name} selected motion={motion} className="preview-pawn" />}
         </div>
         <div className="preview-info">
           <span className="mono preview-number signal">{isBioBoard ? 'BIO PROFILE' : 'PROFILE'} // {character.id}</span>
           <h2 className="display preview-name">{character.name}</h2>
           <div className="preview-selection-confirmation" role="status" aria-live="polite">
-            <span className="mono lime">{isBioBoard ? 'SELECTED / READY TO SAVE' : 'SELECTED / READY TO START'}</span>
+          <span className="mono lime">{isPreviewOnlyBoard ? 'SELECTED / READY TO SAVE' : 'SELECTED / READY TO START'}</span>
             <button className="action lime-action" type="button" onClick={confirm} data-testid="button-confirm-identity">
-              {isBioBoard ? 'Save Bio identity' : 'Confirm identity'} <span aria-hidden="true">↗</span>
+              {isBioBoard ? 'Save Bio identity' : isHauntedBoard ? 'Save Haunted identity' : 'Confirm identity'} <span aria-hidden="true">↗</span>
             </button>
           </div>
           <p className="preview-description">{character.description}</p>
-          {!isBioBoard && <div className="ability-panel">
+          {!isPreviewOnlyBoard && <div className="ability-panel">
             <span className="mono signal">SIGNATURE ABILITY</span>
             <h3 className="ability-title">{character.abilityName}</h3>
             <p className="ability-description">{character.abilityDescription}</p>
           </div>}
-          {!isBioBoard && <div className="preview-actions">
+          {!isPreviewOnlyBoard && <div className="preview-actions">
             <button className="action secondary" type="button" onClick={previewMove} data-testid="button-preview-move">
               Test move <span aria-hidden="true">↗</span>
             </button>
           </div>}
-          <p className="preview-note mono">{isBioBoard ? 'BIO BOARD AND RULES ARE STILL IN DEVELOPMENT' : 'CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME'}</p>
+          <p className="preview-note mono">{isBioBoard ? 'BIO BOARD AND RULES ARE STILL IN DEVELOPMENT' : isHauntedBoard ? 'HAUNTED BOARD AND RULES ARE STILL IN DEVELOPMENT' : 'CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME'}</p>
         </div>
       </div>
     </aside>
@@ -348,6 +355,8 @@ function Characters() {
   const { confirmCharacter, selectedBoardId } = useGame();
   const board = getBoardDefinition(selectedBoardId);
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
+  const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
+  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
   const [, navigate] = useLocation();
   const chooseRandom = () => {
     const options = characters.filter(({ id }) => id !== selected.id);
@@ -360,20 +369,20 @@ function Characters() {
     <AppShell>
       <main>
         <section className="roster-heading">
-          <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SELECTION' : 'IDENTITY SELECTION // STEP 01'}</div>
+          <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SELECTION' : isHauntedBoard ? 'HAUNTED UPGRADE // IDENTITY SELECTION' : 'IDENTITY SELECTION // STEP 01'}</div>
           <div className="roster-heading-row">
             <h1 className="display roster-title">Choose<br /><span className="title-outline">your player</span></h1>
-            <p className="roster-subtitle">{isBioBoard ? 'Choose a Bio Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
+            <p className="roster-subtitle">{isBioBoard ? 'Choose a Bio Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : isHauntedBoard ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
           </div>
         </section>
         <section className="roster-layout">
           <div className="roster-list">
             <div className="roster-toolbar mono">
-              <span><b>{isBioBoard ? 'BIO ROSTER' : 'ROSTER'}</b> // 21 AVAILABLE</span>
+              <span><b>{isBioBoard ? 'BIO ROSTER' : isHauntedBoard ? 'HAUNTED ROSTER' : 'ROSTER'}</b> // 21 AVAILABLE</span>
               <button className="roster-random-button" type="button" onClick={chooseRandom} data-testid="button-random-character">
                 RANDOM PLAYER <span aria-hidden="true">↻</span>
               </button>
-              <span className="lime">{isBioBoard ? 'SELECT ONE / SAVE YOUR IDENTITY' : 'SELECT ONE / DOUBLE-CLICK TO LOCK IN'}</span>
+              <span className="lime">{isPreviewOnlyBoard ? 'SELECT ONE / SAVE YOUR IDENTITY' : 'SELECT ONE / DOUBLE-CLICK TO LOCK IN'}</span>
             </div>
             <div className="roster-grid">
               {characters.map((character) => (
@@ -401,6 +410,9 @@ function Setup() {
   const { player, match, beginGame, startNewGame, selectedBoardId } = useGame();
   const character = player ? getCharacter(player.characterId) : undefined;
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
+  const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
+  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
+  const identityBoardName = isBioBoard ? 'Bio' : 'Haunted';
 
   if (!player || !character) {
     return (
@@ -428,19 +440,19 @@ function Setup() {
     <AppShell>
       <main className="setup-main">
         <section className="setup-top">
-            <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SAVED' : 'GAME SETUP // IDENTITY LOCKED'}</div>
+            <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SAVED' : isHauntedBoard ? 'HAUNTED UPGRADE // IDENTITY SAVED' : 'GAME SETUP // IDENTITY LOCKED'}</div>
         </section>
         <section className="setup-body">
           <div className="setup-content">
-              <span className="mono lime">{isBioBoard ? 'BIO IDENTITY' : `PLAYER RECORD // ${player.playerId.slice(0, 8)}`}</span>
-              <h1 className="display setup-title">{isBioBoard ? <>Identity<br /><span className="title-outline">saved.</span></> : <>Ready to<br /><span className="title-outline">upgrade.</span></>}</h1>
-              <p className="setup-lede">{isBioBoard ? 'Your Bio Upgrade identity is saved. The Bio board and its game rules are still in development; you can change this selection or return to the available board.' : 'Your identity is selected. Start the game to assign a random career and salary to you and three CPU rivals.'}</p>
+              <span className="mono lime">{isPreviewOnlyBoard ? `${identityBoardName.toUpperCase()} IDENTITY` : `PLAYER RECORD // ${player.playerId.slice(0, 8)}`}</span>
+              <h1 className="display setup-title">{isPreviewOnlyBoard ? <>Identity<br /><span className="title-outline">saved.</span></> : <>Ready to<br /><span className="title-outline">upgrade.</span></>}</h1>
+              <p className="setup-lede">{isPreviewOnlyBoard ? `Your ${identityBoardName} Upgrade identity is saved. That board and its game rules are still in development; you can change this selection or return to the available board.` : 'Your identity is selected. Start the game to assign a random career and salary to you and three CPU rivals.'}</p>
             <div className="setup-record mono">
-                <span className="setup-record-label">{isBioBoard ? 'BIO IDENTITY' : 'SELECTED IDENTITY'}</span>
+                <span className="setup-record-label">{isBioBoard ? 'BIO IDENTITY' : isHauntedBoard ? 'HAUNTED IDENTITY' : 'SELECTED IDENTITY'}</span>
               <span className="setup-record-value">{character.name}</span>
             </div>
-              {isBioBoard ? <div className="setup-actions">
-                <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Change Bio identity <span aria-hidden="true">↗</span></button>
+              {isPreviewOnlyBoard ? <div className="setup-actions">
+                <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Change {identityBoardName} identity <span aria-hidden="true">↗</span></button>
                 <button className="text-link" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">→</span></button>
               </div> : <div className="setup-actions">
               <button className="action lime-action" type="button" onClick={() => { beginGame(); navigate('/career'); }} data-testid="button-enter-career">{match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
@@ -448,13 +460,13 @@ function Setup() {
               </div>}
           </div>
           <div className="setup-aside">
-              <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : ''}`}>
+              <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : isHauntedBoard ? 'haunted-setup-art' : ''}`}>
                 <CharacterPortrait character={character} imagePath={getCharacterImagePath(character.id, selectedBoardId)} className="setup-portrait" />
-                {!isBioBoard && <CharacterPiece characterId={character.id} name={character.name} selected className="setup-pawn" />}
+                {!isPreviewOnlyBoard && <CharacterPiece characterId={character.id} name={character.name} selected className="setup-pawn" />}
             </div>
             <div className="setup-aside-caption mono">
-                <span>{isBioBoard ? 'BIO CHARACTER ART' : 'PORTRAIT + 3D FIGURINE'}</span>
-                <span className="lime">{isBioBoard ? 'BOARD IN DEVELOPMENT' : 'READY'}</span>
+                <span>{isBioBoard ? 'BIO CHARACTER ART' : isHauntedBoard ? 'HAUNTED CHARACTER ART' : 'PORTRAIT + 3D FIGURINE'}</span>
+                <span className="lime">{isPreviewOnlyBoard ? 'BOARD IN DEVELOPMENT' : 'READY'}</span>
             </div>
           </div>
         </section>

@@ -4,3 +4,4 @@
 - [Deferred ability decisions](ability-decision-ownership.md) — resolve prompts for `pending.playerIndex`; it can differ from the active turn.
 - [Player stat feedback](player-stat-feedback.md) — keep transient changes on the affected value; do not add a separate effects panel or log.
 - [Build-output asset durability](build-output-assets.md) — treat files found only in `dist` as disposable; preserve user assets in source folders before rebuilding.
+- [Haunted artwork scope](haunted-artwork-scope.md) — Haunted character portraits belong to Haunted selection and, later, the Haunted board only.

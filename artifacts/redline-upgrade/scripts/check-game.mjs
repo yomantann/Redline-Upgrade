@@ -38,7 +38,7 @@ try {
   const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
-  const { characters } = await vite.ssrLoadModule('/src/game/characters.ts');
+  const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
   for (const career of careers) {
     const points = Object.values(career.statModifiers).reduce((sum, value) => sum + value, 0);
@@ -77,6 +77,19 @@ try {
   assert.equal(getPublicAssetUrl('characters/danger_zone.png', '/redline-upgrade/'), '/redline-upgrade/characters/danger_zone.png');
   assert.equal(getPublicAssetUrl('characters/the_tank.png', '/'), '/characters/the_tank.png');
   assert.equal(new Set(characters.map(character => character.imagePath)).size, 21, 'all characters reference distinct portrait files');
+  const hauntedPortraits = {
+    accuser: 'hnt_accuser_1.png', alpha_prime: 'hnt_alpha_1.png', anointed: 'hnt_annointed_1.png',
+    click_click: 'hnt_click_1.png', frostbyte: 'hnt_frost_1.png', rainbow_dash: 'hnt_dash_1.png',
+    executive_p: 'hnt_exec_1.png', guardian_h: 'hnt_guardian_1.png', hotwired: 'hnt_hotwired_1.png',
+    low_flame: 'hnt_lowflame_1.png', pain_hider: 'hnt_pain_1.png', panic_bot: 'hnt_panic_1.png',
+    primate: 'hnt_primate_1.png', the_rind: 'hnt_rind_1.png', roll_safe: 'hnt_roll_1.png',
+    sadman: 'hnt_sadman_1.png', wandering_eye: 'hnt_wander_1.png',
+  };
+  for (const character of characters) {
+    const hauntedPath = getCharacterImagePath(character.id, 'HAUNTED_UPGRADE');
+    assert.equal(hauntedPath, hauntedPortraits[character.id] ? `characters/haunted/${hauntedPortraits[character.id]}` : character.imagePath);
+    assert(existsSync(new URL(`../public/${hauntedPath}`, import.meta.url)), `character select portrait exists for ${character.id}`);
+  }
   for (const character of characters) {
     assert(existsSync(new URL(`../public/${character.imagePath}`, import.meta.url)), `${character.name} portrait exists at ${character.imagePath}`);
     const portraitMarkup = renderToStaticMarkup(React.createElement(CharacterPortrait, { character }));

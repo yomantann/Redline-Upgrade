@@ -85,6 +85,26 @@ const bioImageFileById: Record<string, string> = {
   wandering_eye: 'bio_wandering.png',
 };
 
+const hauntedImageFileById: Partial<Record<string, string>> = {
+  accuser: 'hnt_accuser_1.png',
+  alpha_prime: 'hnt_alpha_1.png',
+  anointed: 'hnt_annointed_1.png',
+  click_click: 'hnt_click_1.png',
+  frostbyte: 'hnt_frost_1.png',
+  rainbow_dash: 'hnt_dash_1.png',
+  executive_p: 'hnt_exec_1.png',
+  guardian_h: 'hnt_guardian_1.png',
+  hotwired: 'hnt_hotwired_1.png',
+  low_flame: 'hnt_lowflame_1.png',
+  pain_hider: 'hnt_pain_1.png',
+  panic_bot: 'hnt_panic_1.png',
+  primate: 'hnt_primate_1.png',
+  the_rind: 'hnt_rind_1.png',
+  roll_safe: 'hnt_roll_1.png',
+  sadman: 'hnt_sadman_1.png',
+  wandering_eye: 'hnt_wander_1.png',
+};
+
 export const characters: CharacterDefinition[] = roster.map(
   ([id, name, description]) => {
    const abilityId = characterAbilityId(id);
@@ -108,9 +128,14 @@ export function getCharacter(id: string): CharacterDefinition | undefined {
 export function getCharacterImagePath(characterId: string, boardId: BoardId): string {
   const character = getCharacter(characterId);
   if (!character) throw new Error(`Unknown character: ${characterId}`);
-  if (boardId !== 'BIO_UPGRADE') return character.imagePath;
-
-  const bioImage = bioImageFileById[character.id];
-  if (!bioImage) throw new Error(`Missing Bio Upgrade portrait for ${character.id}`);
-  return `characters/bio-upgrade/${bioImage}`;
+  if (boardId === 'BIO_UPGRADE') {
+    const bioImage = bioImageFileById[character.id];
+    if (!bioImage) throw new Error(`Missing Bio Upgrade portrait for ${character.id}`);
+    return `characters/bio-upgrade/${bioImage}`;
+  }
+  if (boardId === 'HAUNTED_UPGRADE') {
+    const hauntedImage = hauntedImageFileById[character.id];
+    return hauntedImage ? `characters/haunted/${hauntedImage}` : character.imagePath;
+  }
+  return character.imagePath;
 }
