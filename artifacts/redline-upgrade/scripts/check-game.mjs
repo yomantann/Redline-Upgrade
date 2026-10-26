@@ -678,6 +678,20 @@ try {
   const bioSingleMatch = createMatch('guardian_h', 'BIO_UPGRADE');
   assert.equal(bioSingleMatch.boardId, 'BIO_UPGRADE', 'Bio supports a playable single-player match');
   assert.equal(bioSingleMatch.players.length, 4, 'Bio single-player includes one human and three CPU players');
+  let bioSoloRun = { ...bioSingleMatch, players: bioSingleMatch.players.map(player => ({ ...player, isCPU: true })) };
+  for (let step = 0; step < 8000 && bioSoloRun.phase !== 'complete'; step += 1) {
+    if (bioSoloRun.phase === 'ready') {
+      const die1 = Math.floor(Math.random() * 4) + 1;
+      const die2 = Math.floor(Math.random() * 4) + 1;
+      bioSoloRun = advanceMatch(bioSoloRun, { type: 'ROLL', result: { die1, die2, total: die1 + die2, doubles: die1 === die2 } });
+    } else if (bioSoloRun.phase === 'rolling') bioSoloRun = advanceMatch(bioSoloRun, { type: 'REVEAL' });
+    else if (bioSoloRun.phase === 'reveal') bioSoloRun = advanceMatch(bioSoloRun, { type: 'MOVE' });
+    else if (bioSoloRun.phase === 'moving') bioSoloRun = advanceMatch(bioSoloRun, { type: 'STEP' });
+    else if (bioSoloRun.phase === 'landed') bioSoloRun = advanceMatch(bioSoloRun, { type: 'NEXT_TURN' });
+    else if (bioSoloRun.phase === 'decision' || bioSoloRun.phase === 'endgame') bioSoloRun = advanceMatch(bioSoloRun, { type: 'AUTO_DECIDE' });
+    else assert.fail(`stuck in Bio solo ${bioSoloRun.phase}`);
+  }
+  assert.equal(bioSoloRun.phase, 'complete', 'a Bio single-player match can complete with CPU challenges auto-resolved');
   const partyCardId = 'bio-table-service';
   const bioWealthPile = bioPiles.wealth;
   const partyInFlightPiles = {
