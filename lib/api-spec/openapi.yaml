@@ -663,7 +663,7 @@ components:
               maxLength: 40
     MatchSeat:
       type: object
-      required: [userId, playerId, playerIndex, displayName, connected, missedTurns, kicked]
+      required: [userId, playerId, playerIndex, displayName, connected, missedTurns, kicked, cpuControlled, cpuTurns, fastCpu]
       properties:
         userId:
           type: string
@@ -679,9 +679,15 @@ components:
           type: integer
         kicked:
           type: boolean
+        cpuControlled:
+          type: boolean
+        cpuTurns:
+          type: integer
+        fastCpu:
+          type: boolean
     MatchSnapshot:
       type: object
-      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, seats, match]
+      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, pausedAt, abandoned, seats, match]
       properties:
         roomId:
           type: string
@@ -709,6 +715,10 @@ components:
           type: integer
         maxMissedTurns:
           type: integer
+        pausedAt:
+          type: [integer, "null"]
+        abandoned:
+          type: boolean
         seats:
           type: array
           items:

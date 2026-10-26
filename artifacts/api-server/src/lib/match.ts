@@ -20,6 +20,8 @@ import {
 import { DISCONNECT_AFTER_MS } from "./rooms";
 
 const KICKED_MESSAGE = "You were removed from this match for missing too many turns.";
+export const DISCONNECT_GRACE_MS = 30_000;
+export const RECOVERY_EXPIRATION_MS = Number(process.env.MULTIPLAYER_RECOVERY_HOURS ?? 24) * 60 * 60 * 1000;
 
 export type MatchError =
   | { kind: "not_found" }
@@ -50,6 +52,8 @@ function buildSnapshot(
     actionAt: state.actionAt,
     autoplayAfterMs: AUTOPLAY_AFTER_MS,
     maxMissedTurns: MAX_MISSED_TURNS,
+    pausedAt: state.pausedAt ?? null,
+    abandoned: Boolean(state.abandoned),
     seats: state.seats.map((seat) => {
       const member = members.find((candidate) => candidate.userId === seat.userId);
       return {
@@ -59,6 +63,14 @@ function buildSnapshot(
         displayName: state.match.players[seat.playerIndex]?.displayName ?? "Player",
         missedTurns: state.missedTurns[seat.userId] ?? 0,
         kicked: state.kicked.includes(seat.userId),
+        cpuControlled: Boolean(
+          member &&
+            (member.status === "left" ||
+              (member.status === "disconnected" &&
+                now - member.lastSeenAt.getTime() >= DISCONNECT_GRACE_MS)),
+        ),
+        cpuTurns: state.cpuTurns?.[seat.userId] ?? 0,
+        fastCpu: (state.cpuTurns?.[seat.userId] ?? 0) >= 4,
         connected: Boolean(
           !state.kicked.includes(seat.userId) &&
             member &&
@@ -93,30 +105,81 @@ async function settleIdle(
   row: { version: number },
   state: MultiplayerMatchState,
 ): Promise<{ state: MultiplayerMatchState; version: number }> {
-  const result = autoplayIfStale(state);
-  if (!result.changed) return { state, version: row.version };
+  const now = Date.now();
+  const players = await members(tx, roomId);
+  for (const player of players) {
+    if (player.status === "joined" && now - player.lastSeenAt.getTime() > DISCONNECT_AFTER_MS) {
+      await tx.update(roomPlayersTable).set({ status: "disconnected" })
+        .where(eq(roomPlayersTable.id, player.id));
+      player.status = "disconnected";
+    }
+  }
+  const humansOnline = players.some((player) =>
+    player.status === "joined" && now - player.lastSeenAt.getTime() <= DISCONNECT_AFTER_MS,
+  );
+  if (!humansOnline) {
+    const pausedAt = state.pausedAt ?? now;
+    const expired = now - pausedAt >= RECOVERY_EXPIRATION_MS;
+    const pausedState = { ...state, pausedAt, abandoned: expired || state.abandoned };
+    if (expired) {
+      await tx.update(gameRoomsTable).set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(gameRoomsTable.id, roomId));
+    }
+    if (!state.pausedAt || expired !== Boolean(state.abandoned)) {
+      const version = row.version + 1;
+      await tx.update(roomMatchesTable).set({ state: pausedState, version, updatedAt: new Date() })
+        .where(eq(roomMatchesTable.roomId, roomId));
+      return { state: pausedState, version };
+    }
+    return { state: pausedState, version: row.version };
+  }
+
+  const cpuControlled = new Set(players
+    .filter((player) =>
+      player.status === "left" ||
+      (player.status === "disconnected" &&
+        now - player.lastSeenAt.getTime() >= DISCONNECT_AFTER_MS + DISCONNECT_GRACE_MS),
+    )
+    .map((player) => player.userId));
+  const resumedState = state.pausedAt ? { ...state, pausedAt: null } : state;
+  const result = autoplayIfStale(resumedState, cpuControlled, now);
+  if (!result.changed && resumedState === state && !players.some((p) => p.status === "disconnected")) {
+    return { state, version: row.version };
+  }
+  const nextState = result.state;
   const version = row.version + 1;
   await tx
     .update(roomMatchesTable)
-    .set({ state: result.state, version, updatedAt: new Date() })
+    .set({ state: nextState, version, updatedAt: new Date() })
     .where(eq(roomMatchesTable.roomId, roomId));
-  for (const kickedUserId of result.newlyKicked) {
-    await tx
-      .update(roomPlayersTable)
-      .set({ status: "left", ready: false })
-      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, kickedUserId)));
-  }
-  if (result.state.match.phase === "complete") {
+  if (nextState.match.phase === "complete") {
     await tx
       .update(gameRoomsTable)
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(gameRoomsTable.id, roomId));
   }
-  return { state: result.state, version };
+  return { state: nextState, version };
 }
 
 async function members(tx: Tx, roomId: string): Promise<RoomPlayer[]> {
   return tx.select().from(roomPlayersTable).where(eq(roomPlayersTable.roomId, roomId));
+}
+
+/** Server-side watchdog: recovery still runs if every browser closes. */
+export async function tickActiveMatches(): Promise<void> {
+  const active = await db.select({ id: gameRoomsTable.id })
+    .from(gameRoomsTable)
+    .where(eq(gameRoomsTable.status, "in_progress"));
+  for (const { id } of active) {
+    await db.transaction(async (tx) => {
+      const [room] = await tx.select().from(gameRoomsTable)
+        .where(eq(gameRoomsTable.id, id)).for("update").limit(1);
+      if (!room || room.status !== "in_progress") return;
+      const [row] = await tx.select().from(roomMatchesTable)
+        .where(eq(roomMatchesTable.roomId, id)).for("update").limit(1);
+      if (row) await settleIdle(tx, id, row, row.state as MultiplayerMatchState);
+    });
+  }
 }
 
 /** Member-only read. Doubles as heartbeat: refreshing/reconnecting recovers the slot and current state. */
@@ -129,7 +192,7 @@ export async function getMatchForMember(roomId: string, userId: string): Promise
     await tx
       .update(roomPlayersTable)
       .set({ lastSeenAt: new Date(), status: "joined" })
-      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId), ne(roomPlayersTable.status, "left")));
+      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
     const settled = await settleIdle(tx, roomId, loaded.row, loaded.state);
     if (settled.state.kicked.includes(userId)) return { kind: "forbidden", message: KICKED_MESSAGE };
     return {
@@ -153,6 +216,10 @@ export async function submitMatchAction(
       return { kind: "conflict", message: "This match is not in progress." };
     }
     // An idle acting player may be auto-played before this action is evaluated.
+    // An authenticated action is also a heartbeat and safely returns control from the CPU.
+    await tx.update(roomPlayersTable)
+      .set({ lastSeenAt: new Date(), status: "joined" })
+      .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
     const settled = await settleIdle(tx, roomId, row, loaded.state);
     const state = settled.state;
     if (expectedVersion !== undefined && expectedVersion !== settled.version) {

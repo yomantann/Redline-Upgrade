@@ -243,8 +243,17 @@ export async function getRoomForMember(roomId: string, userId: string): Promise<
   return db.transaction(async (tx): Promise<RoomResult> => {
     let room = await lockRoom(tx, eq(gameRoomsTable.id, roomId));
     if (!room) return { kind: "not_found" };
-    const players = await activePlayers(tx, roomId);
-    if (!players.some((player) => player.userId === userId)) return { kind: "not_found" };
+    let players = await activePlayers(tx, roomId);
+    if (!players.some((player) => player.userId === userId)) {
+      if (room.status !== "in_progress") return { kind: "not_found" };
+      const [priorSeat] = await tx.select().from(roomPlayersTable)
+        .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId))).limit(1);
+      if (!priorSeat) return { kind: "not_found" };
+      await tx.update(roomPlayersTable)
+        .set({ status: "joined", lastSeenAt: new Date() })
+        .where(eq(roomPlayersTable.id, priorSeat.id));
+      players = await activePlayers(tx, roomId);
+    }
 
     await touch(tx, roomId, userId);
 

@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { tickActiveMatches } from "./lib/match";
 
 const rawPort = process.env["PORT"];
 
@@ -23,3 +24,9 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 });
+
+// Persisted match state is recovered independently of browser polling. The database row lock in
+// tickActiveMatches keeps this watchdog idempotent with concurrent player requests.
+setInterval(() => {
+  void tickActiveMatches().catch((err) => logger.error({ err }, "Multiplayer recovery tick failed"));
+}, 2_000);

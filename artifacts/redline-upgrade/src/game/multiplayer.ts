@@ -26,6 +26,12 @@ export interface MultiplayerMatchState {
   missedMarks: Record<string, number>;
   /** Users removed for missing too many turns; their seats are auto-played instantly. */
   kicked: string[];
+  /** Number of completed turns controlled by CPU for each original player seat. */
+  cpuTurns?: Record<string, number>;
+  /** Set while no human participant is online; stored with the canonical match. */
+  pausedAt?: number | null;
+  /** Recovery window elapsed; the match must not be counted as completed. */
+  abandoned?: boolean;
 }
 
 /** An idle player's turn is auto-played after this long. */
@@ -233,6 +239,9 @@ export function createMultiplayerState(match: Match, userIdsBySlot: string[], no
     missedTurns: {},
     missedMarks: {},
     kicked: [],
+    cpuTurns: {},
+    pausedAt: null,
+    abandoned: false,
   };
 }
 
@@ -277,7 +286,11 @@ export interface AutoplayResult {
  * turn is played for them and counted as missed; MAX_MISSED_TURNS in a row removes them, after which
  * their seat is auto-played without waiting. Called on every poll/action, so no timers are needed.
  */
-export function autoplayIfStale(initial: MultiplayerMatchState, now = Date.now()): AutoplayResult {
+export function autoplayIfStale(
+  initial: MultiplayerMatchState,
+  cpuControlledUsers: ReadonlySet<string> = new Set(),
+  now = Date.now(),
+): AutoplayResult {
   let state = initial;
   let changed = false;
   const newlyKicked: string[] = [];
@@ -286,18 +299,15 @@ export function autoplayIfStale(initial: MultiplayerMatchState, now = Date.now()
     const seat = state.seats.find((candidate) => candidate.playerIndex === index);
     if (!seat) break;
     const isKicked = state.kicked.includes(seat.userId);
-    if (!isKicked && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
+    const cpuControlled = isKicked || cpuControlledUsers.has(seat.userId);
+    if (!cpuControlled && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
 
     let { missedTurns, missedMarks, kicked } = state;
     const turnCounter = state.match.turnCounter;
-    if (!isKicked && missedMarks[seat.userId] !== turnCounter) {
+    if (!cpuControlled && missedMarks[seat.userId] !== turnCounter) {
       const missed = (missedTurns[seat.userId] ?? 0) + 1;
       missedTurns = { ...missedTurns, [seat.userId]: missed };
       missedMarks = { ...missedMarks, [seat.userId]: turnCounter };
-      if (missed >= MAX_MISSED_TURNS) {
-        kicked = [...kicked, seat.userId];
-        newlyKicked.push(seat.userId);
-      }
     }
 
     // Play the acting seat's decisions until control moves to someone else or the turn ends.
@@ -310,7 +320,11 @@ export function autoplayIfStale(initial: MultiplayerMatchState, now = Date.now()
       match = next;
       progressed = true;
     }
-    state = { ...state, match, missedTurns, missedMarks, kicked, actionAt: now };
+    const cpuTurns = { ...(state.cpuTurns ?? {}) };
+    if (cpuControlled && (match.turnCounter !== turnCounter || match.phase === 'complete')) {
+      cpuTurns[seat.userId] = (cpuTurns[seat.userId] ?? 0) + 1;
+    }
+    state = { ...state, match, missedTurns, missedMarks, kicked, cpuTurns, actionAt: now };
     changed = true;
     if (!progressed) break;
   }
