@@ -729,7 +729,7 @@ export const getSetRoomSelectionUrl = (roomId: string,) => {
 }
 
 /**
- * @summary Select the caller's character and/or career before the match starts
+ * @summary Select the caller's character before the match starts; null selects randomly
  */
 export const setRoomSelection = async (roomId: string,
     selectionInput: SelectionInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomDetails> => {
@@ -796,7 +796,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SetRoomSelectionMutationVariables = {roomId: string;data: BodyType<SelectionInput>}
 
     /**
- * @summary Select the caller's character and/or career before the match starts
+ * @summary Select the caller's character before the match starts; null selects randomly
  */
 export const useSetRoomSelection = <TError = ErrorType<ErrorEnvelope>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setRoomSelection>>, TError,SetRoomSelectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

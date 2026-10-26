@@ -202,7 +202,7 @@ export const LeaveRoomResponse = zod.object({
 
 
 /**
- * @summary Select the caller's character and/or career before the match starts
+ * @summary Select the caller's character before the match starts; null selects randomly
  */
 export const SetRoomSelectionParams = zod.object({
   "roomId": zod.coerce.string().uuid()
@@ -210,13 +210,10 @@ export const SetRoomSelectionParams = zod.object({
 
 export const setRoomSelectionBodyCharacterIdMax = 80;
 
-export const setRoomSelectionBodyCareerIdMax = 80;
-
 
 
 export const SetRoomSelectionBody = zod.object({
-  "characterId": zod.string().min(1).max(setRoomSelectionBodyCharacterIdMax).optional(),
-  "careerId": zod.string().min(1).max(setRoomSelectionBodyCareerIdMax).optional()
+  "characterId": zod.string().min(1).max(setRoomSelectionBodyCharacterIdMax).nullish()
 })
 
 export const setRoomSelectionResponseRoomMinPlayersMin = 2;

@@ -210,7 +210,7 @@ paths:
     post:
       tags: [Rooms]
       operationId: setRoomSelection
-      summary: Select the caller's character and/or career before the match starts
+      summary: Select the caller's character before the match starts; null selects randomly
       parameters:
         - $ref: "#/components/parameters/SessionCookie"
         - $ref: "#/components/parameters/RoomId"
@@ -640,11 +640,7 @@ components:
       minProperties: 1
       properties:
         characterId:
-          type: string
-          minLength: 1
-          maxLength: 80
-        careerId:
-          type: string
+          type: [string, "null"]
           minLength: 1
           maxLength: 80
     MatchActionInput:

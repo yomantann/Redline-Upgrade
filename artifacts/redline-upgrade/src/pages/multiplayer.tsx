@@ -18,7 +18,6 @@ import { AppShell } from '@/components/app-shell';
 import { useGame } from '@/game/state';
 import { GameScreen } from '@/components/game-screen';
 import { characters } from '@/game/characters';
-import { careers } from '@/game/careers';
 import { findBoardDefinition, getBoardDefinition } from '@/game/boards';
 import './pages.css';
 
@@ -165,7 +164,7 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
             {player ? (
               <>
                 <strong>{player.displayName}{player.userId === userId ? ' (you)' : ''}</strong>
-                <span className="mono" data-testid={`text-selection-${slot}`}>{[player.selectedCharacterId ? characters.find((c) => c.id === player.selectedCharacterId)?.name : 'Random character', player.selectedCareerId ? careers.find((c) => c.id === player.selectedCareerId)?.name : 'Random career'].join(' · ')}</span>
+                <span className="mono" data-testid={`text-selection-${slot}`}>{player.selectedCharacterId ? characters.find((c) => c.id === player.selectedCharacterId)?.name : 'Random character'}</span>
                 <span className="lobby-tags mono">
                   {player.userId === room.hostUserId && <b className="tag-host">HOST</b>}
                   {player.status === 'disconnected' ? <b className="tag-off">DISCONNECTED</b> : player.userId === room.hostUserId ? <b className="tag-ready">READY</b> : player.ready ? <b className="tag-ready">READY</b> : <b>NOT READY</b>}
@@ -181,19 +180,11 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
       {room.status === 'waiting' && me && (
         <div className="lobby-setting mono" data-testid="panel-selection">
           <span>YOUR CHARACTER</span>
-          <select className="platform-input" value={me.selectedCharacterId ?? ''} disabled={busy} onChange={(event) => event.target.value && void run(() => setRoomSelection(room.id, { characterId: event.target.value }))} data-testid="select-character">
+          <select className="platform-input" value={me.selectedCharacterId ?? ''} disabled={busy} onChange={(event) => void run(() => setRoomSelection(room.id, { characterId: event.target.value || null }))} data-testid="select-character">
             <option value="">Random</option>
             {characters.map((character) => {
               const takenBy = players.find((player) => player.userId !== userId && player.selectedCharacterId === character.id);
               return <option key={character.id} value={character.id} disabled={Boolean(takenBy)}>{character.name}{takenBy ? ` (${takenBy.displayName})` : ''}</option>;
-            })}
-          </select>
-          <span>YOUR CAREER</span>
-          <select className="platform-input" value={me.selectedCareerId ?? ''} disabled={busy} onChange={(event) => event.target.value && void run(() => setRoomSelection(room.id, { careerId: event.target.value }))} data-testid="select-career">
-            <option value="">Random</option>
-            {careers.map((career) => {
-              const takenBy = players.find((player) => player.userId !== userId && player.selectedCareerId === career.id);
-              return <option key={career.id} value={career.id} disabled={Boolean(takenBy)}>{career.name}{takenBy ? ` (${takenBy.displayName})` : ''}</option>;
             })}
           </select>
         </div>

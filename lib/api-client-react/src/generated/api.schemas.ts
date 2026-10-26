@@ -109,13 +109,9 @@ export interface SelectionInput {
   /**
      * @minLength 1
      * @maxLength 80
+     * @nullable
      */
-  characterId?: string;
-  /**
-     * @minLength 1
-     * @maxLength 80
-     */
-  careerId?: string;
+  characterId?: string | null;
 }
 
 /**

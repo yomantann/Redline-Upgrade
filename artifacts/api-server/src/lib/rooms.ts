@@ -18,7 +18,6 @@ import {
   isMultiplayerBoardAvailable,
 } from "./boards";
 import { characters } from "../../../redline-upgrade/src/game/characters";
-import { careers } from "../../../redline-upgrade/src/game/careers";
 import { createMultiplayerMatch } from "../../../redline-upgrade/src/game/match";
 import type { BoardId } from "../../../redline-upgrade/src/game/boards";
 import { createMultiplayerState } from "../../../redline-upgrade/src/game/multiplayer";
@@ -395,7 +394,8 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
     const match = createMultiplayerMatch(
       seated.map((player) => ({
         characterId: player.selectedCharacterId,
-        careerId: player.selectedCareerId,
+        // Career choice is intentionally randomized for every new match.
+        careerId: null,
         displayName: names.get(player.userId) ?? `Player ${player.slot + 1}`,
       })),
       room.boardId as BoardId,
@@ -419,7 +419,7 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
 export async function setSelection(
   roomId: string,
   userId: string,
-  selection: { characterId?: string; careerId?: string },
+  selection: { characterId?: string | null },
 ): Promise<RoomResult> {
   return db.transaction(async (tx): Promise<RoomResult> => {
     const room = await lockRoom(tx, eq(gameRoomsTable.id, roomId));
@@ -429,8 +429,8 @@ export async function setSelection(
     if (room.status !== "waiting") {
       return { kind: "conflict", message: "Selections cannot change after the room starts." };
     }
-    const { characterId, careerId } = selection;
-    if (characterId !== undefined) {
+    const { characterId } = selection;
+    if (characterId !== undefined && characterId !== null) {
       if (!characters.some((character) => character.id === characterId)) {
         return { kind: "invalid", message: "Unknown character." };
       }
@@ -438,19 +438,10 @@ export async function setSelection(
         return { kind: "conflict", message: "That character is already taken." };
       }
     }
-    if (careerId !== undefined) {
-      if (!careers.some((career) => career.id === careerId)) {
-        return { kind: "invalid", message: "Unknown career." };
-      }
-      if (players.some((player) => player.userId !== userId && player.selectedCareerId === careerId)) {
-        return { kind: "conflict", message: "That career is already taken." };
-      }
-    }
     await tx
       .update(roomPlayersTable)
       .set({
         ...(characterId !== undefined ? { selectedCharacterId: characterId } : {}),
-        ...(careerId !== undefined ? { selectedCareerId: careerId } : {}),
         // A changed pick invalidates the player's earlier ready-up.
         ready: false,
         lastSeenAt: new Date(),
