@@ -37,6 +37,8 @@ export interface RemoteInfo {
   actionAt: number;
   autoplayAfterMs: number;
   maxMissedTurns: number;
+  pausedAt: number | null;
+  abandoned: boolean;
   seats: MatchSnapshot['seats'];
 }
 
@@ -99,6 +101,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     actionAt: snapshot.actionAt,
     autoplayAfterMs: snapshot.autoplayAfterMs,
     maxMissedTurns: snapshot.maxMissedTurns,
+    pausedAt: snapshot.pausedAt,
+    abandoned: snapshot.abandoned,
     seats: snapshot.seats,
   } : null, [snapshot]);
   const dispatchMatch = useCallback((action: MatchAction) => {

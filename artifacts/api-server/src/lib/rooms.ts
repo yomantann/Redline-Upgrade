@@ -290,13 +290,13 @@ export async function leaveRoom(roomId: string, userId: string): Promise<RoomRes
     }
 
     const remaining = players.filter((player) => player.userId !== userId);
-    if (remaining.length === 0 && room.status !== "completed") {
+    if (remaining.length === 0 && room.status === "waiting") {
       [room] = await tx
         .update(gameRoomsTable)
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(gameRoomsTable.id, roomId))
         .returning();
-    } else if (room.hostUserId === userId) {
+    } else if (remaining.length > 0 && room.hostUserId === userId) {
       room = await transferHost(tx, room, remaining);
     } else {
       await tx

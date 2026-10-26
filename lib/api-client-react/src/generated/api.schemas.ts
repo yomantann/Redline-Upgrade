@@ -144,6 +144,9 @@ export interface MatchSeat {
   connected: boolean;
   missedTurns: number;
   kicked: boolean;
+  cpuControlled: boolean;
+  cpuTurns: number;
+  fastCpu: boolean;
 }
 
 export type MatchSnapshotYou = {
@@ -168,6 +171,9 @@ export interface MatchSnapshot {
   actionAt: number;
   autoplayAfterMs: number;
   maxMissedTurns: number;
+  /** @nullable */
+  pausedAt: number | null;
+  abandoned: boolean;
   seats: MatchSeat[];
   /** The canonical Match (same shape as the single-player reducer state, including eventLog). */
   match: MatchSnapshotMatch;

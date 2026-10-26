@@ -1939,7 +1939,8 @@ try {
     assert.equal(state.match.phase, 'complete', 'a multiplayer match completes through client actions alone');
     assert.ok(state.match.eventLog.length > 0, 'actions flow through the shared event log');
     assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'MATCH_COMPLETE');
-    // Idle players: autoplay after a minute, kick after three missed turns, ghost seats play instantly.
+    // Connected idle players retain the legacy one-minute safety autoplay. Disconnected seats
+    // transfer directly to the same CPU reducer after server recovery grants control.
     {
       const t0 = 1_000_000;
       let idle = createMultiplayerState(createMultiplayerMatch([
@@ -1947,32 +1948,25 @@ try {
         { characterId: null, careerId: null, displayName: 'B' },
       ]), ['u0', 'u1'], t0);
       assert.equal(autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS - 1).changed, false, 'no autoplay before one minute');
+      let controlledState = idle;
+      for (let step = 0; step < 20 && describeTurn(controlledState).currentUserId === 'u0'; step += 1) {
+        const controlled = autoplayIfStale(controlledState, new Set(['u0']), t0 + 1 + step * 2000);
+        assert.equal(controlled.changed, true, 'disconnected seats transfer to CPU control');
+        controlledState = controlled.state;
+      }
+      assert.equal(controlledState.cpuTurns.u0, 1, 'CPU takeover counts a completed turn for the disconnected seat');
+      assert.equal(describeTurn(controlledState).currentUserId, 'u1', 'the other human keeps the next turn');
       let auto = autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS);
       assert.equal(auto.changed, true);
       assert.equal(auto.state.missedTurns.u0, 1);
       assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay finishes the idle turn and passes it on');
       assert.ok(auto.state.match.eventLog.some(entry => entry.eventType === 'DICE_ROLL'), 'autoplay goes through the shared event log');
-      let now = t0 + AUTOPLAY_AFTER_MS;
-      idle = auto.state;
-      // u1 keeps acting (resets nothing for u0); u0 stays idle until kicked.
-      for (let i = 0; i < 400 && !idle.kicked.includes('u0') && idle.match.phase !== 'complete'; i += 1) {
-        if (describeTurn(idle).currentUserId === 'u1') {
-          const m = idle.match;
-          const step = m.phase === 'ready' ? { type: 'ROLL_DICE' } : m.phase === 'reveal' ? { type: 'MOVE' } : m.phase === 'landed' ? { type: 'END_TURN' } : m.phase === 'endgame' ? { type: 'GAMBLE', choice: 'CASH_OUT' } : null;
-          if (step) { const r = applyPlayerAction(idle, 'u1', step, now); assert.equal(r.ok, true); idle = r.state; continue; }
-        }
-        now += AUTOPLAY_AFTER_MS;
-        idle = autoplayIfStale(idle, now).state;
+      let allCpuState = idle;
+      for (let step = 0; step < 4000 && allCpuState.match.phase !== 'complete'; step += 1) {
+        allCpuState = autoplayIfStale(allCpuState, new Set(['u0', 'u1']), t0 + 1 + step * 2000).state;
       }
-      assert.ok(idle.kicked.includes('u0') || idle.match.phase === 'complete', 'three missed turns remove the player');
-      if (idle.kicked.includes('u0')) {
-        assert.equal(applyPlayerAction(idle, 'u0', { type: 'ROLL_DICE' }, now).reason, 'KICKED');
-        assert.equal(idle.missedTurns.u0, 3);
-      }
-      let ghosts = createMultiplayerState(mpMatch, ['u0', 'u1'], t0);
-      ghosts = { ...ghosts, kicked: ['u0', 'u1'] };
-      const done = autoplayIfStale(ghosts, t0 + 1);
-      assert.ok(done.changed);
+      assert.equal(allCpuState.match.phase, 'complete', 'CPU-controlled original seats can finish the match');
+      assert.ok(allCpuState.cpuTurns.u0 >= 4 && allCpuState.cpuTurns.u1 >= 4, 'CPU turn counters advance independently for both seats');
     }
   }
   assert.equal(cards.length, 111, 'the six production decks include all 15 added cards');

@@ -106,7 +106,9 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
   const nameById = new Map(players.map((player) => [player.playerId, player.displayName]));
   const activity = match.eventLog.slice(-4).reverse();
   let banner: string;
-  if (over) banner = 'MATCH COMPLETE';
+  if (remote.abandoned) banner = 'MATCH EXPIRED';
+  else if (remote.pausedAt !== null) banner = 'MATCH PAUSED // WAITING FOR A PLAYER';
+  else if (over) banner = 'MATCH COMPLETE';
   else if (myTurn) banner = 'YOUR TURN';
   else if (iFinished) banner = `SPECTATING // WAITING FOR ${(acting?.displayName ?? 'PLAYERS').toUpperCase()}`;
   else banner = `WAITING FOR ${(acting?.displayName ?? 'PLAYER').toUpperCase()}${acting && !acting.connected ? ' (OFFLINE)' : ''}`;
@@ -115,12 +117,11 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
       {!connected && <div className="remote-reconnect platform-error" role="alert" data-testid="text-reconnecting">CONNECTION LOST — RECONNECTING… YOUR SEAT IS SAVED</div>}
       <div className="remote-banner" data-testid="text-turn-banner">{banner}</div>
       <span>ONLINE // {acting ? `${acting.displayName.toUpperCase()}${acting.playerIndex === remote.youIndex ? ' (YOU)' : ''} ACTING` : '—'}{acting?.kicked ? ' // REMOVED' : acting && !acting.connected ? ' // DISCONNECTED' : ''} // ROUND {match.round}</span>
-      {acting && !acting.kicked && !over && <span data-testid="text-autoplay-countdown">AUTOPLAY IN {secondsLeft}s</span>}
-      {mine && mine.missedTurns > 0 && <span className="platform-error" data-testid="text-missed-turns">MISSED TURNS {mine.missedTurns}/{remote.maxMissedTurns} — {remote.maxMissedTurns} IN A ROW REMOVES YOU</span>}
+      {acting && !acting.kicked && !over && !remote.pausedAt && <span data-testid="text-autoplay-countdown">{acting.cpuControlled ? `CPU TURN ${acting.cpuTurns}/4${acting.fastCpu ? ' // FAST CPU' : ''}` : acting.connected ? `AUTOPLAY IN ${secondsLeft}s` : 'RECONNECT GRACE ACTIVE'}</span>}
       <ul className="remote-players" data-testid="list-remote-players">
         {players.map((player, index) => {
           const seat = remote.seats[index];
-          const state = seat?.kicked ? 'REMOVED' : player.status === 'FINISHED' ? 'FINISHED' : seat?.connected === false ? 'OFFLINE' : index === remote.currentPlayerIndex ? 'ACTING' : 'WAITING';
+          const state = seat?.kicked ? 'REMOVED' : player.status === 'FINISHED' ? 'FINISHED' : seat?.fastCpu ? 'FAST CPU' : seat?.cpuControlled ? 'CPU CONTROLLING' : seat?.connected === false ? 'DISCONNECTED' : index === remote.currentPlayerIndex ? 'ACTING' : 'CONNECTED';
           return <li key={player.playerId} className={`${index === remote.currentPlayerIndex ? 'acting' : ''} ${index === remote.youIndex ? 'you' : ''}`} data-testid={`remote-player-${index}`}><b>{player.displayName.toUpperCase()}{index === remote.youIndex ? ' (YOU)' : ''}</b><span>SPACE {player.position}/75 // {state}</span></li>;
         })}
       </ul>
@@ -547,7 +548,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
                  {character && <CharacterPortrait character={character} className="game-player-portrait" />}
-                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}</small></div>
+                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{remote ? ` // ${remote.seats[index]?.fastCpu ? 'FAST CPU' : remote.seats[index]?.cpuControlled ? 'CPU CONTROLLING' : remote.seats[index]?.connected ? 'CONNECTED' : 'DISCONNECTED'}` : ''}</small></div>
                </div>
               <div className="game-player-career">
                 <CareerGlyph icon={career?.icon || career?.name || 'career'} />

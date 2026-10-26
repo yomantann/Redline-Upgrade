@@ -14,4 +14,7 @@ export interface MatchSeat {
   connected: boolean;
   missedTurns: number;
   kicked: boolean;
+  cpuControlled: boolean;
+  cpuTurns: number;
+  fastCpu: boolean;
 }

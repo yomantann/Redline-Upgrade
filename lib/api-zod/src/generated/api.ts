@@ -271,6 +271,8 @@ export const GetRoomMatchResponse = zod.object({
   "actionAt": zod.number().int().describe('Epoch ms of the last action; the acting player\'s autoplay clock runs from here.'),
   "autoplayAfterMs": zod.number().int(),
   "maxMissedTurns": zod.number().int(),
+  "pausedAt": zod.number().int().nullable(),
+  "abandoned": zod.boolean(),
   "seats": zod.array(zod.object({
   "userId": zod.string(),
   "playerId": zod.string(),
@@ -278,7 +280,10 @@ export const GetRoomMatchResponse = zod.object({
   "displayName": zod.string(),
   "connected": zod.boolean(),
   "missedTurns": zod.number().int(),
-  "kicked": zod.boolean()
+  "kicked": zod.boolean(),
+  "cpuControlled": zod.boolean(),
+  "cpuTurns": zod.number().int(),
+  "fastCpu": zod.boolean()
 })),
   "match": zod.record(zod.string(), zod.unknown()).describe('The canonical Match (same shape as the single-player reducer state, including eventLog).')
 })
@@ -317,6 +322,8 @@ export const SubmitMatchActionResponse = zod.object({
   "actionAt": zod.number().int().describe('Epoch ms of the last action; the acting player\'s autoplay clock runs from here.'),
   "autoplayAfterMs": zod.number().int(),
   "maxMissedTurns": zod.number().int(),
+  "pausedAt": zod.number().int().nullable(),
+  "abandoned": zod.boolean(),
   "seats": zod.array(zod.object({
   "userId": zod.string(),
   "playerId": zod.string(),
@@ -324,7 +331,10 @@ export const SubmitMatchActionResponse = zod.object({
   "displayName": zod.string(),
   "connected": zod.boolean(),
   "missedTurns": zod.number().int(),
-  "kicked": zod.boolean()
+  "kicked": zod.boolean(),
+  "cpuControlled": zod.boolean(),
+  "cpuTurns": zod.number().int(),
+  "fastCpu": zod.boolean()
 })),
   "match": zod.record(zod.string(), zod.unknown()).describe('The canonical Match (same shape as the single-player reducer state, including eventLog).')
 })

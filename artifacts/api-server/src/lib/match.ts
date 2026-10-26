@@ -21,7 +21,9 @@ import { DISCONNECT_AFTER_MS } from "./rooms";
 
 const KICKED_MESSAGE = "You were removed from this match for missing too many turns.";
 export const DISCONNECT_GRACE_MS = 30_000;
-export const RECOVERY_EXPIRATION_MS = Number(process.env.MULTIPLAYER_RECOVERY_HOURS ?? 24) * 60 * 60 * 1000;
+const recoveryHours = Number(process.env.MULTIPLAYER_RECOVERY_HOURS ?? 24);
+export const RECOVERY_EXPIRATION_MS =
+  (Number.isFinite(recoveryHours) && recoveryHours > 0 ? recoveryHours : 24) * 60 * 60 * 1000;
 
 export type MatchError =
   | { kind: "not_found" }
@@ -67,7 +69,7 @@ function buildSnapshot(
           member &&
             (member.status === "left" ||
               (member.status === "disconnected" &&
-                now - member.lastSeenAt.getTime() >= DISCONNECT_GRACE_MS)),
+                now - member.lastSeenAt.getTime() >= DISCONNECT_AFTER_MS + DISCONNECT_GRACE_MS)),
         ),
         cpuTurns: state.cpuTurns?.[seat.userId] ?? 0,
         fastCpu: (state.cpuTurns?.[seat.userId] ?? 0) >= 4,
@@ -107,11 +109,13 @@ async function settleIdle(
 ): Promise<{ state: MultiplayerMatchState; version: number }> {
   const now = Date.now();
   const players = await members(tx, roomId);
+  let connectionStatusChanged = false;
   for (const player of players) {
     if (player.status === "joined" && now - player.lastSeenAt.getTime() > DISCONNECT_AFTER_MS) {
       await tx.update(roomPlayersTable).set({ status: "disconnected" })
         .where(eq(roomPlayersTable.id, player.id));
       player.status = "disconnected";
+      connectionStatusChanged = true;
     }
   }
   const humansOnline = players.some((player) =>
@@ -120,7 +124,12 @@ async function settleIdle(
   if (!humansOnline) {
     const pausedAt = state.pausedAt ?? now;
     const expired = now - pausedAt >= RECOVERY_EXPIRATION_MS;
-    const pausedState = { ...state, pausedAt, abandoned: expired || state.abandoned };
+    const pausedState = {
+      ...state,
+      pausedAt,
+      abandoned: expired || state.abandoned,
+      recoveryStatus: expired ? "ABANDONED" as const : "PAUSED_NO_HUMANS" as const,
+    };
     if (expired) {
       await tx.update(gameRoomsTable).set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(gameRoomsTable.id, roomId));
@@ -141,9 +150,11 @@ async function settleIdle(
         now - player.lastSeenAt.getTime() >= DISCONNECT_AFTER_MS + DISCONNECT_GRACE_MS),
     )
     .map((player) => player.userId));
-  const resumedState = state.pausedAt ? { ...state, pausedAt: null } : state;
+  const resumedState = state.pausedAt
+    ? { ...state, pausedAt: null, recoveryStatus: null }
+    : state;
   const result = autoplayIfStale(resumedState, cpuControlled, now);
-  if (!result.changed && resumedState === state && !players.some((p) => p.status === "disconnected")) {
+  if (!result.changed && resumedState === state && !connectionStatusChanged) {
     return { state, version: row.version };
   }
   const nextState = result.state;
@@ -187,14 +198,25 @@ export async function getMatchForMember(roomId: string, userId: string): Promise
   return db.transaction(async (tx): Promise<MatchResult> => {
     const loaded = await loadForMember(tx, roomId, userId);
     if (!loaded) return { kind: "not_found" };
-    if (loaded.state.kicked.includes(userId)) return { kind: "forbidden", message: KICKED_MESSAGE };
+    if (loaded.state.abandoned || loaded.room.status === "cancelled") return { kind: "not_found" };
     // Refreshing/reconnecting counts as being present; it does not reset the idle clock.
     await tx
       .update(roomPlayersTable)
       .set({ lastSeenAt: new Date(), status: "joined" })
       .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
-    const settled = await settleIdle(tx, roomId, loaded.row, loaded.state);
-    if (settled.state.kicked.includes(userId)) return { kind: "forbidden", message: KICKED_MESSAGE };
+    const recoveredState = {
+      ...loaded.state,
+      kicked: loaded.state.kicked.filter((id) => id !== userId),
+      cpuTurns: { ...(loaded.state.cpuTurns ?? {}), [userId]: 0 },
+    };
+    let version = loaded.row.version;
+    if (loaded.state.kicked.includes(userId) || (loaded.state.cpuTurns?.[userId] ?? 0) > 0) {
+      version += 1;
+      await tx.update(roomMatchesTable)
+        .set({ state: recoveredState, version, updatedAt: new Date() })
+        .where(eq(roomMatchesTable.roomId, roomId));
+    }
+    const settled = await settleIdle(tx, roomId, { version }, recoveredState);
     return {
       kind: "ok",
       snapshot: buildSnapshot(roomId, settled.version, settled.state, userId, await members(tx, roomId)),
@@ -212,6 +234,9 @@ export async function submitMatchAction(
     const loaded = await loadForMember(tx, roomId, userId);
     if (!loaded) return { kind: "not_found" };
     const { room, row } = loaded;
+    if (loaded.state.abandoned || room.status === "cancelled") {
+      return { kind: "conflict", message: "This match has expired." };
+    }
     if (room.status !== "in_progress") {
       return { kind: "conflict", message: "This match is not in progress." };
     }
@@ -220,7 +245,12 @@ export async function submitMatchAction(
     await tx.update(roomPlayersTable)
       .set({ lastSeenAt: new Date(), status: "joined" })
       .where(and(eq(roomPlayersTable.roomId, roomId), eq(roomPlayersTable.userId, userId)));
-    const settled = await settleIdle(tx, roomId, row, loaded.state);
+    const recoveredState = {
+      ...loaded.state,
+      kicked: loaded.state.kicked.filter((id) => id !== userId),
+      cpuTurns: { ...(loaded.state.cpuTurns ?? {}), [userId]: 0 },
+    };
+    const settled = await settleIdle(tx, roomId, row, recoveredState);
     const state = settled.state;
     if (expectedVersion !== undefined && expectedVersion !== settled.version) {
       return { kind: "conflict", message: "The game state changed. Refresh and try again." };

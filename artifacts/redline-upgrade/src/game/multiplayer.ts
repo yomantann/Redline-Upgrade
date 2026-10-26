@@ -32,6 +32,7 @@ export interface MultiplayerMatchState {
   pausedAt?: number | null;
   /** Recovery window elapsed; the match must not be counted as completed. */
   abandoned?: boolean;
+  recoveryStatus?: 'PAUSED_NO_HUMANS' | 'ABANDONED' | null;
 }
 
 /** An idle player's turn is auto-played after this long. */
@@ -242,6 +243,7 @@ export function createMultiplayerState(match: Match, userIdsBySlot: string[], no
     cpuTurns: {},
     pausedAt: null,
     abandoned: false,
+    recoveryStatus: null,
   };
 }
 
@@ -282,15 +284,20 @@ export interface AutoplayResult {
 }
 
 /**
- * Lazily enforces the idle rules: once the acting player has been silent for AUTOPLAY_AFTER_MS their
- * turn is played for them and counted as missed; MAX_MISSED_TURNS in a row removes them, after which
- * their seat is auto-played without waiting. Called on every poll/action, so no timers are needed.
+ * Advances the existing CPU decision engine for idle or disconnected seats. Before FAST_CPU,
+ * disconnected turns advance one visible phase per server tick; after four completed CPU turns the
+ * full turn is resolved immediately. Callers persist the returned state under the room row lock.
  */
 export function autoplayIfStale(
   initial: MultiplayerMatchState,
-  cpuControlledUsers: ReadonlySet<string> = new Set(),
-  now = Date.now(),
+  cpuControlledUsersOrTime: ReadonlySet<string> | number = new Set(),
+  suppliedNow = Date.now(),
 ): AutoplayResult {
+  // Preserve the original (state, now) call shape used by the game harness.
+  const cpuControlledUsers = typeof cpuControlledUsersOrTime === 'number'
+    ? new Set<string>()
+    : cpuControlledUsersOrTime;
+  const now = typeof cpuControlledUsersOrTime === 'number' ? cpuControlledUsersOrTime : suppliedNow;
   let state = initial;
   let changed = false;
   const newlyKicked: string[] = [];
@@ -301,6 +308,7 @@ export function autoplayIfStale(
     const isKicked = state.kicked.includes(seat.userId);
     const cpuControlled = isKicked || cpuControlledUsers.has(seat.userId);
     if (!cpuControlled && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
+    const fastCpu = cpuControlled && (state.cpuTurns?.[seat.userId] ?? 0) >= 4;
 
     let { missedTurns, missedMarks, kicked } = state;
     const turnCounter = state.match.turnCounter;
@@ -313,7 +321,8 @@ export function autoplayIfStale(
     // Play the acting seat's decisions until control moves to someone else or the turn ends.
     let match = state.match;
     let progressed = false;
-    for (let step = 0; step < 400 && match.phase !== 'complete'; step += 1) {
+    const stepLimit = cpuControlled && !fastCpu ? 1 : 400;
+    for (let step = 0; step < stepLimit && match.phase !== 'complete'; step += 1) {
       if (actingPlayerIndex(match) !== index || (step > 0 && match.turnCounter !== turnCounter)) break;
       const next = autopilotStep(match, index);
       if (next === match) break;
@@ -327,6 +336,9 @@ export function autoplayIfStale(
     state = { ...state, match, missedTurns, missedMarks, kicked, cpuTurns, actionAt: now };
     changed = true;
     if (!progressed) break;
+    // Before FAST_CPU, persist one presentation step per server tick so connected players can
+    // see the roll, movement, and decision feedback. From turn five onward, settle immediately.
+    if (cpuControlled && !fastCpu) break;
   }
   return { state, changed, newlyKicked };
 }
