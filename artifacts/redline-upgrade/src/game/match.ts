@@ -421,6 +421,7 @@ export type MatchAction =
   | { type: 'ACKNOWLEDGE_CAREER' }
   | { type: 'RESOLVE_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
+  | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
   | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
@@ -928,6 +929,7 @@ function resolveCardDecision(match: Match): Match {
     cardPiles: discardCardToPiles(match.cardPiles, deck, cardId),
     pending: { ...match.pending, stage: 'resolved' as const },
   };
+  if (card.partyChallenge) return resolved;
   return emit(resolved, [{
     type: 'CARD_RESOLVED',
     playerIndex: match.turnIndex,
@@ -941,6 +943,32 @@ function resolveCardDecision(match: Match): Match {
 function acknowledgeCardDecision(match: Match): Match {
   if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return match;
   return resume(match);
+}
+
+function resolvePartyChallenge(match: Match, participantIds: string[], passed: boolean): Match {
+  const pending = match.pending;
+  if (match.phase !== 'decision' || pending?.kind !== 'CARD' || pending.stage !== 'resolved') return match;
+  const card = getCard(pending.cardId);
+  const challenge = card?.partyChallenge;
+  if (!challenge || card?.boardId !== 'BIO_UPGRADE') return match;
+  const uniqueIds = [...new Set(participantIds)];
+  if (passed) return participantIds.length === 0 ? resume(match) : match;
+  const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
+    : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
+  if (uniqueIds.length !== required) return match;
+  const eligibleIds = new Set(match.players.filter((player, index) => index !== match.turnIndex).map(player => player.playerId));
+  if (uniqueIds.some(id => !eligibleIds.has(id))) return match;
+  const names = uniqueIds.map(id => match.players.find(player => player.playerId === id)?.displayName).filter(Boolean);
+  const result = passed ? 'passed' : 'completed';
+  const participants = names.length ? ` Participants: ${names.join(', ')}.` : '';
+  return emit(resume(match), [{
+    type: 'CARD_RESOLVED',
+    playerIndex: match.turnIndex,
+    deck: card.deck,
+    spaceNumber: pending.space,
+    cardId: card.id,
+    description: `${match.players[match.turnIndex].displayName} ${result} the Bio party challenge: ${card.title}.${participants}`,
+  }]);
 }
 
 function resolvedEndgamePlayer(
@@ -1119,6 +1147,15 @@ function autoDecide(match: Match): Match {
     return resolveEndgameChoice(match, choice);
   }
   if (match.phase !== 'decision' || !pending) return match;
+  if (pending.kind === 'CARD' && pending.stage === 'resolved') {
+    const challenge = getCard(pending.cardId)?.partyChallenge;
+    if (challenge) {
+      const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
+        : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
+      const participantIds = match.players.filter((candidate, index) => index !== decisionPlayerIndex).slice(0, required).map(candidate => candidate.playerId);
+      return resolvePartyChallenge(match, participantIds, false);
+    }
+  }
   if (pending.kind === 'ABILITY') {
     if (pending.decision === 'STAT_DESTINATION') {
       return resolveAbilityStatDestination(match, pending.sourceStat);
@@ -1390,6 +1427,9 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const cardPiles = returnCardToBottom(match.cardPiles, 'gamble', unchosen);
       return resolveCardDecision({ ...match, cardPiles, pending: { ...pending, cardId: action.cardId, stage: 'draw' } });
     }
+    case 'RESOLVE_PARTY_CHALLENGE':
+      if (match.players[match.turnIndex]?.isCPU) return match;
+      return resolvePartyChallenge(match, action.participantIds, action.passed);
     case 'ACKNOWLEDGE_CARD':
       if (match.players[match.turnIndex]?.isCPU) return match;
       return acknowledgeCardDecision(match);

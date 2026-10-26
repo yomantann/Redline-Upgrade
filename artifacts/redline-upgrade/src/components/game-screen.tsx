@@ -643,6 +643,9 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
          activeCard={match.phase === 'decision' && pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined}
          offeredCards={offeredGambleCards}
+          partyPlayers={match.players}
+          partyActorId={active.playerId}
+          partyCanAct={!remote || remote.youIndex === remote.currentPlayerIndex}
          cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
@@ -651,6 +654,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onChooseGambleCard={cardId => dispatchMatch({ type: 'CHOOSE_GAMBLE_CARD', cardId })}
+          onResolvePartyChallenge={(participantIds, passed) => dispatchMatch({ type: 'RESOLVE_PARTY_CHALLENGE', participantIds, passed })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />
        </div>}
