@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { BoardId } from '../../game/boards';
-import { BIO_PAWN_BASE, BIO_PAWN_COLORS } from './pawn-palettes';
+import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
 
 export interface PawnFallbackProps {
   characterId: string;
@@ -23,11 +23,11 @@ const accents: Record<string, string> = {
   the_tank: C.violet,
 };
 
-function Base({ accent, selected, bio = false }: { accent: string; selected: boolean; bio?: boolean }) {
+function Base({ accent, selected, bio = false, bioBody, bioTrim }: { accent: string; selected: boolean; bio?: boolean; bioBody?: string; bioTrim?: string }) {
   const shadow = bio ? BIO_PAWN_BASE.shadow : '#101923';
-  const body = bio ? BIO_PAWN_BASE.body : '#182530';
-  const band = bio ? BIO_PAWN_BASE.edge : '#344652';
-  const bandStroke = bio ? BIO_PAWN_BASE.highlight : '#8495a1';
+  const body = bio ? bioBody ?? BIO_PAWN_BASE.body : '#182530';
+  const band = bio ? bioTrim ?? BIO_PAWN_BASE.edge : '#344652';
+  const bandStroke = bio ? bioTrim ?? BIO_PAWN_BASE.highlight : '#8495a1';
   return <g>
     <ellipse cx="125" cy="295" rx="94" ry="17" fill={shadow} opacity=".28" />
     <path d="M40 275h170v21q0 15-85 15t-85-15Z" fill={body} stroke={shadow} strokeWidth="4" />
@@ -129,7 +129,8 @@ function Signature({ id, accent }: { id: string; accent: string }) {
  */
 export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnFallbackProps) {
   const bio = boardId === 'BIO_UPGRADE';
-  const accent = bio ? BIO_PAWN_COLORS[characterId] : accents[characterId];
+  const palette = bio ? BIO_PAWN_PALETTES[characterId] : undefined;
+  const accent = bio ? palette?.accent : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
   const uid = useId().replace(/:/g, '');
   return <svg className="pawn-fallback" data-pawn-board={boardId} viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true"
@@ -146,7 +147,7 @@ export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE
       />
     ) : (
       <>
-        <Base accent={accent} selected={selected} bio={bio} />
+        <Base accent={accent} selected={selected} bio={bio} bioBody={palette?.body} bioTrim={palette?.trim} />
         <Signature id={characterId} accent={accent} />
       </>
     )}

@@ -5,7 +5,7 @@ description: Keep Bio content isolated and preserve its party-safety and multipl
 
 Keep Bio Upgrade's cards and artwork isolated from Redline. Bio cards must never fall back to Redline cards, whose effects change gameplay stats; preserve the visible 21+ label.
 
-Every Bio character must use a Bio-specific pawn variant with a color unique across the 21-character Bio roster and distinct from the standard pawn. Keep this variant wired into Bio selection and the future Bio board without changing standard pawns.
+Every Bio character must use a Bio-specific pawn variant with a unique, portrait-informed palette across the 21-character Bio roster and distinct from standard pawns. Keep these variants wired into Bio selection and gameplay without changing standard pawns.
 
 Resolve each Bio party challenge with one turn-owner action: select eligible participants, record the choice or table-vote outcome, then complete or pass with no penalty. CPUs must auto-resolve and pass when the match lacks enough participants; multiplayer must validate and synchronize the action on the server.
 

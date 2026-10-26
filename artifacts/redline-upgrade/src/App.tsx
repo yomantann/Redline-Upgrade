@@ -214,21 +214,21 @@ function ComingSoon() {
   const [, navigate] = useLocation();
   const { selectedBoardId } = useGame();
   const board = getBoardDefinition(selectedBoardId);
-  const label = board.availability === 'COMING_SOON' ? 'COMING SOON' : 'IN DEVELOPMENT';
+  const label = board.id === 'BIO_UPGRADE' ? 'READY TO PLAY' : board.availability === 'COMING_SOON' ? 'COMING SOON' : 'IN DEVELOPMENT';
 
   return (
     <AppShell>
       <main className="setup-main coming-soon-page">
         <section className="setup-content">
           <div className="eyebrow">{board.name.toUpperCase()} // {label}</div>
-          <h1 className="display setup-title">{board.name}<br /><span className="title-outline">{board.availability === 'COMING_SOON' ? 'coming soon.' : 'in development.'}</span></h1>
+          <h1 className="display setup-title">{board.name}<br /><span className="title-outline">{board.id === 'BIO_UPGRADE' ? 'ready to play.' : board.availability === 'COMING_SOON' ? 'coming soon.' : 'in development.'}</span></h1>
           <p className="setup-lede">{board.id === 'BIO_UPGRADE'
-            ? 'The Bio Upgrade board and its rules are still in development. You can preview and save a Bio character identity now; Redline Upgrade remains ready to play.'
+            ? 'Bio Upgrade is ready. Choose a play mode to enter the after-hours circuit.'
             : board.id === 'HAUNTED_UPGRADE'
               ? 'The Haunted Upgrade board and its rules are still in development. You can preview and save a Haunted character identity now; Redline Upgrade remains ready to play.'
               : `${board.description} This board will have its own board, rules, cards, characters and assets when it is ready. Redline Upgrade remains ready to play.`}</p>
           <div className="setup-actions">
-            {board.id === 'BIO_UPGRADE' && <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Choose Bio identity <span aria-hidden="true">↗</span></button>}
+            {board.id === 'BIO_UPGRADE' && <button className="action lime-action" type="button" onClick={() => navigate('/mode')}>Play Bio Upgrade <span aria-hidden="true">↗</span></button>}
             {board.id === 'HAUNTED_UPGRADE' && <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Choose Haunted identity <span aria-hidden="true">↗</span></button>}
             <button className="action" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">←</span></button>
             <button className="text-link" type="button" onClick={() => navigate('/')}>Home <span aria-hidden="true">→</span></button>
@@ -280,7 +280,7 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
   const { confirmCharacter } = useGame();
   const isBioBoard = boardId === 'BIO_UPGRADE';
   const isHauntedBoard = boardId === 'HAUNTED_UPGRADE';
-  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
+  const isPreviewOnlyBoard = isHauntedBoard;
   const [motion, setMotion] = useState<PawnMotion>('idle');
   const timers = useRef<number[]>([]);
 
@@ -322,7 +322,7 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
           <div className="preview-selection-confirmation" role="status" aria-live="polite">
           <span className="mono lime">{isPreviewOnlyBoard ? 'SELECTED / READY TO SAVE' : 'SELECTED / READY TO START'}</span>
             <button className="action lime-action" type="button" onClick={confirm} data-testid="button-confirm-identity">
-              {isBioBoard ? 'Save Bio identity' : isHauntedBoard ? 'Save Haunted identity' : 'Confirm identity'} <span aria-hidden="true">↗</span>
+              {isHauntedBoard ? 'Save Haunted identity' : 'Confirm identity'} <span aria-hidden="true">↗</span>
             </button>
           </div>
           <p className="preview-description">{character.description}</p>
@@ -336,7 +336,7 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
               Test move <span aria-hidden="true">↗</span>
             </button>
           </div>}
-          <p className="preview-note mono">{isBioBoard ? 'BIO BOARD AND RULES ARE STILL IN DEVELOPMENT' : isHauntedBoard ? 'HAUNTED BOARD AND RULES ARE STILL IN DEVELOPMENT' : 'CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME'}</p>
+          <p className="preview-note mono">{isHauntedBoard ? 'HAUNTED BOARD AND RULES ARE STILL IN DEVELOPMENT' : 'CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME'}</p>
         </div>
       </div>
     </aside>
@@ -351,7 +351,7 @@ function Characters() {
   const board = getBoardDefinition(selectedBoardId);
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
   const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
-  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
+  const isPreviewOnlyBoard = isHauntedBoard;
   const [, navigate] = useLocation();
   const chooseRandom = () => {
     const options = characters.filter(({ id }) => id !== selected.id);
@@ -368,7 +368,7 @@ function Characters() {
           {isBioBoard && <AgeRestrictionBadge />}
           <div className="roster-heading-row">
             <h1 className="display roster-title">Choose<br /><span className="title-outline">your player</span></h1>
-            <p className="roster-subtitle">{isBioBoard ? 'Choose a Bio Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : isHauntedBoard ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
+            <p className="roster-subtitle">{isBioBoard ? 'Choose your player for Bio Upgrade. Your career and salary are assigned at the start of each game.' : isHauntedBoard ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
           </div>
         </section>
         <section className="roster-layout">
@@ -407,7 +407,7 @@ function Setup() {
   const character = player ? getCharacter(player.characterId) : undefined;
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
   const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
-  const isPreviewOnlyBoard = isBioBoard || isHauntedBoard;
+  const isPreviewOnlyBoard = isHauntedBoard;
   const identityBoardName = isBioBoard ? 'Bio' : 'Haunted';
 
   if (!player || !character) {

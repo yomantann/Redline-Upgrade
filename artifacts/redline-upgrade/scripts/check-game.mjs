@@ -39,7 +39,7 @@ try {
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
-  const { BIO_PAWN_COLORS, STANDARD_PAWN_COLORS } = await vite.ssrLoadModule('/src/components/pawns/pawn-palettes.ts');
+  const { BIO_PAWN_COLORS, BIO_PAWN_PALETTES, STANDARD_PAWN_COLORS } = await vite.ssrLoadModule('/src/components/pawns/pawn-palettes.ts');
   const { PawnFallback } = await vite.ssrLoadModule('/src/components/pawns/pawn-fallback.tsx');
   const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
   for (const career of careers) {
@@ -77,13 +77,17 @@ try {
 
   assert.deepEqual(Object.keys(BIO_PAWN_COLORS).sort(), characters.map(character => character.id).sort(), 'every roster character has a Bio pawn palette');
   assert.equal(new Set(Object.values(BIO_PAWN_COLORS)).size, 21, 'every Bio character has a unique pawn color');
+  assert.equal(new Set(Object.values(BIO_PAWN_PALETTES).flatMap(palette => [palette.body, palette.trim, palette.accent])).size, 63, 'all 21 Bio pawns have individually designed three-color palettes');
   for (const color of Object.values(BIO_PAWN_COLORS)) {
     assert(!STANDARD_PAWN_COLORS.includes(color), `${color} differs from the standard pawn palette`);
   }
   for (const character of characters) {
     const bioPawn = renderToStaticMarkup(React.createElement(PawnFallback, { characterId: character.id, boardId: 'BIO_UPGRADE' }));
+    const palette = BIO_PAWN_PALETTES[character.id];
     assert.match(bioPawn, /data-pawn-board="BIO_UPGRADE"/, `${character.id} renders as a Bio pawn`);
-    assert(bioPawn.toLowerCase().includes(BIO_PAWN_COLORS[character.id]), `${character.id} pawn uses its assigned Bio color`);
+    for (const color of [palette.body, palette.trim, palette.accent]) {
+      assert(bioPawn.toLowerCase().includes(color.toLowerCase()), `${character.id} pawn renders all colors from its assigned Bio palette`);
+    }
   }
   const standardGuardianPawn = renderToStaticMarkup(React.createElement(PawnFallback, { characterId: 'guardian_h' }));
   assert.match(standardGuardianPawn, /guardian_h_reimagined\.png/, 'standard Guardian fallback remains unchanged');

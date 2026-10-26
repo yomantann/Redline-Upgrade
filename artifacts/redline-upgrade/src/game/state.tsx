@@ -4,7 +4,7 @@ import { toClientAction } from './multiplayer';
 import type { Player } from './player';
 import { createPlayer } from './player';
 import { advanceMatch, createMatch, rollD4, type Match, type MatchAction } from './match';
-import { DEFAULT_BOARD_ID, type BoardId, type GameMode } from './boards';
+import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } from './boards';
 
 interface GameStateValue {
   player: Player | null;
@@ -69,7 +69,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
   const beginGame = useCallback(() => {
     if (!player || match) return;
-    if (selectedBoardId !== DEFAULT_BOARD_ID || selectedGameMode === 'MULTIPLAYER') return;
+    if (!getBoardDefinition(selectedBoardId).playable || selectedGameMode === 'MULTIPLAYER') return;
     const nextMatch = createMatch(player.characterId, selectedBoardId, selectedGameMode ?? 'SINGLE_PLAYER');
     setPlayer(nextMatch.players[0]);
     setMatch(nextMatch);
