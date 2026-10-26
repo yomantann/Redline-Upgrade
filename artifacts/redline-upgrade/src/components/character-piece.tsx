@@ -4,17 +4,20 @@ import type { Group } from 'three';
 import { ErrorBoundary } from './error-boundary';
 import { PawnModel } from './pawns/pawn-model';
 import { PawnFallback } from './pawns/pawn-fallback';
+import type { BoardId } from '../game/boards';
 
 export type PawnMotion = 'idle' | 'moving' | 'landing';
 
 function AnimatedPawn({
   characterId,
+  boardId,
   selected,
   hovered,
   motion,
   reduceMotion,
 }: {
   characterId: string;
+  boardId: BoardId;
   selected: boolean;
   hovered: boolean;
   motion: PawnMotion;
@@ -47,12 +50,13 @@ function AnimatedPawn({
     group.current.scale.setScalar(group.current.scale.x + (targetScale - group.current.scale.x) * easing);
   });
 
-  return <group ref={group}><PawnModel characterId={characterId} selected={selected} /></group>;
+  return <group ref={group}><PawnModel characterId={characterId} boardId={boardId} selected={selected} /></group>;
 }
 
 /** A standalone board pawn. It never reads or renders the character portrait. */
 export function CharacterPiece({
   characterId,
+  boardId = 'REDLINE_UPGRADE',
   name,
   selected = false,
   motion = 'idle',
@@ -60,6 +64,7 @@ export function CharacterPiece({
   compact = false,
 }: {
   characterId: string;
+  boardId?: BoardId;
   name?: string;
   selected?: boolean;
   motion?: PawnMotion;
@@ -95,6 +100,7 @@ export function CharacterPiece({
       className={`character-piece-stage ${compact ? 'compact' : ''} ${className}`}
       data-selected={selected}
       data-motion={motion}
+      data-pawn-board={boardId}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
       role="img"
@@ -103,10 +109,10 @@ export function CharacterPiece({
     >
       {webglAvailable && (
         <ErrorBoundary
-          resetKey={characterId}
+          resetKey={`${boardId}-${characterId}`}
           FallbackComponent={({ error }) =>
             error.message.includes('WebGL')
-              ? <PawnFallback characterId={characterId} selected={selected} />
+              ? <PawnFallback characterId={characterId} boardId={boardId} selected={selected} />
               : <span className="pawn-render-error">3D figurine unavailable: {error.message}</span>
           }
         >
@@ -122,6 +128,7 @@ export function CharacterPiece({
             <group position={[0, -1.35, 0]}>
               <AnimatedPawn
                 characterId={characterId}
+                boardId={boardId}
                 selected={selected}
                 hovered={hovered}
                 motion={motion}
@@ -131,7 +138,7 @@ export function CharacterPiece({
           </Canvas>
         </ErrorBoundary>
       )}
-      {webglAvailable === false && <PawnFallback characterId={characterId} selected={selected} />}
+      {webglAvailable === false && <PawnFallback characterId={characterId} boardId={boardId} selected={selected} />}
       <span className="piece-stage-label" aria-hidden="true">
         {webglAvailable === false ? 'FIGURINE / STATIC PREVIEW' : 'FIGURINE / LIVE 3D'}
       </span>

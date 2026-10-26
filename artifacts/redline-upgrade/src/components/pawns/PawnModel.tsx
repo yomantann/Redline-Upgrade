@@ -3,9 +3,13 @@
  * The plinth is shared; every silhouette above it is authored around the
  * character concept rather than a shared humanoid rig.
  */
+import type { BoardId } from '../../game/boards';
+import { BIO_PAWN_BASE, BIO_PAWN_COLORS } from './pawn-palettes';
+
 export interface PawnModelProps {
   characterId: string;
   selected?: boolean;
+  boardId?: BoardId;
 }
 
 type V3 = [number, number, number];
@@ -54,11 +58,15 @@ function Gem({ position = [0, 0, 0], scale = [1, 1, 1], rotation = [0, 0, 0], ..
 function Ring({ position = [0, 0, 0], rotation = [0, 0, 0], radius = .5, tube = .035, color = CYAN, glow }: { position?: V3; rotation?: V3; radius?: number; tube?: number; color?: string; glow?: string }) {
   return <mesh position={position} rotation={rotation}><torusGeometry args={[radius, tube, 7, 24]} /><Mat color={color} glow={glow || color} metalness={.4} /></mesh>;
 }
-function Base({ accent, selected }: { accent: string; selected: boolean }) {
+function Base({ accent, selected, bio = false }: { accent: string; selected: boolean; bio?: boolean }) {
+  const shadow = bio ? BIO_PAWN_BASE.shadow : SHADOW;
+  const edge = bio ? BIO_PAWN_BASE.edge : EDGE;
+  const body = bio ? BIO_PAWN_BASE.body : IRON;
   return <group>
-    <Cylinder position={[0, .09, 0]} scale={[1.85, .18, 1.85]} color={SHADOW} top={.49} bottom={.5} sides={12} />
-    <Cylinder position={[0, .19, 0]} scale={[1.75, .11, 1.75]} color={EDGE} top={.48} bottom={.5} sides={12} />
-    <Cylinder position={[0, .27, 0]} scale={[1.61, .11, 1.61]} color={IRON} top={.49} bottom={.5} sides={12} />
+    <Cylinder position={[0, .09, 0]} scale={[1.85, .18, 1.85]} color={shadow} top={.49} bottom={.5} sides={12} />
+    <Cylinder position={[0, .19, 0]} scale={[1.75, .11, 1.75]} color={edge} top={.48} bottom={.5} sides={12} />
+    <Cylinder position={[0, .27, 0]} scale={[1.61, .11, 1.61]} color={body} top={.49} bottom={.5} sides={12} />
+    {bio && <Ring position={[0, .285, 0]} rotation={[-Math.PI / 2, 0, 0]} radius={.55} tube={.025} color={BIO_PAWN_BASE.highlight} />}
     <Ring position={[0, .255, 0]} rotation={[-Math.PI / 2, 0, 0]} radius={.7} tube={selected ? .035 : .022} color={accent} />
     <Block position={[0, .14, .89]} scale={[.32, .075, .035]} color={accent} glow={accent} />
     {selected && <Ring position={[0, .055, 0]} rotation={[-Math.PI / 2, 0, 0]} radius={.9} tube={.035} color={accent} />}
@@ -397,10 +405,11 @@ const accents: Record<string, string> = {
   guardian_h: CYAN, click_click: PINK, frostbyte: CYAN, sadman: LIME, rainbow_dash: ORANGE, accuser: RED, low_flame: ORANGE, wandering_eye: ORANGE, the_rind: CYAN, anointed: GOLD, executive_p: CYAN, alpha_prime: CYAN, roll_safe: ORANGE, hotwired: RED, panic_bot: RED, primate: PINK, pain_hider: CYAN, prom_king: VIOLET, idol_core: PINK, danger_zone: RED, the_tank: VIOLET,
 };
 
-export function PawnModel({ characterId, selected = false }: PawnModelProps) {
-  const accent = accents[characterId];
+export function PawnModel({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnModelProps) {
+  const bio = boardId === 'BIO_UPGRADE';
+  const accent = bio ? BIO_PAWN_COLORS[characterId] : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
-  return <group><Base accent={accent} selected={selected} /><Signature id={characterId} accent={accent} /></group>;
+  return <group><Base accent={accent} selected={selected} bio={bio} /><Signature id={characterId} accent={accent} /></group>;
 }
 
 export default PawnModel;

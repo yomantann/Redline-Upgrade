@@ -39,6 +39,8 @@ try {
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
+  const { BIO_PAWN_COLORS, STANDARD_PAWN_COLORS } = await vite.ssrLoadModule('/src/components/pawns/pawn-palettes.ts');
+  const { PawnFallback } = await vite.ssrLoadModule('/src/components/pawns/pawn-fallback.tsx');
   const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
   for (const career of careers) {
     const points = Object.values(career.statModifiers).reduce((sum, value) => sum + value, 0);
@@ -72,6 +74,20 @@ try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
+
+  assert.deepEqual(Object.keys(BIO_PAWN_COLORS).sort(), characters.map(character => character.id).sort(), 'every roster character has a Bio pawn palette');
+  assert.equal(new Set(Object.values(BIO_PAWN_COLORS)).size, 21, 'every Bio character has a unique pawn color');
+  for (const color of Object.values(BIO_PAWN_COLORS)) {
+    assert(!STANDARD_PAWN_COLORS.includes(color), `${color} differs from the standard pawn palette`);
+  }
+  for (const character of characters) {
+    const bioPawn = renderToStaticMarkup(React.createElement(PawnFallback, { characterId: character.id, boardId: 'BIO_UPGRADE' }));
+    assert.match(bioPawn, /data-pawn-board="BIO_UPGRADE"/, `${character.id} renders as a Bio pawn`);
+    assert(bioPawn.toLowerCase().includes(BIO_PAWN_COLORS[character.id]), `${character.id} pawn uses its assigned Bio color`);
+  }
+  const standardGuardianPawn = renderToStaticMarkup(React.createElement(PawnFallback, { characterId: 'guardian_h' }));
+  assert.match(standardGuardianPawn, /guardian_h_reimagined\.png/, 'standard Guardian fallback remains unchanged');
+  assert.doesNotMatch(standardGuardianPawn, /#00e5c7/i, 'standard Guardian fallback does not use the Bio pawn color');
 
   assert.equal(getPublicAssetUrl('/characters/idol_core.png', '/redline-upgrade'), '/redline-upgrade/characters/idol_core.png');
   assert.equal(getPublicAssetUrl('characters/danger_zone.png', '/redline-upgrade/'), '/redline-upgrade/characters/danger_zone.png');

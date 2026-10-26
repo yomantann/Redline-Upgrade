@@ -1,8 +1,11 @@
 import { useId } from 'react';
+import type { BoardId } from '../../game/boards';
+import { BIO_PAWN_BASE, BIO_PAWN_COLORS } from './pawn-palettes';
 
 export interface PawnFallbackProps {
   characterId: string;
   selected?: boolean;
+  boardId?: BoardId;
 }
 
 const C = {
@@ -20,12 +23,17 @@ const accents: Record<string, string> = {
   the_tank: C.violet,
 };
 
-function Base({ accent, selected }: { accent: string; selected: boolean }) {
+function Base({ accent, selected, bio = false }: { accent: string; selected: boolean; bio?: boolean }) {
+  const shadow = bio ? BIO_PAWN_BASE.shadow : '#101923';
+  const body = bio ? BIO_PAWN_BASE.body : '#182530';
+  const band = bio ? BIO_PAWN_BASE.edge : '#344652';
+  const bandStroke = bio ? BIO_PAWN_BASE.highlight : '#8495a1';
   return <g>
-    <ellipse cx="125" cy="295" rx="94" ry="17" fill="#101923" opacity=".28" />
-    <path d="M40 275h170v21q0 15-85 15t-85-15Z" fill="#182530" stroke="#101a24" strokeWidth="4" />
-    <ellipse cx="125" cy="275" rx="85" ry="16" fill="#344652" stroke="#8495a1" strokeWidth="4" />
-    <ellipse cx="125" cy="275" rx="72" ry="11" fill="#182631" stroke={accent} strokeWidth={selected ? 5 : 2.5} />
+    <ellipse cx="125" cy="295" rx="94" ry="17" fill={shadow} opacity=".28" />
+    <path d="M40 275h170v21q0 15-85 15t-85-15Z" fill={body} stroke={shadow} strokeWidth="4" />
+    <ellipse cx="125" cy="275" rx="85" ry="16" fill={band} stroke={bandStroke} strokeWidth="4" />
+    {bio && <ellipse cx="125" cy="275" rx="78" ry="13" fill="none" stroke={BIO_PAWN_BASE.highlight} strokeWidth="2" />}
+    <ellipse cx="125" cy="275" rx="72" ry="11" fill={body} stroke={accent} strokeWidth={selected ? 5 : 2.5} />
     <path d="M109 303h32" stroke={accent} strokeWidth="5" strokeLinecap="round" />
     {selected && <ellipse cx="125" cy="277" rx="98" ry="20" fill="none" stroke={accent} strokeWidth="2.5" opacity=".8" />}
   </g>;
@@ -119,14 +127,15 @@ function Signature({ id, accent }: { id: string; accent: string }) {
  * Geometry-only fallback for non-WebGL environments. It uses the same
  * concept-first silhouettes as PawnModel and keeps the shared plinth.
  */
-export function PawnFallback({ characterId, selected = false }: PawnFallbackProps) {
-  const accent = accents[characterId];
+export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnFallbackProps) {
+  const bio = boardId === 'BIO_UPGRADE';
+  const accent = bio ? BIO_PAWN_COLORS[characterId] : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
   const uid = useId().replace(/:/g, '');
-  return <svg className="pawn-fallback" viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true"
+  return <svg className="pawn-fallback" data-pawn-board={boardId} viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true"
     aria-label={`${characterId.replaceAll('_', ' ')} geometric tabletop pawn`} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id={`pawn-sheen-${uid}`} x1="0" x2="1" y1="0" y2="1"><stop stopColor="#8ca0ad" /><stop offset=".3" stopColor="#415361" /><stop offset="1" stopColor="#182530" /></linearGradient></defs>
-    {characterId === 'guardian_h' ? (
+    <defs><linearGradient id={`pawn-sheen-${uid}`} x1="0" x2="1" y1="0" y2="1"><stop stopColor={bio ? BIO_PAWN_BASE.highlight : '#8ca0ad'} /><stop offset=".3" stopColor={bio ? BIO_PAWN_BASE.edge : '#415361'} /><stop offset="1" stopColor={bio ? BIO_PAWN_BASE.body : '#182530'} /></linearGradient></defs>
+    {characterId === 'guardian_h' && !bio ? (
       <image
         href={`${import.meta.env.BASE_URL}characters/guardian_h_reimagined.png`}
         x="0"
@@ -137,7 +146,7 @@ export function PawnFallback({ characterId, selected = false }: PawnFallbackProp
       />
     ) : (
       <>
-        <Base accent={accent} selected={selected} />
+        <Base accent={accent} selected={selected} bio={bio} />
         <Signature id={characterId} accent={accent} />
       </>
     )}

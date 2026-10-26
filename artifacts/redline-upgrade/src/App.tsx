@@ -11,7 +11,7 @@ import { MusicProvider, useMusic } from '@/lib/music';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
 import { GameBoard } from '@/components/game-board';
-import { boards, getBoardDefinition, type GameMode } from '@/game/boards';
+import { boards, getBoardDefinition, type BoardId, type GameMode } from '@/game/boards';
 import { AppShell } from '@/components/app-shell';
 import { MultiplayerPage } from '@/pages/multiplayer';
 import { ProfilePage } from '@/pages/profile';
@@ -273,7 +273,7 @@ function CharacterTile({
 function CharacterPreview({ character, index, boardId, imagePath }: {
   character: CharacterDefinition;
   index: number;
-  boardId: string;
+  boardId: BoardId;
   imagePath: string;
 }) {
   const [, navigate] = useLocation();
@@ -314,7 +314,7 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
         </div>
         <div className={`preview-visual ${isBioBoard ? 'bio-preview-visual' : isHauntedBoard ? 'haunted-preview-visual' : ''}`}>
           <CharacterPortrait character={character} imagePath={imagePath} className="preview-portrait" />
-          {!isPreviewOnlyBoard && <CharacterPiece characterId={character.id} name={character.name} selected motion={motion} className="preview-pawn" />}
+          {(!isPreviewOnlyBoard || isBioBoard) && <CharacterPiece boardId={boardId} characterId={character.id} name={character.name} selected motion={motion} className="preview-pawn" />}
         </div>
         <div className="preview-info">
           <span className="mono preview-number signal">{isBioBoard ? 'BIO PROFILE' : 'PROFILE'} // {character.id}</span>
@@ -459,7 +459,7 @@ function Setup() {
           <div className="setup-aside">
               <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : isHauntedBoard ? 'haunted-setup-art' : ''}`}>
                 <CharacterPortrait character={character} imagePath={getCharacterImagePath(character.id, selectedBoardId)} className="setup-portrait" />
-                {!isPreviewOnlyBoard && <CharacterPiece characterId={character.id} name={character.name} selected className="setup-pawn" />}
+                {(!isPreviewOnlyBoard || isBioBoard) && <CharacterPiece boardId={selectedBoardId} characterId={character.id} name={character.name} selected className="setup-pawn" />}
             </div>
             <div className="setup-aside-caption mono">
                 <span>{isBioBoard ? 'BIO CHARACTER ART' : isHauntedBoard ? 'HAUNTED CHARACTER ART' : 'PORTRAIT + 3D FIGURINE'}</span>

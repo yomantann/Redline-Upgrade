@@ -344,7 +344,7 @@ function LivePawn({ player, index, count, active, reduceMotion }: { player: Matc
   });
   return <group position={[point.x + Math.cos(angle) * offset, 0, point.z + Math.sin(angle) * offset]} rotation={[0, rotation, 0]}>
     <group ref={bob} position={[0, 0.21, 0]} scale={0.42}>
-      <PawnModel characterId={player.characterId} selected={active} />
+      <PawnModel characterId={player.characterId} boardId="BIO_UPGRADE" selected={active} />
     </group>
     {active && <mesh position={[0, 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.92, 1.02, 40]} /><meshBasicMaterial color="#f3ead7" transparent opacity={0.88} side={THREE.DoubleSide} />

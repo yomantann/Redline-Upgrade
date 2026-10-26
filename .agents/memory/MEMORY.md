@@ -5,4 +5,4 @@
 - [Player stat feedback](player-stat-feedback.md) — keep transient changes on the affected value; do not add a separate effects panel or log.
 - [Build-output asset durability](build-output-assets.md) — treat files found only in `dist` as disposable; preserve user assets in source folders before rebuilding.
 - [Haunted artwork scope](haunted-artwork-scope.md) — Haunted character portraits belong to Haunted selection and, later, the Haunted board only.
-- [Bio Upgrade release gate](bio-upgrade-release-gate.md) — keep Bio unavailable until its own social deck and choice flow are ready.
+- [Bio Upgrade release gate](bio-upgrade-release-gate.md) — keep Bio gated until its own party experience is ready; retain the unique Bio-only pawn palette.
