@@ -212,9 +212,9 @@ a { color: inherit; text-decoration: none; }
 .home-intro { max-width: 370px; font-size: clamp(16px,1.45vw,20px); line-height: 1.6; color: #bbc2b7; margin: 27px 0 34px; }
 .home-actions { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 .home-low { margin-top: auto; padding-top: 58px; color: #76827b; display: flex; gap: 30px; }
-.home-visual { position: relative; border-left: 1px solid #303a37; min-height: 650px; overflow: hidden; background: radial-gradient(circle at 48% 40%,#28302c,#111917 52%,#0d1312 75%); }
+.home-visual { position: relative; display: grid; place-items: center; border-left: 1px solid #303a37; min-height: 650px; overflow: hidden; background: radial-gradient(circle at 48% 40%,#28302c,#111917 52%,#0d1312 75%); }
 .home-visual::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg,transparent 0 69px,rgba(223,231,211,.05) 70px,transparent 71px),repeating-linear-gradient(0deg,transparent 0 69px,rgba(223,231,211,.05) 70px,transparent 71px); }
-.home-visual::after { content: 'R'; position: absolute; z-index: 2; top: 45%; left: 50%; transform: translate(-50%,-50%); font: 900 clamp(300px,34vw,620px)/.7 'Barlow Condensed', sans-serif; color: #f96346; letter-spacing: -.13em; text-shadow: 23px 23px 0 #a0382c, 44px 44px 0 #422d27; }
+.home-logo { position: relative; z-index: 1; display: block; width: min(88%,720px); max-height: 90%; object-fit: contain; }
 .hero-orbit { position: absolute; z-index: 3; top: 45%; left: 50%; transform: translate(-50%,-50%) rotate(-21deg); width: 92%; aspect-ratio: 1; border: 1px solid rgba(212,233,129,.56); border-radius: 50%; pointer-events: none; }
 .hero-orbit::before { content: ''; position: absolute; inset: 9%; border: 1px dashed rgba(212,233,129,.31); border-radius: 50%; }
 .hero-orbit::after { content: ''; position: absolute; top: 9%; left: 16%; width: 12px; height: 12px; border-radius: 50%; background: #d4e981; }
@@ -351,10 +351,8 @@ a { color: inherit; text-decoration: none; }
   .home-copy { padding-top: 55px; min-height: 550px; }
   .home-title { font-size: clamp(103px,25vw,180px); margin-top: 74px; }
   .home-intro { margin-top: 20px; }
-  .home-low { padding-top: 48px; }
   .home-visual { min-height: 390px; border-left: 0; border-top: 1px solid #303a37; }
-  .home-visual::after { font-size: 330px; }
-  .hero-orbit { width: min(87%,410px); }
+  .home-logo { width: min(90%,360px); max-height: 360px; }
   .home-strip { grid-template-columns: 1fr; }
   .strip-cell { min-height: 100px; border-right: 0; border-bottom: 1px solid #303a37; }
   .board-choice-grid, .mode-choice-grid { grid-template-columns: 1fr; padding-inline: 18px; }

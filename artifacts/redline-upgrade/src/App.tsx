@@ -66,7 +66,7 @@ function Home() {
               <span className="title-outline">Upgrade</span>
             </h1>
             <p className="home-intro">
-              A multi-board game platform. Choose a board, then play solo or create a room with friends. Redline Upgrade is ready to race; Bio Upgrade and Haunted Upgrade are on the way.
+              A multi-board game platform. Choose a board, then play solo or create a room with friends.
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>
@@ -79,21 +79,13 @@ function Home() {
                 Browse identities <span aria-hidden="true">→</span>
               </button>
             </div>
-            <div className="home-low mono">
-              <span>BOARD / MODE SELECTION</span>
-              <span>SOLO PLAY / MULTIPLAYER</span>
-            </div>
           </div>
-          <div className="home-visual" aria-label="Redline Upgrade abstract title art">
-            <div className="hero-visual-top mono">
-              <span>IDENTITY ENGINE</span>
-              <span>01—21</span>
-            </div>
-            <div className="hero-orbit" />
-            <div className="hero-visual-bottom mono">
-              <span>CHOOSE YOUR<br />OPERATING SYSTEM</span>
-              <strong>READY_</strong>
-            </div>
+          <div className="home-visual" aria-label="Redline Upgrade logo">
+            <img
+              className="home-logo"
+              src={`${import.meta.env.BASE_URL}Logos/upgrade_logo.png`}
+              alt="Redline Upgrade"
+            />
           </div>
         </section>
         <section className="home-strip" aria-label="Game foundation status">
