@@ -25,6 +25,7 @@ import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
 import { EndgameAttributeBonusSummary } from './endgame-attribute-bonus-summary';
 import { SpaceIcon } from './space-icon';
 import { CareerDeckBadges } from './career-deck-badges';
+import { AgeRestrictionBadge } from './age-restriction-badge';
 import './game-screen.css';
 
 function WealthCounter({ amount, compact = false }: { amount: number; compact?: boolean }) {
@@ -133,7 +134,8 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
 
 export function GameScreen() {
   const [, navigate] = useLocation();
-  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected } = useGame();
+  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId } = useGame();
+  const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
@@ -401,6 +403,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
     return (
       <main className="game-screen game-screen-finish-line">
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
+        {isBioBoard && <AgeRestrictionBadge />}
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} />
       </main>
@@ -419,6 +422,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
     return (
       <main className="game-screen game-screen-finish-line">
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
+        {isBioBoard && <AgeRestrictionBadge />}
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <FinishLinePanel
           player={active}
@@ -449,6 +453,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   return (
     <main className="game-screen">
       <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
+      {isBioBoard && <AgeRestrictionBadge />}
       {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
       <section className="game-head">
         <div>

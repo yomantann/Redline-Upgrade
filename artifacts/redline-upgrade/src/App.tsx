@@ -6,6 +6,7 @@ import { GameProvider, useGame } from '@/game/state';
 import { createMatch } from '@/game/match';
 import { CharacterPiece, type PawnMotion } from '@/components/character-piece';
 import { CharacterPortrait } from '@/components/character-portrait';
+import { AgeRestrictionBadge } from '@/components/age-restriction-badge';
 import { MusicProvider, useMusic } from '@/lib/music';
 import { GameScreen } from '@/components/game-screen';
 import { CareerReveal } from '@/components/career-reveal';
@@ -145,6 +146,7 @@ function BoardSelection() {
                 <span className="mono board-choice-kicker">{board.tagline}</span>
                 <strong>{board.name}</strong>
                 <span>{board.description}</span>
+                {board.id === 'BIO_UPGRADE' && <AgeRestrictionBadge />}
                 <span className="board-choice-link">{board.availability === 'COMING_SOON' ? 'Preview' : 'View game modes'} <span aria-hidden="true">↗</span></span>
               </span>
             </button>
@@ -183,6 +185,7 @@ function GameModeSelection() {
           <div className="roster-heading-row">
             <h1 className="display roster-title">How will<br /><span className="title-outline">you play?</span></h1>
             <p className="roster-subtitle"><span className="mono lime">SELECTED BOARD</span><br />{board.name} — {board.tagline}</p>
+            {board.id === 'BIO_UPGRADE' && <AgeRestrictionBadge />}
           </div>
         </section>
         <section className="mode-choice-grid" aria-label="Choose a play mode">
@@ -362,6 +365,7 @@ function Characters() {
       <main>
         <section className="roster-heading">
           <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SELECTION' : isHauntedBoard ? 'HAUNTED UPGRADE // IDENTITY SELECTION' : 'IDENTITY SELECTION // STEP 01'}</div>
+          {isBioBoard && <AgeRestrictionBadge />}
           <div className="roster-heading-row">
             <h1 className="display roster-title">Choose<br /><span className="title-outline">your player</span></h1>
             <p className="roster-subtitle">{isBioBoard ? 'Choose a Bio Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : isHauntedBoard ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
@@ -433,6 +437,7 @@ function Setup() {
       <main className="setup-main">
         <section className="setup-top">
             <div className="eyebrow">{isBioBoard ? 'BIO UPGRADE // IDENTITY SAVED' : isHauntedBoard ? 'HAUNTED UPGRADE // IDENTITY SAVED' : 'GAME SETUP // IDENTITY LOCKED'}</div>
+            {isBioBoard && <AgeRestrictionBadge />}
         </section>
         <section className="setup-body">
           <div className="setup-content">
