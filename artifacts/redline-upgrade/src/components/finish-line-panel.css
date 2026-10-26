@@ -64,7 +64,7 @@
   background: #25312d;
 }
 
-.finish-line-portrait img { object-position: center 24%; }
+.finish-line-portrait img { object-position: center top; }
 
 .finish-line-portrait-fallback {
   display: grid;
@@ -455,7 +455,7 @@
   font: 800 38px/.9 'Barlow Condensed', sans-serif;
 }
 .finish-line-result-avatar-image { width:100%; height:100%; }
-.finish-line-result-avatar-image img { object-position:center 23%; }
+.finish-line-result-avatar-image img { object-position:center top; }
 
 .finish-line-result-player > div:last-child,
 .finish-line-result-career,
