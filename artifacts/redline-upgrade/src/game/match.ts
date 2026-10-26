@@ -421,7 +421,7 @@ export type MatchAction =
   | { type: 'ACKNOWLEDGE_CAREER' }
   | { type: 'RESOLVE_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
-  | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean }
+  | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
   | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
@@ -945,7 +945,7 @@ function acknowledgeCardDecision(match: Match): Match {
   return resume(match);
 }
 
-function resolvePartyChallenge(match: Match, participantIds: string[], passed: boolean): Match {
+function resolvePartyChallenge(match: Match, participantIds: string[], passed: boolean, resolution?: string): Match {
   const pending = match.pending;
   if (match.phase !== 'decision' || pending?.kind !== 'CARD' || pending.stage !== 'resolved') return match;
   const card = getCard(pending.cardId);
@@ -953,6 +953,9 @@ function resolvePartyChallenge(match: Match, participantIds: string[], passed: b
   if (!challenge || card?.boardId !== 'BIO_UPGRADE') return match;
   const uniqueIds = [...new Set(participantIds)];
   if (passed && participantIds.length !== 0) return match;
+  const recordedOutcome = resolution?.trim();
+  if (!passed && challenge.flow !== 'CONFIRM' && (!recordedOutcome || recordedOutcome.length > 120)) return match;
+  if (resolution && resolution.length > 120) return match;
   const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
     : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
   if (!passed && uniqueIds.length !== required) return match;
@@ -967,7 +970,7 @@ function resolvePartyChallenge(match: Match, participantIds: string[], passed: b
     deck: card.deck,
     spaceNumber: pending.space,
     cardId: card.id,
-    description: `${match.players[match.turnIndex].displayName} ${result} the Bio party challenge: ${card.title}.${participants}`,
+    description: `${match.players[match.turnIndex].displayName} ${result} the Bio party challenge: ${card.title}.${participants}${recordedOutcome ? ` Outcome recorded: ${recordedOutcome}.` : ''}`,
   }]);
 }
 
@@ -1155,7 +1158,7 @@ function autoDecide(match: Match): Match {
       const available = match.players.filter((candidate, index) => index !== decisionPlayerIndex);
       const passed = available.length < required;
       const participantIds = passed ? [] : available.slice(0, required).map(candidate => candidate.playerId);
-      return resolvePartyChallenge(match, participantIds, passed);
+      return resolvePartyChallenge(match, participantIds, passed, passed || challenge.flow === 'CONFIRM' ? undefined : 'CPU resolved automatically');
     }
   }
   if (pending.kind === 'ABILITY') {
@@ -1431,7 +1434,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     }
     case 'RESOLVE_PARTY_CHALLENGE':
       if (match.players[match.turnIndex]?.isCPU) return match;
-      return resolvePartyChallenge(match, action.participantIds, action.passed);
+      return resolvePartyChallenge(match, action.participantIds, action.passed, action.resolution);
     case 'ACKNOWLEDGE_CARD':
       if (match.players[match.turnIndex]?.isCPU) return match;
       return acknowledgeCardDecision(match);

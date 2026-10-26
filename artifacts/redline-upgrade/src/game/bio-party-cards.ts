@@ -16,7 +16,7 @@ const makeCards = (deck: DeckId, rows: PartyCardRow[]): CardDefinition[] => rows
     rarity: 'STANDARD',
     effects: [],
     artCue,
-    artworkPath: '',
+    artworkPath: `cards/bio/bio-${id}.webp`,
     partyChallenge: {
       target,
       prompt,

@@ -5,7 +5,23 @@ import type { CardPileMap } from '@/game/card-piles';
 import type { Player } from '@/game/player';
 import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_MS, CPU_CARD_DRAW_SECONDS, CPU_CARD_RESULT_SECONDS } from '@/game/card-reveal-timing';
 import { decks, getDeck, type DeckId } from '@/game/decks';
+import { getCardArtworkUrl } from '@/game/card-artwork';
 import { RedlineCard } from './redline-card';
+
+function BioPartyCardFace({ card, compact = false }: { card: CardDefinition; compact?: boolean }) {
+  const artworkUrl = getCardArtworkUrl(card.id);
+  return (
+    <div className={`bio-party-card ${compact ? 'bio-party-card-compact' : 'bio-party-card-active'}`} data-testid={compact ? `bio-party-card-${card.id}` : 'bio-party-prompt'}>
+      {artworkUrl && <img src={artworkUrl} alt="" className="bio-party-card-art" loading="eager" decoding="async" />}
+      <div className="bio-party-card-copy">
+        <span className="mono">BIO UPGRADE / {getDeck(card.deck).name.toUpperCase()}</span>
+        <b>{card.title}</b>
+        <p>{card.partyChallenge?.prompt ?? card.description}</p>
+        {!compact && card.partyChallenge?.safetyNote && <small>{card.partyChallenge.safetyNote}</small>}
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   activeDeck?: DeckId;
@@ -18,7 +34,7 @@ type Props = {
   cardPiles?: CardPileMap;
   onResolveCard?: () => void;
   onChooseGambleCard?: (cardId: string) => void;
-  onResolvePartyChallenge?: (participantIds: string[], passed: boolean) => void;
+  onResolvePartyChallenge?: (participantIds: string[], passed: boolean, resolution?: string) => void;
   onAcknowledge?: () => void;
   isCPU?: boolean;
   actorName?: string;
@@ -48,6 +64,7 @@ export function CardTabletop({
 }: Props) {
   const [minimumReadTimeComplete, setMinimumReadTimeComplete] = useState(false);
   const [partyParticipantIds, setPartyParticipantIds] = useState<string[]>([]);
+  const [partyOutcome, setPartyOutcome] = useState('');
   const drawReadTimeMs = isCPU ? CPU_CARD_DRAW_MS : CARD_READ_MINIMUM_MS;
   const drawReadTimeSeconds = isCPU ? CPU_CARD_DRAW_SECONDS : CARD_READ_MINIMUM_SECONDS;
 
@@ -57,7 +74,10 @@ export function CardTabletop({
     const timer = window.setTimeout(() => setMinimumReadTimeComplete(true), drawReadTimeMs);
     return () => window.clearTimeout(timer);
   }, [activeDeck, activeCard?.id, cardStage, drawReadTimeMs]);
-  useEffect(() => setPartyParticipantIds([]), [activeCard?.id]);
+  useEffect(() => {
+    setPartyParticipantIds([]);
+    setPartyOutcome('');
+  }, [activeCard?.id]);
 
   const activeCardResolved = cardStage === 'resolved' && activeCard;
   const partyChallenge: PartyChallenge | undefined = activeCard?.partyChallenge;
@@ -95,16 +115,16 @@ export function CardTabletop({
           {cardStage === 'choice' && offeredCards?.length ? (
             <div className="card-choice-grid" data-testid="gamble-card-choices">
               {offeredCards.map((card) => isCPU ? (
-                <div className="card-choice-option" key={card.id}>{card.partyChallenge ? <div className="bio-party-card"><b>{card.title}</b><p>{card.partyChallenge.prompt}</p></div> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span></div>
+                <div className="card-choice-option" key={card.id}>{card.partyChallenge ? <BioPartyCardFace card={card} compact /> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span></div>
               ) : (
                 <button className="card-choice-option" type="button" key={card.id} disabled={!minimumReadTimeComplete || !partyCanAct} onClick={() => onChooseGambleCard?.(card.id)} data-testid={`choose-gamble-${card.id}`}>
-                  {card.partyChallenge ? <div className="bio-party-card"><b>{card.title}</b><p>{card.partyChallenge.prompt}</p></div> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span><b>CHOOSE THIS CARD</b>
+                  {card.partyChallenge ? <BioPartyCardFace card={card} compact /> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span><b>CHOOSE THIS CARD</b>
                 </button>
               ))}
             </div>
           ) : (
             partyChallenge
-              ? <div className="bio-party-card bio-party-card-active" data-testid="bio-party-prompt"><span className="mono">BIO PARTY CHALLENGE / {partyChallenge.flow}</span><b>{activeCard?.title}</b><p>{partyChallenge.prompt}</p><small>{partyChallenge.safetyNote}</small></div>
+              ? activeCard ? <BioPartyCardFace card={activeCard} /> : null
               : <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}><RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} /></div>
           )}
           <div className="card-draw-action">
@@ -123,7 +143,8 @@ export function CardTabletop({
                       {selectablePlayers.map(player => <button type="button" key={player.playerId} className="bio-party-target" aria-pressed={partyParticipantIds.includes(player.playerId)} disabled={!partyParticipantIds.includes(player.playerId) && partyParticipantIds.length >= requiredParticipants} onClick={() => togglePartyParticipant(player.playerId)}>{player.displayName}</button>)}
                     </div>}
                     <p className="mono">{partyChallenge.flow === 'VOTE' ? 'ASK THE TABLE TO VOTE, THEN RECORD THE OUTCOME.' : partyChallenge.flow === 'CHOICE' ? 'JOIN THE CHALLENGE OR PASS.' : 'COMPLETE THE CHALLENGE OR PASS.'}</p>
-                    <button type="button" className="action lime-action" disabled={!minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false)} data-testid="button-complete-party-challenge">CHALLENGE COMPLETE</button>
+                    {partyChallenge.flow !== 'CONFIRM' && <label className="bio-party-outcome">{partyChallenge.flow === 'VOTE' ? 'Record the group vote' : 'Record the choice made'}<input value={partyOutcome} maxLength={120} onChange={event => setPartyOutcome(event.target.value)} placeholder={partyChallenge.flow === 'VOTE' ? 'Winning option / group result' : 'Choice selected'} /></label>}
+                    <button type="button" className="action lime-action" disabled={!minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants || (partyChallenge.flow !== 'CONFIRM' && !partyOutcome.trim())} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false, partyOutcome.trim() || undefined)} data-testid="button-complete-party-challenge">CHALLENGE COMPLETE</button>
                     <button type="button" className="text-link" disabled={!minimumReadTimeComplete} onClick={() => onResolvePartyChallenge?.([], true)} data-testid="button-pass-party-challenge">PASS / NO PENALTY</button>
                   </div>
                 ) : <p className="mono">WAITING FOR {actorName.toUpperCase()} TO RESOLVE THE CHALLENGE.</p>

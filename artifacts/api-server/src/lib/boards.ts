@@ -7,7 +7,7 @@ export const MULTIPLAYER_MODE = "MULTIPLAYER";
 export const MAX_ROOM_PLAYERS = 4;
 export const MIN_ROOM_PLAYERS = 2;
 
-const multiplayerBoards: ReadonlySet<string> = new Set<BoardId>(["REDLINE_UPGRADE"]);
+const multiplayerBoards: ReadonlySet<string> = new Set<BoardId>(["REDLINE_UPGRADE", "BIO_UPGRADE"]);
 
 export function isKnownBoard(boardId: string): boardId is BoardId {
   return (BOARD_IDS as readonly string[]).includes(boardId);

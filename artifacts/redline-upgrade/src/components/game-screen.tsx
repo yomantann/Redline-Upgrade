@@ -654,7 +654,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onChooseGambleCard={cardId => dispatchMatch({ type: 'CHOOSE_GAMBLE_CARD', cardId })}
-          onResolvePartyChallenge={(participantIds, passed) => dispatchMatch({ type: 'RESOLVE_PARTY_CHALLENGE', participantIds, passed })}
+           onResolvePartyChallenge={(participantIds, passed, resolution) => dispatchMatch({ type: 'RESOLVE_PARTY_CHALLENGE', participantIds, passed, resolution })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />
        </div>}

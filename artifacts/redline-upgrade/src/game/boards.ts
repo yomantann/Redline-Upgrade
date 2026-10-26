@@ -50,9 +50,9 @@ export const boards: readonly BoardDefinition[] = [
   {
     id: 'BIO_UPGRADE',
     name: 'Bio Upgrade',
-    tagline: 'A different kind of game.',
-    description: 'A separate board and game experience, in development.',
-    availability: 'IN_DEVELOPMENT',
+    tagline: 'Own the night.',
+    description: 'A neon-nightlife board with its own party challenges and 21+ play.',
+    availability: 'AVAILABLE',
     artwork: { mark: 'B', themeClass: 'bio-choice' },
     content: {
       dataSetId: 'bio-upgrade',
@@ -63,8 +63,8 @@ export const boards: readonly BoardDefinition[] = [
       engineId: 'bio-upgrade',
     },
     visualThemeId: 'bio',
-    playable: false,
-    multiplayerAvailable: false,
+    playable: true,
+    multiplayerAvailable: true,
   },
   {
     id: 'HAUNTED_UPGRADE',

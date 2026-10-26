@@ -45,7 +45,7 @@ export type ClientAction =
   | { type: 'MOVE' }
   | { type: 'DRAW_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
-  | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean }
+  | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
   | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
@@ -103,7 +103,7 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'MOVE': return { type: 'MOVE' };
     case 'RESOLVE_CARD': return { type: 'DRAW_CARD' };
     case 'CHOOSE_GAMBLE_CARD': return { type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId };
-    case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed };
+    case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution };
     case 'ACKNOWLEDGE_CARD': return { type: 'ACKNOWLEDGE_CARD' };
     case 'TAKE_PAYDAY': return { type: 'TAKE_PAYDAY' };
     case 'PUSH_PLAYER_BACK': return { type: 'PUSH_PLAYER_BACK', targetPlayerId: action.targetPlayerId };
@@ -137,7 +137,8 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'RESOLVE_PARTY_CHALLENGE':
       return Array.isArray(action.participantIds) && action.participantIds.length <= 2
         && action.participantIds.every(isString) && typeof action.passed === 'boolean'
-        ? [{ type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed }]
+        && (action.resolution === undefined || (typeof action.resolution === 'string' && action.resolution.length <= 120))
+        ? [{ type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution }]
         : null;
     case 'ACKNOWLEDGE_CARD': return [{ type: 'ACKNOWLEDGE_CARD' }];
     case 'TAKE_PAYDAY': return [{ type: 'TAKE_PAYDAY' }];

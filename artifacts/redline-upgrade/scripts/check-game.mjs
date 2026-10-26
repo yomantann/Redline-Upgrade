@@ -31,7 +31,7 @@ const vite = await createServer({
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
-  const { cards, cardsForDeck } = await vite.ssrLoadModule('/src/game/cards.ts');
+  const { cards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
@@ -649,6 +649,10 @@ try {
   assert.equal(bioCards.length, 64, 'Bio defines 64 unique social-only cards');
   assert.equal(new Set(bioCards.map(card => card.id)).size, 64, 'Bio card definition IDs are unique');
   assert.equal(new Set(bioCards.map(card => card.title)).size, 64, 'Bio card titles are unique');
+  const bioArtworkPaths = bioCards.map(card => getCardArtworkFilePath(card.id));
+  assert(bioArtworkPaths.every(Boolean), `every Bio card has a dedicated artwork path: ${bioCards.filter(card => !getCardArtworkFilePath(card.id)).map(card => card.id).join(', ')}`);
+  assert.equal(new Set(bioArtworkPaths).size, 64, 'all 64 Bio card definitions use distinct artwork paths');
+  assert(bioArtworkPaths.every(path => existsSync(new URL(`../public/${path}`, import.meta.url))), 'all Bio card artwork files exist');
   assert(bioCards.every(card => card.boardId === 'BIO_UPGRADE' && card.effects.length === 0 && card.partyChallenge), 'Bio cards are Bio-only, carry a party prompt, and have no gameplay effects');
   assert(bioCards.every(card => card.partyChallenge.safetyNote.includes('pass with no penalty')), 'every Bio prompt includes an opt-out safety note');
   for (const deck of decks) {
@@ -671,6 +675,9 @@ try {
     assert.equal(bioCards.find(card => card.id === id)?.partyChallenge?.prompt, prompt, `${id} retains its specified prompt`);
   }
   const bioPiles = createCardPiles('BIO_UPGRADE');
+  const bioSingleMatch = createMatch('guardian_h', 'BIO_UPGRADE');
+  assert.equal(bioSingleMatch.boardId, 'BIO_UPGRADE', 'Bio supports a playable single-player match');
+  assert.equal(bioSingleMatch.players.length, 4, 'Bio single-player includes one human and three CPU players');
   const partyCardId = 'bio-table-service';
   const bioWealthPile = bioPiles.wealth;
   const partyInFlightPiles = {
@@ -701,6 +708,10 @@ try {
   const partyPassed = advanceMatch(partyShown, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: true });
   assert.equal(partyPassed.phase, 'landed', 'passing never blocks turn progress');
   assert.match(partyPassed.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /passed the Bio party challenge/);
+  const votePending = { ...partyShown, pending: { ...partyShown.pending, cardId: 'bio-luxury-pitch' } };
+  assert.equal(advanceMatch(votePending, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false }), votePending, 'a Bio vote cannot resolve without recording its outcome');
+  const voteRecorded = advanceMatch(votePending, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false, resolution: 'Group chose the most convincing pitch' });
+  assert.match(voteRecorded.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /Outcome recorded: Group chose the most convincing pitch/);
   const cpuPartyShown = { ...partyShown, players: partyShown.players.map(player => ({ ...player, isCPU: true })) };
   assert.equal(advanceMatch(cpuPartyShown, { type: 'AUTO_DECIDE' }).phase, 'landed', 'CPU resolves a Bio party challenge automatically');
   const undersizedCpuParty = {
@@ -719,6 +730,7 @@ try {
   }));
   assert(partyCardMarkup.includes('Choose a player to give a 10-second review'), 'Bio prompt is displayed instead of missing Redline card art');
   assert(partyCardMarkup.includes('PASS / NO PENALTY') && partyCardMarkup.includes('bio-party-targets'), 'party UI presents a no-penalty pass and target selection');
+  assert(partyCardMarkup.includes('/cards/bio/bio-table-service.webp'), 'Bio card presentation loads its dedicated WebP artwork');
   assertCompleteCardPiles(bioPiles);
   assert.equal(decks.reduce((total, deck) => total + bioPiles[deck.id].drawPile.length, 0), 68, 'Bio draw piles contain all 68 weighted entries');
   const hydrationId = 'bio-hydrate';
@@ -2023,6 +2035,11 @@ try {
     assert.throws(() => createMultiplayerMatch([
       { characterId: 'x', careerId: null, displayName: 'A' },
     ]), /2-4 players/);
+    const bioMpMatch = createMultiplayerMatch([
+      { characterId: null, careerId: null, displayName: 'Bio A' },
+      { characterId: null, careerId: null, displayName: 'Bio B' },
+    ], 'BIO_UPGRADE');
+    assert.equal(bioMpMatch.boardId, 'BIO_UPGRADE', 'Bio can create a real two-player authoritative match');
     let state = createMultiplayerState(mpMatch, ['u0', 'u1']);
     assert.equal(describeTurn(state).currentUserId, 'u0');
     const offTurn = applyPlayerAction(state, 'u1', { type: 'ROLL_DICE' });
@@ -2032,18 +2049,27 @@ try {
     assert.equal(applyPlayerAction(state, 'u0', { type: 'MOVE' }).reason, 'ILLEGAL_ACTION', 'cannot move before rolling');
     assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'ILLEGAL_ACTION');
     const partyMpMatch = {
-      ...mpMatch,
-      boardId: 'BIO_UPGRADE',
+      ...bioMpMatch,
       cardPiles: partyShown.cardPiles,
       phase: 'decision',
       pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: partyCardId, stage: 'resolved' },
-      players: mpMatch.players.map(player => ({ ...player, position: 1 })),
+      players: bioMpMatch.players.map(player => ({ ...player, position: 1 })),
     };
     const partyMpState = createMultiplayerState(partyMpMatch, ['u0', 'u1']);
-    assert.equal(applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [mpMatch.players[0].playerId], passed: false }).reason, 'ILLEGAL_ACTION', 'multiplayer rejects selecting yourself as another participant');
-    const partyMpResult = applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [mpMatch.players[1].playerId], passed: false });
+    assert.equal(applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [bioMpMatch.players[0].playerId], passed: false }).reason, 'ILLEGAL_ACTION', 'multiplayer rejects selecting yourself as another participant');
+    const partyMpResult = applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [bioMpMatch.players[1].playerId], passed: false });
     assert.equal(partyMpResult.ok, true, 'multiplayer accepts and synchronizes a valid Bio party challenge result');
     assert.equal(partyMpResult.state.match.phase, 'landed');
+    const voteMpState = createMultiplayerState({
+      ...partyMpMatch,
+      pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: 'bio-luxury-pitch', stage: 'resolved' },
+    }, ['u0', 'u1']);
+    const voteMpResult = applyPlayerAction(voteMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false, resolution: 'Group chose the best pitch' });
+    assert.equal(voteMpResult.ok, true, 'multiplayer synchronizes a recorded Bio vote outcome');
+    assert.match(voteMpResult.state.match.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /Group chose the best pitch/);
+    const takeover = autoplayIfStale({ ...partyMpState, actionAt: 0 }, new Set(['u0']), AUTOPLAY_AFTER_MS + 1);
+    assert.equal(takeover.changed, true, 'disconnected active player is handled by the multiplayer CPU takeover path');
+    assert.equal(takeover.state.match.phase, 'landed', 'CPU takeover resolves the pending Bio challenge without stalling');
     const rolled = applyPlayerAction(state, 'u0', { type: 'ROLL_DICE' });
     assert.equal(rolled.ok, true);
     assert.equal(rolled.state.match.phase, 'reveal');
@@ -2077,6 +2103,39 @@ try {
     assert.equal(state.match.phase, 'complete', 'a multiplayer match completes through client actions alone');
     assert.ok(state.match.eventLog.length > 0, 'actions flow through the shared event log');
     assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'MATCH_COMPLETE');
+    let bioState = createMultiplayerState(bioMpMatch, ['bio-u0', 'bio-u1']);
+    for (let i = 0; i < 6000 && bioState.match.phase !== 'complete'; i += 1) {
+      const m = bioState.match;
+      const user = describeTurn(bioState).currentUserId;
+      let action;
+      if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+      else if (m.phase === 'reveal') action = { type: 'MOVE' };
+      else if (m.phase === 'landed') action = { type: 'END_TURN' };
+      else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
+      else if (m.pending?.kind === 'CARD') {
+        const card = getCard(m.pending.cardId);
+        if (m.pending.stage === 'choice') action = { type: 'CHOOSE_GAMBLE_CARD', cardId: m.pending.offeredCardIds[0] };
+        else if (m.pending.stage === 'draw') action = { type: 'DRAW_CARD' };
+        else if (card?.partyChallenge) {
+          const count = card.partyChallenge.target === 'SELECTED_PLAYER' || card.partyChallenge.target === 'SELF_AND_SELECTED' ? 1 : card.partyChallenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
+          const eligible = m.players.filter((_, index) => index !== m.turnIndex);
+          const passed = eligible.length < count;
+          const targets = passed ? [] : eligible.slice(0, count).map(player => player.playerId);
+          action = { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: targets, passed, ...(!passed && card.partyChallenge.flow !== 'CONFIRM' ? { resolution: 'Players recorded a choice or group vote' } : {}) };
+        } else action = { type: 'ACKNOWLEDGE_CARD' };
+      } else if (m.pending?.kind === 'SALARY_GATE') action = { type: 'TAKE_PAYDAY' };
+      else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
+      else if (m.pending?.kind === 'CAREER') action = { type: 'CHANGE_CAREER', step: m.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
+      else if (m.pending?.kind === 'ABILITY') {
+        const decision = m.pending.decision;
+        action = { type: 'USE_ABILITY', resolution: decision === 'STAT_DESTINATION' ? { kind: decision, stat: m.pending.sourceStat } : decision === 'ASSET_INTERACTION' ? { kind: decision, choice: 'DECLINE' } : { kind: 'CAREER_SWAP', accept: false } };
+      } else assert.fail(`stuck in Bio ${m.phase}`);
+      const result = applyPlayerAction(bioState, user, action);
+      assert.equal(result.ok, true, `Bio ${JSON.stringify(action)} in ${m.phase}: ${result.message}`);
+      bioState = result.state;
+    }
+    assert.equal(bioState.match.phase, 'complete', 'two players can complete a full Bio multiplayer match');
+    assert(bioState.match.eventLog.some(event => event.eventType === 'CARD_RESOLVED' && event.cardId?.startsWith('bio-')), 'full Bio match resolves Bio party cards through the shared multiplayer event log');
     // Connected idle players retain the legacy one-minute safety autoplay. Disconnected seats
     // transfer directly to the same CPU reducer after server recovery grants control.
     {
