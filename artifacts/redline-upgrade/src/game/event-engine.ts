@@ -667,7 +667,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
       newPosition: nextPosition,
       distance: direction,
     });
-    const space = getSpace(nextPosition);
+    const space = getSpace(nextPosition, state.boardId);
     if (!space) continue;
     queue.push({
       type: 'PASS_SPACE',
@@ -776,7 +776,7 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
     }
   }
   const finalPosition = state.players[targetIndex].position;
-  const finalSpace = getSpace(finalPosition);
+  const finalSpace = getSpace(finalPosition, state.boardId);
   if (finalSpace) {
     const landing = { playerIndex: targetIndex, space: finalSpace };
     const slot = finalSpace.type === 'MILESTONE' ? milestoneSlot(finalSpace.number) : null;
@@ -909,7 +909,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
           spaceNumber: state.players[index].position,
           cardId: draw.cardId,
         });
-        const landingSpace = getSpace(state.players[index].position);
+        const landingSpace = getSpace(state.players[index].position, state.boardId);
         return {
           ...state,
           cardPiles: draw.cardPiles,

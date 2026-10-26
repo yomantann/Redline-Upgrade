@@ -1,5 +1,6 @@
 import type { DeckId } from './decks';
 import { BOARD_EFFECTS_BY_SPACE } from './board-effects';
+import type { BoardId } from './boards';
 
 export type SpaceType = 'NORMAL' | 'EVENT' | 'CARD' | 'MILESTONE' | 'GAMBLE' | 'SALARY_GATE' | 'CAREER_CHANGE' | 'UPGRADE_TOKEN';
 export type SpaceTrigger = 'NONE' | 'LAND' | 'LAND_OR_PASS';
@@ -86,6 +87,88 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
   };
 });
 
-export function getSpace(position: number): BoardSpace | null {
-  return position === 0 ? null : BOARD_SPACES[position - 1] ?? null;
+const BIO_PAYDAY_SPACES = new Set([6, 18, 29, 41, 54, 66, 73]);
+const BIO_MILESTONES = new Set([10, 30, 45, 60, 75]);
+const BIO_GAMBLES = new Set([15, 50, 70]);
+const BIO_TOKENS = new Set([2, 14, 55]);
+const BIO_DECK_SPACES: Partial<Record<number, DeckId>> = {
+  3: 'wealth', 5: 'lifestyle', 7: 'ai', 9: 'fame', 12: 'influence',
+  13: 'wealth', 16: 'ai', 17: 'lifestyle', 20: 'fame', 22: 'influence',
+  23: 'wealth', 25: 'lifestyle', 27: 'ai', 28: 'fame', 32: 'influence',
+  33: 'wealth', 34: 'lifestyle', 36: 'ai', 38: 'fame', 39: 'influence',
+  42: 'wealth', 43: 'lifestyle', 44: 'ai', 46: 'fame', 48: 'influence',
+  49: 'wealth', 52: 'lifestyle', 53: 'ai', 57: 'fame', 58: 'influence',
+  59: 'wealth', 61: 'lifestyle', 63: 'ai', 64: 'fame', 68: 'influence',
+  69: 'wealth', 71: 'lifestyle', 72: 'ai', 74: 'fame',
+};
+const BIO_PARTY_LABELS: Partial<Record<number, string>> = {
+  3: 'GROUP TOAST', 5: 'DANCE DUEL', 7: 'BRAIN FREEZE', 9: 'SPOTLIGHT',
+  12: 'SOCIAL CHAOS', 13: 'VIP TAB', 16: 'QUICK THINK', 17: 'DRINKING PARTNER',
+  20: 'KARAOKE BREAK', 22: 'GROUP VOTE', 23: 'VIP LOUNGE', 25: 'PARTY TRADITION',
+  27: 'SYSTEM OVERLOAD', 28: 'MAIN CHARACTER', 32: 'ALLIANCE', 33: 'CHAMPAGNE PROBLEMS',
+  34: 'GROUP TOAST', 36: 'HUMAN CAPTCHA', 38: 'SPOTLIGHT', 39: 'THE ACCUSATION',
+  42: 'LUXURY TOAST', 43: 'DANCE BREAK', 44: 'BRAIN FREEZE', 46: 'OPEN MIC',
+  48: 'SOCIAL CHAOS', 49: 'VIP TAB', 52: 'PARTY TRADITION', 53: 'QUICK THINK',
+  57: 'HEADLINER', 58: 'DRINKING PARTNER', 59: 'ROOFTOP TOAST', 61: 'LAST CALL',
+  63: 'SYSTEM OVERLOAD', 64: 'SPOTLIGHT', 68: 'THE BETRAYAL', 69: 'VIP LOUNGE',
+  71: 'GROUP TOAST', 72: 'BRAIN FREEZE', 74: 'LAST CALL',
+};
+const BIO_BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) => {
+  const number = index + 1;
+  const payday = BIO_PAYDAY_SPACES.has(number);
+  const milestone = BIO_MILESTONES.has(number);
+  const gamble = BIO_GAMBLES.has(number);
+  const deck = BIO_DECK_SPACES[number] ?? (gamble ? 'gamble' : undefined);
+  const type: SpaceType = number === 1 ? 'NORMAL'
+    : number === 35 ? 'CAREER_CHANGE'
+      : payday ? 'SALARY_GATE'
+        : milestone ? 'MILESTONE'
+          : BIO_TOKENS.has(number) ? 'UPGRADE_TOKEN'
+            : gamble ? 'GAMBLE'
+              : deck ? 'CARD' : 'NORMAL';
+  const milestoneLabels: Record<number, [string, string, string]> = {
+    10: ['car', 'OPENING NIGHT', 'Choose a car milestone asset or skip.'],
+    30: ['lifestyle', 'VIP MOMENT', 'Choose a lifestyle milestone asset or skip.'],
+    45: ['pet', 'CREW PICK', 'Choose a companion or investment milestone asset, then an offer, or skip.'],
+    60: ['property', 'ROOFTOP SUITE', 'Choose a property milestone asset or skip.'],
+    75: ['finish', 'FINAL ARENA', 'Reach the final arena to lock in your place and make your final choice.'],
+  };
+  const special = milestoneLabels[number];
+  const partyLabel = BIO_PARTY_LABELS[number];
+  const label = number === 1 ? 'START / CLUB ENTRANCE'
+    : special?.[1] ?? (type === 'SALARY_GATE' ? 'SALARY GATE'
+      : type === 'CAREER_CHANGE' ? 'CAREER SWITCH'
+        : type === 'UPGRADE_TOKEN' ? 'UPGRADE TOKEN'
+          : type === 'GAMBLE' ? 'EXTREME GAMBLE'
+            : partyLabel ?? 'OPEN DANCE FLOOR');
+  const description = number === 1 ? 'Start your Bio Upgrade run here.'
+    : special?.[2] ?? (type === 'SALARY_GATE' ? 'Pass through or land here to receive your current salary once.'
+      : type === 'CAREER_CHANGE' ? 'Keep your current career or choose between two new opportunities.'
+        : type === 'UPGRADE_TOKEN' ? 'Gain one match-only Upgrade Token.'
+          : type === 'GAMBLE' ? 'Draw and resolve an immediate party challenge from the Gamble deck.'
+            : deck ? `Draw and resolve an immediate social challenge from the ${deck} deck.`
+              : 'A party stop with no extra effect.');
+  return {
+    number,
+    type,
+    payday,
+    icon: special?.[0] ?? (type === 'SALARY_GATE' ? 'salary'
+      : type === 'CAREER_CHANGE' ? 'career'
+        : type === 'UPGRADE_TOKEN' ? 'upgrade-token'
+          : type === 'GAMBLE' ? 'gamble'
+            : deck ?? 'normal'),
+    label,
+    description,
+    trigger: type === 'SALARY_GATE' || type === 'CAREER_CHANGE' ? 'LAND_OR_PASS'
+      : type === 'NORMAL' ? 'NONE' : 'LAND',
+    deck,
+  };
+});
+
+export function getBoardSpaces(boardId: BoardId = 'REDLINE_UPGRADE'): BoardSpace[] {
+  return boardId === 'BIO_UPGRADE' ? BIO_BOARD_SPACES : BOARD_SPACES;
+}
+
+export function getSpace(position: number, boardId: BoardId = 'REDLINE_UPGRADE'): BoardSpace | null {
+  return position === 0 ? null : getBoardSpaces(boardId)[position - 1] ?? null;
 }

@@ -1,7 +1,9 @@
-import { BOARD_SPACES } from '../game/board-data';
+import { getBoardSpaces } from '../game/board-data';
+import type { BoardId } from '../game/boards';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
 import { PHASE_FLAG_FOOTPRINT, ROUTE, SPACE_TILE_FOOTPRINT, START_PAD_FOOTPRINT, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
+import { BIO_ROUTE } from './bio-board-scene';
 import { getSpaceVisual } from './board-space-visuals';
 
 type P = { x: number; y: number };
@@ -24,19 +26,66 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ players, activePlayerId, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlayerId, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { boardId?: BoardId; players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+  const isBio = boardId === 'BIO_UPGRADE';
+  const route = isBio ? BIO_ROUTE : ROUTE;
+  const boardSpaces = getBoardSpaces(boardId);
   const activePosition = Math.max(0, Math.min(75, players.find(player => player.playerId === activePlayerId)?.position ?? 0));
-  const focus = project(ROUTE[activePosition].x, ROUTE[activePosition].z, .45);
+  const focus = project(route[activePosition].x, route[activePosition].z, .45);
   const cameraZoom = zoom * (overview ? 1 : 2);
   const centerX = overview ? 600 : focus.x;
   const centerY = overview ? 380 : focus.y;
   const boardTop = points([[-23.8,-15.7,.07],[23.8,-15.7,.07],[23.8,15.7,.07],[-23.8,15.7,.07]]);
   const boardFront = points([[-23.8,15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[-23.8,15.7,-1]]);
   const boardRight = points([[23.8,-15.7,.07],[23.8,15.7,.07],[23.8,15.7,-1],[23.8,-15.7,-1]]);
-  const start = platform(ROUTE[0].x, ROUTE[0].z, START_PAD_FOOTPRINT.width / 2, START_PAD_FOOTPRINT.depth / 2, .78);
-  const finish = ROUTE[75];
+  const start = platform(route[0].x, route[0].z, START_PAD_FOOTPRINT.width / 2, START_PAD_FOOTPRINT.depth / 2, .78);
+  const finish = route[75];
+  if (isBio) {
+    const p = (index: number) => project(route[index].x, route[index].z, .45);
+    const bioColor = (space: (typeof boardSpaces)[number]) => space.type === 'SALARY_GATE' ? '#f3cc6f'
+      : space.type === 'MILESTONE' ? '#f36b9d'
+        : space.type === 'GAMBLE' ? '#f08c59'
+          : space.type === 'UPGRADE_TOKEN' ? '#b5a1f7'
+            : space.deck ? '#58d7d0' : '#94a2aa';
+    return <div className="ru-board__static" data-testid="board-static-fallback">
+      <div className="ru-board__static-heading"><span>BIO UPGRADE / 21+ ONLY</span><strong>The after-hours route remains live.</strong><p>WebGL is unavailable, so this accessible route view shows all spaces and player positions.</p></div>
+      <svg className="ru-board__static-svg" viewBox="0 0 1200 760" role="img" aria-label="Bio Upgrade after-hours route with all spaces and player positions">
+        <defs>
+          <linearGradient id="bio-fallback-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#18232b"/><stop offset="1" stopColor="#261b2c"/></linearGradient>
+          <filter id="bio-fallback-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="1200" height="760" fill="url(#bio-fallback-bg)" />
+        <polyline points={route.map(point => { const q = project(point.x, point.z, .35); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#34424b" strokeWidth="30" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={route.map(point => { const q = project(point.x, point.z, .42); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#58d7d0" strokeOpacity=".55" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="600" y="62" fill="#f3ead7" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="26">BIO UPGRADE / NIGHTLIFE CIRCUIT</text>
+        {boardSpaces.map(space => {
+          const center = p(space.number);
+          const accent = bioColor(space);
+          const isLandmark = space.type === 'MILESTONE' || space.type === 'GAMBLE' || space.type === 'CAREER_CHANGE';
+          return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
+            <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
+            <circle cx={center.x} cy={center.y} r={isLandmark ? 18 : 13} fill="#18232b" stroke={accent} strokeWidth={landingPosition === space.number ? 5 : 3} filter={space.deck ? 'url(#bio-fallback-glow)' : undefined} />
+            <text x={center.x} y={center.y + 4} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
+            {isLandmark && <text x={center.x} y={center.y - 23} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="10" fontWeight="800">{space.label}</text>}
+          </g>;
+        })}
+        <text x={p(0).x} y={p(0).y + 38} fill="#58d7d0" textAnchor="middle" fontFamily="sans-serif" fontSize="16" fontWeight="900">START</text>
+        <text x={p(75).x} y={p(75).y + 36} fill="#f36b9d" textAnchor="middle" fontFamily="sans-serif" fontSize="16" fontWeight="900">FINISH</text>
+        {players.map((player, index) => {
+          const pos = Math.max(0, Math.min(75, player.position));
+          const center = p(pos);
+          const atPosition = players.filter(candidate => candidate.position === player.position);
+          const offset = atPosition.findIndex(candidate => candidate.playerId === player.playerId);
+          return <g key={player.playerId} transform={`translate(${center.x + (offset - (atPosition.length - 1) / 2) * 15} ${center.y - 17})`}>
+            <circle r="8" fill={playerColors[index % playerColors.length]} stroke="#111a20" strokeWidth="2" />
+            <text y="3" textAnchor="middle" fill="#111a20" fontFamily="sans-serif" fontSize="7" fontWeight="900">{player.displayName.slice(0, 1).toUpperCase()}</text>
+          </g>;
+        })}
+      </svg>
+    </div>;
+  }
   return <div className="ru-board__static" data-testid="board-static-fallback">
-    <div className="ru-board__static-heading"><span>WEBGL2 UNAVAILABLE / CIRCUIT MAP ACTIVE</span><strong>The circuit remains live.</strong><p>This device cannot draw the 3D tabletop. The physical route, turns, and every runner are shown below.</p></div>
+    <div className="ru-board__static-heading"><span>WEBGL2 UNAVAILABLE / CIRCUIT MAP ACTIVE</span><strong>{isBio ? 'The after-hours route remains live.' : 'The circuit remains live.'}</strong><p>This device cannot draw the 3D tabletop. The route, turns, and every runner are shown below.</p></div>
     <svg className="ru-board__static-svg" viewBox={`${centerX - 600 / cameraZoom + pan.x * 19 + pan.z * 6} ${centerY - 380 / cameraZoom + pan.z * 15 - pan.x * 4} ${1200 / cameraZoom} ${760 / cameraZoom}`} role="img" aria-label="Isometric Redline circuit with all 75 raised spaces and live player positions">
       <defs>
         <pattern id="ru-circuit-grain" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0 0h12M0 0v12" fill="none" stroke="#a8c69a" strokeOpacity=".07" /></pattern>
@@ -63,9 +112,9 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
           return <line key={`perimeter-lane-${i}-${markIndex}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#b9c98f" strokeWidth="2" strokeLinecap="round" opacity=".74" />;
         });
       })}
-      <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.36); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#091915" strokeWidth="39" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.42); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#43644d" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points={ROUTE.map(p => { const q = project(p.x,p.z,.45); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#d4e981" strokeOpacity=".62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={route.map(p => { const q = project(p.x,p.z,.36); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#091915" strokeWidth="39" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={route.map(p => { const q = project(p.x,p.z,.42); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke={isBio ? '#58d7d0' : '#43644d'} strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={route.map(p => { const q = project(p.x,p.z,.45); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke={isBio ? '#f36b9d' : '#d4e981'} strokeOpacity=".62" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {ZONE_ANCHORS.map((anchor, i) => {
         const center = project(anchor.x, anchor.z, .19);
         const colors = ['#687553', '#526e5f', '#3e7772', '#866845', '#8e4b40'];
@@ -174,9 +223,9 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
         </g>;
       })}
       <polygon points={start.front} fill="#426046" /><polygon points={start.right} fill="#1a3427" /><polygon points={start.top} fill="#547454" stroke="#d4e981" strokeWidth="3" />
-      {(() => { const p = project(ROUTE[0].x,ROUTE[0].z,.81); return <g><path d={ICON_PATHS.start} transform={`translate(${p.x-7} ${p.y-32}) scale(.6)`} fill="none" stroke="#d4e981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">00 / LAUNCH PAD</text></g>; })()}
-      {BOARD_SPACES.map(space => {
-        const { x, z } = ROUTE[space.number];
+      {(() => { const p = project(route[0].x,route[0].z,.81); return <g><path d={ICON_PATHS.start} transform={`translate(${p.x-7} ${p.y-32}) scale(.6)`} fill="none" stroke={isBio ? '#58d7d0' : '#d4e981'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /><text x={p.x} y={p.y+4} textAnchor="middle" fill="#f0f0d6" fontFamily="Barlow Condensed, sans-serif" fontWeight="900" fontSize="19">START</text><text x={p.x} y={p.y+17} textAnchor="middle" fill="#d4e981" fontFamily="Space Mono, monospace" fontSize="8">{isBio ? 'BIO / 21+' : '00 / LAUNCH PAD'}</text></g>; })()}
+      {boardSpaces.map(space => {
+        const { x, z } = route[space.number];
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
          const visual = getSpaceVisual(space);
         const keyLabel = space.number === 1 ? null
@@ -280,7 +329,7 @@ export function BoardFallback({ players, activePlayerId, finishOrder = [], landi
       {players.map((player, playerIndex) => {
         const colocated = players.filter(p => p.position === player.position).sort((a,b) => a.slot-b.slot);
         const index = colocated.findIndex(p => p.playerId === player.playerId);
-        const pos = ROUTE[Math.max(0,Math.min(75,player.position))];
+        const pos = route[Math.max(0,Math.min(75,player.position))];
         const x = pos.x + (colocated.length > 1 ? (index%2 ? .43 : -.43) : 0);
         const z = pos.z + (colocated.length > 1 ? (index<2 ? -.43 : .43) : 0);
         const p = project(x,z,player.position === 0 ? 1.07 : 1.1);

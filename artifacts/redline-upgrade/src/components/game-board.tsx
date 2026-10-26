@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { BOARD_SPACES } from '../game/board-data';
+import { getBoardSpaces } from '../game/board-data';
 import { SpaceIcon } from './space-icon';
 import type { MatchPlayer } from '../game/match';
+import type { BoardId } from '../game/boards';
 import { ErrorBoundary } from './error-boundary';
 import { BoardScene, ROUTE } from './board-scene';
+import { BioBoardScene, BIO_ROUTE } from './bio-board-scene';
 import { BoardFallback } from './board-fallback';
 import './game-board.css';
 import './board-scene.css';
@@ -15,11 +17,17 @@ export interface GameBoardProps {
   landingPosition: number | null;
   movingPlayerId: string | null;
   finishOrder?: number[];
+  boardId?: BoardId;
 }
 
-const zones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
+const redlineZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
+const bioZones = ['NIGHTCLUB', 'CASINO ARCADE', 'VIP LOUNGE', 'HOLO BAR', 'ROOFTOP', 'FESTIVAL', 'THE ARENA'];
 
-export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [] }: GameBoardProps) {
+export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE' }: GameBoardProps) {
+  const isBio = boardId === 'BIO_UPGRADE';
+  const boardSpaces = getBoardSpaces(boardId);
+  const route = isBio ? BIO_ROUTE : ROUTE;
+  const zones = isBio ? bioZones : redlineZones;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -32,7 +40,10 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const active = players.find(p => p.playerId === activePlayerId);
   const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
-  const info = BOARD_SPACES[(hoveredSpace ?? selectedSpace ?? 0) - 1];
+  const info = boardSpaces[(hoveredSpace ?? selectedSpace ?? 0) - 1];
+  const activeZoneIndex = isBio
+    ? activePosition <= 10 ? 0 : activePosition <= 20 ? 1 : activePosition <= 30 ? 2 : activePosition <= 40 ? 3 : activePosition <= 50 ? 4 : activePosition <= 62 ? 5 : 6
+    : Math.min(4, Math.floor(Math.max(0, activePosition - 1) / 15));
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -86,9 +97,9 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (drag.current?.id === event.pointerId) drag.current = null;
   };
 
-  return <section className="ru-board ru-tabletop" aria-label="Redline Upgrade 75-space game board" data-testid="game-board">
+  return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
     <header className="ru-board__masthead">
-      <div><span className="ru-board__overline">CIRCUIT 01 / PHYSICAL EDITION</span><h2 className="ru-board__title">The redline circuit<span className="ru-board__title-slash"> / 75</span></h2></div>
+      <div><span className="ru-board__overline">{isBio ? 'BIO UPGRADE / 21+ ONLY' : 'CIRCUIT 01 / PHYSICAL EDITION'}</span><h2 className="ru-board__title">{isBio ? 'The after-hours circuit' : 'The redline circuit'}<span className="ru-board__title-slash"> / 75</span></h2></div>
       <div className="ru-board__controls" role="group" aria-label="Board camera">
         <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={() => { setOverview(true); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={overview}>01 / FULL CIRCUIT</button>
         <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => { setOverview(false); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
@@ -99,10 +110,10 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       </div>
     </header>
     <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
-      <div className="ru-board__stage-index" aria-hidden="true"><span>REDLINE / UPGRADE</span><span>TABLETOP  /  01—75</span></div>
+      <div className="ru-board__stage-index" aria-hidden="true"><span>{isBio ? 'BIO / UPGRADE' : 'REDLINE / UPGRADE'}</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
-      {webgl === false && <BoardFallback players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
-      {webgl === true && <ErrorBoundary resetKey="redline-tabletop" FallbackComponent={() => <BoardFallback players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
+      {webgl === false && <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
+      {webgl === true && <ErrorBoundary resetKey={`${boardId}-tabletop`} FallbackComponent={() => <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}>
         <Canvas
           aria-hidden="true"
           data-testid="board-canvas"
@@ -113,21 +124,23 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           dpr={[1, 1.6]}
           onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
         >
-          <BoardScene players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />
+          {isBio
+            ? <BioBoardScene players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />
+            : <BoardScene players={players} activePlayerId={activePlayerId} finishOrder={finishOrder} landingPosition={landingPosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}
         </Canvas>
       </ErrorBoundary>}
       <div className="ru-board__telemetry" aria-live="polite">
         <span>LIVE POSITION / {active?.displayName ?? 'RUNNER'}</span>
         <strong>{activePosition === 0 ? 'START' : String(activePosition).padStart(2, '0')}{activePosition > 0 && <small> / 75</small>}</strong>
-        <span>{activePosition === 0 ? 'LAUNCH PAD' : zones[Math.floor((activePosition - 1) / 15)]}</span>
+         <span>{activePosition === 0 ? (isBio ? 'CLUB ENTRANCE' : 'LAUNCH PAD') : zones[activeZoneIndex]}</span>
       </div>
       <div className="ru-board__minimap" aria-label="Complete circuit overview">
         <span className="ru-board__minimap-label">ROUTE / 00—75</span>
-        <svg viewBox="-25 -18 50 36" role="img" aria-label={`Circuit map, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
-          <polyline points={ROUTE.map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke="#516b58" strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />
-          <polyline points={ROUTE.slice(0, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke="#f96346" strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />
-          {[10, 20, 30, 45, 60, 75].map(n => <circle key={n} cx={ROUTE[n].x} cy={ROUTE[n].z} r=".52" fill="#f96346" />)}
-          <circle cx={ROUTE[activePosition].x} cy={ROUTE[activePosition].z} r=".92" fill="#d4e981" stroke="#14211c" strokeWidth=".3" />
+         <svg viewBox={isBio ? '-29 -19 58 38' : '-25 -18 50 36'} role="img" aria-label={`${isBio ? 'Bio Upgrade route' : 'Circuit map'}, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
+           <polyline points={route.map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#58d7d0' : '#516b58'} strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />
+           <polyline points={route.slice(0, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#f36b9d' : '#f96346'} strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />
+           {(isBio ? [10, 20, 30, 40, 50, 62, 75] : [10, 20, 30, 45, 60, 75]).map(n => <circle key={n} cx={route[n].x} cy={route[n].z} r=".52" fill={isBio ? '#f36b9d' : '#f96346'} />)}
+           <circle cx={route[activePosition].x} cy={route[activePosition].z} r=".92" fill="#d4e981" stroke="#14211c" strokeWidth=".3" />
         </svg>
         <span className="ru-board__minimap-endpoints"><span>START</span><span>FINISH</span></span>
       </div>
@@ -145,12 +158,12 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           ['gamble', 'Gamble'], ['upgrade-token', 'Upgrade Token'], ['event', 'Effect Space'], ['normal', 'Open Road'], ['start', 'Start'], ['finish', 'Finish'],
         ].map(([icon, label]) => <span key={label}><SpaceIcon name={icon} size={20} />{label}</span>)}</div>
       </details>
-      <span className="ru-board__scroll-cue">FIVE ZONES / ONE WAY FORWARD</span>
+       <span className="ru-board__scroll-cue">{isBio ? 'SEVEN ZONES / ONE WAY FORWARD' : 'FIVE ZONES / ONE WAY FORWARD'}</span>
     </footer>
     {/* Persistent DOM semantics: canvas is a drawing surface, not the source of game state. */}
     <div className="ru-board__accessible" aria-label="Board spaces and occupants">
       <div data-testid="board-start-pad" aria-label={`Start pad, ${players.filter(p => p.position === 0).length} players`}>Start pad, position zero</div>
-      {BOARD_SPACES.map(space => {
+      {boardSpaces.map(space => {
         const occupants = players.filter(p => p.position === space.number);
         return <button type="button" key={space.number} data-testid={`board-space-${space.number}`} onClick={() => setSelectedSpace(space.number)} aria-label={`Space ${space.number}, ${space.label}. ${space.description}${occupants.length ? ` Occupied by ${occupants.map(p => p.displayName).join(' and ')}.` : ''}${landingPosition === space.number ? ' Landing space.' : ''}`}>
           Space {space.number}: {space.payday ? 'PAYDAY + ' : ''}{space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}

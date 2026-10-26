@@ -17,7 +17,7 @@ export function applySalaryGate(
   position: number,
   context: EventContext = {},
 ): { match: Match; drafts: EventDraft[] } {
-  const space = getSpace(position);
+  const space = getSpace(position, match.boardId);
   if (!space?.payday || position <= previousPosition) return { match, drafts: [] };
   const player = match.players[playerIndex];
   const previousWealth = player.wealth;

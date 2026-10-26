@@ -617,6 +617,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
         finishOrder={match.finishOrder}
+         boardId={match.boardId}
        /></div>
         <aside className="game-dice-panel" aria-label="Turn status and dice">
           <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">

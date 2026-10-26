@@ -488,6 +488,7 @@ function NotFound() {
 }
 
 function BoardVisualPreview() {
+  const { selectedBoardId } = useGame();
   const previewMatch = useMemo(() => createMatch(characters[0].id), []);
   const previewPlayers = previewMatch.players.map((player, index) => ({
     ...player,
@@ -501,7 +502,7 @@ function BoardVisualPreview() {
         <div className="board-preview-banner mono" role="note" data-testid="text-board-visual-preview">
           BOARD VISUAL PREVIEW / SAMPLE PIECE PLACEMENT / NO GAME STATE CHANGED
         </div>
-        <GameBoard players={previewPlayers} activePlayerId={activePlayer.playerId} landingPosition={null} movingPlayerId={null} />
+        <GameBoard boardId={selectedBoardId} players={previewPlayers} activePlayerId={activePlayer.playerId} landingPosition={null} movingPlayerId={null} />
       </main>
     </AppShell>
   );

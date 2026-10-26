@@ -216,7 +216,7 @@ function finishPlayersAtLine(match: Match): Match {
     };
   });
   const currentPlayerFinished = newlyFinished.includes(match.turnIndex);
-  const currentSpace = getSpace(75);
+  const currentSpace = getSpace(75, match.boardId);
   if (currentPlayerFinished) {
     drafts.push({ type: 'TURN_END', playerIndex: match.turnIndex });
   }
@@ -538,7 +538,7 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
 function resume(match: Match): Match {
   const current = match.players[match.turnIndex];
   if (match.stepsRemaining > 0 && current.position < 75) return { ...match, phase: 'moving', pending: null };
-  const space = getSpace(current.position);
+  const space = getSpace(current.position, match.boardId);
   if (!space) throw new Error('Missing decision space');
   return { ...match, phase: 'landed', stepsRemaining: 0, lastLanding: { playerIndex: match.turnIndex, space }, pending: null };
 }
@@ -572,7 +572,7 @@ function assignNewCareer(match: Match, careerId: string): [Match, EventDraft[]] 
 function finishStep(match: Match, previousPosition: number): Match {
   if (match.phase !== 'moving') return match;
   const current = match.players[match.turnIndex];
-  const space = getSpace(current.position);
+  const space = getSpace(current.position, match.boardId);
   if (!space) throw new Error(`Invalid movement position: ${current.position}`);
   if (space.type === 'CAREER_CHANGE') {
     if (space.number === 35 && current.careerId === 'gig-worker' && current.secondCareer) {
@@ -1225,7 +1225,7 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
     newPosition: position,
     spaceNumber: position,
   }];
-  const space = getSpace(position);
+  const space = getSpace(position, match.boardId);
   if (!space) return drafts;
   if (hitPayday) {
     drafts.push({
@@ -1288,7 +1288,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'MOVE': {
       if (match.phase !== 'reveal' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       if (match.players[match.turnIndex].position < 75) return { ...match, phase: 'moving' };
-      const space = getSpace(75);
+      const space = getSpace(75, match.boardId);
       if (!space) throw new Error('Missing finish space');
       return land(match, space, 75);
     }
@@ -1297,7 +1297,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const current = match.players[match.turnIndex];
       const previousPosition = current.position;
       const position = Math.min(75, current.position + 1);
-      const space = getSpace(position);
+      const space = getSpace(position, match.boardId);
       if (!space) throw new Error(`Invalid movement position: ${position}`);
       let moved: Match = {
         ...match,
