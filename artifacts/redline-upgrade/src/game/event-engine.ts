@@ -10,7 +10,7 @@ import type { AnyGameEvent, EventLogEntry, EventSource, GameEventType } from './
 import type { AbilityPendingDecision, Match, MatchPlayer, RewardModifierState } from './match';
 import { applySalaryGate } from './movement-events';
 import type { PlayerStat } from './player';
-import { drawCardFromPiles } from './card-piles';
+import { drawCardFromPiles, drawTwoDistinctCardsFromPiles } from './card-piles';
 
 const MAX_EVENT_DEPTH = 6;
 const MAX_EVENT_CHAIN = 48;
@@ -791,24 +791,39 @@ function applyMovePlayerEffect(match: Match, queue: EventDraft[], actor: MatchPl
         lastLanding: landing,
       };
     } else if (finalSpace.deck) {
-      const draw = drawCardFromPiles(state.cardPiles, finalSpace.deck);
-      queue.push({
-        type: 'CARD_DRAW',
-        playerIndex: targetIndex,
-        source: 'EFFECT',
-        sourceEventId: event.id,
-        abilityId: event.abilityId,
-        depth: event.depth + 1,
-        spaceNumber: finalSpace.number,
-        deck: finalSpace.deck,
-        cardId: draw.cardId,
-      });
+      const gamble = finalSpace.deck === 'gamble'
+        ? drawTwoDistinctCardsFromPiles(state.cardPiles, finalSpace.deck)
+        : undefined;
+      const draw = gamble
+        ? { cardId: gamble.cardIds[0], cardPiles: gamble.cardPiles }
+        : drawCardFromPiles(state.cardPiles, finalSpace.deck);
+      const offeredCardIds = gamble?.cardIds;
+      for (const cardId of offeredCardIds ?? [draw.cardId]) {
+        queue.push({
+          type: 'CARD_DRAW',
+          playerIndex: targetIndex,
+          source: 'EFFECT',
+          sourceEventId: event.id,
+          abilityId: event.abilityId,
+          depth: event.depth + 1,
+          spaceNumber: finalSpace.number,
+          deck: finalSpace.deck,
+          cardId,
+        });
+      }
       state = {
         ...state,
         cardPiles: draw.cardPiles,
         turnIndex: targetIndex,
         phase: 'decision',
-        pending: { kind: 'CARD', deck: finalSpace.deck, space: finalSpace.number, cardId: draw.cardId, stage: 'draw' },
+        pending: {
+          kind: 'CARD',
+          deck: finalSpace.deck,
+          space: finalSpace.number,
+          cardId: draw.cardId,
+          stage: offeredCardIds ? 'choice' : 'draw',
+          offeredCardIds,
+        },
         lastLanding: landing,
       };
     } else if (targetIndex === state.turnIndex) {

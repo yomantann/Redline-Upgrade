@@ -8,7 +8,7 @@ import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
 import type { EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
-import { createCardPiles, discardCardToPiles, drawCardFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
+import { createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinctCardsFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
 import { getCard } from './cards';
 import {
   calculateEndgameBaseValue,
@@ -384,7 +384,7 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     abilityUsage: {},
     effectProtections: {},
     rewardModifiers: {},
-    cardPiles: createCardPiles(),
+    cardPiles: createCardPiles(boardId),
   };
   const startingTokenEvents = match.players.flatMap((player, playerIndex) => {
     const career = careers.find((item) => item.id === player.careerId);
@@ -518,18 +518,23 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
     return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }
   if (space.deck) {
-    const first = drawCardFromPiles(match.cardPiles, space.deck);
-    const draw = space.deck === 'gamble' ? drawCardFromPiles(first.cardPiles, space.deck) : first;
-    const offeredCardIds = space.deck === 'gamble' ? [first.cardId, draw.cardId] : undefined;
-    drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: first.cardId });
-    if (offeredCardIds) drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId: draw.cardId });
+    const gamble = space.deck === 'gamble'
+      ? drawTwoDistinctCardsFromPiles(match.cardPiles, space.deck)
+      : undefined;
+    const draw = gamble
+      ? { cardId: gamble.cardIds[0], cardPiles: gamble.cardPiles }
+      : drawCardFromPiles(match.cardPiles, space.deck);
+    const offeredCardIds = gamble?.cardIds;
+    for (const cardId of offeredCardIds ?? [draw.cardId]) {
+      drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId });
+    }
     return emit({
       ...match,
       cardPiles: draw.cardPiles,
       phase: 'decision',
       stepsRemaining: 0,
       lastLanding: landing,
-      pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: first.cardId, stage: offeredCardIds ? 'choice' : 'draw', offeredCardIds },
+      pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: draw.cardId, stage: offeredCardIds ? 'choice' : 'draw', offeredCardIds },
     }, drafts);
   }
   return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);

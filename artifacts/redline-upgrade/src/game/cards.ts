@@ -2,8 +2,17 @@ import type { CareerCategoryTag } from './careers';
 import type { EffectType } from './abilities';
 import type { DeckId } from './decks';
 import type { PlayerStat } from './player';
+import type { BoardId } from './boards';
+import { bioPartyCards } from './bio-party-cards';
 
 export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER' | 'ALL_OPPONENTS';
+export type PartyTarget = 'SELF' | 'SELECTED_PLAYER' | 'SELF_AND_SELECTED' | 'TWO_SELECTED_PLAYERS' | 'ALL_PLAYERS';
+export interface PartyChallenge {
+  target: PartyTarget;
+  prompt: string;
+  flow: 'CONFIRM' | 'CHOICE' | 'VOTE';
+  safetyNote: string;
+}
 
 export type CardEffect =
   | { kind: 'STAT'; stat: PlayerStat; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
@@ -18,6 +27,8 @@ export type CardEffect =
 export interface CardDefinition {
   id: string;
   deck: DeckId;
+  boardId?: BoardId;
+  drawCopies?: number;
   title: string;
   description: string;
   effect: string;
@@ -27,6 +38,7 @@ export interface CardDefinition {
   /** Unique visual concept used to create this card's art; never shown as gameplay copy. */
   artCue: string;
   artworkPath: string;
+  partyChallenge?: PartyChallenge;
 }
 
 const stat = (statName: PlayerStat, amount: number, target: CardTarget = 'SELF', careerTag?: CareerCategoryTag): CardEffect => ({
@@ -188,6 +200,12 @@ export const cards: readonly CardDefinition[] = [
   card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, recover a missed milestone at random, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
 ];
 
-export const cardsForDeck = (deck: DeckId): readonly CardDefinition[] => cards.filter(card => card.deck === deck);
+export const allCards: readonly CardDefinition[] = [...cards, ...bioPartyCards];
+
+export function cardsForDeck(deck: DeckId, boardId: BoardId = 'REDLINE_UPGRADE'): readonly CardDefinition[] {
+  const boardCards = boardId === 'BIO_UPGRADE' ? bioPartyCards : boardId === 'REDLINE_UPGRADE' ? cards : [];
+  return boardCards.filter(card => card.deck === deck);
+}
+
 export const examplesForDeck = cardsForDeck;
-export const getCard = (cardId: string): CardDefinition | undefined => cards.find(card => card.id === cardId);
+export const getCard = (cardId: string): CardDefinition | undefined => allCards.find(card => card.id === cardId);

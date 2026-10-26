@@ -35,7 +35,7 @@ try {
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
-  const { assertCompleteCardPiles, drawCardFromPiles } = await vite.ssrLoadModule('/src/game/card-piles.ts');
+  const { assertCompleteCardPiles, createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinctCardsFromPiles, returnCardToBottom } = await vite.ssrLoadModule('/src/game/card-piles.ts');
   const { resolveEventQueue } = await vite.ssrLoadModule('/src/game/event-engine.ts');
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
@@ -627,6 +627,67 @@ try {
     assert.equal(cardsForDeck(deck.id).length, expectedDeckCounts[deck.id], `${deck.name} contains its updated cards`);
     assert.equal(deck.count, expectedDeckCounts[deck.id], `${deck.name} reports its updated card count`);
   }
+  const bioDefinitionCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 12, influence: 11, gamble: 11 };
+  const bioEntryCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 14, influence: 12, gamble: 12 };
+  const bioCards = decks.flatMap(deck => cardsForDeck(deck.id, 'BIO_UPGRADE'));
+  assert.equal(bioCards.length, 64, 'Bio defines 64 unique social-only cards');
+  assert.equal(new Set(bioCards.map(card => card.id)).size, 64, 'Bio card definition IDs are unique');
+  assert.equal(new Set(bioCards.map(card => card.title)).size, 64, 'Bio card titles are unique');
+  assert(bioCards.every(card => card.boardId === 'BIO_UPGRADE' && card.effects.length === 0 && card.partyChallenge), 'Bio cards are Bio-only, carry a party prompt, and have no gameplay effects');
+  assert(bioCards.every(card => card.partyChallenge.safetyNote.includes('pass with no penalty')), 'every Bio prompt includes an opt-out safety note');
+  for (const deck of decks) {
+    const deckCards = cardsForDeck(deck.id, 'BIO_UPGRADE');
+    assert.equal(deckCards.length, bioDefinitionCounts[deck.id], `Bio ${deck.name} has the intended unique card count`);
+    assert.equal(deckCards.reduce((total, card) => total + (card.drawCopies ?? 1), 0), bioEntryCounts[deck.id], `Bio ${deck.name} draw pool has the intended weighted entry count`);
+    assert(deckCards.every(card => !cardsForDeck(deck.id).some(redlineCard => redlineCard.id === card.id)), `Bio ${deck.name} is isolated from Redline`);
+  }
+  const bioCopies = new Map(bioCards.filter(card => (card.drawCopies ?? 1) > 1).map(card => [card.id, card.drawCopies]));
+  assert.deepEqual([...bioCopies.entries()].sort(), [
+    ['bio-bottoms-up', 2], ['bio-hydrate', 2], ['bio-linked-systems-special', 2], ['bio-water-round', 2],
+  ]);
+  const bioSpecialPrompts = {
+    'bio-hydrate': 'Group hydration check! Everyone takes one sip of their drink or water.',
+    'bio-bottoms-up': "You're in the hot seat! Give your best victory toast, then take a celebratory sip or complete a group-approved dare.",
+    'bio-linked-systems-special': 'Choose your drinking partner! You and your partner each take a sip together right now.',
+    'bio-water-round': "You're the hydration hero! Choose one player to receive a glass of water. Raise your glasses together!",
+  };
+  for (const [id, prompt] of Object.entries(bioSpecialPrompts)) {
+    assert.equal(bioCards.find(card => card.id === id)?.partyChallenge?.prompt, prompt, `${id} retains its specified prompt`);
+  }
+  const bioPiles = createCardPiles('BIO_UPGRADE');
+  assertCompleteCardPiles(bioPiles);
+  assert.equal(decks.reduce((total, deck) => total + bioPiles[deck.id].drawPile.length, 0), 68, 'Bio draw piles contain all 68 weighted entries');
+  const hydrationId = 'bio-hydrate';
+  const lifePile = bioPiles.lifestyle;
+  const orderedBioPiles = {
+    ...bioPiles,
+    lifestyle: {
+      ...lifePile,
+      drawPile: [hydrationId, hydrationId, ...lifePile.drawPile.filter(id => id !== hydrationId)],
+    },
+  };
+  const firstHydrate = drawCardFromPiles(orderedBioPiles, 'lifestyle');
+  const secondHydrate = drawCardFromPiles(firstHydrate.cardPiles, 'lifestyle');
+  assert.deepEqual(secondHydrate.cardPiles.lifestyle.inFlight, [hydrationId, hydrationId], 'duplicate special copies can be in flight at once');
+  const oneHydrateDiscarded = discardCardToPiles(secondHydrate.cardPiles, 'lifestyle', hydrationId);
+  assert.deepEqual(oneHydrateDiscarded.lifestyle.inFlight, [hydrationId], 'discarding one duplicate preserves the other in-flight copy');
+  const otherHydrateReturned = returnCardToBottom(oneHydrateDiscarded, 'lifestyle', hydrationId);
+  assert.equal(otherHydrateReturned.lifestyle.inFlight.length, 0, 'returning one duplicate removes only that copy');
+  assert.equal(otherHydrateReturned.lifestyle.drawPile.at(-1), hydrationId, 'returned duplicate is placed at the bottom');
+  assertCompleteCardPiles(otherHydrateReturned, 'BIO_UPGRADE');
+  const bottomsId = 'bio-bottoms-up';
+  const gamblePile = bioPiles.gamble;
+  const orderedGamblePiles = {
+    ...bioPiles,
+    gamble: {
+      ...gamblePile,
+      drawPile: [bottomsId, bottomsId, ...gamblePile.drawPile.filter(id => id !== bottomsId)],
+    },
+  };
+  const distinctGamble = drawTwoDistinctCardsFromPiles(orderedGamblePiles, 'gamble');
+  assert.notEqual(distinctGamble.cardIds[0], distinctGamble.cardIds[1], 'a Gamble choice reveals two distinct card definitions despite duplicate copies');
+  assert.equal(distinctGamble.cardPiles.gamble.drawPile.at(-1), bottomsId, 'the duplicate Gamble card not offered is returned to the bottom');
+  assertCompleteCardPiles(distinctGamble.cardPiles, 'BIO_UPGRADE');
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
   const validDecks = new Set(decks.map(deck => deck.id));
