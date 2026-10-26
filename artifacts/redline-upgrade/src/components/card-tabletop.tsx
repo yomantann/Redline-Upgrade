@@ -97,7 +97,7 @@ export function CardTabletop({
               {offeredCards.map((card) => isCPU ? (
                 <div className="card-choice-option" key={card.id}>{card.partyChallenge ? <div className="bio-party-card"><b>{card.title}</b><p>{card.partyChallenge.prompt}</p></div> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span></div>
               ) : (
-                <button className="card-choice-option" type="button" key={card.id} disabled={!minimumReadTimeComplete} onClick={() => onChooseGambleCard?.(card.id)} data-testid={`choose-gamble-${card.id}`}>
+                <button className="card-choice-option" type="button" key={card.id} disabled={!minimumReadTimeComplete || !partyCanAct} onClick={() => onChooseGambleCard?.(card.id)} data-testid={`choose-gamble-${card.id}`}>
                   {card.partyChallenge ? <div className="bio-party-card"><b>{card.title}</b><p>{card.partyChallenge.prompt}</p></div> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span><b>CHOOSE THIS CARD</b>
                 </button>
               ))}

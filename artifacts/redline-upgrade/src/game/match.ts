@@ -952,10 +952,10 @@ function resolvePartyChallenge(match: Match, participantIds: string[], passed: b
   const challenge = card?.partyChallenge;
   if (!challenge || card?.boardId !== 'BIO_UPGRADE') return match;
   const uniqueIds = [...new Set(participantIds)];
-  if (passed) return participantIds.length === 0 ? resume(match) : match;
+  if (passed && participantIds.length !== 0) return match;
   const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
     : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
-  if (uniqueIds.length !== required) return match;
+  if (!passed && uniqueIds.length !== required) return match;
   const eligibleIds = new Set(match.players.filter((player, index) => index !== match.turnIndex).map(player => player.playerId));
   if (uniqueIds.some(id => !eligibleIds.has(id))) return match;
   const names = uniqueIds.map(id => match.players.find(player => player.playerId === id)?.displayName).filter(Boolean);
@@ -1152,8 +1152,10 @@ function autoDecide(match: Match): Match {
     if (challenge) {
       const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
         : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
-      const participantIds = match.players.filter((candidate, index) => index !== decisionPlayerIndex).slice(0, required).map(candidate => candidate.playerId);
-      return resolvePartyChallenge(match, participantIds, false);
+      const available = match.players.filter((candidate, index) => index !== decisionPlayerIndex);
+      const passed = available.length < required;
+      const participantIds = passed ? [] : available.slice(0, required).map(candidate => candidate.playerId);
+      return resolvePartyChallenge(match, participantIds, passed);
     }
   }
   if (pending.kind === 'ABILITY') {

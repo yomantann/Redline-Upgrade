@@ -688,7 +688,7 @@ try {
     cardPiles: partyInFlightPiles,
     phase: 'decision',
     pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: partyCardId, stage: 'draw' },
-    players: partyBase.players.map(player => ({ ...player, isCPU: false })),
+    players: partyBase.players.map(player => ({ ...player, isCPU: false, position: 1 })),
   };
   const partyShown = advanceMatch(partyFixture, { type: 'RESOLVE_CARD' });
   assert.equal(partyShown.pending.stage, 'resolved', 'Bio party card reveals before target selection');
@@ -697,12 +697,28 @@ try {
   assert.equal(advanceMatch(partyShown, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false }), partyShown, 'missing a required party target is rejected');
   const partyCompleted = advanceMatch(partyShown, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [partyShown.players[1].playerId], passed: false });
   assert.equal(partyCompleted.phase, 'landed', 'a valid social challenge completes the decision');
-  assert.match(partyCompleted.eventLog.at(-1).detail, /completed the Bio party challenge.*Participants: CPU 1/);
+  assert.match(partyCompleted.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /completed the Bio party challenge.*Participants: CPU 1/);
   const partyPassed = advanceMatch(partyShown, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: true });
   assert.equal(partyPassed.phase, 'landed', 'passing never blocks turn progress');
-  assert.match(partyPassed.eventLog.at(-1).detail, /passed the Bio party challenge/);
+  assert.match(partyPassed.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /passed the Bio party challenge/);
   const cpuPartyShown = { ...partyShown, players: partyShown.players.map(player => ({ ...player, isCPU: true })) };
   assert.equal(advanceMatch(cpuPartyShown, { type: 'AUTO_DECIDE' }).phase, 'landed', 'CPU resolves a Bio party challenge automatically');
+  const undersizedCpuParty = {
+    ...cpuPartyShown,
+    players: cpuPartyShown.players.slice(0, 2),
+    pending: { ...cpuPartyShown.pending, cardId: 'bio-receipt-check' },
+  };
+  assert.equal(advanceMatch(undersizedCpuParty, { type: 'AUTO_DECIDE' }).phase, 'landed', 'CPU passes a challenge requiring more participants than the match has instead of stalling');
+  const partyCardMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
+    activeDeck: 'wealth',
+    activeCard: bioCards.find(card => card.id === partyCardId),
+    cardStage: 'resolved',
+    partyPlayers: partyBase.players,
+    partyActorId: partyBase.players[0].playerId,
+    onResolvePartyChallenge: () => {},
+  }));
+  assert(partyCardMarkup.includes('Choose a player to give a 10-second review'), 'Bio prompt is displayed instead of missing Redline card art');
+  assert(partyCardMarkup.includes('PASS / NO PENALTY') && partyCardMarkup.includes('bio-party-targets'), 'party UI presents a no-penalty pass and target selection');
   assertCompleteCardPiles(bioPiles);
   assert.equal(decks.reduce((total, deck) => total + bioPiles[deck.id].drawPile.length, 0), 68, 'Bio draw piles contain all 68 weighted entries');
   const hydrationId = 'bio-hydrate';
@@ -2021,6 +2037,7 @@ try {
       cardPiles: partyShown.cardPiles,
       phase: 'decision',
       pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: partyCardId, stage: 'resolved' },
+      players: mpMatch.players.map(player => ({ ...player, position: 1 })),
     };
     const partyMpState = createMultiplayerState(partyMpMatch, ['u0', 'u1']);
     assert.equal(applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [mpMatch.players[0].playerId], passed: false }).reason, 'ILLEGAL_ACTION', 'multiplayer rejects selecting yourself as another participant');
