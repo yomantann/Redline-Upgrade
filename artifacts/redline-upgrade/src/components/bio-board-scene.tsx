@@ -39,7 +39,6 @@ const TILE_LABELS = [
   'Arena entry', 'Light the floor', 'Crowd wave', 'Sound clash', 'Stage rush', 'Spotlight round', 'All-star pass', 'Final encore', 'Champion lane', 'Victory lap', 'Hall of fame', 'Last call', 'Finish line',
 ] as const;
 
-const TILE_SIGNS = ['✦', '◈', '⌁', '◆', '○', '✧', '▰', '△', '⊙', '✚'];
 const ZONE_COLORS = ZONES.map(zone => zone.color);
 const COLORS = {
   board: '#18232b',
@@ -72,29 +71,6 @@ function getSpaceAccent(space: BoardSpace, zoneAccent: string): string {
   if (space.type === 'MILESTONE') return '#f36b9d';
   if (space.type === 'NORMAL') return '#879198';
   return zoneAccent;
-}
-
-function getSpaceRole(space: BoardSpace): string {
-  if (space.number === 1) return 'START';
-  if (space.type === 'CARD') return `${space.deck?.toUpperCase() ?? 'CARD'} CARD`;
-  if (space.type === 'SALARY_GATE') return 'SALARY GATE';
-  if (space.type === 'GAMBLE') return 'GAMBLE CARD';
-  if (space.type === 'UPGRADE_TOKEN') return 'UPGRADE TOKEN';
-  if (space.type === 'CAREER_CHANGE') return 'CAREER SWITCH';
-  if (space.type === 'MILESTONE') return 'MILESTONE';
-  return 'STANDARD SPACE';
-}
-
-function getSpaceSymbol(space: BoardSpace, fallback: string): string {
-  if (space.type === 'NORMAL') return '—';
-  if (space.type === 'CARD' && space.deck === 'wealth') return '$';
-  if (space.type === 'SALARY_GATE') return 'PAY';
-  if (space.type === 'CARD') return 'CARD';
-  if (space.type === 'GAMBLE') return 'GMB';
-  if (space.type === 'UPGRADE_TOKEN') return 'TOK';
-  if (space.type === 'CAREER_CHANGE') return 'SWAP';
-  if (space.type === 'MILESTONE') return '★';
-  return fallback;
 }
 
 const routeCurve = new THREE.CatmullRomCurve3([
@@ -164,130 +140,82 @@ function makeLabelTexture(title: string, detail: string, accent: string, width =
   return texture;
 }
 
-function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string, accent: string) {
+function makeTileTexture(space: BoardSpace, label: string, accent: string) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 320;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
-  ctx.fillStyle = '#1a252c';
-  ctx.beginPath();
-  ctx.roundRect(8, 8, 496, 304, 28);
-  ctx.fill();
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.roundRect(12, 12, 488, 296, 25);
-  ctx.stroke();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = accent;
+  ctx.font = '700 42px monospace';
+  ctx.fillText(String(space.number).padStart(2, '0'), 42, 76);
+
   if (space.type === 'CARD' || space.type === 'GAMBLE') {
     const deck = space.type === 'GAMBLE' ? 'gamble' : space.deck;
     ctx.save();
-    ctx.translate(356, 160);
+    ctx.translate(376, 82);
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
-    ctx.lineWidth = 16;
+    ctx.lineWidth = 12;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     if (deck === 'wealth') {
-      ctx.beginPath(); ctx.arc(0, 0, 75, 0, Math.PI * 2); ctx.stroke();
-      ctx.font = '900 112px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 4);
+      ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = '900 55px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 3);
     } else if (deck === 'ai') {
-      ctx.strokeRect(-62, -62, 124, 124);
-      for (const [x, y] of [[-91, -34], [-91, 34], [91, -34], [91, 34], [-34, -91], [34, -91], [-34, 91], [34, 91]]) {
-        ctx.beginPath(); ctx.moveTo(Math.max(-61, Math.min(61, x)), Math.max(-61, Math.min(61, y))); ctx.lineTo(x, y); ctx.stroke();
-        ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeRect(-30, -30, 60, 60);
+      for (const [x, y] of [[-45,-16],[-45,16],[45,-16],[45,16],[-16,-45],[16,-45],[-16,45],[16,45]]) {
+        ctx.beginPath(); ctx.moveTo(Math.max(-30, Math.min(30, x)), Math.max(-30, Math.min(30, y))); ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.font = '900 68px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AI', 0, 4);
+      ctx.font = '900 38px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AI', 0, 3);
     } else if (deck === 'fame') {
       ctx.beginPath();
       for (let i = 0; i < 10; i++) {
         const angle = -Math.PI / 2 + i * Math.PI / 5;
-        const radius = i % 2 ? 36 : 82;
+        const radius = i % 2 ? 17 : 39;
         const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
         i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
       }
       ctx.closePath(); ctx.fill();
     } else if (deck === 'lifestyle') {
-      ctx.beginPath(); ctx.moveTo(0, -88); ctx.lineTo(64, 0); ctx.lineTo(0, 88); ctx.lineTo(-64, 0); ctx.closePath(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-100, 0); ctx.lineTo(-70, 0); ctx.moveTo(70, 0); ctx.lineTo(100, 0); ctx.moveTo(0, -112); ctx.lineTo(0, -95); ctx.moveTo(0, 95); ctx.lineTo(0, 112); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(29, 0); ctx.lineTo(0, 40); ctx.lineTo(-29, 0); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-45, 0); ctx.lineTo(-31, 0); ctx.moveTo(31, 0); ctx.lineTo(45, 0); ctx.moveTo(0, -49); ctx.lineTo(0, -42); ctx.moveTo(0, 42); ctx.lineTo(0, 49); ctx.stroke();
     } else if (deck === 'influence') {
-      for (const [x, y] of [[-58, 0], [45, -58], [45, 58]]) {
-        ctx.beginPath(); ctx.arc(x, y, 27, 0, Math.PI * 2); ctx.fill();
+      for (const [x, y] of [[-27, 0], [21, -27], [21, 27]]) {
+        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.beginPath(); ctx.moveTo(-31, -9); ctx.lineTo(20, -46); ctx.moveTo(-31, 9); ctx.lineTo(20, 46); ctx.moveTo(45, -31); ctx.lineTo(45, 31); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-15, -4); ctx.lineTo(9, -21); ctx.moveTo(-15, 4); ctx.lineTo(9, 21); ctx.moveTo(21, -15); ctx.lineTo(21, 15); ctx.stroke();
     } else {
-      ctx.beginPath(); ctx.roundRect(-68, -68, 136, 136, 22); ctx.stroke();
-      for (const [x, y] of [[-34,-34],[34,-34],[0,0],[-34,34],[34,34]]) {
-        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-32, -32, 64, 64, 12); ctx.stroke();
+      for (const [x, y] of [[-16,-16],[16,-16],[0,0],[-16,16],[16,16]]) {
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
       }
     }
     ctx.restore();
-    ctx.fillStyle = accent;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.font = '700 42px monospace';
-    ctx.fillText(String(space.number).padStart(2, '0'), 36, 160);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 4;
-    return texture;
-  }
-  const special = space.type !== 'NORMAL';
-  if (special) {
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.roundRect(24, 93, 464, 48, 14);
-    ctx.fill();
-    ctx.fillStyle = '#101820';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '800 24px monospace';
-    ctx.fillText(getSpaceRole(space), 256, 117, 440);
-  }
-  ctx.fillStyle = accent;
-  ctx.font = '700 42px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(space.number).padStart(2, '0'), 36, 60);
-  ctx.textAlign = 'right';
-  const icon = space.type === 'NORMAL' ? '—' : getSpaceSymbol(space, fallbackIcon);
-  ctx.font = `700 ${icon.length > 2 ? 33 : 54}px sans-serif`;
-  if (space.type === 'UPGRADE_TOKEN') {
+  } else if (space.type === 'UPGRADE_TOKEN') {
     ctx.save();
-    ctx.translate(462, 60);
+    ctx.translate(376, 82);
     ctx.strokeStyle = accent;
-    ctx.fillStyle = accent;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 6;
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = -Math.PI / 2 + i * Math.PI / 3;
-      const x = Math.cos(angle) * 25, y = Math.sin(angle) * 25;
+      const x = Math.cos(angle) * 31, y = Math.sin(angle) * 31;
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
     }
     ctx.closePath(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(0, -11); ctx.lineTo(0, 11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(14, 0); ctx.moveTo(0, -14); ctx.lineTo(0, 14); ctx.stroke();
     ctx.restore();
-  } else {
-    ctx.fillText(icon, 467, 60);
   }
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#f3ead7';
-  ctx.font = `900 ${special ? 47 : 57}px "Arial Narrow", sans-serif`;
-  if (space.type === 'NORMAL' && space.number !== 1) {
-    ctx.fillText('STANDARD SPACE', 256, 192, 440);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 4;
-    return texture;
-  }
-  const words = label.toUpperCase().split(' ');
-  if (label.length > 12 && words.length > 1) {
-    const last = words.pop();
-    ctx.fillText(words.join(' '), 256, special ? 198 : 160, 430);
-    ctx.fillText(last ?? '', 256, special ? 250 : 224, 430);
-  } else {
-    ctx.fillText(label.toUpperCase(), 256, special ? 225 : 192, 440);
-  }
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = space.type === 'NORMAL' ? '#d8deda' : accent;
+  ctx.font = `800 ${label.length > 15 ? 28 : 34}px "Arial Narrow", sans-serif`;
+  ctx.fillText(label.toUpperCase(), 256, 282, 456);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -351,72 +279,53 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
 }) {
   const number = space.number;
   const label = space.type === 'NORMAL' ? (number === 1 ? 'START' : 'STANDARD SPACE') : space.label;
-  const texture = useMemo(() => makeTileTexture(space, label, TILE_SIGNS[(number - 1) % TILE_SIGNS.length], accent), [space, label, accent]);
+  const texture = useMemo(() => makeTileTexture(space, label, accent), [space, label, accent]);
   const next = BIO_ROUTE[number];
   const previous = BIO_ROUTE[number - 2] ?? BIO_ROUTE[0];
   const angle = Math.atan2((next?.x ?? point.x) - (previous?.x ?? point.x), (next?.z ?? point.z) - (previous?.z ?? point.z));
-  const baseColor = space.type === 'SALARY_GATE' ? '#37342a'
-    : space.type === 'CARD' ? '#202d32'
-      : space.type === 'GAMBLE' ? '#38272e'
-        : space.type === 'UPGRADE_TOKEN' ? '#2e293c'
-          : COLORS.tile;
-  return <group position={[point.x, 0.12, point.z]} rotation={[0, angle, 0]}>
-    <mesh position={[0, -0.12, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.14, 0.28, 1.58]} />
-      <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : baseColor} metalness={0.46} roughness={0.3} />
+  const tileColor = space.type === 'CARD' ? '#202d32'
+    : space.type === 'GAMBLE' ? '#38272e'
+      : space.type === 'UPGRADE_TOKEN' ? '#2e293c'
+        : space.type === 'SALARY_GATE' ? '#37342a' : '#30423b';
+  const edgeColor = landing || active ? '#d4e981' : accent;
+  return <group position={[point.x, 0, point.z]} rotation={[0, angle, 0]}>
+    <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
+      <boxGeometry args={[2, 0.24, 1.84]} />
+      <meshStandardMaterial color="#101a19" metalness={0.55} roughness={0.52} />
     </mesh>
-    <mesh position={[0, 0.035, 0]}>
-      <planeGeometry args={[2.03, 1.48]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
+    <mesh position={[0, 0.56, 0]}>
+      <boxGeometry args={[2.06, 0.035, 1.9]} />
+      <meshStandardMaterial color={edgeColor} metalness={0.68} roughness={0.34} emissive={edgeColor} emissiveIntensity={0.08} />
     </mesh>
-    {(active || landing) && <mesh position={[0, 0.045, 0]}>
-      <planeGeometry args={[2.24, 1.7]} />
+    <mesh position={[0, 0.63, 0]} castShadow receiveShadow>
+      <boxGeometry args={[1.9, 0.12, 1.74]} />
+      <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : tileColor} metalness={0.46} roughness={0.3} />
+    </mesh>
+    <mesh position={[0, 0.70, 0]}>
+      <planeGeometry args={[1.86, 1.62]} />
+      <meshBasicMaterial map={texture} transparent toneMapped={false} depthWrite={false} />
+    </mesh>
+    {(active || landing) && <mesh position={[0, 0.705, 0]}>
+      <planeGeometry args={[1.9, 1.66]} />
       <meshBasicMaterial color={landing ? '#f7bd71' : '#b1ede1'} transparent opacity={0.17} depthWrite={false} />
     </mesh>}
-    {(space.type === 'CARD' || space.type === 'GAMBLE') && <group position={[0.58, 0.06, -0.35]}>
-      <mesh position={[0, 0.035, 0]} castShadow>
-        <cylinderGeometry args={[0.27, 0.3, 0.09, 8]} />
-        <meshStandardMaterial color="#111a20" metalness={0.72} roughness={0.32} />
-      </mesh>
-      <mesh position={[0, 0.09, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 0.045, 8]} />
-        <meshStandardMaterial color={accent} metalness={0.55} roughness={0.28} emissive={accent} emissiveIntensity={0.12} />
-      </mesh>
-      <mesh position={[0, 0.116, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.16, 0.018, 6, 24]} />
-        <meshStandardMaterial color="#f3ead7" metalness={0.45} roughness={0.35} />
-      </mesh>
+    {(space.type === 'CARD' || space.type === 'GAMBLE') && <group position={[0.59, 0.715, -0.26]}>
+      <mesh position={[0, 0.006, 0]} castShadow><cylinderGeometry args={[0.5, 0.47, 0.075, 8]} /><meshStandardMaterial color="#0d1715" metalness={0.78} roughness={0.3} /></mesh>
+      <mesh position={[0, 0.022, 0]}><cylinderGeometry args={[0.42, 0.42, 0.026, 32]} /><meshStandardMaterial color="#17221f" metalness={0.52} roughness={0.43} /></mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.36, 0.026, 6, 32]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.16} metalness={0.68} roughness={0.34} /></mesh>
     </group>}
-    {space.type === 'SALARY_GATE' && <group position={[0, 0, 0.38]}>
-      {[-0.62, 0.62].map(x => <mesh key={x} position={[x, 0.39, 0]} castShadow>
-        <boxGeometry args={[0.11, 0.46, 0.13]} />
-        <meshStandardMaterial color={accent} metalness={0.48} roughness={0.32} emissive={accent} emissiveIntensity={0.13} />
-      </mesh>)}
-      <mesh position={[0, 0.64, 0]} castShadow>
-        <boxGeometry args={[1.36, 0.1, 0.15]} />
-        <meshStandardMaterial color={accent} metalness={0.48} roughness={0.32} emissive={accent} emissiveIntensity={0.16} />
-      </mesh>
+    {space.type === 'SALARY_GATE' && <group position={[0, 0.68, 0.35]}>
+      {[-0.42, 0.42].map(x => <mesh key={x} position={[x, 0.2, 0]} castShadow><boxGeometry args={[0.08, 0.42, 0.18]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.16} /></mesh>)}
+      <mesh position={[0, 0.4, 0]} castShadow><boxGeometry args={[0.94, 0.08, 0.18]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.16} /></mesh>
     </group>}
-    {space.type === 'GAMBLE' && <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[0.48, 0.055, 8, 32]} />
-      <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.38} metalness={0.5} roughness={0.3} />
-    </mesh>}
-    {space.type === 'UPGRADE_TOKEN' && <group position={[0.58, 0.05, -0.34]}>
-      <mesh castShadow><cylinderGeometry args={[0.23, 0.27, 0.12, 6]} /><meshStandardMaterial color="#332c48" metalness={0.72} roughness={0.28} /></mesh>
-      <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.19, 0.23, 6]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} metalness={0.7} roughness={0.25} />
-      </mesh>
+    {space.type === 'UPGRADE_TOKEN' && <group position={[0.59, 0.72, 0.22]}>
+      <mesh castShadow><cylinderGeometry args={[0.32, 0.38, 0.16, 6]} /><meshStandardMaterial color="#433b5a" emissive={accent} emissiveIntensity={0.18} metalness={0.72} roughness={0.28} /></mesh>
+      <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.35, 0.4, 6]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} /></mesh>
     </group>}
-    {(space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE') && <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[0.49, 0.045, 8, 32]} />
-      <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.24} metalness={0.55} roughness={0.3} />
-    </mesh>}
-    <mesh position={[0, 0.08, 0]} onClick={event => { event.stopPropagation(); onSelect(number); }}
-      onPointerOver={event => { event.stopPropagation(); onHover(number); }}
-      onPointerOut={() => onHover(null)}>
-      <planeGeometry args={[2.24, 1.68]} />
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+    {space.type === 'GAMBLE' && <mesh position={[0, 0.72, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.63, 0.69, 8]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.35} /></mesh>}
+    <mesh position={[0, 0.73, 0]} onClick={event => { event.stopPropagation(); onSelect(number); }}
+      onPointerOver={event => { event.stopPropagation(); onHover(number); }} onPointerOut={() => onHover(null)}>
+      <planeGeometry args={[2.1, 1.82]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
   </group>;
 }
