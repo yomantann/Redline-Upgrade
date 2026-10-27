@@ -5,6 +5,8 @@
  */
 import type { BoardId } from '../../game/boards';
 import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
+import { createContext, useContext } from 'react';
+import { Color } from 'three';
 
 export interface PawnModelProps {
   characterId: string;
@@ -19,6 +21,15 @@ type MaterialProps = {
   metalness?: number;
   roughness?: number;
 };
+
+const BioPaletteContext = createContext<(typeof BIO_PAWN_PALETTES)[string] | undefined>(undefined);
+
+function bioColor(color: string, palette: (typeof BIO_PAWN_PALETTES)[string] | undefined) {
+  if (!palette) return color;
+  const source = new Color(color);
+  const { l } = source.getHSL({ h: 0, s: 0, l: 0 });
+  return l < 0.28 ? palette.body : l < 0.68 ? palette.trim : palette.accent;
+}
 
 const IRON = '#252d38';
 const EDGE = '#657887';
@@ -38,7 +49,10 @@ const GUARDIAN_LIGHT = '#3b75ad';
 const GUARDIAN_DARK = '#101b2d';
 
 function Mat({ color = IRON, glow, metalness = 0.76, roughness = 0.3 }: MaterialProps) {
-  return <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} emissive={glow || '#000000'} emissiveIntensity={glow ? 0.72 : 0} />;
+  const palette = useContext(BioPaletteContext);
+  const materialColor = bioColor(color, palette);
+  const emissiveColor = glow ? bioColor(glow, palette) : '#000000';
+  return <meshStandardMaterial color={materialColor} metalness={metalness} roughness={roughness} emissive={emissiveColor} emissiveIntensity={glow ? 0.72 : 0} />;
 }
 function Block({ position = [0, 0, 0], scale = [1, 1, 1], rotation = [0, 0, 0], ...material }: { position?: V3; scale?: V3; rotation?: V3 } & MaterialProps) {
   return <mesh position={position} scale={scale} rotation={rotation} castShadow receiveShadow><boxGeometry args={[1, 1, 1]} /><Mat {...material} /></mesh>;
@@ -410,7 +424,12 @@ export function PawnModel({ characterId, selected = false, boardId = 'REDLINE_UP
   const palette = bio ? BIO_PAWN_PALETTES[characterId] : undefined;
   const accent = bio ? palette?.accent : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
-  return <group><Base accent={accent} selected={selected} bio={bio} bioBody={palette?.body} bioTrim={palette?.trim} /><Signature id={characterId} accent={accent} /></group>;
+  return <group>
+    <Base accent={accent} selected={selected} bio={bio} bioBody={palette?.body} bioTrim={palette?.trim} />
+    <BioPaletteContext.Provider value={palette}>
+      <Signature id={characterId} accent={accent} />
+    </BioPaletteContext.Provider>
+  </group>;
 }
 
 export default PawnModel;

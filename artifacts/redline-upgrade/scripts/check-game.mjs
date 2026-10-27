@@ -30,6 +30,7 @@ const vite = await createServer({
 });
 try {
   const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { getBoardSpaces } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
   const { cards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
@@ -650,6 +651,12 @@ try {
   const bioDefinitionCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 12, influence: 11, gamble: 11 };
   const bioEntryCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 14, influence: 12, gamble: 12 };
   const bioCards = decks.flatMap(deck => cardsForDeck(deck.id, 'BIO_UPGRADE'));
+  const redlineSpaces = getBoardSpaces('REDLINE_UPGRADE');
+  const bioSpaces = getBoardSpaces('BIO_UPGRADE');
+  assert.equal(bioSpaces.length, 75, 'Bio uses the complete 75-space board route');
+  for (const position of [2, 6, 10, 14, 15, 18, 29, 30, 35, 41, 45, 50, 54, 55, 60, 66, 70, 73, 75]) {
+    assert.equal(bioSpaces[position - 1].type, redlineSpaces[position - 1].type, `Bio space ${position} keeps the standard tile mechanic`);
+  }
   assert.equal(bioCards.length, 64, 'Bio defines 64 unique social-only cards');
   assert.equal(new Set(bioCards.map(card => card.id)).size, 64, 'Bio card definition IDs are unique');
   assert.equal(new Set(bioCards.map(card => card.title)).size, 64, 'Bio card titles are unique');
@@ -726,6 +733,29 @@ try {
   const partyPassed = advanceMatch(partyShown, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: true });
   assert.equal(partyPassed.phase, 'landed', 'passing never blocks turn progress');
   assert.match(partyPassed.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /passed the Bio party challenge/);
+  for (const card of bioCards) {
+    const deckPile = bioPiles[card.deck];
+    const cardPiles = {
+      ...bioPiles,
+      [card.deck]: {
+        ...deckPile,
+        drawPile: deckPile.drawPile.filter(id => id !== card.id),
+        inFlight: [...deckPile.inFlight, card.id],
+      },
+    };
+    const cardFixture = {
+      ...partyBase,
+      cardPiles,
+      phase: 'decision',
+      pending: { kind: 'CARD', deck: card.deck, space: 4, cardId: card.id, stage: 'draw' },
+      players: partyBase.players.map(player => ({ ...player, isCPU: false, position: 1 })),
+    };
+    const revealed = advanceMatch(cardFixture, { type: 'RESOLVE_CARD' });
+    assert.equal(revealed.pending.stage, 'resolved', `${card.id} reveals through the shared card flow`);
+    const passed = advanceMatch(revealed, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: true });
+    assert.equal(passed.phase, 'landed', `${card.id} can be completed with its no-penalty pass`);
+    assert(passed.eventLog.some(event => event.eventType === 'CARD_RESOLVED' && event.cardId === card.id), `${card.id} records its completed resolution`);
+  }
   const votePending = { ...partyShown, pending: { ...partyShown.pending, cardId: 'bio-luxury-pitch' } };
   assert.equal(advanceMatch(votePending, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false }), votePending, 'a Bio vote cannot resolve without recording its outcome');
   const voteRecorded = advanceMatch(votePending, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false, resolution: 'Group chose the most convincing pitch' });

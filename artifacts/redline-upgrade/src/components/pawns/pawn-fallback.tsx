@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { Color } from 'three';
 import type { BoardId } from '../../game/boards';
 import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
 
@@ -133,9 +134,15 @@ export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE
   const accent = bio ? palette?.accent : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
   const uid = useId().replace(/:/g, '');
+  const hueRotation = bio && palette
+    ? (new Color(palette.accent).getHSL({ h: 0, s: 0, l: 0 }).h - new Color('#55dce9').getHSL({ h: 0, s: 0, l: 0 }).h) * 360
+    : 0;
   return <svg className="pawn-fallback" data-pawn-board={boardId} viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true"
     aria-label={`${characterId.replaceAll('_', ' ')} geometric tabletop pawn`} preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id={`pawn-sheen-${uid}`} x1="0" x2="1" y1="0" y2="1"><stop stopColor={bio ? BIO_PAWN_BASE.highlight : '#8ca0ad'} /><stop offset=".3" stopColor={bio ? BIO_PAWN_BASE.edge : '#415361'} /><stop offset="1" stopColor={bio ? BIO_PAWN_BASE.body : '#182530'} /></linearGradient></defs>
+    <defs>
+      <linearGradient id={`pawn-sheen-${uid}`} x1="0" x2="1" y1="0" y2="1"><stop stopColor={bio ? BIO_PAWN_BASE.highlight : '#8ca0ad'} /><stop offset=".3" stopColor={bio ? BIO_PAWN_BASE.edge : '#415361'} /><stop offset="1" stopColor={bio ? BIO_PAWN_BASE.body : '#182530'} /></linearGradient>
+      {bio && <filter id={`bio-pawn-tint-${uid}`} colorInterpolationFilters="sRGB"><feColorMatrix type="hueRotate" values={String(hueRotation)} /></filter>}
+    </defs>
     {characterId === 'guardian_h' && !bio ? (
       <image
         href={`${import.meta.env.BASE_URL}characters/guardian_h_reimagined.png`}
@@ -148,7 +155,7 @@ export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE
     ) : (
       <>
         <Base accent={accent} selected={selected} bio={bio} bioBody={palette?.body} bioTrim={palette?.trim} />
-        <Signature id={characterId} accent={accent} />
+        <g filter={bio ? `url(#bio-pawn-tint-${uid})` : undefined}><Signature id={characterId} accent={accent} /></g>
       </>
     )}
   </svg>;
