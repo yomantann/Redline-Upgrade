@@ -73,14 +73,19 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           const center = p(space.number);
           const accent = bioColor(space);
           const isLandmark = space.type === 'MILESTONE' || space.type === 'GAMBLE' || space.type === 'CAREER_CHANGE';
+          const cardLabels = { wealth: 'WEALTH CARD', ai: 'AI SKILL CARD', fame: 'FAME CARD', lifestyle: 'LIFESTYLE CARD', influence: 'INFLUENCE CARD', gamble: 'GAMBLE CARD' };
           const categoryLabel = space.type === 'SALARY_GATE' ? 'SALARY GATE'
-            : space.type === 'CARD' ? `${space.deck === 'wealth' ? 'WEALTH' : space.deck?.toUpperCase() ?? 'CARD'} CARD`
+            : space.type === 'GAMBLE' ? 'GAMBLE CARD'
+              : space.type === 'CARD' ? cardLabels[space.deck ?? 'wealth']
+                : space.type === 'UPGRADE_TOKEN' ? 'UPGRADE TOKEN'
+                  : space.type === 'CAREER_CHANGE' ? 'CAREER SWITCH'
+                    : space.type === 'MILESTONE' ? 'MILESTONE'
               : null;
           return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
             <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
             <circle cx={center.x} cy={center.y} r={isLandmark ? 18 : 13} fill="#18232b" stroke={accent} strokeWidth={landingPosition === space.number ? 5 : 3} filter={space.deck ? 'url(#bio-fallback-glow)' : undefined} />
             <text x={center.x} y={center.y + 4} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
-            {categoryLabel && <text x={center.x} y={center.y - 18} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize="4.4" fontWeight="900">{categoryLabel}</text>}
+            {categoryLabel && <text x={center.x} y={center.y + (isLandmark ? 24 : -18)} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize="4.4" fontWeight="900">{categoryLabel}</text>}
             {isLandmark && <text x={center.x} y={center.y - 23} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="10" fontWeight="800">{space.label}</text>}
           </g>;
         })}

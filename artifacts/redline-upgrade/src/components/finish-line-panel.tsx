@@ -5,6 +5,7 @@ import { getCharacter } from '@/game/characters';
 import { effectiveSalaryAmount } from '@/game/player';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
 import type { MatchPlayer } from '@/game/match';
+import type { BoardId } from '@/game/boards';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { assetValueAtLevel } from '@/game/upgrade-tokens';
 import { CharacterPortrait } from './character-portrait';
@@ -14,6 +15,7 @@ import './finish-line-panel.css';
 export interface FinishLinePanelProps {
   player: MatchPlayer;
   endgame: EndgameState;
+  boardId: BoardId;
   onChoose: (choice: EndgameChoice) => void;
   onContinue: () => void;
   finishPlace?: number;
@@ -275,7 +277,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
   );
 }
 
-export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
+export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
   const character = getCharacter(endgame.snapshot.characterId);
   const isResolved = endgame.status === 'RESOLVED';
 
@@ -294,7 +296,7 @@ export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishP
 
       <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
         <div className="finish-line-portrait-wrap">
-          {character ? <CharacterPortrait character={character} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
+          {character ? <CharacterPortrait character={character} boardId={boardId} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
           <span className="mono finish-line-portrait-caption">PLAYER / {endgame.snapshot.displayName}</span>
         </div>
         <div className="finish-line-identity-copy">
@@ -322,7 +324,7 @@ export function FinishLinePanel({ player, endgame, onChoose, onContinue, finishP
   );
 }
 
-export function MatchResultsPanel({ players, finishOrder = [] }: { players: MatchPlayer[]; finishOrder?: number[] }) {
+export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLINE_UPGRADE' }: { players: MatchPlayer[]; finishOrder?: number[]; boardId?: BoardId }) {
   const resolvedPlayers = players
     .filter((player) => player.endgame?.status === 'RESOLVED')
     .sort((a, b) => {
@@ -369,7 +371,7 @@ export function MatchResultsPanel({ players, finishOrder = [] }: { players: Matc
                 <div className="finish-line-result-player">
                    <div className="finish-line-result-avatar" aria-hidden="true">
                      {character
-                       ? <CharacterPortrait character={character} className="finish-line-result-avatar-image" />
+                       ? <CharacterPortrait character={character} boardId={boardId} className="finish-line-result-avatar-image" />
                        : player.displayName.slice(0, 1)}
                    </div>
                   <div>

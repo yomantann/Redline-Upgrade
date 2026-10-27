@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
-import type { CharacterDefinition } from '@/game/characters';
+import { getCharacterImagePath, type CharacterDefinition } from '@/game/characters';
+import type { BoardId } from '@/game/boards';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
 
 /** The original artwork stays in player-facing UI, never as pawn geometry. */
 export function CharacterPortrait({
   character,
-  imagePath = character.imagePath,
+  imagePath,
+  boardId = 'REDLINE_UPGRADE',
   className = '',
 }: {
   character: CharacterDefinition;
   imagePath?: string;
+  boardId?: BoardId;
   className?: string;
 }) {
-  const imageKey = `${character.id}:${imagePath}`;
+  const resolvedImagePath = imagePath ?? getCharacterImagePath(character.id, boardId);
+  const imageKey = `${character.id}:${resolvedImagePath}`;
   const [failedImageKey, setFailedImageKey] = useState<string | null>(null);
   const failed = failedImageKey === imageKey;
   useEffect(() => {
@@ -24,7 +28,7 @@ export function CharacterPortrait({
         <span className="portrait-error">Portrait unavailable</span>
       ) : (
         <img
-          src={getPublicAssetUrl(imagePath)}
+          src={getPublicAssetUrl(resolvedImagePath)}
           alt={`${character.name} artwork`}
           loading="eager"
           decoding="async"

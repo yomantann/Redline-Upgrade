@@ -135,19 +135,28 @@ const BIO_BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) => 
   };
   const special = milestoneLabels[number];
   const partyLabel = BIO_PARTY_LABELS[number];
+  const deckLabels: Partial<Record<DeckId, string>> = {
+    wealth: 'WEALTH CARD',
+    ai: 'AI SKILL CARD',
+    fame: 'FAME CARD',
+    lifestyle: 'LIFESTYLE CARD',
+    influence: 'INFLUENCE CARD',
+    gamble: 'GAMBLE CARD',
+  };
   const label = number === 1 ? 'START / CLUB ENTRANCE'
     : special?.[1] ?? (type === 'SALARY_GATE' ? 'SALARY GATE'
       : type === 'CAREER_CHANGE' ? 'CAREER SWITCH'
         : type === 'UPGRADE_TOKEN' ? 'UPGRADE TOKEN'
-          : type === 'GAMBLE' ? 'EXTREME GAMBLE'
-            : partyLabel ?? 'OPEN DANCE FLOOR');
+          : type === 'GAMBLE' ? 'GAMBLE CARD'
+            : type === 'CARD' ? deckLabels[deck!] ?? 'CARD'
+              : partyLabel ?? 'STANDARD SPACE');
   const description = number === 1 ? 'Start your Bio Upgrade run here.'
     : special?.[2] ?? (type === 'SALARY_GATE' ? 'Pass through or land here to receive your current salary once.'
       : type === 'CAREER_CHANGE' ? 'Keep your current career or choose between two new opportunities.'
         : type === 'UPGRADE_TOKEN' ? 'Gain one match-only Upgrade Token.'
-          : type === 'GAMBLE' ? 'Draw and resolve an immediate party challenge from the Gamble deck.'
-            : deck ? `Draw and resolve an immediate social challenge from the ${deck} deck.`
-              : 'A party stop with no extra effect.');
+          : type === 'GAMBLE' ? 'Draw one random card from the Gamble deck.'
+            : type === 'CARD' ? `Draw one random card from the ${deck} deck.`
+              : 'Standard space. No effect triggers here.');
   return {
     number,
     type,

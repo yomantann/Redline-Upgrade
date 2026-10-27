@@ -465,7 +465,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         {isBioBoard && <AgeRestrictionBadge />}
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
-        <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} />
+        <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} boardId={match.boardId} />
       </main>
     );
   }
@@ -487,6 +487,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         <FinishLinePanel
           player={active}
           endgame={active.endgame}
+          boardId={match.boardId}
           finishPlace={match.finishOrder.indexOf(match.turnIndex) + 1}
           finishBonus={FINISH_ORDER_WEALTH_REWARDS[match.finishOrder.indexOf(match.turnIndex)] ?? 0}
           onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
@@ -583,7 +584,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                       <span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                     </div>
                    <div className="game-player-summary-identity">
-                     {character && <CharacterPortrait character={character} className="game-player-summary-portrait" />}
+                     {character && <CharacterPortrait character={character} boardId={match.boardId} className="game-player-summary-portrait" />}
                      <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
                    </div>
                    <div className="game-player-summary-values">
@@ -612,7 +613,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                </div>
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
-                 {character && <CharacterPortrait character={character} className="game-player-portrait" />}
+                 {character && <CharacterPortrait character={character} boardId={match.boardId} className="game-player-portrait" />}
                   <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{remote ? ` // ${remote.seats[index]?.fastCpu ? 'FAST CPU' : remote.seats[index]?.cpuControlled ? 'CPU CONTROLLING' : remote.seats[index]?.connected ? 'CONNECTED' : 'DISCONNECTED'}` : ''}</small></div>
                </div>
               <div className="game-player-career">

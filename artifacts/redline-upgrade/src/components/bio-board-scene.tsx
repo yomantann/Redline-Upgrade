@@ -70,6 +70,7 @@ function getSpaceAccent(space: BoardSpace, zoneAccent: string): string {
   if (space.type === 'UPGRADE_TOKEN') return '#bba2ff';
   if (space.type === 'CAREER_CHANGE') return '#f3c969';
   if (space.type === 'MILESTONE') return '#f36b9d';
+  if (space.type === 'NORMAL') return '#879198';
   return zoneAccent;
 }
 
@@ -77,14 +78,15 @@ function getSpaceRole(space: BoardSpace): string {
   if (space.number === 1) return 'START';
   if (space.type === 'CARD') return `${space.deck?.toUpperCase() ?? 'CARD'} CARD`;
   if (space.type === 'SALARY_GATE') return 'SALARY GATE';
-  if (space.type === 'GAMBLE') return 'GAMBLE';
+  if (space.type === 'GAMBLE') return 'GAMBLE CARD';
   if (space.type === 'UPGRADE_TOKEN') return 'UPGRADE TOKEN';
   if (space.type === 'CAREER_CHANGE') return 'CAREER SWITCH';
   if (space.type === 'MILESTONE') return 'MILESTONE';
-  return 'OPEN FLOOR';
+  return 'STANDARD SPACE';
 }
 
 function getSpaceSymbol(space: BoardSpace, fallback: string): string {
+  if (space.type === 'NORMAL') return '—';
   if (space.type === 'CARD' && space.deck === 'wealth') return '$';
   if (space.type === 'SALARY_GATE') return 'PAY';
   if (space.type === 'CARD') return 'CARD';
@@ -177,6 +179,54 @@ function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string,
   ctx.beginPath();
   ctx.roundRect(12, 12, 488, 296, 25);
   ctx.stroke();
+  if (space.type === 'CARD' || space.type === 'GAMBLE') {
+    const deck = space.type === 'GAMBLE' ? 'gamble' : space.deck;
+    ctx.save();
+    ctx.translate(256, 160);
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    ctx.lineWidth = 16;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (deck === 'wealth') {
+      ctx.beginPath(); ctx.arc(0, 0, 75, 0, Math.PI * 2); ctx.stroke();
+      ctx.font = '900 112px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 4);
+    } else if (deck === 'ai') {
+      ctx.strokeRect(-62, -62, 124, 124);
+      for (const [x, y] of [[-91, -34], [-91, 34], [91, -34], [91, 34], [-34, -91], [34, -91], [-34, 91], [34, 91]]) {
+        ctx.beginPath(); ctx.moveTo(Math.max(-61, Math.min(61, x)), Math.max(-61, Math.min(61, y))); ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.font = '900 68px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AI', 0, 4);
+    } else if (deck === 'fame') {
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const angle = -Math.PI / 2 + i * Math.PI / 5;
+        const radius = i % 2 ? 36 : 82;
+        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.closePath(); ctx.fill();
+    } else if (deck === 'lifestyle') {
+      ctx.beginPath(); ctx.moveTo(0, -88); ctx.lineTo(64, 0); ctx.lineTo(0, 88); ctx.lineTo(-64, 0); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-100, 0); ctx.lineTo(-70, 0); ctx.moveTo(70, 0); ctx.lineTo(100, 0); ctx.moveTo(0, -112); ctx.lineTo(0, -95); ctx.moveTo(0, 95); ctx.lineTo(0, 112); ctx.stroke();
+    } else if (deck === 'influence') {
+      for (const [x, y] of [[-58, 0], [45, -58], [45, 58]]) {
+        ctx.beginPath(); ctx.arc(x, y, 27, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.beginPath(); ctx.moveTo(-31, -9); ctx.lineTo(20, -46); ctx.moveTo(-31, 9); ctx.lineTo(20, 46); ctx.moveTo(45, -31); ctx.lineTo(45, 31); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.roundRect(-68, -68, 136, 136, 22); ctx.stroke();
+      for (const [x, y] of [[-34,-34],[34,-34],[0,0],[-34,34],[34,34]]) {
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    return texture;
+  }
   const special = space.type !== 'NORMAL';
   if (special) {
     ctx.fillStyle = accent;
@@ -195,12 +245,19 @@ function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string,
   ctx.textBaseline = 'middle';
   ctx.fillText(String(space.number).padStart(2, '0'), 36, 60);
   ctx.textAlign = 'right';
-  const icon = getSpaceSymbol(space, fallbackIcon);
+  const icon = space.type === 'NORMAL' ? '—' : getSpaceSymbol(space, fallbackIcon);
   ctx.font = `700 ${icon.length > 2 ? 33 : 54}px sans-serif`;
   ctx.fillText(icon, 467, 60);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f3ead7';
   ctx.font = `900 ${special ? 47 : 57}px "Arial Narrow", sans-serif`;
+  if (space.type === 'NORMAL' && space.number !== 1) {
+    ctx.fillText('STANDARD SPACE', 256, 192, 440);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    return texture;
+  }
   const words = label.toUpperCase().split(' ');
   if (label.length > 12 && words.length > 1) {
     const last = words.pop();
@@ -271,7 +328,7 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
   onSelect: (n: number) => void; onHover: (n: number | null) => void;
 }) {
   const number = space.number;
-  const label = TILE_LABELS[number - 1] ?? 'Open lane';
+  const label = space.type === 'NORMAL' ? (number === 1 ? 'START' : 'STANDARD SPACE') : space.label;
   const texture = useMemo(() => makeTileTexture(space, label, TILE_SIGNS[(number - 1) % TILE_SIGNS.length], accent), [space, label, accent]);
   const next = BIO_ROUTE[number];
   const previous = BIO_ROUTE[number - 2] ?? BIO_ROUTE[0];
@@ -294,20 +351,6 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
       <planeGeometry args={[2.24, 1.7]} />
       <meshBasicMaterial color={landing ? '#f7bd71' : '#b1ede1'} transparent opacity={0.17} depthWrite={false} />
     </mesh>}
-    {space.type === 'CARD' && <group position={[0.62, 0.19, -0.35]}>
-      <mesh position={[0, 0.035, 0]} castShadow>
-        <cylinderGeometry args={[0.27, 0.3, 0.09, 8]} />
-        <meshStandardMaterial color="#111a20" metalness={0.72} roughness={0.32} />
-      </mesh>
-      <mesh position={[0, 0.09, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 0.045, 8]} />
-        <meshStandardMaterial color={accent} metalness={0.55} roughness={0.28} emissive={accent} emissiveIntensity={0.12} />
-      </mesh>
-      <mesh position={[0, 0.116, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.16, 0.018, 6, 24]} />
-        <meshStandardMaterial color="#f3ead7" metalness={0.45} roughness={0.35} />
-      </mesh>
-    </group>}
     {space.type === 'SALARY_GATE' && <group position={[0, 0, 0.38]}>
       {[-0.62, 0.62].map(x => <mesh key={x} position={[x, 0.39, 0]} castShadow>
         <boxGeometry args={[0.11, 0.46, 0.13]} />
@@ -401,12 +444,41 @@ function ZoneMarker({ zone, index }: { zone: typeof ZONES[number]; index: number
       </mesh>)}
     </>}
     {zone.marker === 'arena' && <>
-      <mesh position={[0, 0.38, 0]} castShadow><cylinderGeometry args={[1.55, 1.8, 0.5, 12]} /><meshStandardMaterial color="#3a2c33" metalness={0.62} roughness={0.28} /></mesh>
+      {[0, 1, 2].map(level => <mesh key={level} position={[0, 0.28 + level * 0.2, 0]} castShadow><cylinderGeometry args={[1.55 + level * 0.3, 1.8 + level * 0.3, 0.16, 16]} /><meshStandardMaterial color={level === 1 ? '#503741' : '#3a2c33'} metalness={0.62} roughness={0.28} /></mesh>)}
       <mesh position={[0, 0.68, 0]}><torusGeometry args={[1.35, 0.08, 8, 40]} /><meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.7} /></mesh>
       {[-1, 1].map(side => <mesh key={side} position={[side * 1.35, 1.65, 0]} castShadow><boxGeometry args={[0.16, 2.05, 0.18]} /><meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.45} /></mesh>)}
       <mesh position={[0, 2.67, 0]}><boxGeometry args={[2.85, 0.17, 0.18]} /><meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.48} /></mesh>
+      {[-0.9, 0, 0.9].map(x => <mesh key={x} position={[x, 1.02, -0.8]} castShadow><boxGeometry args={[0.16, 0.66, 0.22]} /><meshStandardMaterial color="#e2b5a8" metalness={0.5} roughness={0.4} /></mesh>)}
     </>}
-    <Sign title={zone.name} sub={zone.sub} accent={zone.color} position={[0, 2.55, 0]} scale={0.86} />
+    {zone.marker === 'club' && <>
+      <mesh position={[0, 1.15, -0.58]} castShadow><boxGeometry args={[3.55, 2.15, 0.58]} /><meshStandardMaterial color="#322b3b" metalness={0.38} roughness={0.5} /></mesh>
+      <mesh position={[0, 0.82, -0.245]}><boxGeometry args={[0.72, 1.42, 0.08]} /><meshStandardMaterial color="#131d26" metalness={0.7} roughness={0.2} /></mesh>
+      {[-1.35, 1.35].map(x => <mesh key={x} position={[x, 1.36, -0.22]}><boxGeometry args={[0.55, 0.72, 0.08]} /><meshStandardMaterial color="#7a4264" emissive={zone.color} emissiveIntensity={0.2} /></mesh>)}
+      <mesh position={[0, 2.27, -0.55]}><boxGeometry args={[4, 0.16, 0.82]} /><meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.28} /></mesh>
+      {[-1.65, 1.65].map(x => <mesh key={x} position={[x, 0.38, -0.58]} castShadow><boxGeometry args={[0.16, 0.52, 0.72]} /><meshStandardMaterial color="#ab8c9b" metalness={0.65} /></mesh>)}
+    </>}
+    {zone.marker === 'casino' && [-1, 0, 1].map((x, i) => <group key={x} position={[x * 1.05, 0, -0.48]}>
+      <mesh position={[0, 0.57, 0]} castShadow><boxGeometry args={[0.72, 1.08, 0.62]} /><meshStandardMaterial color={i === 1 ? '#4d3446' : '#303746'} metalness={0.5} roughness={0.32} /></mesh>
+      <mesh position={[0, 0.74, 0.33]}><boxGeometry args={[0.48, 0.33, 0.045]} /><meshStandardMaterial color={i === 1 ? '#fa5d61' : zone.color} emissive={zone.color} emissiveIntensity={0.65} /></mesh>
+      <mesh position={[0, 0.17, 0.34]}><boxGeometry args={[0.42, 0.12, 0.05]} /><meshStandardMaterial color="#f3ead7" metalness={0.5} /></mesh>
+    </group>)}
+    {zone.marker === 'lounge' && <>
+      <mesh position={[0, 1.08, -0.82]} castShadow><boxGeometry args={[4.05, 2.05, 0.34]} /><meshStandardMaterial color="#292739" roughness={0.64} /></mesh>
+      {[-1.48, 1.48].map(x => <mesh key={x} position={[x, 1.08, -0.6]}><boxGeometry args={[0.7, 1.2, 0.07]} /><meshStandardMaterial color="#bba2ff" emissive="#a58ade" emissiveIntensity={0.22} /></mesh>)}
+      <mesh position={[0, 1.76, -0.52]}><boxGeometry args={[2.2, 0.12, 0.09]} /><meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.35} /></mesh>
+    </>}
+    {zone.marker === 'bar' && [-0.82, 0, 0.82].map((x, i) => <group key={x} position={[x, 0, -0.47]}>
+      <mesh position={[0, 1.12, 0]} castShadow><cylinderGeometry args={[0.1, 0.13, 0.38, 8]} /><meshStandardMaterial color={['#8bd2bd', '#e1aa6b', '#d68daf'][i]} roughness={0.24} /></mesh>
+      <mesh position={[0, 1.34, 0]}><cylinderGeometry args={[0.06, 0.08, 0.1, 8]} /><meshStandardMaterial color="#e9d7c4" /></mesh>
+    </group>)}
+    {zone.marker === 'roof' && [-1, 0, 1].map((x, i) => <mesh key={x} position={[x * 1.12, 0.66 + (i % 2) * 0.22, -0.6]} castShadow>
+      <boxGeometry args={[0.72, 1.2 + (i % 2) * 0.44, 0.5]} /><meshStandardMaterial color={i === 1 ? '#354653' : '#283943'} metalness={0.58} roughness={0.35} />
+    </mesh>)}
+    {zone.marker === 'festival' && [-1, 1].map(x => <group key={x} position={[x * 1.12, 0, -0.48]}>
+      <mesh position={[0, 0.58, 0]} castShadow><cylinderGeometry args={[0.82, 0.82, 0.12, 5]} /><meshStandardMaterial color="#4b3b39" /></mesh>
+      <mesh position={[0, 1.1, 0]} castShadow><coneGeometry args={[0.76, 1.05, 5]} /><meshStandardMaterial color={x < 0 ? '#7e4563' : '#c67842'} roughness={0.58} /></mesh>
+    </group>)}
+    <Sign title={zone.name} sub={zone.sub} accent={zone.color} position={[0, zone.marker === 'arena' ? 3.55 : 2.55, 0]} scale={0.86} />
     {index === 0 && <mesh position={[0, 0.35, 0]}><torusGeometry args={[1.44, 0.025, 6, 32]} /><meshBasicMaterial color="#f3ead7" /></mesh>}
   </group>;
 }
