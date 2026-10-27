@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { MatchPlayer } from '../game/match';
+import { getBoardSpaces, type BoardSpace } from '../game/board-data';
 import { PawnModel } from './pawns/PawnModel';
 
 type Point = { x: number; z: number };
@@ -50,6 +51,49 @@ const COLORS = {
   pink: '#f36b9d',
   mint: '#58d7d0',
 };
+const BIO_SPACES = getBoardSpaces('BIO_UPGRADE');
+
+function getSpaceAccent(space: BoardSpace, zoneAccent: string): string {
+  if (space.type === 'SALARY_GATE') return '#f3c969';
+  if (space.type === 'CARD') {
+    switch (space.deck) {
+      case 'wealth': return '#d4ef79';
+      case 'ai': return '#58d7d0';
+      case 'fame': return '#f08c59';
+      case 'lifestyle': return '#e59bd2';
+      case 'influence': return '#a58ade';
+      case 'gamble': return '#fa5d61';
+      default: return zoneAccent;
+    }
+  }
+  if (space.type === 'GAMBLE') return '#fa5d61';
+  if (space.type === 'UPGRADE_TOKEN') return '#bba2ff';
+  if (space.type === 'CAREER_CHANGE') return '#f3c969';
+  if (space.type === 'MILESTONE') return '#f36b9d';
+  return zoneAccent;
+}
+
+function getSpaceRole(space: BoardSpace): string {
+  if (space.number === 1) return 'START';
+  if (space.type === 'CARD') return `${space.deck?.toUpperCase() ?? 'CARD'} CARD`;
+  if (space.type === 'SALARY_GATE') return 'SALARY GATE';
+  if (space.type === 'GAMBLE') return 'GAMBLE';
+  if (space.type === 'UPGRADE_TOKEN') return 'UPGRADE TOKEN';
+  if (space.type === 'CAREER_CHANGE') return 'CAREER SWITCH';
+  if (space.type === 'MILESTONE') return 'MILESTONE';
+  return 'OPEN FLOOR';
+}
+
+function getSpaceSymbol(space: BoardSpace, fallback: string): string {
+  if (space.type === 'CARD' && space.deck === 'wealth') return '$';
+  if (space.type === 'SALARY_GATE') return 'PAY';
+  if (space.type === 'CARD') return 'CARD';
+  if (space.type === 'GAMBLE') return 'GMB';
+  if (space.type === 'UPGRADE_TOKEN') return 'TOK';
+  if (space.type === 'CAREER_CHANGE') return 'SWAP';
+  if (space.type === 'MILESTONE') return '★';
+  return fallback;
+}
 
 const routeCurve = new THREE.CatmullRomCurve3([
   new THREE.Vector3(-24, 0, 8),
@@ -118,7 +162,7 @@ function makeLabelTexture(title: string, detail: string, accent: string, width =
   return texture;
 }
 
-function makeTileTexture(number: number, label: string, icon: string, accent: string) {
+function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string, accent: string) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 320;
@@ -133,24 +177,37 @@ function makeTileTexture(number: number, label: string, icon: string, accent: st
   ctx.beginPath();
   ctx.roundRect(12, 12, 488, 296, 25);
   ctx.stroke();
+  const special = space.type !== 'NORMAL';
+  if (special) {
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.roundRect(24, 93, 464, 48, 14);
+    ctx.fill();
+    ctx.fillStyle = '#101820';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '800 24px monospace';
+    ctx.fillText(getSpaceRole(space), 256, 117, 440);
+  }
   ctx.fillStyle = accent;
   ctx.font = '700 42px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(String(number).padStart(2, '0'), 36, 60);
+  ctx.fillText(String(space.number).padStart(2, '0'), 36, 60);
   ctx.textAlign = 'right';
-  ctx.font = '700 54px sans-serif';
+  const icon = getSpaceSymbol(space, fallbackIcon);
+  ctx.font = `700 ${icon.length > 2 ? 33 : 54}px sans-serif`;
   ctx.fillText(icon, 467, 60);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f3ead7';
-  ctx.font = '900 57px "Arial Narrow", sans-serif';
+  ctx.font = `900 ${special ? 47 : 57}px "Arial Narrow", sans-serif`;
   const words = label.toUpperCase().split(' ');
   if (label.length > 12 && words.length > 1) {
     const last = words.pop();
-    ctx.fillText(words.join(' '), 256, 160, 430);
-    ctx.fillText(last ?? '', 256, 224, 430);
+    ctx.fillText(words.join(' '), 256, special ? 198 : 160, 430);
+    ctx.fillText(last ?? '', 256, special ? 250 : 224, 430);
   } else {
-    ctx.fillText(label.toUpperCase(), 256, 192, 440);
+    ctx.fillText(label.toUpperCase(), 256, special ? 225 : 192, 440);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -209,19 +266,25 @@ function Walkway({ a, b, index }: { a: Point; b: Point; index: number }) {
   </group>;
 }
 
-function SpaceTile({ number, point, accent, active, landing, onSelect, onHover }: {
-  number: number; point: Point; accent: string; active: boolean; landing: boolean;
+function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }: {
+  space: BoardSpace; point: Point; accent: string; active: boolean; landing: boolean;
   onSelect: (n: number) => void; onHover: (n: number | null) => void;
 }) {
+  const number = space.number;
   const label = TILE_LABELS[number - 1] ?? 'Open lane';
-  const texture = useMemo(() => makeTileTexture(number, label, TILE_SIGNS[(number - 1) % TILE_SIGNS.length], accent), [number, label, accent]);
+  const texture = useMemo(() => makeTileTexture(space, label, TILE_SIGNS[(number - 1) % TILE_SIGNS.length], accent), [space, label, accent]);
   const next = BIO_ROUTE[number];
   const previous = BIO_ROUTE[number - 2] ?? BIO_ROUTE[0];
   const angle = Math.atan2((next?.x ?? point.x) - (previous?.x ?? point.x), (next?.z ?? point.z) - (previous?.z ?? point.z));
+  const baseColor = space.type === 'SALARY_GATE' ? '#37342a'
+    : space.type === 'CARD' ? '#202d32'
+      : space.type === 'GAMBLE' ? '#38272e'
+        : space.type === 'UPGRADE_TOKEN' ? '#2e293c'
+          : COLORS.tile;
   return <group position={[point.x, 0.12, point.z]} rotation={[0, angle, 0]}>
     <mesh position={[0, -0.12, 0]} castShadow receiveShadow>
       <boxGeometry args={[2.14, 0.28, 1.58]} />
-      <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : COLORS.tile} metalness={0.46} roughness={0.3} />
+      <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : baseColor} metalness={0.46} roughness={0.3} />
     </mesh>
     <mesh position={[0, 0.035, 0]}>
       <planeGeometry args={[2.03, 1.48]} />
@@ -230,6 +293,45 @@ function SpaceTile({ number, point, accent, active, landing, onSelect, onHover }
     {(active || landing) && <mesh position={[0, 0.045, 0]}>
       <planeGeometry args={[2.24, 1.7]} />
       <meshBasicMaterial color={landing ? '#f7bd71' : '#b1ede1'} transparent opacity={0.17} depthWrite={false} />
+    </mesh>}
+    {space.type === 'CARD' && <group position={[0.62, 0.19, -0.35]}>
+      <mesh position={[0, 0.035, 0]} castShadow>
+        <cylinderGeometry args={[0.27, 0.3, 0.09, 8]} />
+        <meshStandardMaterial color="#111a20" metalness={0.72} roughness={0.32} />
+      </mesh>
+      <mesh position={[0, 0.09, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.22, 0.045, 8]} />
+        <meshStandardMaterial color={accent} metalness={0.55} roughness={0.28} emissive={accent} emissiveIntensity={0.12} />
+      </mesh>
+      <mesh position={[0, 0.116, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.16, 0.018, 6, 24]} />
+        <meshStandardMaterial color="#f3ead7" metalness={0.45} roughness={0.35} />
+      </mesh>
+    </group>}
+    {space.type === 'SALARY_GATE' && <group position={[0, 0, 0.38]}>
+      {[-0.62, 0.62].map(x => <mesh key={x} position={[x, 0.39, 0]} castShadow>
+        <boxGeometry args={[0.11, 0.46, 0.13]} />
+        <meshStandardMaterial color={accent} metalness={0.48} roughness={0.32} emissive={accent} emissiveIntensity={0.13} />
+      </mesh>)}
+      <mesh position={[0, 0.64, 0]} castShadow>
+        <boxGeometry args={[1.36, 0.1, 0.15]} />
+        <meshStandardMaterial color={accent} metalness={0.48} roughness={0.32} emissive={accent} emissiveIntensity={0.16} />
+      </mesh>
+    </group>}
+    {space.type === 'GAMBLE' && <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[0.48, 0.055, 8, 32]} />
+      <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.38} metalness={0.5} roughness={0.3} />
+    </mesh>}
+    {space.type === 'UPGRADE_TOKEN' && <group position={[0.58, 0.2, -0.34]}>
+      <mesh castShadow><cylinderGeometry args={[0.23, 0.27, 0.12, 6]} /><meshStandardMaterial color="#332c48" metalness={0.72} roughness={0.28} /></mesh>
+      <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.19, 0.23, 6]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} metalness={0.7} roughness={0.25} />
+      </mesh>
+    </group>}
+    {(space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE') && <mesh position={[0, 0.19, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[0.49, 0.045, 8, 32]} />
+      <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.24} metalness={0.55} roughness={0.3} />
     </mesh>}
     <mesh position={[0, 0.08, 0]} onClick={event => { event.stopPropagation(); onSelect(number); }}
       onPointerOver={event => { event.stopPropagation(); onHover(number); }}
@@ -414,10 +516,12 @@ export function BioBoardScene({
     <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <Floor />
     {BIO_ROUTE.slice(0, 75).map((point, index) => <Walkway key={`walk-${index}`} a={point} b={BIO_ROUTE[index + 1]} index={index} />)}
-    {BIO_ROUTE.slice(1).map((point, index) => {
-      const number = index + 1;
+    {BIO_SPACES.map(space => {
+      const number = space.number;
+      const point = BIO_ROUTE[number];
       const zone = ZONES.find(item => number >= item.from && number <= item.to) ?? ZONES[0];
-      return <SpaceTile key={number} number={number} point={point} accent={zone.color}
+      const accent = getSpaceAccent(space, zone.color);
+      return <SpaceTile key={number} space={space} point={point} accent={accent}
         active={number === activePosition} landing={number === landingPosition}
         onSelect={onSpaceSelect} onHover={onSpaceHover} />;
     })}

@@ -48,11 +48,15 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
     const bioFocus = overview ? { x: 600, y: 380 } : focus;
     const bioViewX = bioFocus.x - bioViewWidth / 2 + pan.x * 19 + pan.z * 6;
     const bioViewY = bioFocus.y - bioViewHeight / 2 + pan.z * 15 - pan.x * 4;
-    const bioColor = (space: (typeof boardSpaces)[number]) => space.type === 'SALARY_GATE' ? '#f3cc6f'
+    const bioColor = (space: (typeof boardSpaces)[number]) => space.type === 'SALARY_GATE' ? '#f3c969'
       : space.type === 'MILESTONE' ? '#f36b9d'
-        : space.type === 'GAMBLE' ? '#f08c59'
-          : space.type === 'UPGRADE_TOKEN' ? '#b5a1f7'
-            : space.deck ? '#58d7d0' : '#94a2aa';
+        : space.type === 'GAMBLE' ? '#fa5d61'
+          : space.type === 'UPGRADE_TOKEN' ? '#bba2ff'
+            : space.deck === 'wealth' ? '#d4ef79'
+              : space.deck === 'ai' ? '#58d7d0'
+                : space.deck === 'fame' ? '#f08c59'
+                  : space.deck === 'lifestyle' ? '#e59bd2'
+                    : space.deck === 'influence' ? '#a58ade' : '#94a2aa';
     return <div className="ru-board__static" data-testid="board-static-fallback">
       <div className="ru-board__static-heading"><span>BIO UPGRADE / 21+ ONLY</span><strong>The after-hours route remains live.</strong><p>WebGL is unavailable, so this accessible route view shows all spaces and player positions.</p></div>
       <svg className="ru-board__static-svg" viewBox={`${bioViewX} ${bioViewY} ${bioViewWidth} ${bioViewHeight}`} role="img" aria-label="Bio Upgrade after-hours route with all spaces and player positions">
@@ -69,10 +73,14 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           const center = p(space.number);
           const accent = bioColor(space);
           const isLandmark = space.type === 'MILESTONE' || space.type === 'GAMBLE' || space.type === 'CAREER_CHANGE';
+          const categoryLabel = space.type === 'SALARY_GATE' ? 'SALARY GATE'
+            : space.type === 'CARD' ? `${space.deck === 'wealth' ? 'WEALTH' : space.deck?.toUpperCase() ?? 'CARD'} CARD`
+              : null;
           return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
             <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
             <circle cx={center.x} cy={center.y} r={isLandmark ? 18 : 13} fill="#18232b" stroke={accent} strokeWidth={landingPosition === space.number ? 5 : 3} filter={space.deck ? 'url(#bio-fallback-glow)' : undefined} />
             <text x={center.x} y={center.y + 4} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
+            {categoryLabel && <text x={center.x} y={center.y - 18} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize="4.4" fontWeight="900">{categoryLabel}</text>}
             {isLandmark && <text x={center.x} y={center.y - 23} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="10" fontWeight="800">{space.label}</text>}
           </g>;
         })}
