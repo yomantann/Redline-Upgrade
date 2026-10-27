@@ -111,12 +111,12 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
             {tileLabel && <g>
               <rect x={center.x - 20} y={center.y + 8} width="40" height="7" rx="1" fill="#0b1512" fillOpacity=".92" stroke={accent} strokeOpacity=".58" strokeWidth=".7" />
               <text x={center.x} y={center.y + 13.1} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize={tileLabel.length > 15 ? '3' : tileLabel.length > 11 ? '3.5' : '4.3'} fontWeight="900">{tileLabel}</text>
-            </g>
+            </g>}
             <text x={center.x - 7} y={center.y + 1} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="900">{String(space.number).padStart(2, '0')}</text>
             <g aria-hidden="true">
               <circle cx={symbol.x} cy={symbol.y} r="11" fill="#101a20" stroke={accent} strokeWidth="1.6" />
               <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.normal} transform={`translate(${symbol.x - 8.4} ${symbol.y - 8.4}) scale(.7)`} fill="none" stroke="#fff6df" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </g>}
+            </g>
             {landingPosition === space.number && <polygon points={corners(1.12, 1.04, .74)} fill="none" stroke="#f0f0d6" strokeWidth="2" />}
           </g>;
         })}
