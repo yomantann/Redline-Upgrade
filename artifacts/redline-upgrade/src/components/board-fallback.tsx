@@ -98,7 +98,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
                   : space.type === 'CAREER_CHANGE' ? 'CAREER SWITCH'
                     : space.type === 'MILESTONE' ? 'MILESTONE'
               : null;
-          const tileLabel = categoryLabel ?? (space.number === 1 ? 'START' : null);
+          const tileLabel = categoryLabel ?? space.label;
           const frontFace = face([[-1.02, .95, .42], [1.02, .95, .42], [1.02, .95, .72], [-1.02, .95, .72]]);
           const rightFace = face([[1.02, -.95, .42], [1.02, .95, .42], [1.02, .95, .72], [1.02, -.95, .72]]);
           return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
@@ -109,21 +109,13 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
             <polygon points={corners(1.02, .95, .72)} fill={space.type === 'GAMBLE' ? '#38272e' : space.type === 'UPGRADE_TOKEN' ? '#2e293c' : space.type === 'CARD' ? '#202d32' : space.type === 'SALARY_GATE' ? '#37342a' : '#30423b'} stroke={accent} strokeWidth={landingPosition === space.number ? 3 : 1.4} />
             <polygon points={corners(.94, .86, .725)} fill="none" stroke="#d5d9cf" strokeOpacity=".16" strokeWidth=".65" />
             {tileLabel && <g>
-              <rect x={center.x - 19} y={center.y + 8} width="38" height="7" rx="1" fill="#0b1512" fillOpacity=".88" stroke={accent} strokeOpacity=".5" strokeWidth=".6" />
-              <text x={center.x} y={center.y + 13.1} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize={tileLabel.length > 12 ? '3.7' : '4.5'} fontWeight="900">{tileLabel}</text>
-            </g>}
+              <rect x={center.x - 20} y={center.y + 8} width="40" height="7" rx="1" fill="#0b1512" fillOpacity=".92" stroke={accent} strokeOpacity=".58" strokeWidth=".7" />
+              <text x={center.x} y={center.y + 13.1} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize={tileLabel.length > 15 ? '3' : tileLabel.length > 11 ? '3.5' : '4.3'} fontWeight="900">{tileLabel}</text>
+            </g>
             <text x={center.x - 7} y={center.y + 1} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="900">{String(space.number).padStart(2, '0')}</text>
-            {(space.type === 'CARD' || space.type === 'GAMBLE') && <g>
-              <circle cx={symbol.x} cy={symbol.y} r="9" fill="#111a20" stroke={accent} strokeWidth="1.2" />
-              <text x={symbol.x} y={symbol.y + 3} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="9" fontWeight="900">
-                {space.type === 'GAMBLE' ? '⚄' : ({ wealth: '$', ai: 'AI', fame: '★', lifestyle: '✦', influence: '↗', gamble: '⚄' }[space.deck ?? 'wealth'])}
-              </text>
-            </g>}
-            {space.type === 'UPGRADE_TOKEN' && <g transform={`translate(${symbol.x} ${symbol.y})`} fill="none" stroke={accent} strokeWidth="1.7" strokeLinecap="round">
-              <path d="M0 -8 7 -4 7 4 0 8 -7 4 -7 -4Z M-3 0H3 M0 -3V3" />
-            </g>}
-            {space.type === 'SALARY_GATE' && <g transform={`translate(${symbol.x} ${symbol.y})`} fill="none" stroke={accent} strokeWidth="1.5">
-              <path d="M-8 7V-5H8V7M-10 -5H10" />
+            <g aria-hidden="true">
+              <circle cx={symbol.x} cy={symbol.y} r="11" fill="#101a20" stroke={accent} strokeWidth="1.6" />
+              <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.normal} transform={`translate(${symbol.x - 8.4} ${symbol.y - 8.4}) scale(.7)`} fill="none" stroke="#fff6df" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
             </g>}
             {landingPosition === space.number && <polygon points={corners(1.12, 1.04, .74)} fill="none" stroke="#f0f0d6" strokeWidth="2" />}
           </g>;

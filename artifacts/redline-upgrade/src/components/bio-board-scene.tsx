@@ -1,8 +1,9 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { MatchPlayer } from '../game/match';
 import { getBoardSpaces, type BoardSpace } from '../game/board-data';
+import { ICON_PATHS } from '../game/icon-paths';
 import { PawnModel } from './pawns/PawnModel';
 
 type Point = { x: number; z: number };
@@ -152,70 +153,56 @@ function makeTileTexture(space: BoardSpace, label: string, accent: string) {
   ctx.fillStyle = accent;
   ctx.font = '700 42px monospace';
   ctx.fillText(String(space.number).padStart(2, '0'), 42, 76);
-
-  if (space.type === 'CARD' || space.type === 'GAMBLE') {
-    const deck = space.type === 'GAMBLE' ? 'gamble' : space.deck;
-    ctx.save();
-    ctx.translate(376, 82);
-    ctx.strokeStyle = accent;
-    ctx.fillStyle = accent;
-    ctx.lineWidth = 12;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    if (deck === 'wealth') {
-      ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.stroke();
-      ctx.font = '900 55px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 3);
-    } else if (deck === 'ai') {
-      ctx.strokeRect(-30, -30, 60, 60);
-      for (const [x, y] of [[-45,-16],[-45,16],[45,-16],[45,16],[-16,-45],[16,-45],[-16,45],[16,45]]) {
-        ctx.beginPath(); ctx.moveTo(Math.max(-30, Math.min(30, x)), Math.max(-30, Math.min(30, y))); ctx.lineTo(x, y); ctx.stroke();
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.font = '900 38px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('AI', 0, 3);
-    } else if (deck === 'fame') {
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const angle = -Math.PI / 2 + i * Math.PI / 5;
-        const radius = i % 2 ? 17 : 39;
-        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      }
-      ctx.closePath(); ctx.fill();
-    } else if (deck === 'lifestyle') {
-      ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(29, 0); ctx.lineTo(0, 40); ctx.lineTo(-29, 0); ctx.closePath(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-45, 0); ctx.lineTo(-31, 0); ctx.moveTo(31, 0); ctx.lineTo(45, 0); ctx.moveTo(0, -49); ctx.lineTo(0, -42); ctx.moveTo(0, 42); ctx.lineTo(0, 49); ctx.stroke();
-    } else if (deck === 'influence') {
-      for (const [x, y] of [[-27, 0], [21, -27], [21, 27]]) {
-        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.beginPath(); ctx.moveTo(-15, -4); ctx.lineTo(9, -21); ctx.moveTo(-15, 4); ctx.lineTo(9, 21); ctx.moveTo(21, -15); ctx.lineTo(21, 15); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.roundRect(-32, -32, 64, 64, 12); ctx.stroke();
-      for (const [x, y] of [[-16,-16],[16,-16],[0,0],[-16,16],[16,16]]) {
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    ctx.restore();
-  } else if (space.type === 'UPGRADE_TOKEN') {
-    ctx.save();
-    ctx.translate(376, 82);
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const angle = -Math.PI / 2 + i * Math.PI / 3;
-      const x = Math.cos(angle) * 31, y = Math.sin(angle) * 31;
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    }
-    ctx.closePath(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(14, 0); ctx.moveTo(0, -14); ctx.lineTo(0, 14); ctx.stroke();
-    ctx.restore();
-  }
+  ctx.save();
+  ctx.translate(376, 82);
+  ctx.fillStyle = '#101a20';
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(0, 0, 48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#f3ead7';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.scale(3.2, 3.2);
+  ctx.translate(-12, -12);
+  ctx.stroke(new Path2D(ICON_PATHS[space.icon] ?? ICON_PATHS.normal));
+  ctx.restore();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = space.type === 'NORMAL' ? '#d8deda' : accent;
-  ctx.font = `800 ${label.length > 15 ? 28 : 34}px "Arial Narrow", sans-serif`;
+  ctx.font = `800 ${label.length > 15 ? 25 : label.length > 10 ? 30 : 34}px "Arial Narrow", sans-serif`;
   ctx.fillText(label.toUpperCase(), 256, 282, 456);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function makeSpaceIconTexture(space: BoardSpace, accent: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+  ctx.fillStyle = '#101a20';
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.arc(64, 64, 57, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(22, 22);
+  ctx.scale(3.35, 3.35);
+  ctx.strokeStyle = '#fff6df';
+  ctx.lineWidth = 1.7;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke(new Path2D(ICON_PATHS[space.icon] ?? ICON_PATHS.normal));
+  ctx.restore();
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -278,8 +265,10 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
   onSelect: (n: number) => void; onHover: (n: number | null) => void;
 }) {
   const number = space.number;
-  const label = space.type === 'NORMAL' ? (number === 1 ? 'START' : 'STANDARD SPACE') : space.label;
+  const label = space.label;
   const texture = useMemo(() => makeTileTexture(space, label, accent), [space, label, accent]);
+  const iconTexture = useMemo(() => makeSpaceIconTexture(space, accent), [space.icon, accent]);
+  useEffect(() => () => { texture.dispose(); iconTexture.dispose(); }, [texture, iconTexture]);
   const next = BIO_ROUTE[number];
   const previous = BIO_ROUTE[number - 2] ?? BIO_ROUTE[0];
   const angle = Math.atan2((next?.x ?? point.x) - (previous?.x ?? point.x), (next?.z ?? point.z) - (previous?.z ?? point.z));
@@ -304,6 +293,10 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
     <mesh position={[0, 0.70, 0]}>
       <planeGeometry args={[1.86, 1.62]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} depthWrite={false} />
+    </mesh>
+    <mesh position={[0.59, 0.78, -0.26]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[0.56, 0.56]} />
+      <meshBasicMaterial map={iconTexture} transparent toneMapped={false} depthWrite={false} />
     </mesh>
     {(active || landing) && <mesh position={[0, 0.705, 0]}>
       <planeGeometry args={[1.9, 1.66]} />
