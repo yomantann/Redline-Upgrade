@@ -182,7 +182,7 @@ function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string,
   if (space.type === 'CARD' || space.type === 'GAMBLE') {
     const deck = space.type === 'GAMBLE' ? 'gamble' : space.deck;
     ctx.save();
-    ctx.translate(256, 160);
+    ctx.translate(356, 160);
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
     ctx.lineWidth = 16;
@@ -222,6 +222,11 @@ function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string,
       }
     }
     ctx.restore();
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 42px monospace';
+    ctx.fillText(String(space.number).padStart(2, '0'), 36, 160);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 4;
@@ -247,7 +252,24 @@ function makeTileTexture(space: BoardSpace, label: string, fallbackIcon: string,
   ctx.textAlign = 'right';
   const icon = space.type === 'NORMAL' ? '—' : getSpaceSymbol(space, fallbackIcon);
   ctx.font = `700 ${icon.length > 2 ? 33 : 54}px sans-serif`;
-  ctx.fillText(icon, 467, 60);
+  if (space.type === 'UPGRADE_TOKEN') {
+    ctx.save();
+    ctx.translate(462, 60);
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = -Math.PI / 2 + i * Math.PI / 3;
+      const x = Math.cos(angle) * 25, y = Math.sin(angle) * 25;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(0, -11); ctx.lineTo(0, 11); ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.fillText(icon, 467, 60);
+  }
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f3ead7';
   ctx.font = `900 ${special ? 47 : 57}px "Arial Narrow", sans-serif`;
@@ -351,6 +373,20 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
       <planeGeometry args={[2.24, 1.7]} />
       <meshBasicMaterial color={landing ? '#f7bd71' : '#b1ede1'} transparent opacity={0.17} depthWrite={false} />
     </mesh>}
+    {(space.type === 'CARD' || space.type === 'GAMBLE') && <group position={[0.58, 0.06, -0.35]}>
+      <mesh position={[0, 0.035, 0]} castShadow>
+        <cylinderGeometry args={[0.27, 0.3, 0.09, 8]} />
+        <meshStandardMaterial color="#111a20" metalness={0.72} roughness={0.32} />
+      </mesh>
+      <mesh position={[0, 0.09, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.22, 0.045, 8]} />
+        <meshStandardMaterial color={accent} metalness={0.55} roughness={0.28} emissive={accent} emissiveIntensity={0.12} />
+      </mesh>
+      <mesh position={[0, 0.116, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.16, 0.018, 6, 24]} />
+        <meshStandardMaterial color="#f3ead7" metalness={0.45} roughness={0.35} />
+      </mesh>
+    </group>}
     {space.type === 'SALARY_GATE' && <group position={[0, 0, 0.38]}>
       {[-0.62, 0.62].map(x => <mesh key={x} position={[x, 0.39, 0]} castShadow>
         <boxGeometry args={[0.11, 0.46, 0.13]} />
@@ -365,7 +401,7 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
       <torusGeometry args={[0.48, 0.055, 8, 32]} />
       <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.38} metalness={0.5} roughness={0.3} />
     </mesh>}
-    {space.type === 'UPGRADE_TOKEN' && <group position={[0.58, 0.2, -0.34]}>
+    {space.type === 'UPGRADE_TOKEN' && <group position={[0.58, 0.05, -0.34]}>
       <mesh castShadow><cylinderGeometry args={[0.23, 0.27, 0.12, 6]} /><meshStandardMaterial color="#332c48" metalness={0.72} roughness={0.28} /></mesh>
       <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.19, 0.23, 6]} />

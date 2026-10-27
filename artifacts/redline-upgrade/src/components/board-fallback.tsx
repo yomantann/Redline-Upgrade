@@ -84,8 +84,14 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
             <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
             <circle cx={center.x} cy={center.y} r={isLandmark ? 18 : 13} fill="#18232b" stroke={accent} strokeWidth={landingPosition === space.number ? 5 : 3} filter={space.deck ? 'url(#bio-fallback-glow)' : undefined} />
-            <text x={center.x} y={center.y + 4} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
-            {categoryLabel && <text x={center.x} y={center.y + (isLandmark ? 24 : -18)} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize="4.4" fontWeight="900">{categoryLabel}</text>}
+            {space.type === 'UPGRADE_TOKEN' && <g transform={`translate(${center.x} ${center.y - 2})`} fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round">
+              <path d="M0 -8 7 -4 7 4 0 8 -7 4 -7 -4Z M-3 0H3 M0 -3V3" />
+            </g>}
+            {(space.type === 'CARD' || space.type === 'GAMBLE') && <text x={center.x} y={center.y + 3} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="9" fontWeight="900">
+              {space.type === 'GAMBLE' ? '⚄' : ({ wealth: '$', ai: 'AI', fame: '★', lifestyle: '✦', influence: '↗', gamble: '⚄' }[space.deck ?? 'wealth'])}
+            </text>}
+            <text x={center.x} y={center.y + (space.type === 'CARD' || space.type === 'GAMBLE' || space.type === 'UPGRADE_TOKEN' ? 11 : 4)} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize={space.type === 'CARD' || space.type === 'GAMBLE' || space.type === 'UPGRADE_TOKEN' ? '4.8' : '9'} fontWeight="800">{String(space.number).padStart(2, '0')}</text>
+            {categoryLabel && <text x={center.x} y={center.y + (isLandmark || space.type === 'UPGRADE_TOKEN' ? 25 : -18)} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize="6" fontWeight="900">{categoryLabel}</text>}
             {isLandmark && <text x={center.x} y={center.y - 23} fill={accent} textAnchor="middle" fontFamily="sans-serif" fontSize="10" fontWeight="800">{space.label}</text>}
           </g>;
         })}
