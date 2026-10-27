@@ -27,6 +27,12 @@ The Bio SVG fallback must honor the same overview, zoom, and follow-pawn state a
 
 **How to apply:** When changing board camera behavior, verify both the WebGL scene and each board's no-WebGL fallback independently.
 
+For separate R3F board scenes, match orthographic frustum bounds to the viewport and actual board dimensions; changing only `camera.zoom` does not guarantee comparable framing.
+
+**Why:** Standard configures its orthographic bounds each frame, while Bio originally changed zoom without defining an equivalent viewport-scaled frustum.
+
+**How to apply:** Compare the scene cameras and geometry scales directly before tuning CSS or applying arbitrary zoom multipliers.
+
 ## R3F preview sizing
 
 Give the React Three Fiber canvas host an explicit responsive height on its first layout, and use the default continuous frame loop unless demand rendering has a reliable invalidation path. Keep a visible no-WebGL fallback; a fallback screenshot does not verify that the 3D scene itself rendered.

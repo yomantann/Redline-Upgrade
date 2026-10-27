@@ -31,7 +31,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const zones = isBio ? bioZones : redlineZones;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(false);
-  const [zoom, setZoom] = useState(preview ? 1.5 : 1);
+  const [zoom, setZoom] = useState(preview ? (isBio ? 1.15 : 1.5) : 1);
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [selectedSpace, setSelectedSpace] = useState<number | null>(null);

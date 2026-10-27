@@ -168,15 +168,15 @@ function Sign({ title, sub, accent, position, scale = 1 }: { title: string; sub:
 
 function Floor() {
   return <group>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.36, 0]} receiveShadow>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
       <planeGeometry args={[62, 42]} />
       <meshStandardMaterial color={COLORS.board} roughness={0.48} metalness={0.28} />
     </mesh>
-    <mesh position={[0, -0.55, 0]} castShadow receiveShadow>
+    <mesh position={[0, -0.23, 0]} castShadow receiveShadow>
       <boxGeometry args={[62.8, 0.42, 42.8]} />
       <meshStandardMaterial color={COLORS.edge} roughness={0.36} metalness={0.58} />
     </mesh>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.325, 0]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]}>
       <planeGeometry args={[60.5, 40.5]} />
       <meshBasicMaterial color="#293943" wireframe transparent opacity={0.2} />
     </mesh>
@@ -353,26 +353,30 @@ function LivePawn({ player, index, count, active, reduceMotion }: { player: Matc
 }
 
 function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point }) {
-  const { camera } = useThree();
-  const target = useRef(new THREE.Vector3());
-  useFrame(() => {
+  const { camera, size } = useThree();
+  const aim = useRef(new THREE.Vector3());
+  const initialized = useRef(false);
+  useFrame((_, delta) => {
     const point = BIO_ROUTE[Math.max(0, Math.min(75, focus))];
-    const nextTarget = overview ? new THREE.Vector3(pan.x, 0, pan.z) : new THREE.Vector3(point.x + pan.x, 0, point.z + pan.z);
-    const lerp = reduceMotion ? 1 : 0.075;
-    target.current.lerp(nextTarget, lerp);
-    camera.position.lerp(
-      new THREE.Vector3(target.current.x + (overview ? 0 : 2), overview ? 46 / zoom : 23 / zoom, target.current.z + (overview ? 39 / zoom : 21 / zoom)),
-      lerp,
+    const target = overview ? new THREE.Vector3(pan.x, 0, pan.z) : new THREE.Vector3(point.x + pan.x, 0, point.z + pan.z);
+    const aspect = size.width / Math.max(size.height, 1);
+    // Bio's ~63×43 tabletop is larger than Standard's; size the orthographic
+    // frustum to the actual Bio bounds while keeping the same follow angle.
+    const frustumHeight = (overview ? Math.max(47, 70 / aspect) : Math.max(11.5, 17 / aspect)) / zoom;
+    const orthographic = camera as THREE.OrthographicCamera;
+    const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
+    orthographic.left += (-frustumHeight * aspect / 2 - orthographic.left) * factor;
+    orthographic.right += (frustumHeight * aspect / 2 - orthographic.right) * factor;
+    orthographic.top += (frustumHeight / 2 - orthographic.top) * factor;
+    orthographic.bottom += (-frustumHeight / 2 - orthographic.bottom) * factor;
+    orthographic.updateProjectionMatrix();
+    aim.current.lerp(target, factor);
+    orthographic.position.lerp(
+      new THREE.Vector3(aim.current.x + (overview ? 0 : 2), overview ? 46 : 14.5, aim.current.z + (overview ? 43 : 13.8)),
+      factor,
     );
-    camera.lookAt(target.current);
-    if ('zoom' in camera) {
-      const orthographic = camera as THREE.OrthographicCamera;
-      const desiredZoom = overview ? 1.05 * zoom : 1.55 * zoom;
-      if (Math.abs(orthographic.zoom - desiredZoom) > 0.005) {
-        orthographic.zoom = THREE.MathUtils.lerp(orthographic.zoom, desiredZoom, lerp);
-        orthographic.updateProjectionMatrix();
-      }
-    }
+    orthographic.lookAt(aim.current);
+    initialized.current = true;
   });
   return null;
 }
@@ -400,9 +404,9 @@ export function BioBoardScene({
   }, [players]);
   return <>
     <color attach="background" args={['#111a20']} />
-    <ambientLight intensity={1.1} />
-    <hemisphereLight args={['#e1d4c6', '#18242b', 1.35]} />
-    <directionalLight position={[-14, 24, 18]} intensity={2.2} color="#ffe3c1" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={24} shadow-camera-bottom={-24} shadow-bias={-0.0004} />
+    <ambientLight intensity={1.4} />
+    <hemisphereLight args={['#e1d4c6', '#18242b', 1.8]} />
+    <directionalLight position={[-14, 24, 18]} intensity={2.6} color="#ffe3c1" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={24} shadow-camera-bottom={-24} shadow-bias={-0.0004} />
     <directionalLight position={[17, 12, -15]} intensity={1.25} color="#9de7dd" />
     <pointLight position={[-18, 3, -5]} intensity={1.5} distance={12} color="#ef6d9d" />
     <pointLight position={[18, 3, 9]} intensity={1.7} distance={13} color="#f8b85e" />
