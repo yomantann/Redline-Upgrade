@@ -18,19 +18,20 @@ export interface GameBoardProps {
   movingPlayerId: string | null;
   finishOrder?: number[];
   boardId?: BoardId;
+  preview?: boolean;
 }
 
 const redlineZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 const bioZones = ['NIGHTCLUB', 'CASINO ARCADE', 'VIP LOUNGE', 'HOLO BAR', 'ROOFTOP', 'FESTIVAL', 'THE ARENA'];
 
-export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE' }: GameBoardProps) {
+export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE', preview = false }: GameBoardProps) {
   const isBio = boardId === 'BIO_UPGRADE';
   const boardSpaces = getBoardSpaces(boardId);
   const route = isBio ? BIO_ROUTE : ROUTE;
   const zones = isBio ? bioZones : redlineZones;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(preview ? 1.5 : 1);
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [selectedSpace, setSelectedSpace] = useState<number | null>(null);
@@ -97,7 +98,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (drag.current?.id === event.pointerId) drag.current = null;
   };
 
-  return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
+  return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''} ${preview ? 'ru-board--preview' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
     <header className="ru-board__masthead">
       <div><span className="ru-board__overline">{isBio ? 'BIO UPGRADE / 21+ ONLY' : 'CIRCUIT 01 / PHYSICAL EDITION'}</span><h2 className="ru-board__title">{isBio ? 'The after-hours circuit' : 'The redline circuit'}<span className="ru-board__title-slash"> / 75</span></h2></div>
       <div className="ru-board__controls" role="group" aria-label="Board camera">

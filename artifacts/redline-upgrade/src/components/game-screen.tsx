@@ -140,11 +140,12 @@ export function GameScreen() {
   const previewPlayers = useMemo(
     () => createMatch(characters[0].id, selectedBoardId).players.map((player, index) => ({
       ...player,
-      position: [0, 4, 9, 14][index] ?? 0,
+      position: index === 0 ? 1 : [0, 12, 24, 36][index] ?? 0,
     })),
     [selectedBoardId],
   );
   const previewActivePlayer = previewPlayers.find(player => !player.isCPU) ?? previewPlayers[0];
+  const [previewPosition, setPreviewPosition] = useState(1);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
@@ -182,6 +183,14 @@ export function GameScreen() {
   const gambleCardKey = currentPlayerId && currentGambleCardId ? `${currentPlayerId}:${currentGambleCardId}` : null;
   const lastGambleCardKey = useRef<string | null>(null);
   const [gambleCardStage, setGambleCardStage] = useState<'draw' | 'resolved'>('draw');
+
+  useEffect(() => {
+    if (match || !isBioBoard) return;
+    const timer = window.setInterval(() => {
+      setPreviewPosition(position => position >= 75 ? 1 : position + 1);
+    }, 700);
+    return () => window.clearInterval(timer);
+  }, [match, isBioBoard]);
 
   function showNextPlayerStatChange(playerId: string) {
     const queue = pendingPlayerStatChanges.current.get(playerId) ?? [];
@@ -413,14 +422,19 @@ export function GameScreen() {
         </div>
       </header>
       <div className="board-preview-banner mono" role="note">
-        SAMPLE PAWN PLACEMENT / NO GAME STATE CHANGED / SELECT A BOARD TO PREVIEW
+        {isBioBoard
+          ? 'LIVE BOARD PREVIEW / PAWN AUTO-MOVES ALONG THE ROUTE / NO GAME STATE CHANGED'
+          : 'SAMPLE PAWN PLACEMENT / NO GAME STATE CHANGED / SELECT A BOARD TO PREVIEW'}
       </div>
       <GameBoard
         boardId={selectedBoardId}
-        players={previewPlayers}
+        players={isBioBoard
+          ? previewPlayers.map((player, index) => index === 0 ? { ...player, position: previewPosition } : player)
+          : previewPlayers}
         activePlayerId={previewActivePlayer.playerId}
         landingPosition={null}
-        movingPlayerId={null}
+        movingPlayerId={isBioBoard ? previewActivePlayer.playerId : null}
+        preview={isBioBoard}
       />
     </main>
   );

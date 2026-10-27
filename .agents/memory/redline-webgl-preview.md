@@ -21,6 +21,12 @@ For board redesigns, keep the WebGL tabletop as the primary renderer, but give i
 
 **How to apply:** Keep one ordered route source for both renderers, preserve visible pawns and numbered spaces in the fallback, and report that a fallback screenshot does not prove the live WebGL view.
 
+The Bio SVG fallback must honor the same overview, zoom, and follow-pawn state as the WebGL camera. Otherwise, the Bio board remains a tiny full-route overview in browsers without WebGL, even when the main camera is configured to follow a pawn.
+
+**Why:** The preview browser used the SVG fallback, whose Bio-specific branch initially ignored camera zoom and follow state.
+
+**How to apply:** When changing board camera behavior, verify both the WebGL scene and each board's no-WebGL fallback independently.
+
 ## R3F preview sizing
 
 Give the React Three Fiber canvas host an explicit responsive height on its first layout, and use the default continuous frame loop unless demand rendering has a reliable invalidation path. Keep a visible no-WebGL fallback; a fallback screenshot does not verify that the 3D scene itself rendered.

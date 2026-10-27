@@ -42,6 +42,12 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
   const finish = route[75];
   if (isBio) {
     const p = (index: number) => project(route[index].x, route[index].z, .45);
+    const bioZoom = zoom * (overview ? 1 : 2);
+    const bioViewWidth = 1200 / bioZoom;
+    const bioViewHeight = 760 / bioZoom;
+    const bioFocus = overview ? { x: 600, y: 380 } : focus;
+    const bioViewX = bioFocus.x - bioViewWidth / 2 + pan.x * 19 + pan.z * 6;
+    const bioViewY = bioFocus.y - bioViewHeight / 2 + pan.z * 15 - pan.x * 4;
     const bioColor = (space: (typeof boardSpaces)[number]) => space.type === 'SALARY_GATE' ? '#f3cc6f'
       : space.type === 'MILESTONE' ? '#f36b9d'
         : space.type === 'GAMBLE' ? '#f08c59'
@@ -49,14 +55,15 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
             : space.deck ? '#58d7d0' : '#94a2aa';
     return <div className="ru-board__static" data-testid="board-static-fallback">
       <div className="ru-board__static-heading"><span>BIO UPGRADE / 21+ ONLY</span><strong>The after-hours route remains live.</strong><p>WebGL is unavailable, so this accessible route view shows all spaces and player positions.</p></div>
-      <svg className="ru-board__static-svg" viewBox="0 0 1200 760" role="img" aria-label="Bio Upgrade after-hours route with all spaces and player positions">
+      <svg className="ru-board__static-svg" viewBox={`${bioViewX} ${bioViewY} ${bioViewWidth} ${bioViewHeight}`} role="img" aria-label="Bio Upgrade after-hours route with all spaces and player positions">
         <defs>
           <linearGradient id="bio-fallback-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#18232b"/><stop offset="1" stopColor="#261b2c"/></linearGradient>
           <filter id="bio-fallback-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
-        <rect width="1200" height="760" fill="url(#bio-fallback-bg)" />
+        <rect x={bioViewX} y={bioViewY} width={bioViewWidth} height={bioViewHeight} fill="url(#bio-fallback-bg)" />
         <polyline points={route.map(point => { const q = project(point.x, point.z, .35); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#34424b" strokeWidth="30" strokeLinecap="round" strokeLinejoin="round" />
         <polyline points={route.map(point => { const q = project(point.x, point.z, .42); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#58d7d0" strokeOpacity=".55" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={route.slice(0, activePosition + 1).map(point => { const q = project(point.x, point.z, .48); return `${q.x},${q.y}`; }).join(' ')} fill="none" stroke="#f36b9d" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
         <text x="600" y="62" fill="#f3ead7" textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="26">BIO UPGRADE / NIGHTLIFE CIRCUIT</text>
         {boardSpaces.map(space => {
           const center = p(space.number);
@@ -76,7 +83,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           const center = p(pos);
           const atPosition = players.filter(candidate => candidate.position === player.position);
           const offset = atPosition.findIndex(candidate => candidate.playerId === player.playerId);
-          return <g key={player.playerId} transform={`translate(${center.x + (offset - (atPosition.length - 1) / 2) * 15} ${center.y - 17})`}>
+          return <g key={player.playerId} className={player.playerId === activePlayerId ? 'ru-board__bio-pawn' : undefined} transform={`translate(${center.x + (offset - (atPosition.length - 1) / 2) * 15} ${center.y - 17})`}>
             <circle r="8" fill={playerColors[index % playerColors.length]} stroke="#111a20" strokeWidth="2" />
             <text y="3" textAnchor="middle" fill="#111a20" fontFamily="sans-serif" fontSize="7" fontWeight="900">{player.displayName.slice(0, 1).toUpperCase()}</text>
           </g>;
