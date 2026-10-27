@@ -4,7 +4,7 @@ import { toClientAction } from './multiplayer';
 import type { Player } from './player';
 import { createPlayer } from './player';
 import { advanceMatch, createMatch, rollD4, type Match, type MatchAction } from './match';
-import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } from './boards';
+import { DEFAULT_BOARD_ID, findBoardDefinition, getBoardDefinition, type BoardId, type GameMode } from './boards';
 
 interface GameStateValue {
   player: Player | null;
@@ -44,15 +44,32 @@ export interface RemoteInfo {
 
 const GameContext = createContext<GameStateValue | null>(null);
 
+function getInitialBoardId(): BoardId {
+  if (typeof window === 'undefined') return DEFAULT_BOARD_ID;
+  try {
+    const requested = new URLSearchParams(window.location.search).get('board')
+      ?? window.sessionStorage.getItem('redline-upgrade:selected-board');
+    const board = requested ? findBoardDefinition(requested) : undefined;
+    return board?.playable ? board.id : DEFAULT_BOARD_ID;
+  } catch {
+    return DEFAULT_BOARD_ID;
+  }
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [player, setPlayer] = useState<Player | null>(null);
   const [match, setMatch] = useState<Match | null>(null);
-  const [selectedBoardId, setSelectedBoardId] = useState<BoardId>(DEFAULT_BOARD_ID);
+  const [selectedBoardId, setSelectedBoardId] = useState<BoardId>(getInitialBoardId);
   const [selectedGameMode, setSelectedGameMode] = useState<GameMode | null>(null);
   const [careerRevealed, setCareerRevealed] = useState(false);
   const selectBoard = useCallback((boardId: BoardId) => {
     setSelectedBoardId(boardId);
     setSelectedGameMode(null);
+    try {
+      window.sessionStorage.setItem('redline-upgrade:selected-board', boardId);
+    } catch {
+      // Board selection still works in browsers that block session storage.
+    }
   }, []);
   const selectGameMode = useCallback((mode: GameMode) => setSelectedGameMode(mode), []);
   const acknowledgeCareer = useCallback(() => setCareerRevealed(true), []);

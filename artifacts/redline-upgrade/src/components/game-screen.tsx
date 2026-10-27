@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { getCharacter } from '@/game/characters';
+import { characters, getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { CARD_READ_MINIMUM_MS, CPU_CARD_DRAW_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
-import type { Match, MatchAction, PendingDecision, WealthEvent } from '@/game/match';
+import { createMatch, type Match, type MatchAction, type PendingDecision, type WealthEvent } from '@/game/match';
+import type { BoardId } from '@/game/boards';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
@@ -134,8 +135,16 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
 
 export function GameScreen() {
   const [, navigate] = useLocation();
-  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId } = useGame();
+  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId, selectBoard } = useGame();
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
+  const previewPlayers = useMemo(
+    () => createMatch(characters[0].id, selectedBoardId).players.map((player, index) => ({
+      ...player,
+      position: [0, 4, 9, 14][index] ?? 0,
+    })),
+    [selectedBoardId],
+  );
+  const previewActivePlayer = previewPlayers.find(player => !player.isCPU) ?? previewPlayers[0];
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
@@ -372,10 +381,47 @@ export function GameScreen() {
   }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, hasTurnStartToken, autoScrollEnabled]);
 
   if (!match) return (
-    <main className="game-gate">
-      <span className="eyebrow">NO MATCH LOADED</span>
-      <h1 className="display">Start the<br />signal.</h1>
-      <button className="action" type="button" onClick={() => navigate('/characters')} data-testid="button-board-choose-character">Choose your character <span aria-hidden>↗</span></button>
+    <main className="game-screen board-preview-page">
+      <header className="empty-board-header">
+        <div>
+          <span className="eyebrow">NO MATCH LOADED // BOARD PREVIEW</span>
+          <h1 className="display empty-board-title">{isBioBoard ? 'BIO UPGRADE' : 'REDLINE UPGRADE'}</h1>
+          {isBioBoard && <AgeRestrictionBadge />}
+        </div>
+        <div className="empty-board-actions">
+          <div className="empty-board-switch" role="group" aria-label="Choose board to preview">
+            {([
+              ['REDLINE_UPGRADE', 'Redline Upgrade'],
+              ['BIO_UPGRADE', 'Bio Upgrade'],
+            ] as const satisfies readonly (readonly [BoardId, string])[]).map(([boardId, label]) => (
+              <button
+                key={boardId}
+                type="button"
+                aria-pressed={selectedBoardId === boardId}
+                className={selectedBoardId === boardId ? 'selected' : ''}
+                onClick={() => {
+                  selectBoard(boardId);
+                  navigate(`/board?board=${boardId}`);
+                }}
+                data-testid={`button-preview-${boardId.toLowerCase()}`}
+              >{label}</button>
+            ))}
+          </div>
+          <button className={`action ${isBioBoard ? 'lime-action' : ''}`} type="button" onClick={() => navigate('/mode')} data-testid="button-board-start">
+            Play {isBioBoard ? 'Bio Upgrade' : 'Redline Upgrade'} <span aria-hidden>↗</span>
+          </button>
+        </div>
+      </header>
+      <div className="board-preview-banner mono" role="note">
+        SAMPLE PAWN PLACEMENT / NO GAME STATE CHANGED / SELECT A BOARD TO PREVIEW
+      </div>
+      <GameBoard
+        boardId={selectedBoardId}
+        players={previewPlayers}
+        activePlayerId={previewActivePlayer.playerId}
+        landingPosition={null}
+        movingPlayerId={null}
+      />
     </main>
   );
 
