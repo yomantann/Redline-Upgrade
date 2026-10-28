@@ -275,7 +275,8 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
   const tileColor = space.type === 'CARD' ? '#202d32'
     : space.type === 'GAMBLE' ? '#38272e'
       : space.type === 'UPGRADE_TOKEN' ? '#2e293c'
-        : space.type === 'SALARY_GATE' ? '#37342a' : '#30423b';
+        : space.type === 'SALARY_GATE' ? '#37342a'
+          : space.type === 'MILESTONE' ? '#48243e' : '#30423b';
   const edgeColor = landing || active ? '#d4e981' : accent;
   return <group position={[point.x, 0, point.z]} rotation={[0, angle, 0]}>
     <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
@@ -295,9 +296,13 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
       <meshBasicMaterial map={texture} transparent toneMapped={false} depthWrite={false} />
     </mesh>
     <mesh position={[0.59, 0.78, -0.26]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[0.56, 0.56]} />
+      <planeGeometry args={[space.type === 'MILESTONE' ? 0.68 : 0.56, space.type === 'MILESTONE' ? 0.68 : 0.56]} />
       <meshBasicMaterial map={iconTexture} transparent toneMapped={false} depthWrite={false} />
     </mesh>
+    {space.type === 'MILESTONE' && <mesh position={[-0.72, 0.79, 0.48]} rotation={[0, Math.PI / 4, Math.PI / 4]} castShadow>
+      <octahedronGeometry args={[0.2, 0]} />
+      <meshStandardMaterial color="#ff72be" emissive="#ff4eab" emissiveIntensity={0.7} metalness={0.45} roughness={0.22} />
+    </mesh>}
     {(active || landing) && <mesh position={[0, 0.705, 0]}>
       <planeGeometry args={[1.9, 1.66]} />
       <meshBasicMaterial color={landing ? '#f7bd71' : '#b1ede1'} transparent opacity={0.17} depthWrite={false} />

@@ -90,6 +90,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           const center = local(0, 0, .76);
           const symbol = local(.57, -.3, .79);
           const accent = bioColor(space);
+          const milestone = space.type === 'MILESTONE';
           const cardLabels = { wealth: 'WEALTH CARD', ai: 'AI SKILL CARD', fame: 'FAME CARD', lifestyle: 'LIFESTYLE CARD', influence: 'INFLUENCE CARD', gamble: 'GAMBLE CARD' };
           const categoryLabel = space.type === 'SALARY_GATE' ? 'SALARY GATE'
             : space.type === 'GAMBLE' ? 'GAMBLE CARD'
@@ -106,13 +107,14 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
             <polygon points={corners(1.02, .95, .42)} fill="#101a19" stroke={accent} strokeOpacity=".42" strokeWidth="1" />
             <polygon points={rightFace} fill="#101e19" stroke={accent} strokeOpacity=".62" strokeWidth="1" />
             <polygon points={frontFace} fill="#13241e" stroke={accent} strokeOpacity=".62" strokeWidth="1" />
-            <polygon points={corners(1.02, .95, .72)} fill={space.type === 'GAMBLE' ? '#38272e' : space.type === 'UPGRADE_TOKEN' ? '#2e293c' : space.type === 'CARD' ? '#202d32' : space.type === 'SALARY_GATE' ? '#37342a' : '#30423b'} stroke={accent} strokeWidth={landingPosition === space.number ? 3 : 1.4} />
-            <polygon points={corners(.94, .86, .725)} fill="none" stroke="#d5d9cf" strokeOpacity=".16" strokeWidth=".65" />
+            <polygon points={corners(1.02, .95, .72)} fill={milestone ? '#48243e' : space.type === 'GAMBLE' ? '#38272e' : space.type === 'UPGRADE_TOKEN' ? '#2e293c' : space.type === 'CARD' ? '#202d32' : space.type === 'SALARY_GATE' ? '#37342a' : '#30423b'} stroke={accent} strokeWidth={landingPosition === space.number ? 3 : milestone ? 3 : 1.4} filter={milestone ? 'url(#bio-fallback-glow)' : undefined} />
+            <polygon points={corners(.94, .86, .725)} fill="none" stroke={milestone ? '#ffe2f3' : '#d5d9cf'} strokeOpacity={milestone ? '.58' : '.16'} strokeWidth={milestone ? '1.1' : '.65'} />
             {tileLabel && <g>
               <rect x={center.x - 20} y={center.y + 8} width="40" height="7" rx="1" fill="#0b1512" fillOpacity=".92" stroke={accent} strokeOpacity=".58" strokeWidth=".7" />
               <text x={center.x} y={center.y + 13.1} fill={accent} textAnchor="middle" fontFamily="monospace" fontSize={tileLabel.length > 15 ? '3' : tileLabel.length > 11 ? '3.5' : '4.3'} fontWeight="900">{tileLabel}</text>
             </g>}
             <text x={center.x - 7} y={center.y + 1} fill="#f3ead7" textAnchor="middle" fontFamily="monospace" fontSize="9" fontWeight="900">{String(space.number).padStart(2, '0')}</text>
+            {milestone && <path d={`M${center.x-22} ${center.y-13}l5 -5 5 5 -5 5z`} fill="#ff72be" stroke="#fff0f8" strokeWidth=".8" aria-hidden="true" />}
             <g aria-hidden="true">
               <circle cx={symbol.x} cy={symbol.y} r="11" fill="#101a20" stroke={accent} strokeWidth="1.6" />
               <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.normal} transform={`translate(${symbol.x - 8.4} ${symbol.y - 8.4}) scale(.7)`} fill="none" stroke="#fff6df" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -289,8 +291,8 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
         const y = milestone ? .86 : .7;
         const scale = milestone ? SPACE_TILE_FOOTPRINT.landmarkScale : 1;
         const block = platform(x, z, SPACE_TILE_FOOTPRINT.width * scale / 2, SPACE_TILE_FOOTPRINT.depth * scale / 2, y);
-          const color = milestone ? '#794337' : visual.className === 'start' ? '#3b543f' : space.payday ? '#577455' : visual.tile;
-          const accent = milestone ? '#f96346' : visual.className === 'start' ? '#d4e981' : space.payday ? '#d4e981' : visual.accent;
+          const color = milestone ? (isBio ? '#48243e' : '#794337') : visual.className === 'start' ? '#3b543f' : space.payday ? '#577455' : visual.tile;
+          const accent = milestone ? (isBio ? '#ff72be' : '#f96346') : visual.className === 'start' ? '#d4e981' : space.payday ? '#d4e981' : visual.accent;
         const center = project(x,z,y+.02);
         return <g key={space.number} data-board-space={space.number} style={{ cursor: 'pointer' }} onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)}>
           <title>{`Space ${space.number}, ${space.label}. ${space.description}`}</title>
@@ -301,7 +303,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
             fill={color}
             stroke={accent}
             strokeWidth={milestone ? 2.5 : visual.className === 'deck' ? 2.1 : visual.className === 'gamble' ? 1.45 : 1.2}
-            style={visual.className === 'deck' ? { filter: `drop-shadow(0 0 3px ${accent}88)` } : undefined}
+            style={visual.className === 'deck' || (isBio && space.type === 'MILESTONE') ? { filter: `drop-shadow(0 0 ${isBio && space.type === 'MILESTONE' ? 6 : 3}px ${accent}aa)` } : undefined}
           />
            <rect x={center.x-30} y={center.y+21} width="16" height="3" rx="1" fill={accent} opacity={visual.className === 'safe' ? '.52' : '.9'} />
           <text x={center.x} y={center.y+5} textAnchor="middle" fill="#f2f0df" fontFamily="Barlow Condensed, sans-serif" fontSize={milestone ? 20 : 17} fontWeight="900">{String(space.number).padStart(2,'0')}</text>
@@ -322,6 +324,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
               <path d={`M${center.x-17} ${center.y+14}v-18h34v18`} fill="none" />
               <path d={`M${center.x-20} ${center.y-4}h40`} />
             </g>}
+             {isBio && space.type === 'MILESTONE' && <path d={`M${center.x-23} ${center.y-10}l6 -6 6 6 -6 6z`} fill="#ff72be" stroke="#ffe2f3" strokeWidth="1" pointerEvents="none" />}
             {landingPosition === space.number && <circle cx={center.x} cy={center.y} r="31" fill="none" stroke="#f0f0d6" strokeWidth="3" opacity=".95" />}
             {space.type !== 'NORMAL' && (space.type !== 'EVENT' || visual.className === 'effect' || visual.className === 'start') && <path d={ICON_PATHS[space.icon] ?? ICON_PATHS.milestone} transform={`translate(${center.x+(visual.className === 'deck' || visual.className === 'gamble' ? 4 : 7)} ${center.y-19}) scale(.48)`} fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
             {visual.deckCode && <g aria-hidden="true">

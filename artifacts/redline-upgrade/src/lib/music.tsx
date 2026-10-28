@@ -5,6 +5,8 @@ type Manifest = { lobby: string[]; game: string[] };
 export type MusicMode = 'lobby' | 'game';
 
 const STORAGE_KEY = 'redline-music-enabled';
+let sharedAudio: HTMLAudioElement | null = null;
+let playbackOwner = 0;
 const MusicContext = createContext<{ enabled: boolean; setEnabled: (value: boolean) => void; hasTracks: boolean }>({
   enabled: false,
   setEnabled: () => undefined,
@@ -23,7 +25,6 @@ export function MusicProvider({ mode, children }: { mode: MusicMode; children: R
     try { return localStorage.getItem(STORAGE_KEY) !== 'off'; } catch { return true; }
   });
   const [manifest, setManifest] = useState<Manifest>({ lobby: [], game: [] });
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -46,34 +47,46 @@ export function MusicProvider({ mode, children }: { mode: MusicMode; children: R
 
   useEffect(() => {
     if (!enabled || tracks.length === 0) return;
-    const audio = new Audio();
+    const owner = ++playbackOwner;
+    const audio = sharedAudio ?? new Audio();
+    sharedAudio = audio;
+    audio.pause();
+    audio.currentTime = 0;
     audio.volume = 0.35;
-    audioRef.current = audio;
     let stopped = false;
     const playNext = () => {
-      if (stopped) return;
+      if (stopped || owner !== playbackOwner) return;
       const track = pick(tracks, lastRef.current);
       lastRef.current = track;
+      audio.pause();
+      audio.currentTime = 0;
       audio.src = getPublicAssetUrl(`music/${track.split("/").map(encodeURIComponent).join("/")}`);
       audio.loop = mode === 'lobby' && tracks.length === 1;
+      audio.load();
       audio.play().catch(() => undefined);
     };
-    const onEnded = () => playNext();
-    const onError = () => { if (tracks.length > 1) playNext(); };
+    const onEnded = () => { if (owner === playbackOwner) playNext(); };
+    const onError = () => { if (owner === playbackOwner && tracks.length > 1) playNext(); };
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     playNext();
     // Browsers block autoplay until a gesture; retry on first interaction.
-    const unlock = () => { if (audio.paused && !stopped) audio.play().catch(() => undefined); };
+    const unlock = () => {
+      if (audio.paused && !stopped && owner === playbackOwner && audio.src) {
+        audio.play().catch(() => undefined);
+      }
+    };
     window.addEventListener('pointerdown', unlock);
     return () => {
       stopped = true;
       window.removeEventListener('pointerdown', unlock);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
-      audio.pause();
-      audio.removeAttribute('src');
-      audioRef.current = null;
+      if (owner === playbackOwner) {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, mode, trackKey]);

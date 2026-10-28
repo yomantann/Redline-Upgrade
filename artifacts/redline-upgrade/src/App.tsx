@@ -95,8 +95,8 @@ function Home() {
             <span><strong>Distinct boards</strong><span>Redline, Bio and Haunted Upgrade</span></span>
           </div>
           <div className="strip-cell">
-            <span className="strip-number">01</span>
-            <span><strong>Playable board</strong><span>Redline Upgrade single player</span></span>
+            <span className="strip-number">02</span>
+            <span><strong>Playable boards</strong><span>Redline + Bio / Single player and multiplayer available</span></span>
           </div>
           <div className="strip-cell">
             <span className="strip-number">02</span>
