@@ -89,20 +89,6 @@ function Home() {
             />
           </div>
         </section>
-        <section className="home-strip" aria-label="Game foundation status">
-          <div className="strip-cell">
-            <span className="strip-number">03</span>
-            <span><strong>Distinct boards</strong><span>Redline, Bio and Haunted Upgrade</span></span>
-          </div>
-          <div className="strip-cell">
-            <span className="strip-number">02</span>
-            <span><strong>Playable boards</strong><span>Redline + Bio / Single player and multiplayer available</span></span>
-          </div>
-          <div className="strip-cell">
-            <span className="strip-number">02</span>
-            <span><strong>Play modes</strong><span>Single player and online rooms</span></span>
-          </div>
-        </section>
       </main>
     </AppShell>
   );
