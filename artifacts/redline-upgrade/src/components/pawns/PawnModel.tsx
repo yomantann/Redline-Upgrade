@@ -5,8 +5,11 @@
  */
 import type { BoardId } from '../../game/boards';
 import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
-import { createContext, useContext } from 'react';
+import { createContext, Suspense, useContext, useMemo } from 'react';
+import { useLoader } from '@react-three/fiber';
 import { Color } from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { getPublicAssetUrl } from '../../lib/public-asset-url';
 
 export interface PawnModelProps {
   characterId: string;
@@ -421,14 +424,36 @@ const accents: Record<string, string> = {
 
 export function PawnModel({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnModelProps) {
   const bio = boardId === 'BIO_UPGRADE';
-  const palette = bio ? BIO_PAWN_PALETTES[characterId] : undefined;
-  const accent = bio ? palette?.accent : accents[characterId];
+  if (bio) return <BioPawn characterId={characterId} selected={selected} />;
+  const accent = accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
   return <group>
-    <Base accent={accent} selected={selected} bio={bio} bioBody={palette?.body} bioTrim={palette?.trim} />
-    <BioPaletteContext.Provider value={palette}>
-      <Signature id={characterId} accent={accent} />
-    </BioPaletteContext.Provider>
+    <Base accent={accent} selected={selected} />
+    <Signature id={characterId} accent={accent} />
+  </group>;
+}
+
+function BioPawn({ characterId, selected }: { characterId: string; selected: boolean }) {
+  const palette = BIO_PAWN_PALETTES[characterId];
+  if (!palette) throw new Error(`Unknown Bio pawn character: ${characterId}`);
+  return <Suspense fallback={<group>
+    <Base accent={palette.accent} selected={selected} bio bioBody={palette.body} bioTrim={palette.trim} />
+    <BioPaletteContext.Provider value={palette}><Signature id={characterId} accent={palette.accent} /></BioPaletteContext.Provider>
+  </group>}>
+    <BioPawnGLB characterId={characterId} selected={selected} />
+  </Suspense>;
+}
+
+function BioPawnGLB({ characterId, selected }: { characterId: string; selected: boolean }) {
+  const url = getPublicAssetUrl(`characters/bio-upgrade/pawns/${characterId}.glb`);
+  const { scene } = useLoader(GLTFLoader, url);
+  const instance = useMemo(() => scene.clone(true), [scene]);
+  return <group>
+    <primitive object={instance} />
+    {selected && <mesh position={[0, 0.29, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.9, 0.97, 32]} />
+      <meshBasicMaterial color={BIO_PAWN_PALETTES[characterId].accent} transparent opacity={0.85} />
+    </mesh>}
   </group>;
 }
 
