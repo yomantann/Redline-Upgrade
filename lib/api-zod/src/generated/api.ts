@@ -113,6 +113,116 @@ export const CreateRoomResponse = zod.object({
 
 
 /**
+ * @summary Get the caller's persistent achievements and asset collection
+ */
+export const GetAchievementProfileResponse = zod.object({
+  "metrics": zod.record(zod.string(), zod.number()),
+  "achievements": zod.array(zod.object({
+  "achievementId": zod.string(),
+  "progress": zod.number().int(),
+  "unlockedAt": zod.coerce.date().nullable(),
+  "unlockGameId": zod.string().nullable(),
+  "rewardCredits": zod.number().int()
+})),
+  "unlockedCount": zod.number().int(),
+  "totalCount": zod.number().int(),
+  "collection": zod.array(zod.object({
+  "assetId": zod.string(),
+  "acquiredCount": zod.number().int(),
+  "retainedCount": zod.number().int(),
+  "lostCount": zod.number().int(),
+  "gamesAcquired": zod.number().int(),
+  "gamesRetained": zod.number().int(),
+  "firstAcquiredAt": zod.coerce.date().nullable(),
+  "firstRetainedAt": zod.coerce.date().nullable(),
+  "lastAcquiredAt": zod.coerce.date().nullable(),
+  "lastRetainedAt": zod.coerce.date().nullable()
+})),
+  "history": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "userId": zod.string(),
+  "source": zod.enum(['SOLO', 'MULTIPLAYER']),
+  "gameId": zod.string(),
+  "boardId": zod.string(),
+  "mode": zod.string(),
+  "placement": zod.number().int(),
+  "finalValue": zod.number().int(),
+  "portfolioValue": zod.number().int(),
+  "characterId": zod.string(),
+  "careerId": zod.string().nullable(),
+  "finalStats": zod.record(zod.string(), zod.number()),
+  "acquiredAssetIds": zod.array(zod.string()),
+  "lostAssetIds": zod.array(zod.string()),
+  "retainedAssets": zod.array(zod.object({
+  "assetId": zod.string(),
+  "level": zod.number().int()
+})),
+  "unlockedAchievementIds": zod.array(zod.string()),
+  "completedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Resume the caller's active authoritative solo game
+ */
+export const GetActiveSoloGameResponse = zod.object({
+  "game": zod.union([zod.object({
+  "gameId": zod.string().uuid(),
+  "version": zod.number().int(),
+  "match": zod.record(zod.string(), zod.unknown()).describe('Server-owned single-player match state.'),
+  "newlyUnlocked": zod.array(zod.string())
+}),zod.null()])
+})
+
+
+/**
+ * @summary Start a new server-authoritative solo game
+ */
+export const startSoloGameBodyBoardIdMax = 80;
+
+export const startSoloGameBodyCharacterIdMax = 80;
+
+
+
+export const StartSoloGameBody = zod.object({
+  "boardId": zod.string().min(1).max(startSoloGameBodyBoardIdMax),
+  "characterId": zod.string().min(1).max(startSoloGameBodyCharacterIdMax)
+})
+
+export const StartSoloGameResponse = zod.object({
+  "gameId": zod.string().uuid(),
+  "version": zod.number().int(),
+  "match": zod.record(zod.string(), zod.unknown()).describe('Server-owned single-player match state.'),
+  "newlyUnlocked": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Apply one action to the caller's server-authoritative solo game
+ */
+export const SubmitSoloGameActionParams = zod.object({
+  "gameId": zod.coerce.string().uuid()
+})
+
+export const submitSoloGameActionBodyExpectedVersionMin = 0;
+
+
+
+export const SubmitSoloGameActionBody = zod.object({
+  "expectedVersion": zod.number().int().min(submitSoloGameActionBodyExpectedVersionMin),
+  "action": zod.record(zod.string(), zod.unknown())
+})
+
+export const SubmitSoloGameActionResponse = zod.object({
+  "gameId": zod.string().uuid(),
+  "version": zod.number().int(),
+  "match": zod.record(zod.string(), zod.unknown()).describe('Server-owned single-player match state.'),
+  "newlyUnlocked": zod.array(zod.string())
+})
+
+
+/**
  * @summary Join a waiting room by room code
  */
 export const joinRoomBodyCodeMin = 4;

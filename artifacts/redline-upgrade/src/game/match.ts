@@ -6,7 +6,7 @@ import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type Asset
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
-import type { EventLogEntry } from './events/types';
+import type { AssetEventLogEntry, EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
 import { createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinctCardsFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
 import { getCard } from './cards';
@@ -122,6 +122,7 @@ export interface Match {
   endgameAttributeBonuses: EndgameAttributeBonus[] | null;
   pending: PendingDecision | null;
   eventLog: EventLogEntry[];
+  assetEventLog: AssetEventLogEntry[];
   eventCursor: number;
   turnCounter: number;
   abilityUsage: Record<string, AbilityUsageState>;
@@ -346,9 +347,11 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     if (!career) throw new Error(`Unknown career: ${setup.careerId}`);
     const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
     const salaryAmount = career.salaryTiers[salaryTier - 1];
+    const player = createPlayer(setup.characterId, setup.displayName);
     return {
-      ...createPlayer(setup.characterId, setup.displayName),
+      ...player,
       careerId: career.id,
+      history: { ...player.history, careerIds: [career.id] },
       salaryTier,
       salaryAmount,
       wealth: startingWealth(career, salaryAmount),
@@ -380,6 +383,7 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     endgameAttributeBonuses: null,
     pending: null,
     eventLog: [],
+    assetEventLog: [],
     eventCursor: 0,
     turnCounter: 1,
     abilityUsage: {},
@@ -561,7 +565,13 @@ function assignNewCareer(match: Match, careerId: string): [Match, EventDraft[]] 
   if (!career || careerId === current.careerId || careerId === current.secondCareer?.careerId) return [match, []];
   const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
   const players = match.players.map((player, index) => index === match.turnIndex
-    ? { ...player, careerId, salaryTier, salaryAmount: career.salaryTiers[salaryTier - 1] }
+    ? {
+        ...player,
+        careerId,
+        salaryTier,
+        salaryAmount: career.salaryTiers[salaryTier - 1],
+        history: { ...player.history, careerIds: [...new Set([...(player.history.careerIds ?? []), careerId])] },
+      }
     : player);
   const updated = { ...match, players };
   const acquiredTokens = careerAcquisitionTokenCount([career.id])

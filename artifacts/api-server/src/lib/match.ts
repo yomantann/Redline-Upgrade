@@ -18,6 +18,7 @@ import {
   type MultiplayerMatchState,
 } from "../../../redline-upgrade/src/game/multiplayer";
 import { DISCONNECT_AFTER_MS } from "./rooms";
+import { recordCompletedGame } from "./progression";
 
 const KICKED_MESSAGE = "You were removed from this match for missing too many turns.";
 export const DISCONNECT_GRACE_MS = 30_000;
@@ -107,6 +108,12 @@ async function settleIdle(
   row: { version: number },
   state: MultiplayerMatchState,
 ): Promise<{ state: MultiplayerMatchState; version: number }> {
+  if (state.match.phase === "complete") {
+    await finalizeRoomMatch(tx, roomId, state);
+    await tx.update(gameRoomsTable).set({ status: "completed", updatedAt: new Date() })
+      .where(eq(gameRoomsTable.id, roomId));
+    return { state, version: row.version };
+  }
   const now = Date.now();
   const players = await members(tx, roomId);
   let connectionStatusChanged = false;
@@ -168,8 +175,25 @@ async function settleIdle(
       .update(gameRoomsTable)
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(gameRoomsTable.id, roomId));
+    await finalizeRoomMatch(tx, roomId, nextState);
   }
   return { state: nextState, version };
+}
+
+async function finalizeRoomMatch(tx: Tx, roomId: string, state: MultiplayerMatchState): Promise<void> {
+  if (state.match.phase !== "complete") return;
+  for (const seat of state.seats) {
+    if (!seat.userId || seat.playerIndex < 0) continue;
+    await recordCompletedGame(
+      tx,
+      "MULTIPLAYER",
+      roomId,
+      seat.userId,
+      state.match,
+      seat.playerIndex,
+      state.assetEvents,
+    );
+  }
 }
 
 async function members(tx: Tx, roomId: string): Promise<RoomPlayer[]> {
@@ -285,6 +309,9 @@ export async function submitMatchAction(
         ...(result.state.match.phase === "complete" ? { status: "completed" as const } : {}),
       })
       .where(eq(gameRoomsTable.id, roomId));
+    if (result.state.match.phase === "complete") {
+      await finalizeRoomMatch(tx, roomId, result.state);
+    }
     return {
       kind: "ok",
       snapshot: buildSnapshot(roomId, version, result.state, userId, await members(tx, roomId)),

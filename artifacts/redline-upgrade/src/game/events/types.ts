@@ -128,11 +128,13 @@ export interface EventLogEntry {
   effectId?: string;
   cardId?: string;
   deck?: DeckId;
+  assetId?: string;
   label: string;
   detail: string;
   amount?: number;
   assetName?: string;
   assetLevel?: number;
+  category?: AssetCategory;
   previousAssetValue?: number;
   newAssetValue?: number;
   salaryAmount?: number;
@@ -153,4 +155,14 @@ export interface EventLogEntry {
   turnIndex: number;
   depth: number;
   timestamp: number;
+}
+
+export interface AssetEventLogEntry {
+  eventId: string;
+  playerId: string;
+  playerIndex: number;
+  type: Extract<GameEventType, 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_UPGRADED'>;
+  assetId: string;
+  targetPlayerId?: string;
+  assetLevel?: number;
 }

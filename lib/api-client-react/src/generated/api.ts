@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AchievementProfile,
+  ActiveSoloGameResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   ErrorEnvelope,
@@ -33,7 +35,10 @@ import type {
   RoomDetails,
   RoomInput,
   RoomSettingsInput,
-  SelectionInput
+  SelectionInput,
+  SoloGameActionInput,
+  SoloGameSnapshot,
+  StartSoloGameInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -556,6 +561,337 @@ export const useCreateRoom = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getCreateRoomMutationOptions(options));
+    }
+
+export const getGetAchievementProfileUrl = () => {
+
+
+
+
+  return `/api/achievement-profile`
+}
+
+/**
+ * @summary Get the caller's persistent achievements and asset collection
+ */
+export const getAchievementProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<AchievementProfile> => {
+
+  return customFetch<AchievementProfile>(getGetAchievementProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAchievementProfileQueryKey = () => {
+    return [
+    `/api/achievement-profile`
+    ] as const;
+    }
+
+
+export const getGetAchievementProfileQueryOptions = <TData = Awaited<ReturnType<typeof getAchievementProfile>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAchievementProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAchievementProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAchievementProfile>>> = ({ signal }) => getAchievementProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAchievementProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAchievementProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getAchievementProfile>>>
+export type GetAchievementProfileQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get the caller's persistent achievements and asset collection
+ */
+
+export function useGetAchievementProfile<TData = Awaited<ReturnType<typeof getAchievementProfile>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAchievementProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAchievementProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetActiveSoloGameUrl = () => {
+
+
+
+
+  return `/api/solo-games/active`
+}
+
+/**
+ * @summary Resume the caller's active authoritative solo game
+ */
+export const getActiveSoloGame = async ( options?: Parameters<typeof customFetch>[1]): Promise<ActiveSoloGameResponse> => {
+
+  return customFetch<ActiveSoloGameResponse>(getGetActiveSoloGameUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActiveSoloGameQueryKey = () => {
+    return [
+    `/api/solo-games/active`
+    ] as const;
+    }
+
+
+export const getGetActiveSoloGameQueryOptions = <TData = Awaited<ReturnType<typeof getActiveSoloGame>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveSoloGame>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveSoloGameQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveSoloGame>>> = ({ signal }) => getActiveSoloGame({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveSoloGame>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActiveSoloGameQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveSoloGame>>>
+export type GetActiveSoloGameQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Resume the caller's active authoritative solo game
+ */
+
+export function useGetActiveSoloGame<TData = Awaited<ReturnType<typeof getActiveSoloGame>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveSoloGame>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActiveSoloGameQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartSoloGameUrl = () => {
+
+
+
+
+  return `/api/solo-games`
+}
+
+/**
+ * @summary Start a new server-authoritative solo game
+ */
+export const startSoloGame = async (startSoloGameInput: StartSoloGameInput, options?: Parameters<typeof customFetch>[1]): Promise<SoloGameSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SoloGameSnapshot>(getStartSoloGameUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(startSoloGameInput)
+  }
+);}
+
+
+
+
+
+export const getStartSoloGameMutationKey = () => ['startSoloGame'] as const;
+
+export const getStartSoloGameMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSoloGame>>, TError,StartSoloGameMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startSoloGame>>, TError,StartSoloGameMutationVariables, TContext> => {
+
+const mutationKey = getStartSoloGameMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startSoloGame>>, StartSoloGameMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startSoloGame(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartSoloGameMutationResult = NonNullable<Awaited<ReturnType<typeof startSoloGame>>>
+    export type StartSoloGameMutationBody = BodyType<StartSoloGameInput>
+    export type StartSoloGameMutationError = ErrorType<ErrorEnvelope>
+    export type StartSoloGameMutationVariables = {data: BodyType<StartSoloGameInput>}
+
+    /**
+ * @summary Start a new server-authoritative solo game
+ */
+export const useStartSoloGame = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSoloGame>>, TError,StartSoloGameMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startSoloGame>>,
+        TError,
+        StartSoloGameMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartSoloGameMutationOptions(options));
+    }
+
+export const getSubmitSoloGameActionUrl = (gameId: string,) => {
+
+
+
+
+  return `/api/solo-games/${gameId}/actions`
+}
+
+/**
+ * @summary Apply one action to the caller's server-authoritative solo game
+ */
+export const submitSoloGameAction = async (gameId: string,
+    soloGameActionInput: SoloGameActionInput, options?: Parameters<typeof customFetch>[1]): Promise<SoloGameSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SoloGameSnapshot>(getSubmitSoloGameActionUrl(gameId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(soloGameActionInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitSoloGameActionMutationKey = () => ['submitSoloGameAction'] as const;
+
+export const getSubmitSoloGameActionMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloGameAction>>, TError,SubmitSoloGameActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSoloGameAction>>, TError,SubmitSoloGameActionMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSoloGameActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSoloGameAction>>, SubmitSoloGameActionMutationVariables> = (props) => {
+          const {gameId,data} = props ?? {};
+
+          return  submitSoloGameAction(gameId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSoloGameActionMutationResult = NonNullable<Awaited<ReturnType<typeof submitSoloGameAction>>>
+    export type SubmitSoloGameActionMutationBody = BodyType<SoloGameActionInput>
+    export type SubmitSoloGameActionMutationError = ErrorType<ErrorEnvelope>
+    export type SubmitSoloGameActionMutationVariables = {gameId: string;data: BodyType<SoloGameActionInput>}
+
+    /**
+ * @summary Apply one action to the caller's server-authoritative solo game
+ */
+export const useSubmitSoloGameAction = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSoloGameAction>>, TError,SubmitSoloGameActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitSoloGameAction>>,
+        TError,
+        SubmitSoloGameActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSoloGameActionMutationOptions(options));
     }
 
 export const getJoinRoomUrl = () => {

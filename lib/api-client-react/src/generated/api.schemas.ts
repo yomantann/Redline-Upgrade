@@ -205,6 +205,118 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface StartSoloGameInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  boardId: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  characterId: string;
+}
+
+export type SoloGameActionInputAction = { [key: string]: unknown };
+
+export interface SoloGameActionInput {
+  /** @minimum 0 */
+  expectedVersion: number;
+  action: SoloGameActionInputAction;
+}
+
+/**
+ * Server-owned single-player match state.
+ */
+export type SoloGameSnapshotMatch = { [key: string]: unknown };
+
+export interface SoloGameSnapshot {
+  gameId: string;
+  version: number;
+  /** Server-owned single-player match state. */
+  match: SoloGameSnapshotMatch;
+  newlyUnlocked: string[];
+}
+
+export interface ActiveSoloGameResponse {
+  game: SoloGameSnapshot | null;
+}
+
+export type AchievementProfileMetrics = {[key: string]: number};
+
+export interface AchievementProgress {
+  achievementId: string;
+  progress: number;
+  /** @nullable */
+  unlockedAt: string | null;
+  /** @nullable */
+  unlockGameId: string | null;
+  rewardCredits: number;
+}
+
+export interface AssetCollectionEntry {
+  assetId: string;
+  acquiredCount: number;
+  retainedCount: number;
+  lostCount: number;
+  gamesAcquired: number;
+  gamesRetained: number;
+  /** @nullable */
+  firstAcquiredAt: string | null;
+  /** @nullable */
+  firstRetainedAt: string | null;
+  /** @nullable */
+  lastAcquiredAt: string | null;
+  /** @nullable */
+  lastRetainedAt: string | null;
+}
+
+export type CompletedGameRecordSource = typeof CompletedGameRecordSource[keyof typeof CompletedGameRecordSource];
+
+
+export const CompletedGameRecordSource = {
+  SOLO: 'SOLO',
+  MULTIPLAYER: 'MULTIPLAYER',
+} as const;
+
+export interface RetainedAssetRecord {
+  assetId: string;
+  level: number;
+}
+
+export type CompletedGameRecordFinalStats = {[key: string]: number};
+
+export interface CompletedGameRecord {
+  id: string;
+  userId: string;
+  source: CompletedGameRecordSource;
+  gameId: string;
+  boardId: string;
+  mode: string;
+  placement: number;
+  finalValue: number;
+  portfolioValue: number;
+  characterId: string;
+  /** @nullable */
+  careerId: string | null;
+  finalStats: CompletedGameRecordFinalStats;
+  acquiredAssetIds: string[];
+  lostAssetIds: string[];
+  retainedAssets: RetainedAssetRecord[];
+  unlockedAchievementIds: string[];
+  completedAt: string;
+}
+
+export interface AchievementProfile {
+  metrics: AchievementProfileMetrics;
+  achievements: AchievementProgress[];
+  unlockedCount: number;
+  totalCount: number;
+  collection: AssetCollectionEntry[];
+  history: CompletedGameRecord[];
+}
+
 export type BeginBrowserLoginParams = {
 /**
  * Relative path to redirect to after login.

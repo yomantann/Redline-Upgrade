@@ -14,6 +14,8 @@ tags:
     description: Browser authentication operations.
   - name: Rooms
     description: Protected room foundation for future multiplayer support.
+  - name: Progression
+    description: Authenticated lifetime achievements, asset history, and solo games.
 paths:
   /healthz:
     get:
@@ -123,8 +125,124 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /achievement-profile:
+    get:
+      tags: [Progression]
+      operationId: getAchievementProfile
+      summary: Get the caller's persistent achievements and asset collection
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Lifetime account progression and completed game history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AchievementProfile"
         "401":
           description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /solo-games/active:
+    get:
+      tags: [Progression]
+      operationId: getActiveSoloGame
+      summary: Resume the caller's active authoritative solo game
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: The caller's active game, if one exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveSoloGameResponse"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /solo-games:
+    post:
+      tags: [Progression]
+      operationId: startSoloGame
+      summary: Start a new server-authoritative solo game
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartSoloGameInput"
+      responses:
+        "201":
+          description: The newly-created game snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoloGameSnapshot"
+        "400":
+          description: The selected board or character is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /solo-games/{gameId}/actions:
+    post:
+      tags: [Progression]
+      operationId: submitSoloGameAction
+      summary: Apply one action to the caller's server-authoritative solo game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoloGameActionInput"
+      responses:
+        "200":
+          description: Updated game snapshot and any newly-unlocked achievements.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoloGameSnapshot"
+        "400":
+          description: Invalid action request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Game not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The action is not valid for this game state.
           content:
             application/json:
               schema:
@@ -755,4 +873,177 @@ components:
       properties:
         error:
           type: string
+    StartSoloGameInput:
+      type: object
+      required: [boardId, characterId]
+      properties:
+        boardId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        characterId:
+          type: string
+          minLength: 1
+          maxLength: 80
+    SoloGameActionInput:
+      type: object
+      required: [expectedVersion, action]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+        action:
+          type: object
+          additionalProperties: true
+    SoloGameSnapshot:
+      type: object
+      required: [gameId, version, match, newlyUnlocked]
+      properties:
+        gameId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        match:
+          type: object
+          additionalProperties: true
+          description: Server-owned single-player match state.
+        newlyUnlocked:
+          type: array
+          items:
+            type: string
+    ActiveSoloGameResponse:
+      type: object
+      required: [game]
+      properties:
+        game:
+          oneOf:
+            - $ref: "#/components/schemas/SoloGameSnapshot"
+            - type: "null"
+    AchievementProfile:
+      type: object
+      required: [metrics, achievements, unlockedCount, totalCount, collection, history]
+      properties:
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+        achievements:
+          type: array
+          items:
+            $ref: "#/components/schemas/AchievementProgress"
+        unlockedCount:
+          type: integer
+        totalCount:
+          type: integer
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetCollectionEntry"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompletedGameRecord"
+    AchievementProgress:
+      type: object
+      required: [achievementId, progress, unlockedAt, unlockGameId, rewardCredits]
+      properties:
+        achievementId:
+          type: string
+        progress:
+          type: integer
+        unlockedAt:
+          type: [string, "null"]
+          format: date-time
+        unlockGameId:
+          type: [string, "null"]
+        rewardCredits:
+          type: integer
+    AssetCollectionEntry:
+      type: object
+      required: [assetId, acquiredCount, retainedCount, lostCount, gamesAcquired, gamesRetained, firstAcquiredAt, firstRetainedAt, lastAcquiredAt, lastRetainedAt]
+      properties:
+        assetId:
+          type: string
+        acquiredCount:
+          type: integer
+        retainedCount:
+          type: integer
+        lostCount:
+          type: integer
+        gamesAcquired:
+          type: integer
+        gamesRetained:
+          type: integer
+        firstAcquiredAt:
+          type: [string, "null"]
+          format: date-time
+        firstRetainedAt:
+          type: [string, "null"]
+          format: date-time
+        lastAcquiredAt:
+          type: [string, "null"]
+          format: date-time
+        lastRetainedAt:
+          type: [string, "null"]
+          format: date-time
+    RetainedAssetRecord:
+      type: object
+      required: [assetId, level]
+      properties:
+        assetId:
+          type: string
+        level:
+          type: integer
+    CompletedGameRecord:
+      type: object
+      required: [id, userId, source, gameId, boardId, mode, placement, finalValue, portfolioValue, characterId, careerId, finalStats, acquiredAssetIds, lostAssetIds, retainedAssets, unlockedAchievementIds, completedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        source:
+          type: string
+          enum: [SOLO, MULTIPLAYER]
+        gameId:
+          type: string
+        boardId:
+          type: string
+        mode:
+          type: string
+        placement:
+          type: integer
+        finalValue:
+          type: integer
+        portfolioValue:
+          type: integer
+        characterId:
+          type: string
+        careerId:
+          type: [string, "null"]
+        finalStats:
+          type: object
+          additionalProperties:
+            type: number
+        acquiredAssetIds:
+          type: array
+          items:
+            type: string
+        lostAssetIds:
+          type: array
+          items:
+            type: string
+        retainedAssets:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetainedAssetRecord"
+        unlockedAchievementIds:
+          type: array
+          items:
+            type: string
+        completedAt:
+          type: string
+          format: date-time
 

@@ -252,11 +252,13 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     effectId: event.effectId,
     cardId: event.cardId,
     deck: event.deck,
+    assetId: event.assetId,
     label,
     detail,
     amount: amount ?? event.delta,
     assetName: event.assetName,
     assetLevel: event.assetLevel,
+    category: event.category,
     previousAssetValue: event.previousAssetValue,
     newAssetValue: event.newAssetValue,
     salaryAmount: event.salaryAmount,
@@ -278,7 +280,23 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     depth: event.depth,
     timestamp: event.timestamp,
   };
-  return { ...match, eventLog: [...match.eventLog, entry].slice(-MAX_LOG_ENTRIES) };
+  const assetEventLog = event.assetId && (
+    event.type === 'ASSET_ACQUIRED'
+    || event.type === 'ASSET_PURCHASED'
+    || event.type === 'ASSET_TRANSFERRED'
+    || event.type === 'ASSET_UPGRADED'
+  )
+    ? [...(match.assetEventLog ?? []), {
+      eventId: event.id,
+      playerId: event.playerId,
+      playerIndex: event.playerIndex,
+      type: event.type,
+      assetId: event.assetId,
+      targetPlayerId: event.targetPlayerId,
+      assetLevel: event.assetLevel,
+    }]
+    : match.assetEventLog ?? [];
+  return { ...match, assetEventLog, eventLog: [...match.eventLog, entry].slice(-MAX_LOG_ENTRIES) };
 }
 
 function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
@@ -288,7 +306,7 @@ function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
   const history = player.history;
   const nextHistory = { ...history };
   let changed = false;
-  const increment = (key: keyof typeof history) => {
+  const increment = (key: Exclude<keyof typeof history, 'careerIds'>) => {
     const value = history[key];
     if (typeof value === 'number') {
       nextHistory[key] = value + 1;
@@ -1105,6 +1123,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       const nextPlayer = {
         ...player,
         secondCareer: { careerId: selected.id, salaryTier, salaryAmount },
+        history: { ...player.history, careerIds: [...new Set([...(player.history.careerIds ?? []), selected.id])] },
       };
       const updated = updatePlayer(match, actor.slot, () => nextPlayer);
       queue.push({

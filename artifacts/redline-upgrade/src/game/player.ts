@@ -33,6 +33,7 @@ export interface PlayerMatchHistory {
   finalGambles: number;
   largestWealthSwing: number;
   playerEncounters: number;
+  careerIds: string[];
   careerChanges: number;
   assetUpgrades: number;
   upgradeTokensSpent: number;
@@ -75,6 +76,7 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
       finalGambles: 0,
       largestWealthSwing: 0,
       playerEncounters: 0,
+      careerIds: [],
       careerChanges: 0,
       assetUpgrades: 0,
       upgradeTokensSpent: 0,

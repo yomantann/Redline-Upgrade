@@ -17,6 +17,8 @@ export interface MultiplayerSeat {
 /** Persisted canonical state for one room's match. */
 export interface MultiplayerMatchState {
   match: Match;
+  /** Untruncated, server-captured ownership events used to finalize permanent asset records. */
+  assetEvents?: MatchAssetEvent[];
   seats: MultiplayerSeat[];
   /** Epoch ms of the last accepted (or auto-played) action; the autoplay clock restarts from it. */
   actionAt: number;
@@ -33,6 +35,41 @@ export interface MultiplayerMatchState {
   /** Recovery window elapsed; the match must not be counted as completed. */
   abandoned?: boolean;
   recoveryStatus?: 'PAUSED_NO_HUMANS' | 'ABANDONED' | null;
+}
+
+export interface MatchAssetEvent {
+  eventId: string;
+  playerIndex: number;
+  playerId: string;
+  type: 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_UPGRADED';
+  assetId: string;
+  targetPlayerId: string | null;
+  assetLevel: number | null;
+}
+
+const ASSET_EVENT_TYPES = new Set<MatchAssetEvent['type']>([
+  'ASSET_ACQUIRED',
+  'ASSET_PURCHASED',
+  'ASSET_TRANSFERRED',
+  'ASSET_UPGRADED',
+]);
+
+function collectAssetEvents(previous: Match, next: Match): MatchAssetEvent[] {
+  const start = previous.assetEventLog?.length ?? 0;
+  return (next.assetEventLog ?? []).slice(start).flatMap((event) => {
+    if (!ASSET_EVENT_TYPES.has(event.type) || !event.assetId) return [];
+    const playerIndex = next.players.findIndex((player) => player.playerId === event.playerId);
+    if (playerIndex < 0) return [];
+    return [{
+      eventId: event.eventId,
+      playerIndex,
+      playerId: event.playerId,
+      type: event.type,
+      assetId: event.assetId,
+      targetPlayerId: event.targetPlayerId ?? null,
+      assetLevel: event.assetLevel ?? null,
+    }];
+  });
 }
 
 /** An idle player's turn is auto-played after this long. */
@@ -218,8 +255,45 @@ export function applyPlayerAction(state: MultiplayerMatchState, userId: string, 
   next = settleMovement(next);
   return {
     ok: true,
-    state: { ...state, match: next, actionAt: now, missedTurns: { ...state.missedTurns, [userId]: 0 } },
+    state: {
+      ...state,
+      match: next,
+      assetEvents: [...(state.assetEvents ?? []), ...collectAssetEvents(match, next)],
+      actionAt: now,
+      missedTurns: { ...state.missedTurns, [userId]: 0 },
+    },
   };
+}
+
+/** Applies one authenticated player's intent to a server-owned single-player game and runs CPUs. */
+export function applySoloPlayerAction(
+  match: Match,
+  action: ClientAction,
+): { match: Match; assetEvents: MatchAssetEvent[] } | null {
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete' || actingPlayerIndex(match) !== 0 || match.players[0]?.isCPU) return null;
+  const matchActions = toMatchActions(action);
+  if (!matchActions) return null;
+  const original = match;
+  let next = match;
+  try {
+    for (const matchAction of matchActions) {
+      const advanced = advanceMatch(next, matchAction);
+      if (advanced === next) return null;
+      next = advanced;
+    }
+    next = settleMovement(next);
+    for (let guard = 0; guard < 2_000 && next.phase !== 'complete'; guard += 1) {
+      const index = actingPlayerIndex(next);
+      if (index === 0 || !next.players[index]?.isCPU) break;
+      const advanced = autopilotStep(next, index);
+      if (advanced === next) break;
+      next = advanced;
+    }
+  } catch {
+    return null;
+  }
+  // The solo-game service persists these alongside state so event-log truncation cannot erase history.
+  return { match: next, assetEvents: collectAssetEvents(original, next) };
 }
 
 /** Public view for a client: the canonical match plus who is acting. */
@@ -239,6 +313,7 @@ export function describeTurn(state: MultiplayerMatchState) {
 export function createMultiplayerState(match: Match, userIdsBySlot: string[], now = Date.now()): MultiplayerMatchState {
   return {
     match,
+    assetEvents: [],
     seats: match.players.map((player, playerIndex) => ({
       userId: userIdsBySlot[playerIndex],
       playerId: player.playerId,
@@ -341,7 +416,16 @@ export function autoplayIfStale(
     if (cpuControlled && (match.turnCounter !== turnCounter || match.phase === 'complete')) {
       cpuTurns[seat.userId] = (cpuTurns[seat.userId] ?? 0) + 1;
     }
-    state = { ...state, match, missedTurns, missedMarks, kicked, cpuTurns, actionAt: now };
+    state = {
+      ...state,
+      match,
+      assetEvents: [...(state.assetEvents ?? []), ...collectAssetEvents(state.match, match)],
+      missedTurns,
+      missedMarks,
+      kicked,
+      cpuTurns,
+      actionAt: now,
+    };
     changed = true;
     if (!progressed) break;
     // Before FAST_CPU, persist one presentation step per server tick so connected players can

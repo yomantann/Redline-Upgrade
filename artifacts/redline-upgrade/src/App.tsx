@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Router as WouterRouter, useLocation } from 'wouter';
 import { characters, getCharacter, getCharacterImagePath, type CharacterDefinition } from '@/game/characters';
@@ -18,6 +19,7 @@ import { ProfilePage } from '@/pages/profile';
 import { ShopPage } from '@/pages/shop';
 import { boardAvailabilityLabel } from '@/game/boards';
 import { useAuth } from '@workspace/replit-auth-web';
+import { achievementCatalog } from '@/game/achievement-catalog';
 
 function Artwork({
   index = 0,
@@ -389,12 +391,23 @@ function Characters() {
 
 function Setup() {
   const [, navigate] = useLocation();
-  const { player, match, beginGame, startNewGame, selectedBoardId } = useGame();
+  const { player, match, beginGame, startNewGame, selectedBoardId, remoteError } = useGame();
+  const { user, isLoading } = useAuth(import.meta.env.BASE_URL);
+  const [starting, setStarting] = useState(false);
   const character = player ? getCharacter(player.characterId) : undefined;
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
   const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
   const isPreviewOnlyBoard = isHauntedBoard;
   const identityBoardName = isBioBoard ? 'Bio' : 'Haunted';
+  const enterCareer = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      if (await beginGame()) navigate('/career');
+    } finally {
+      setStarting(false);
+    }
+  };
 
   if (!player || !character) {
     return (
@@ -438,9 +451,11 @@ function Setup() {
                 <button className="action lime-action" type="button" onClick={() => navigate('/characters')}>Change {identityBoardName} identity <span aria-hidden="true">↗</span></button>
                 <button className="text-link" type="button" onClick={() => navigate('/boards')}>Choose another board <span aria-hidden="true">→</span></button>
               </div> : <div className="setup-actions">
-              <button className="action lime-action" type="button" onClick={() => { beginGame(); navigate('/career'); }} data-testid="button-enter-career">{match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
+              <button className="action lime-action" type="button" onClick={enterCareer} disabled={starting} data-testid="button-enter-career">{starting ? 'Starting…' : match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
               </div>}
+              {remoteError && <p className="setup-lede" role="alert">{remoteError}</p>}
+              {!isLoading && !user && !isPreviewOnlyBoard && <p className="setup-lede">Guest games stay on this device. Sign in to save achievements and completed game history to your account.</p>}
           </div>
           <div className="setup-aside">
               <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : isHauntedBoard ? 'haunted-setup-art' : ''}`}>
@@ -511,7 +526,7 @@ function Router() {
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
-      {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}</AppShell>}
+      {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}<AchievementNotice /></AppShell>}
       {location === '/board-preview' && <BoardVisualPreview />}
       {!['/', '/boards', '/mode', '/multiplayer', '/profile', '/shop', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
@@ -524,14 +539,45 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function App() {
+function AchievementNotice() {
+  const { newAchievementIds } = useGame();
+  const [dismissedKey, setDismissedKey] = useState('');
+  const awards = achievementCatalog.filter(achievement => newAchievementIds.includes(achievement.id));
+  const key = newAchievementIds.join('|');
+  if (!awards.length || dismissedKey === key) return null;
   return (
-    <GameProvider>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <Router />
-      </WouterRouter>
-    </GameProvider>
+    <aside className="achievement-unlock-notice" role="status" aria-live="polite" aria-label="New achievements unlocked">
+      <div className="achievement-notice-top"><span className="mono">PROGRESSION UPDATE / {awards.length} NEW</span><button type="button" onClick={() => setDismissedKey(key)} aria-label="Dismiss achievement notification">×</button></div>
+      <h2>{awards.length === 1 ? 'Achievement unlocked' : 'Achievements unlocked'}</h2>
+      <ul>{awards.map(award => <li key={award.id}><strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
+    </aside>
   );
 }
+
+function App() {
+  const { user, isLoading } = useAuth(import.meta.env.BASE_URL);
+  const userId = user?.id ?? null;
+  const previousUserId = useRef(userId);
+  useEffect(() => {
+    if (isLoading || previousUserId.current === userId) return;
+    previousUserId.current = userId;
+    queryClient.clear();
+  }, [isLoading, userId]);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <GameProvider accountId={userId} authLoading={isLoading}>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <Router />
+        </WouterRouter>
+      </GameProvider>
+    </QueryClientProvider>
+  );
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: false },
+  },
+});
 
 export default App;

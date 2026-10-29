@@ -6,9 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './achievementProfile';
+export * from './achievementProfileMetrics';
+export * from './achievementProgress';
+export * from './activeSoloGameResponse';
+export * from './assetCollectionEntry';
 export * from './authUser';
 export * from './authUserEnvelope';
 export * from './beginBrowserLoginParams';
+export * from './completedGameRecord';
+export * from './completedGameRecordFinalStats';
+export * from './completedGameRecordSource';
 export * from './errorEnvelope';
 export * from './handleBrowserLoginCallbackParams';
 export * from './healthStatus';
@@ -21,6 +29,7 @@ export * from './matchSnapshot';
 export * from './matchSnapshotMatch';
 export * from './matchSnapshotYou';
 export * from './readyInput';
+export * from './retainedAssetRecord';
 export * from './room';
 export * from './roomDetails';
 export * from './roomInput';
@@ -29,3 +38,8 @@ export * from './roomPlayerStatus';
 export * from './roomSettingsInput';
 export * from './roomStatus';
 export * from './selectionInput';
+export * from './soloGameActionInput';
+export * from './soloGameActionInputAction';
+export * from './soloGameSnapshot';
+export * from './soloGameSnapshotMatch';
+export * from './startSoloGameInput';

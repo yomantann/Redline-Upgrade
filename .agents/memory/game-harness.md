@@ -14,3 +14,9 @@ For presentation-only changes, compare a failing SSR assertion with the current 
 **Why:** Card and asset presentation assertions failed on superseded labels and overlay assumptions while the underlying match behavior remained unchanged.
 
 **How to apply:** Treat SSR markup failures as contract mismatches first; update expectations to the new visible behavior, then rerun the reducer and rendering checks.
+
+Keep authentication hooks outside `game/state.tsx`; pass account identity and loading state into `GameProvider` as props.
+
+**Why:** Importing the browser auth hook into game state made the Vite SSR harness fail to resolve the auth package's React dependency.
+
+**How to apply:** Keep reducer and game-state modules importable without browser auth so server-side rendering and game regression scripts can load them independently.
