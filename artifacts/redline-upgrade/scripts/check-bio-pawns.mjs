@@ -23,16 +23,22 @@ for (const id of rosterIds) {
   const gltf = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
   const colors = new Set();
   let meshCount = 0;
+  let vertexCount = 0;
+  let triangleCount = 0;
   gltf.scene.traverse((object) => {
     if (!object.isMesh) return;
     meshCount += 1;
     assert(object.geometry.attributes.position.count > 0, `${id} has vertices`);
     assert(object.geometry.attributes.normal, `${id} has lit 3D surface normals`);
+    vertexCount += object.geometry.attributes.position.count;
+    triangleCount += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3;
     colors.add(object.material.color.getHex());
   });
   assert(meshCount >= 3, `${id} has separate colored mesh groups`);
+  assert(vertexCount >= 1500, `${id} has enough sculpted geometry to read as a detailed figure`);
+  assert(triangleCount >= 2500, `${id} has enough modeled surfaces for its character-specific details`);
   for (const color of palettes[id]) assert(colors.has(new Color(color).getHex()), `${id} includes its assigned color ${color.toString(16)}`);
   assert(gltf.scene.children.length > 0, `${id} GLB scene is populated`);
 }
 assert.equal(hashes.size, 21, 'all 21 Bio models have distinct mesh assets');
-console.log('PASS: all 21 Bio characters map to distinct, loadable, lit GLB pawn models with their assigned colors.');
+console.log('PASS: all 21 Bio characters map to distinct, detailed, loadable GLB pawns with their assigned colors.');
