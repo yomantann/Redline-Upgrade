@@ -117,6 +117,50 @@ const specialCards = [
   ]),
 ].map(card => ({ ...card, drawCopies: 2 }));
 
+/** Phase 25.3 additions. Existing cards and their weighted copies remain unchanged. */
+export const bioPartyExpansionCards: CardDefinition[] = [
+  ...makeCards('wealth', [
+    ['corporate-restructuring', 'CORPORATE RESTRUCTURING', 'SELECTED_PLAYER', "You're the CEO tonight! Choose one player and announce their ridiculous new job title. They must give a 10-second acceptance speech or take a sip.", 'A futuristic corporate boardroom transformed into a nightclub, with holographic contracts, golden drinks, and an absurd executive promotion ceremony.'],
+  ]),
+  ...makeCards('ai', [
+    ['system-overload', 'SYSTEM OVERLOAD', 'SELF_AND_SELECTED', 'Challenge another player to a five-second trivia showdown! Ask a simple trivia question. Whoever answers incorrectly or fails first takes a sip or completes a silly forfeit.', 'Two holographic brains competing in a frozen neon arena, with icy circuitry and glowing countdown displays.', 'CHOICE'],
+    ['neural-meltdown', 'NEURAL MELTDOWN', 'ALL_PLAYERS', 'Choose a category! Go around the group naming something that fits. The first player to repeat an answer or hesitate for five seconds takes a sip.', 'A futuristic AI brain overheating inside a nightclub, with exploding neon thought bubbles and digital glitches.', 'CHOICE'],
+    ['emergency-broadcast', 'EMERGENCY BROADCAST', 'ALL_PLAYERS', 'Emergency meeting! Everyone votes on the most suspicious player. That player must defend themselves in 10 seconds or take a sip.', 'A chaotic holographic emergency conference with flashing red alarms, robotic voting terminals, and suspicious silhouettes.', 'VOTE'],
+  ]),
+  ...makeCards('fame', [
+    ['crowned-legend', 'CROWNED LEGEND', 'ALL_PLAYERS', "You've been crowned the party legend! Deliver a dramatic royal toast. Everyone raises their glasses and takes one celebratory sip.", 'A golden holographic crown floating over a futuristic nightclub throne, surrounded by cheering crowds and confetti.'],
+    ['secret-superstar', 'SECRET SUPERSTAR', 'SELF', 'The spotlight is yours! Reveal one funny or embarrassing secret about yourself, or take a sip to keep your mystery alive.', 'A glowing concert stage with a mysterious silhouetted performer, neon spotlights, and floating question marks.', 'CHOICE'],
+    ['love-on-the-rocks', 'LOVE ON THE ROCKS', 'SELECTED_PLAYER', "Choose a player! They must give a dramatic toast to an imaginary ex or tell a funny breakup story. The more theatrical, the better!", 'A shattered neon heart above a glamorous cocktail lounge, with a dramatic empty chair and glowing glasses.'],
+  ]),
+  ...makeCards('lifestyle', [
+    ['access-denied', 'ACCESS DENIED', 'SELF', 'Security checkpoint! Take a sip or perform a dramatic 10-second security clearance routine before continuing.', 'A futuristic nightclub security checkpoint with holographic scanners, velvet ropes, and a glowing drink authorization screen.', 'CHOICE'],
+    ['partner-protocol', 'PARTNER PROTOCOL', 'SELF_AND_SELECTED', 'Nobody parties alone! Choose a drinking partner. Invent a secret handshake, then raise your glasses and take a sip together.', 'Two futuristic partygoers clinking glowing glasses beneath linked holographic symbols.'],
+    ['rainbow-experiment', 'RAINBOW EXPERIMENT', 'SELF_AND_SELECTED', "Choose another player! Together, invent a ridiculous two-ingredient party drink. Give it a name and convince the group it's delicious.", 'A colorful futuristic mixology laboratory with rainbow liquids, neon beakers, and swirling holographic cocktails.'],
+    ['midnight-scavenger', 'MIDNIGHT SCAVENGER', 'SELF_AND_SELECTED', "Choose a player! Together, invent the most ridiculous drink using two imaginary leftover ingredients. The group votes whether they'd dare try it.", 'A chaotic late-night nightclub bar with mysterious leftover ingredients, glowing bottles, and an absurd experimental cocktail.', 'VOTE'],
+    ['perfectly-synchronized', 'PERFECTLY SYNCHRONIZED', 'ALL_PLAYERS', 'Synchronize the party! Lead a countdown from three. Everyone raises their glasses and takes one sip together.', 'A futuristic rooftop party with synchronized holographic countdowns, glowing glasses, and a neon skyline.'],
+  ]),
+  ...makeCards('influence', [
+    ['the-pop-effect', 'THE POP EFFECT', 'ALL_PLAYERS', 'Make your loudest mouth-pop sound! Everyone copies you, then celebrates with a group sip.', 'A giant neon soundwave exploding across a futuristic party floor, with floating glasses and colorful sonic effects.'],
+    ['false-accusation', 'FALSE ACCUSATION', 'SELECTED_PLAYER', 'Accuse one player of causing a completely fictional party disaster! They must defend themselves in 10 seconds or take a sip.', 'A dramatic futuristic courtroom inside a nightclub, with a spilled glowing cocktail and holographic accusation signs.'],
+    ['royal-decree', 'ROYAL DECREE', 'ALL_PLAYERS', 'You are the party ruler! Invent one ridiculous action everyone must perform. The group votes to approve it, then everyone performs it once immediately.', 'A futuristic royal goblet on a floating throne, surrounded by holographic decrees and cheering partygoers.', 'VOTE'],
+    ['victory-flames', 'VICTORY FLAMES', 'ALL_EXCEPT_SELF', "You're on fire! Strike your most legendary victory pose. Everyone else raises their glasses and takes one sip in your honor.", 'A glowing futuristic victory podium surrounded by stylized neon flames, fireworks, and a cheering crowd.'],
+  ]),
+  ...makeCards('gamble', [
+    ['spicy-confession', 'SPICY CONFESSION', 'SELF_OR_ALL_PLAYERS', 'Things just got spicy! Choose: reveal an outrageous but harmless confession, or lead everyone in a dramatic fiery group toast.', 'A neon roulette wheel surrounded by stylized flames, glowing chili peppers, and a mysterious confession booth.', 'CHOICE'],
+    ['greedy-showdown', 'GREEDY SHOWDOWN', 'SELF_AND_SELECTED', 'Choose another player for a best-of-three rock-paper-scissors showdown! The loser takes a sip or performs a ridiculous dare.', 'Two futuristic mechanical hands battling over a glowing golden trophy above a high-stakes casino table.', 'CHOICE'],
+  ]),
+].map(card => ({
+  ...card,
+  partyChallenge: {
+    ...card.partyChallenge!,
+    safetyNote: 'Alcohol is optional. Choose water, a nonalcoholic drink, a no-drink wave or cheer, or pass with no penalty. Keep forfeits harmless and confessions comfortable to share.',
+    ...(card.id === 'bio-spicy-confession' ? { choices: [
+      { label: 'Harmless confession', target: 'SELF' as const },
+      { label: 'Fiery group toast', target: 'ALL_PLAYERS' as const },
+    ] } : {}),
+  },
+}));
+
 export const bioPartyCards: CardDefinition[] = [
   ...wealthCards,
   ...aiCards,
@@ -125,4 +169,5 @@ export const bioPartyCards: CardDefinition[] = [
   ...influenceCards,
   ...gambleCards,
   ...specialCards,
+  ...bioPartyExpansionCards,
 ];

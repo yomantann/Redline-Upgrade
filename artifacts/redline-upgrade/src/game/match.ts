@@ -10,6 +10,7 @@ import type { EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
 import { createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinctCardsFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
 import { getCard } from './cards';
+import { getPartyParticipantIds } from './bio-party-targets';
 import {
   calculateEndgameBaseValue,
   cashOutValue,
@@ -942,6 +943,7 @@ function resolveCardDecision(match: Match): Match {
 
 function acknowledgeCardDecision(match: Match): Match {
   if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return match;
+  if (getCard(match.pending.cardId)?.partyChallenge) return match;
   return resume(match);
 }
 
@@ -955,13 +957,16 @@ function resolvePartyChallenge(match: Match, participantIds: string[], passed: b
   if (passed && participantIds.length !== 0) return match;
   const recordedOutcome = resolution?.trim();
   if (!passed && challenge.flow !== 'CONFIRM' && (!recordedOutcome || recordedOutcome.length > 120)) return match;
+  if (!passed && challenge.choices && !challenge.choices.some(choice => choice.label === recordedOutcome)) return match;
   if (resolution && resolution.length > 120) return match;
   const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
     : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
   if (!passed && uniqueIds.length !== required) return match;
   const eligibleIds = new Set(match.players.filter((player, index) => index !== match.turnIndex).map(player => player.playerId));
   if (uniqueIds.some(id => !eligibleIds.has(id))) return match;
-  const names = uniqueIds.map(id => match.players.find(player => player.playerId === id)?.displayName).filter(Boolean);
+  if (!passed && challenge.target === 'ALL_EXCEPT_SELF' && eligibleIds.size === 0) return match;
+  const participatingIds = passed ? [] : getPartyParticipantIds(challenge, match.players.map(player => player.playerId), match.players[match.turnIndex].playerId, uniqueIds, recordedOutcome);
+  const names = participatingIds.map(id => match.players.find(player => player.playerId === id)?.displayName).filter(Boolean);
   const result = passed ? 'passed' : 'completed';
   const participants = names.length ? ` Participants: ${names.join(', ')}.` : '';
   return emit(resume(match), [{
@@ -1156,9 +1161,9 @@ function autoDecide(match: Match): Match {
       const required = challenge.target === 'SELECTED_PLAYER' || challenge.target === 'SELF_AND_SELECTED' ? 1
         : challenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
       const available = match.players.filter((candidate, index) => index !== decisionPlayerIndex);
-      const passed = available.length < required;
+      const passed = available.length < required || (challenge.target === 'ALL_EXCEPT_SELF' && available.length === 0);
       const participantIds = passed ? [] : available.slice(0, required).map(candidate => candidate.playerId);
-      return resolvePartyChallenge(match, participantIds, passed, passed || challenge.flow === 'CONFIRM' ? undefined : 'CPU resolved automatically');
+      return resolvePartyChallenge(match, participantIds, passed, passed || challenge.flow === 'CONFIRM' ? undefined : challenge.choices?.[0]?.label ?? 'CPU resolved automatically');
     }
   }
   if (pending.kind === 'ABILITY') {

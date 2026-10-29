@@ -7,6 +7,7 @@ import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_MS, CPU_
 import { decks, getDeck, type DeckId } from '@/game/decks';
 import { getCardArtworkUrl } from '@/game/card-artwork';
 import { RedlineCard } from './redline-card';
+import { getPartyParticipantIds } from '@/game/bio-party-targets';
 
 function BioPartyCardFace({ card, compact = false }: { card: CardDefinition; compact?: boolean }) {
   const artworkUrl = getCardArtworkUrl(card.id);
@@ -84,6 +85,10 @@ export function CardTabletop({
   const requiredParticipants = partyChallenge?.target === 'SELECTED_PLAYER' || partyChallenge?.target === 'SELF_AND_SELECTED' ? 1
     : partyChallenge?.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
   const selectablePlayers = partyPlayers.filter(player => player.playerId !== partyActorId);
+  const participatingIds = partyChallenge && partyActorId
+    ? getPartyParticipantIds(partyChallenge, partyPlayers.map(player => player.playerId), partyActorId, partyParticipantIds, partyOutcome)
+    : [];
+  const participatingNames = participatingIds.map(id => partyPlayers.find(player => player.playerId === id)?.displayName).filter(Boolean);
   const togglePartyParticipant = (playerId: string) => setPartyParticipantIds(current => {
     if (current.includes(playerId)) return current.filter(id => id !== playerId);
     return current.length < requiredParticipants ? [...current, playerId] : current;
@@ -139,12 +144,17 @@ export function CardTabletop({
               ) : partyChallenge && cardStage === 'resolved'
                 ? partyCanAct ? (
                   <div className="bio-party-actions">
+                    <p className="mono" data-testid="party-participation">
+                      {participatingNames.length ? `PARTICIPANTS: ${participatingNames.join(', ')}` : requiredParticipants ? 'CHOOSE THE PARTICIPANT BELOW.' : partyChallenge.choices ? 'CHOOSE YOUR CHALLENGE BELOW.' : 'EVERYONE ELSE PARTICIPATES.'}
+                    </p>
                     {requiredParticipants > 0 && <div className="bio-party-targets" role="group" aria-label="Choose party challenge participants">
                       {selectablePlayers.map(player => <button type="button" key={player.playerId} className="bio-party-target" aria-pressed={partyParticipantIds.includes(player.playerId)} disabled={!partyParticipantIds.includes(player.playerId) && partyParticipantIds.length >= requiredParticipants} onClick={() => togglePartyParticipant(player.playerId)}>{player.displayName}</button>)}
                     </div>}
                     <p className="mono">{partyChallenge.flow === 'VOTE' ? 'ASK THE TABLE TO VOTE, THEN RECORD THE OUTCOME.' : partyChallenge.flow === 'CHOICE' ? 'JOIN THE CHALLENGE OR PASS.' : 'COMPLETE THE CHALLENGE OR PASS.'}</p>
-                    {partyChallenge.flow !== 'CONFIRM' && <label className="bio-party-outcome">{partyChallenge.flow === 'VOTE' ? 'Record the group vote' : 'Record the choice made'}<input value={partyOutcome} maxLength={120} onChange={event => setPartyOutcome(event.target.value)} placeholder={partyChallenge.flow === 'VOTE' ? 'Winning option / group result' : 'Choice selected'} /></label>}
-                    <button type="button" className="action lime-action" disabled={!minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants || (partyChallenge.flow !== 'CONFIRM' && !partyOutcome.trim())} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false, partyOutcome.trim() || undefined)} data-testid="button-complete-party-challenge">CHALLENGE COMPLETE</button>
+                    {partyChallenge.flow !== 'CONFIRM' && <label className="bio-party-outcome">{partyChallenge.flow === 'VOTE' ? 'Record the group vote' : 'Record the choice made'}{partyChallenge.choices
+                      ? <select value={partyOutcome} onChange={event => setPartyOutcome(event.target.value)} data-testid="select-party-choice"><option value="">Choose a challenge</option>{partyChallenge.choices.map(choice => <option key={choice.label} value={choice.label}>{choice.label}</option>)}</select>
+                      : <input value={partyOutcome} maxLength={120} onChange={event => setPartyOutcome(event.target.value)} placeholder={partyChallenge.flow === 'VOTE' ? 'Winning option / group result' : 'Choice selected'} />}</label>}
+                    <button type="button" className="action lime-action" disabled={!minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants || (partyChallenge.target === 'ALL_EXCEPT_SELF' && selectablePlayers.length === 0) || (partyChallenge.flow !== 'CONFIRM' && !partyOutcome.trim())} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false, partyOutcome.trim() || undefined)} data-testid="button-complete-party-challenge">CHALLENGE COMPLETE</button>
                     <button type="button" className="text-link" disabled={!minimumReadTimeComplete} onClick={() => onResolvePartyChallenge?.([], true)} data-testid="button-pass-party-challenge">PASS / NO PENALTY</button>
                   </div>
                 ) : <p className="mono">WAITING FOR {actorName.toUpperCase()} TO RESOLVE THE CHALLENGE.</p>

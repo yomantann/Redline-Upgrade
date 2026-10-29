@@ -6,12 +6,13 @@ import type { BoardId } from './boards';
 import { bioPartyCards } from './bio-party-cards';
 
 export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER' | 'ALL_OPPONENTS';
-export type PartyTarget = 'SELF' | 'SELECTED_PLAYER' | 'SELF_AND_SELECTED' | 'TWO_SELECTED_PLAYERS' | 'ALL_PLAYERS';
+export type PartyTarget = 'SELF' | 'SELECTED_PLAYER' | 'SELF_AND_SELECTED' | 'TWO_SELECTED_PLAYERS' | 'ALL_PLAYERS' | 'ALL_EXCEPT_SELF' | 'SELF_OR_ALL_PLAYERS';
 export interface PartyChallenge {
   target: PartyTarget;
   prompt: string;
   flow: 'CONFIRM' | 'CHOICE' | 'VOTE';
   safetyNote: string;
+  choices?: readonly { label: string; target: PartyTarget }[];
 }
 
 export type CardEffect =

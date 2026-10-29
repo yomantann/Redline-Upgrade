@@ -648,8 +648,8 @@ try {
     assert.equal(cardsForDeck(deck.id).length, expectedDeckCounts[deck.id], `${deck.name} contains its updated cards`);
     assert.equal(deck.count, expectedDeckCounts[deck.id], `${deck.name} reports its updated card count`);
   }
-  const bioDefinitionCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 12, influence: 11, gamble: 11 };
-  const bioEntryCounts = { wealth: 10, ai: 10, fame: 10, lifestyle: 14, influence: 12, gamble: 12 };
+  const bioDefinitionCounts = { wealth: 11, ai: 13, fame: 13, lifestyle: 17, influence: 15, gamble: 13 };
+  const bioEntryCounts = { wealth: 11, ai: 13, fame: 13, lifestyle: 19, influence: 16, gamble: 14 };
   const bioCards = decks.flatMap(deck => cardsForDeck(deck.id, 'BIO_UPGRADE'));
   const redlineSpaces = getBoardSpaces('REDLINE_UPGRADE');
   const bioSpaces = getBoardSpaces('BIO_UPGRADE');
@@ -657,12 +657,12 @@ try {
   for (const position of [2, 6, 10, 14, 15, 18, 29, 30, 35, 41, 45, 50, 54, 55, 60, 66, 70, 73, 75]) {
     assert.equal(bioSpaces[position - 1].type, redlineSpaces[position - 1].type, `Bio space ${position} keeps the standard tile mechanic`);
   }
-  assert.equal(bioCards.length, 64, 'Bio defines 64 unique social-only cards');
-  assert.equal(new Set(bioCards.map(card => card.id)).size, 64, 'Bio card definition IDs are unique');
-  assert.equal(new Set(bioCards.map(card => card.title)).size, 64, 'Bio card titles are unique');
+  assert.equal(bioCards.length, 82, 'Bio defines 82 unique social-only cards');
+  assert.equal(new Set(bioCards.map(card => card.id)).size, 82, 'Bio card definition IDs are unique');
+  assert.equal(new Set(bioCards.map(card => card.title)).size, 82, 'Bio card titles are unique');
   const bioArtworkPaths = bioCards.map(card => getCardArtworkFilePath(card.id));
   assert(bioArtworkPaths.every(Boolean), `every Bio card has a dedicated artwork path: ${bioCards.filter(card => !getCardArtworkFilePath(card.id)).map(card => card.id).join(', ')}`);
-  assert.equal(new Set(bioArtworkPaths).size, 64, 'all 64 Bio card definitions use distinct artwork paths');
+  assert.equal(new Set(bioArtworkPaths).size, 82, 'all 82 Bio card definitions use distinct artwork paths');
   assert(bioArtworkPaths.every(path => existsSync(new URL(`../public/${path}`, import.meta.url))), 'all Bio card artwork files exist');
   assert(bioCards.every(card => card.boardId === 'BIO_UPGRADE' && card.effects.length === 0 && card.partyChallenge), 'Bio cards are Bio-only, carry a party prompt, and have no gameplay effects');
   assert(bioCards.every(card => card.partyChallenge.safetyNote.includes('pass with no penalty')), 'every Bio prompt includes an opt-out safety note');
@@ -780,7 +780,7 @@ try {
   assert(partyCardMarkup.includes('PASS / NO PENALTY') && partyCardMarkup.includes('bio-party-targets'), 'party UI presents a no-penalty pass and target selection');
   assert(partyCardMarkup.includes('/cards/bio/bio-table-service.webp'), 'Bio card presentation loads its dedicated WebP artwork');
   assertCompleteCardPiles(bioPiles);
-  assert.equal(decks.reduce((total, deck) => total + bioPiles[deck.id].drawPile.length, 0), 68, 'Bio draw piles contain all 68 weighted entries');
+  assert.equal(decks.reduce((total, deck) => total + bioPiles[deck.id].drawPile.length, 0), 86, 'Bio draw piles contain all 86 weighted entries');
   const hydrationId = 'bio-hydrate';
   const lifePile = bioPiles.lifestyle;
   const orderedBioPiles = {
@@ -2169,7 +2169,7 @@ try {
           const eligible = m.players.filter((_, index) => index !== m.turnIndex);
           const passed = eligible.length < count;
           const targets = passed ? [] : eligible.slice(0, count).map(player => player.playerId);
-          action = { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: targets, passed, ...(!passed && card.partyChallenge.flow !== 'CONFIRM' ? { resolution: 'Players recorded a choice or group vote' } : {}) };
+          action = { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: targets, passed, ...(!passed && card.partyChallenge.flow !== 'CONFIRM' ? { resolution: card.partyChallenge.choices?.[0]?.label ?? 'Players recorded a choice or group vote' } : {}) };
         } else action = { type: 'ACKNOWLEDGE_CARD' };
       } else if (m.pending?.kind === 'SALARY_GATE') action = { type: 'TAKE_PAYDAY' };
       else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
