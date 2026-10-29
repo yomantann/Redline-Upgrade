@@ -18,7 +18,6 @@ function Header() {
         REDLINE <span className="muted">/</span> UPGRADE
       </button>
       <div className="header-right mono">
-        <span className="header-phase">REDLINE // TABLETOP</span>
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>
           ROSTER
         </button>
@@ -29,7 +28,11 @@ function Header() {
           <span className="header-music-wide">{enabled ? 'MUSIC: ON' : 'MUSIC: OFF'}</span>
           <span className="header-music-compact">{enabled ? 'M:ON' : 'M:OFF'}</span>
         </button>
-        <span className="header-index"><i /> LOCAL MATCH</span>
+        {match && (
+          <span className="header-index">
+            <i /> {match.mode === 'MULTIPLAYER' ? 'MULTIPLAYER MATCH' : 'LOCAL MATCH'}
+          </span>
+        )}
         <span className="header-auth" aria-live="polite">
           {isLoading ? (
             <span className="header-auth-state">ACCOUNT …</span>
@@ -48,6 +51,19 @@ function Header() {
 }
 
 function Footer() {
+  const [location] = useLocation();
+  if (location === '/') {
+    return (
+      <footer className="page-footer page-footer-home" aria-hidden="true">
+        <div className="home-footer-signal">
+          <span className="home-footer-rail" />
+          <span className="home-footer-orbit"><i /></span>
+          <span className="home-footer-mark" />
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="page-footer mono">
       <span>REDLINE UPGRADE // LOCAL MATCH</span>

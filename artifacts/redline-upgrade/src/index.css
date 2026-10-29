@@ -142,6 +142,14 @@ a { color: inherit; text-decoration: none; }
 .header-auth-state { color: #929b96; }
 .header-board-compact, .header-music-compact { display: none; }
 .page-footer { border-top: 1px solid #303a37; min-height: 66px; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 16px clamp(22px,4.2vw,72px); color: #77817c; }
+.page-footer-home { min-height: 108px; padding: 0 clamp(22px,4.2vw,72px); overflow: hidden; border-top-color: #39463e; background: linear-gradient(180deg,#101715,#0b100f); }
+.home-footer-signal { position: relative; display: grid; place-items: center; width: 100%; height: 108px; overflow: hidden; }
+.home-footer-rail { position: absolute; width: 100%; height: 1px; background: linear-gradient(90deg,transparent 0%,#58675b 20%,#d4e981 50%,#58675b 80%,transparent 100%); opacity: .72; }
+.home-footer-signal::before { content: ''; position: absolute; inset: 0; opacity: .45; background: repeating-linear-gradient(90deg,transparent 0 54px,rgba(189,210,174,.12) 55px,transparent 56px); mask-image: linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent); }
+.home-footer-signal::after { content: ''; position: absolute; width: min(68vw,760px); height: 60px; border: 1px solid rgba(212,233,129,.18); border-radius: 50%; transform: scaleY(.35) rotate(-2deg); box-shadow: 0 0 32px rgba(212,233,129,.08), inset 0 0 22px rgba(212,233,129,.05); }
+.home-footer-orbit { position: absolute; z-index: 1; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid rgba(212,233,129,.78); border-radius: 50%; background: #101715; box-shadow: 0 0 20px rgba(212,233,129,.16); }
+.home-footer-orbit i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #d4e981; box-shadow: 0 0 13px #d4e981; }
+.home-footer-mark { position: absolute; z-index: 1; width: 12px; height: 12px; border: 1px solid #f96346; background: #101715; transform: rotate(45deg); box-shadow: 0 0 12px rgba(249,99,70,.45); }
 
 .action { border: 0; display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 58px; padding: 0 20px 0 24px; background: #f96346; color: #101210; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; transition: transform .2s, background .2s; }
 .action:hover { transform: translateY(-3px); background: #ff8167; }
