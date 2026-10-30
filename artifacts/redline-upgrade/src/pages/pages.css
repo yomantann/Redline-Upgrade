@@ -407,10 +407,12 @@
 .market-equipped h3 { margin: 6px 0 0; color: #f1e9f5; font: 700 27px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .market-equipped-items { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
 .market-equipped-card { display: flex; align-items: center; gap: 11px; min-width: 200px; max-width: 320px; padding: 8px; border: 1px solid #473750; background: #100d16; }
+.market-equipped-card.rarity-common { border-color: #929ba1; background: linear-gradient(110deg,#272b2e,#121214); }
 .market-equipped-card.rarity-uncommon { border-color: #d0d7dc; background: linear-gradient(110deg,#404a53,#15171a); }
 .market-equipped-card.rarity-rare { border-color: #78c9f3; background: linear-gradient(110deg,#17344a,#11151a); }
 .market-equipped-card.rarity-epic { border-color: #f0ca68; background: linear-gradient(110deg,#59451f,#18140c); }
 .market-equipped-card.rarity-legendary { border-color: #d4a0ff; background: linear-gradient(110deg,#3e2857,#151019); }
+.market-equipped-card.rarity-mythic { border-color: #ff8ab4; background: linear-gradient(110deg,#512137,#180e15); }
 .market-equipped-card img,.market-default-mark { width: 48px; height: 48px; object-fit: contain; background: #09070d; }
 .market-default-mark { display: grid; place-items: center; color: var(--market-gold); font: 700 20px 'Barlow Condensed',sans-serif; }
 .market-equipped-card span { min-width: 0; display: grid; gap: 5px; }
