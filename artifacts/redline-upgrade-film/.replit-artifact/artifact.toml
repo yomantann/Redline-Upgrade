@@ -1,0 +1,29 @@
+kind = "video"
+videoAspectRatio = "16:9"
+previewPath = "/redline-upgrade-film/"
+title = "Redline Upgrade Film"
+description = "A short looping animated film introducing the Redline Upgrade game project and its existing characters, gameplay, and visual identity."
+version = "1.0.0"
+id = "artifacts/redline-upgrade-film"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/redline-upgrade-film/" ]
+localPort = 19472
+
+[services.development]
+run = "pnpm --filter @workspace/redline-upgrade-film run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/redline-upgrade-film", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/redline-upgrade-film/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19472"
+BASE_PATH = "/redline-upgrade-film/"
