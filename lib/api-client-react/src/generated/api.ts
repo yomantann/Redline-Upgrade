@@ -24,19 +24,26 @@ import type {
   ActiveSoloGameResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  CreditsResponse,
+  EquipCosmeticInput,
+  EquipCosmeticResult,
   ErrorEnvelope,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  InventoryResponse,
   JoinRoomInput,
   LogoutBrowserSessionParams,
   MatchActionInput,
   MatchSnapshot,
   ProfileUpdate,
+  PurchaseCosmeticInput,
+  PurchaseCosmeticResult,
   ReadyInput,
   RoomDetails,
   RoomInput,
   RoomSettingsInput,
   SelectionInput,
+  ShopCatalogResponse,
   SoloGameActionInput,
   SoloGameSnapshot,
   StartSoloGameInput
@@ -1727,5 +1734,412 @@ export const useUpdateRoomSettings = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getUpdateRoomSettingsMutationOptions(options));
+    }
+
+export const getGetCreditsWalletUrl = () => {
+
+
+
+
+  return `/api/credits`
+}
+
+/**
+ * @summary Get the authenticated user's wallet and latest transactions
+ */
+export const getCreditsWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<CreditsResponse> => {
+
+  return customFetch<CreditsResponse>(getGetCreditsWalletUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditsWalletQueryKey = () => {
+    return [
+    `/api/credits`
+    ] as const;
+    }
+
+
+export const getGetCreditsWalletQueryOptions = <TData = Awaited<ReturnType<typeof getCreditsWallet>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditsWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditsWalletQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditsWallet>>> = ({ signal }) => getCreditsWallet({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditsWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditsWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditsWallet>>>
+export type GetCreditsWalletQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get the authenticated user's wallet and latest transactions
+ */
+
+export function useGetCreditsWallet<TData = Awaited<ReturnType<typeof getCreditsWallet>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditsWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditsWalletQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetShopCatalogUrl = () => {
+
+
+
+
+  return `/api/shop/catalog`
+}
+
+/**
+ * @summary Get available cosmetics and the caller's ownership state
+ */
+export const getShopCatalog = async ( options?: Parameters<typeof customFetch>[1]): Promise<ShopCatalogResponse> => {
+
+  return customFetch<ShopCatalogResponse>(getGetShopCatalogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShopCatalogQueryKey = () => {
+    return [
+    `/api/shop/catalog`
+    ] as const;
+    }
+
+
+export const getGetShopCatalogQueryOptions = <TData = Awaited<ReturnType<typeof getShopCatalog>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShopCatalogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShopCatalog>>> = ({ signal }) => getShopCatalog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShopCatalog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShopCatalogQueryResult = NonNullable<Awaited<ReturnType<typeof getShopCatalog>>>
+export type GetShopCatalogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get available cosmetics and the caller's ownership state
+ */
+
+export function useGetShopCatalog<TData = Awaited<ReturnType<typeof getShopCatalog>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShopCatalogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPurchaseCosmeticUrl = () => {
+
+
+
+
+  return `/api/shop/purchase`
+}
+
+/**
+ * @summary Purchase one catalog cosmetic with Credits
+ */
+export const purchaseCosmetic = async (purchaseCosmeticInput: PurchaseCosmeticInput, options?: Parameters<typeof customFetch>[1]): Promise<PurchaseCosmeticResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PurchaseCosmeticResult>(getPurchaseCosmeticUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(purchaseCosmeticInput)
+  }
+);}
+
+
+
+
+
+export const getPurchaseCosmeticMutationKey = () => ['purchaseCosmetic'] as const;
+
+export const getPurchaseCosmeticMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,PurchaseCosmeticMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,PurchaseCosmeticMutationVariables, TContext> => {
+
+const mutationKey = getPurchaseCosmeticMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof purchaseCosmetic>>, PurchaseCosmeticMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  purchaseCosmetic(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PurchaseCosmeticMutationResult = NonNullable<Awaited<ReturnType<typeof purchaseCosmetic>>>
+    export type PurchaseCosmeticMutationBody = BodyType<PurchaseCosmeticInput>
+    export type PurchaseCosmeticMutationError = ErrorType<void>
+    export type PurchaseCosmeticMutationVariables = {data: BodyType<PurchaseCosmeticInput>}
+
+    /**
+ * @summary Purchase one catalog cosmetic with Credits
+ */
+export const usePurchaseCosmetic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purchaseCosmetic>>, TError,PurchaseCosmeticMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof purchaseCosmetic>>,
+        TError,
+        PurchaseCosmeticMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPurchaseCosmeticMutationOptions(options));
+    }
+
+export const getGetInventoryUrl = () => {
+
+
+
+
+  return `/api/inventory`
+}
+
+/**
+ * @summary Get only owned cosmetics and equipped selections
+ */
+export const getInventory = async ( options?: Parameters<typeof customFetch>[1]): Promise<InventoryResponse> => {
+
+  return customFetch<InventoryResponse>(getGetInventoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInventoryQueryKey = () => {
+    return [
+    `/api/inventory`
+    ] as const;
+    }
+
+
+export const getGetInventoryQueryOptions = <TData = Awaited<ReturnType<typeof getInventory>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInventoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInventory>>> = ({ signal }) => getInventory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInventory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInventoryQueryResult = NonNullable<Awaited<ReturnType<typeof getInventory>>>
+export type GetInventoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get only owned cosmetics and equipped selections
+ */
+
+export function useGetInventory<TData = Awaited<ReturnType<typeof getInventory>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInventory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInventoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEquipCosmeticUrl = () => {
+
+
+
+
+  return `/api/inventory/equip`
+}
+
+/**
+ * @summary Equip or unequip an owned logo or compatible driver skin
+ */
+export const equipCosmetic = async (equipCosmeticInput: EquipCosmeticInput, options?: Parameters<typeof customFetch>[1]): Promise<EquipCosmeticResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EquipCosmeticResult>(getEquipCosmeticUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(equipCosmeticInput)
+  }
+);}
+
+
+
+
+
+export const getEquipCosmeticMutationKey = () => ['equipCosmetic'] as const;
+
+export const getEquipCosmeticMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,EquipCosmeticMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,EquipCosmeticMutationVariables, TContext> => {
+
+const mutationKey = getEquipCosmeticMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof equipCosmetic>>, EquipCosmeticMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  equipCosmetic(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EquipCosmeticMutationResult = NonNullable<Awaited<ReturnType<typeof equipCosmetic>>>
+    export type EquipCosmeticMutationBody = BodyType<EquipCosmeticInput>
+    export type EquipCosmeticMutationError = ErrorType<void>
+    export type EquipCosmeticMutationVariables = {data: BodyType<EquipCosmeticInput>}
+
+    /**
+ * @summary Equip or unequip an owned logo or compatible driver skin
+ */
+export const useEquipCosmetic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof equipCosmetic>>, TError,EquipCosmeticMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof equipCosmetic>>,
+        TError,
+        EquipCosmeticMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEquipCosmeticMutationOptions(options));
     }
 

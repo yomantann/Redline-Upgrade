@@ -12,6 +12,7 @@ import {
 import { findBoardDefinition } from "../../../redline-upgrade/src/game/boards";
 import { createMatch, type Match } from "../../../redline-upgrade/src/game/match";
 import { recordCompletedGame } from "./progression";
+import { getCosmeticIdentity } from "./cosmetics";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -64,9 +65,15 @@ export async function startSoloGame(userId: string, boardId: string, characterId
     } catch {
       return { kind: "invalid", message: "That character is not available for this board." };
     }
+    const identity = (await getCosmeticIdentity([userId])).get(userId);
     match = {
       ...match,
-      players: match.players.map((player, index) => index === 0 ? { ...player, displayName: name } : player),
+      players: match.players.map((player, index) => index === 0 ? {
+        ...player,
+        displayName: name,
+        portraitImagePath: identity?.skins[player.characterId] ?? null,
+        playerLogoPath: identity?.logoPath ?? null,
+      } : player),
     };
 
     // Only one live solo run is kept for an account. Starting another safely abandons the old one;
@@ -103,6 +110,9 @@ export async function submitSoloGameAction(
     const nextVersion = game.version + 1;
     const completed = nextState.match.phase === "complete";
     const completedAt = completed ? new Date() : null;
+    const newlyUnlocked = completed
+      ? await recordCompletedGame(tx, "SOLO", gameId, userId, nextState.match, 0, nextState.assetEvents, completedAt!)
+      : [];
     await tx.update(soloGamesTable)
       .set({
         state: nextState,
@@ -112,9 +122,6 @@ export async function submitSoloGameAction(
         completedAt,
       })
       .where(eq(soloGamesTable.id, gameId));
-    const newlyUnlocked = completed
-      ? await recordCompletedGame(tx, "SOLO", gameId, userId, nextState.match, 0, nextState.assetEvents, completedAt!)
-      : [];
     return { kind: "ok", snapshot: snapshot(gameId, nextVersion, nextState, newlyUnlocked) };
   });
 }

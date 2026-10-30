@@ -7,11 +7,13 @@ import { getPublicAssetUrl } from '@/lib/public-asset-url';
 export function CharacterPortrait({
   character,
   imagePath,
+  logoPath,
   boardId = 'REDLINE_UPGRADE',
   className = '',
 }: {
   character: CharacterDefinition;
   imagePath?: string;
+  logoPath?: string | null;
   boardId?: BoardId;
   className?: string;
 }) {
@@ -35,6 +37,7 @@ export function CharacterPortrait({
           onError={() => setFailedImageKey(imageKey)}
         />
       )}
+      {logoPath && <img className="character-player-logo" src={getPublicAssetUrl(logoPath)} alt="" aria-hidden="true" />}
     </div>
   );
 }

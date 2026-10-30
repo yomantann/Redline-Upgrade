@@ -296,7 +296,7 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
 
       <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
         <div className="finish-line-portrait-wrap">
-          {character ? <CharacterPortrait character={character} boardId={boardId} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
+          {character ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
           <span className="mono finish-line-portrait-caption">PLAYER / {endgame.snapshot.displayName}</span>
         </div>
         <div className="finish-line-identity-copy">
@@ -371,7 +371,7 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                 <div className="finish-line-result-player">
                    <div className="finish-line-result-avatar" aria-hidden="true">
                      {character
-                       ? <CharacterPortrait character={character} boardId={boardId} className="finish-line-result-avatar-image" />
+                        ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-result-avatar-image" />
                        : player.displayName.slice(0, 1)}
                    </div>
                   <div>
@@ -409,6 +409,11 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                      {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
                      {finishPlace > 0 && <small className="finish-order-result mono">{finishOrdinal(finishPlace)} TO FINISH / +{formatMoney(finishBonus)} FINISH BONUS</small>}
                    </div>
+                    {player.creditRewardReceipt && <div className="finish-line-credit-receipt" data-testid={`credit-receipt-${player.playerId}`}>
+                      <span className="mono">REDLINE CREDITS EARNED</span>
+                      <strong>+{player.creditRewardReceipt.total.toLocaleString()} ◈</strong>
+                      <small>GAME {player.creditRewardReceipt.game.toLocaleString()} · ENDGAME {player.creditRewardReceipt.endgame.toLocaleString()} · MILESTONES {player.creditRewardReceipt.milestones.toLocaleString()}</small>
+                    </div>}
                    <div className="finish-line-result-assets" role="group" aria-label={`${character?.name ?? player.displayName} final assets`}>
                      {assetSlots.map(({ slot, label }) => {
                        const assetId = endgame.snapshot.equipment[slot];

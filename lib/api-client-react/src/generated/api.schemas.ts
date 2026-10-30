@@ -351,6 +351,135 @@ export interface AchievementProfile {
   history: CompletedGameRecord[];
 }
 
+export interface CreditWallet {
+  userId: string;
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeSpent: number;
+  achievementEarned: number;
+  gameEarned: number;
+  endgameEarned: number;
+  updatedAt: string;
+}
+
+export interface CreditTransaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: string;
+  sourceId: string;
+  idempotencyKey: string;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface CreditsResponse {
+  wallet: CreditWallet;
+  transactions: CreditTransaction[];
+}
+
+export type CosmeticCatalogItemCategory = typeof CosmeticCatalogItemCategory[keyof typeof CosmeticCatalogItemCategory];
+
+
+export const CosmeticCatalogItemCategory = {
+  LOGO: 'LOGO',
+  DRIVER_SKIN: 'DRIVER_SKIN',
+} as const;
+
+export type CosmeticCatalogItemRarity = typeof CosmeticCatalogItemRarity[keyof typeof CosmeticCatalogItemRarity];
+
+
+export const CosmeticCatalogItemRarity = {
+  COMMON: 'COMMON',
+  UNCOMMON: 'UNCOMMON',
+  RARE: 'RARE',
+  EPIC: 'EPIC',
+  LEGENDARY: 'LEGENDARY',
+  MYTHIC: 'MYTHIC',
+} as const;
+
+export interface CosmeticCatalogItem {
+  id: string;
+  name: string;
+  category: CosmeticCatalogItemCategory;
+  rarity: CosmeticCatalogItemRarity;
+  price: number;
+  assetPath: string;
+  /** @nullable */
+  characterId: string | null;
+  available: number;
+  isDefault: number;
+  updatedAt: string;
+}
+
+export interface EquippedCosmetic {
+  userId: string;
+  slot: string;
+  /** @nullable */
+  itemId: string | null;
+  updatedAt: string;
+}
+
+export interface ShopCatalogResponse {
+  items: CosmeticCatalogItem[];
+  ownedItemIds: string[];
+  equipped: EquippedCosmetic[];
+}
+
+export interface InventoryCosmetic {
+  acquiredAt: string;
+  item: CosmeticCatalogItem;
+}
+
+export interface InventoryResponse {
+  items: InventoryCosmetic[];
+  equipped: EquippedCosmetic[];
+}
+
+export interface PurchaseCosmeticInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  itemId: string;
+}
+
+export type PurchaseCosmeticResultKind = typeof PurchaseCosmeticResultKind[keyof typeof PurchaseCosmeticResultKind];
+
+
+export const PurchaseCosmeticResultKind = {
+  ok: 'ok',
+} as const;
+
+export interface PurchaseCosmeticResult {
+  kind: PurchaseCosmeticResultKind;
+  balance: number;
+  item: CosmeticCatalogItem;
+}
+
+export interface EquipCosmeticInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  slot: string;
+  /** @nullable */
+  itemId: string | null;
+}
+
+export type EquipCosmeticResultKind = typeof EquipCosmeticResultKind[keyof typeof EquipCosmeticResultKind];
+
+
+export const EquipCosmeticResultKind = {
+  ok: 'ok',
+} as const;
+
+export interface EquipCosmeticResult {
+  kind: EquipCosmeticResultKind;
+  /** @nullable */
+  itemId: string | null;
+}
+
 export type BeginBrowserLoginParams = {
 /**
  * Relative path to redirect to after login.

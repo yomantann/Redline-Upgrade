@@ -3,6 +3,11 @@ import type { AssetLevel, AssetSlot } from './assets';
 
 export interface Player {
   playerId: string;
+  /** Server-authoritative completion rewards, present after a saved account game. */
+  creditRewardReceipt?: { total: number; game: number; endgame: number; milestones: number } | null;
+  /** Account cosmetic portrait only; never affects pawn geometry or gameplay. */
+  portraitImagePath?: string | null;
+  playerLogoPath?: string | null;
   displayName: string;
   characterId: string;
   position: number;
@@ -55,6 +60,7 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
 
   return {
     playerId: crypto.randomUUID(),
+    creditRewardReceipt: null,
     displayName,
     characterId,
     position: 0,

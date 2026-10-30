@@ -166,6 +166,9 @@ async function settleIdle(
   }
   const nextState = result.state;
   const version = row.version + 1;
+  if (nextState.match.phase === "complete") {
+    await finalizeRoomMatch(tx, roomId, nextState);
+  }
   await tx
     .update(roomMatchesTable)
     .set({ state: nextState, version, updatedAt: new Date() })
@@ -175,7 +178,6 @@ async function settleIdle(
       .update(gameRoomsTable)
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(gameRoomsTable.id, roomId));
-    await finalizeRoomMatch(tx, roomId, nextState);
   }
   return { state: nextState, version };
 }
@@ -293,6 +295,9 @@ export async function submitMatchAction(
           return { kind: "conflict", message: result.message };
       }
     }
+    if (result.state.match.phase === "complete") {
+      await finalizeRoomMatch(tx, roomId, result.state);
+    }
     const version = settled.version + 1;
     await tx
       .update(roomMatchesTable)
@@ -309,9 +314,6 @@ export async function submitMatchAction(
         ...(result.state.match.phase === "complete" ? { status: "completed" as const } : {}),
       })
       .where(eq(gameRoomsTable.id, roomId));
-    if (result.state.match.phase === "complete") {
-      await finalizeRoomMatch(tx, roomId, result.state);
-    }
     return {
       kind: "ok",
       snapshot: buildSnapshot(roomId, version, result.state, userId, await members(tx, roomId)),

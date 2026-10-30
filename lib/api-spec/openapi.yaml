@@ -641,6 +641,114 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /credits:
+    get:
+      tags: [Progression]
+      operationId: getCreditsWallet
+      summary: Get the authenticated user's wallet and latest transactions
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Wallet totals and latest ledger entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditsResponse"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /shop/catalog:
+    get:
+      tags: [Progression]
+      operationId: getShopCatalog
+      summary: Get available cosmetics and the caller's ownership state
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Current logos and named driver skins.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopCatalogResponse"
+        "401":
+          description: Authentication required.
+  /shop/purchase:
+    post:
+      tags: [Progression]
+      operationId: purchaseCosmetic
+      summary: Purchase one catalog cosmetic with Credits
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseCosmeticInput"
+      responses:
+        "201":
+          description: Cosmetic purchase committed atomically.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseCosmeticResult"
+        "400":
+          description: Invalid item ID.
+        "401":
+          description: Authentication required.
+        "404":
+          description: Item not found.
+        "409":
+          description: Item is already owned or Credits are insufficient.
+  /inventory:
+    get:
+      tags: [Progression]
+      operationId: getInventory
+      summary: Get only owned cosmetics and equipped selections
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Owned cosmetics with acquisition timestamps.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "401":
+          description: Authentication required.
+  /inventory/equip:
+    post:
+      tags: [Progression]
+      operationId: equipCosmetic
+      summary: Equip or unequip an owned logo or compatible driver skin
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipCosmeticInput"
+      responses:
+        "200":
+          description: Equipment selection saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipCosmeticResult"
+        "400":
+          description: Item and equipment slot are incompatible.
+        "401":
+          description: Authentication required.
+        "403":
+          description: Item is not owned.
+        "404":
+          description: Item not found.
 components:
   parameters:
     SessionCookie:
@@ -1104,4 +1212,172 @@ components:
         completedAt:
           type: string
           format: date-time
+    CreditsResponse:
+      type: object
+      required: [wallet, transactions]
+      properties:
+        wallet:
+          $ref: "#/components/schemas/CreditWallet"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditTransaction"
+    CreditWallet:
+      type: object
+      required: [userId, balance, lifetimeEarned, lifetimeSpent, achievementEarned, gameEarned, endgameEarned, updatedAt]
+      properties:
+        userId:
+          type: string
+        balance:
+          type: integer
+        lifetimeEarned:
+          type: integer
+        lifetimeSpent:
+          type: integer
+        achievementEarned:
+          type: integer
+        gameEarned:
+          type: integer
+        endgameEarned:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    CreditTransaction:
+      type: object
+      required: [id, userId, amount, type, sourceId, idempotencyKey, balanceAfter, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        amount:
+          type: integer
+        type:
+          type: string
+        sourceId:
+          type: string
+        idempotencyKey:
+          type: string
+        balanceAfter:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    CosmeticCatalogItem:
+      type: object
+      required: [id, name, category, rarity, price, assetPath, characterId, available, isDefault, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [LOGO, DRIVER_SKIN]
+        rarity:
+          type: string
+          enum: [COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, MYTHIC]
+        price:
+          type: integer
+        assetPath:
+          type: string
+        characterId:
+          type: [string, "null"]
+        available:
+          type: integer
+        isDefault:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    EquippedCosmetic:
+      type: object
+      required: [userId, slot, itemId, updatedAt]
+      properties:
+        userId:
+          type: string
+        slot:
+          type: string
+        itemId:
+          type: [string, "null"]
+        updatedAt:
+          type: string
+          format: date-time
+    ShopCatalogResponse:
+      type: object
+      required: [items, ownedItemIds, equipped]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CosmeticCatalogItem"
+        ownedItemIds:
+          type: array
+          items:
+            type: string
+        equipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/EquippedCosmetic"
+    InventoryCosmetic:
+      type: object
+      required: [acquiredAt, item]
+      properties:
+        acquiredAt:
+          type: string
+          format: date-time
+        item:
+          $ref: "#/components/schemas/CosmeticCatalogItem"
+    InventoryResponse:
+      type: object
+      required: [items, equipped]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryCosmetic"
+        equipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/EquippedCosmetic"
+    PurchaseCosmeticInput:
+      type: object
+      required: [itemId]
+      properties:
+        itemId:
+          type: string
+          minLength: 1
+          maxLength: 160
+    PurchaseCosmeticResult:
+      type: object
+      required: [kind, balance, item]
+      properties:
+        kind:
+          type: string
+          enum: [ok]
+        balance:
+          type: integer
+        item:
+          $ref: "#/components/schemas/CosmeticCatalogItem"
+    EquipCosmeticInput:
+      type: object
+      required: [slot, itemId]
+      properties:
+        slot:
+          type: string
+          minLength: 1
+          maxLength: 100
+        itemId:
+          type: [string, "null"]
+    EquipCosmeticResult:
+      type: object
+      required: [kind, itemId]
+      properties:
+        kind:
+          type: string
+          enum: [ok]
+        itemId:
+          type: [string, "null"]
 

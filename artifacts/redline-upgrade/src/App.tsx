@@ -16,7 +16,7 @@ import { boards, getBoardDefinition, type BoardId, type GameMode } from '@/game/
 import { AppShell } from '@/components/app-shell';
 import { MultiplayerPage } from '@/pages/multiplayer';
 import { ProfilePage } from '@/pages/profile';
-import { ShopPage } from '@/pages/shop';
+import { InventoryPage, ShopPage } from '@/pages/shop';
 import { boardAvailabilityLabel } from '@/game/boards';
 import { useAuth } from '@workspace/replit-auth-web';
 import { achievementCatalog } from '@/game/achievement-catalog';
@@ -332,6 +332,29 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
   );
 }
 
+function useEquippedSkinPaths(enabled: boolean) {
+  const [paths, setPaths] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!enabled) { setPaths({}); return; }
+    let active = true;
+    fetch('/api/inventory', { credentials: 'include' })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Inventory request failed.')))
+      .then((data: { items: { item: { id: string; assetPath: string; category: string; characterId: string | null } }[]; equipped: { slot: string; itemId: string | null }[] }) => {
+        const owned = new Map(data.items.map(({ item }) => [item.id, item]));
+        const next: Record<string, string> = {};
+        for (const row of data.equipped) {
+          if (!row.slot.startsWith('skin:') || !row.itemId) continue;
+          const item = owned.get(row.itemId);
+          if (item?.category === 'DRIVER_SKIN' && item.characterId) next[item.characterId] = item.assetPath;
+        }
+        if (active) setPaths(next);
+      })
+      .catch(() => { if (active) setPaths({}); });
+    return () => { active = false; };
+  }, [enabled]);
+  return paths;
+}
+
 function Characters() {
   const [selectedId, setSelectedId] = useState(characters[0].id);
   const selected = useMemo(() => getCharacter(selectedId) ?? characters[0], [selectedId]);
@@ -342,12 +365,14 @@ function Characters() {
   const isHauntedBoard = selectedBoardId === 'HAUNTED_UPGRADE';
   const isPreviewOnlyBoard = isHauntedBoard;
   const [, navigate] = useLocation();
+  const { user } = useAuth(import.meta.env.BASE_URL);
+  const equippedSkinPaths = useEquippedSkinPaths(Boolean(user));
   const chooseRandom = () => {
     const options = characters.filter(({ id }) => id !== selected.id);
     const pick = options[Math.floor(Math.random() * options.length)] ?? characters[0];
     setSelectedId(pick.id);
   };
-  const selectedImagePath = getCharacterImagePath(selected.id, selectedBoardId);
+  const selectedImagePath = equippedSkinPaths[selected.id] ?? getCharacterImagePath(selected.id, selectedBoardId);
 
   return (
     <AppShell>
@@ -374,7 +399,7 @@ function Characters() {
                 <CharacterTile
                   key={character.id}
                   character={character}
-                  imagePath={getCharacterImagePath(character.id, selectedBoardId)}
+                  imagePath={equippedSkinPaths[character.id] ?? getCharacterImagePath(character.id, selectedBoardId)}
                   boardId={selectedBoardId}
                   selected={character.id === selected.id}
                   onSelect={() => setSelectedId(character.id)}
@@ -394,6 +419,7 @@ function Setup() {
   const [, navigate] = useLocation();
   const { player, match, beginGame, startNewGame, selectedBoardId, remoteError } = useGame();
   const { user, isLoading } = useAuth(import.meta.env.BASE_URL);
+  const equippedSkinPaths = useEquippedSkinPaths(Boolean(user));
   const [starting, setStarting] = useState(false);
   const character = player ? getCharacter(player.characterId) : undefined;
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
@@ -460,7 +486,7 @@ function Setup() {
           </div>
           <div className="setup-aside">
               <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : isHauntedBoard ? 'haunted-setup-art' : ''}`}>
-                <CharacterPortrait character={character} imagePath={getCharacterImagePath(character.id, selectedBoardId)} className="setup-portrait" />
+                <CharacterPortrait character={character} imagePath={equippedSkinPaths[character.id] ?? getCharacterImagePath(character.id, selectedBoardId)} className="setup-portrait" />
                 {(!isPreviewOnlyBoard || isBioBoard) && <CharacterPiece boardId={selectedBoardId} characterId={character.id} name={character.name} selected className="setup-pawn" />}
             </div>
             <div className="setup-aside-caption mono">
@@ -523,13 +549,14 @@ function Router() {
       {location === '/multiplayer' && <MultiplayerPage />}
       {location === '/profile' && <ProfilePage />}
       {location === '/shop' && <ShopPage />}
+      {location === '/inventory' && <InventoryPage />}
       {location === '/board-coming-soon' && <ComingSoon />}
       {location === '/characters' && <Characters />}
       {location === '/setup' && <Setup />}
       {location === '/career' && <AppShell><CareerReveal /></AppShell>}
       {location === '/board' && <AppShell>{match && !careerRevealed ? <CareerReveal /> : <GameScreen />}<AchievementNotice /></AppShell>}
       {location === '/board-preview' && <BoardVisualPreview />}
-      {!['/', '/boards', '/mode', '/multiplayer', '/profile', '/shop', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
+      {!['/', '/boards', '/mode', '/multiplayer', '/profile', '/shop', '/inventory', '/board-coming-soon', '/characters', '/setup', '/career', '/board', '/board-preview'].includes(location) && <NotFound />}
     </RoutedErrorBoundary>
     </MusicProvider>
   );

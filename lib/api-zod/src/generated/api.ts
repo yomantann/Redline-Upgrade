@@ -670,3 +670,131 @@ export const UpdateRoomSettingsResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the authenticated user's wallet and latest transactions
+ */
+export const GetCreditsWalletResponse = zod.object({
+  "wallet": zod.object({
+  "userId": zod.string(),
+  "balance": zod.number().int(),
+  "lifetimeEarned": zod.number().int(),
+  "lifetimeSpent": zod.number().int(),
+  "achievementEarned": zod.number().int(),
+  "gameEarned": zod.number().int(),
+  "endgameEarned": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+}),
+  "transactions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "userId": zod.string(),
+  "amount": zod.number().int(),
+  "type": zod.string(),
+  "sourceId": zod.string(),
+  "idempotencyKey": zod.string(),
+  "balanceAfter": zod.number().int(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get available cosmetics and the caller's ownership state
+ */
+export const GetShopCatalogResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['LOGO', 'DRIVER_SKIN']),
+  "rarity": zod.enum(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']),
+  "price": zod.number().int(),
+  "assetPath": zod.string(),
+  "characterId": zod.string().nullable(),
+  "available": zod.number().int(),
+  "isDefault": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+})),
+  "ownedItemIds": zod.array(zod.string()),
+  "equipped": zod.array(zod.object({
+  "userId": zod.string(),
+  "slot": zod.string(),
+  "itemId": zod.string().nullable(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Purchase one catalog cosmetic with Credits
+ */
+export const purchaseCosmeticBodyItemIdMax = 160;
+
+
+
+export const PurchaseCosmeticBody = zod.object({
+  "itemId": zod.string().min(1).max(purchaseCosmeticBodyItemIdMax)
+})
+
+export const PurchaseCosmeticResponse = zod.object({
+  "kind": zod.enum(['ok']),
+  "balance": zod.number().int(),
+  "item": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['LOGO', 'DRIVER_SKIN']),
+  "rarity": zod.enum(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']),
+  "price": zod.number().int(),
+  "assetPath": zod.string(),
+  "characterId": zod.string().nullable(),
+  "available": zod.number().int(),
+  "isDefault": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Get only owned cosmetics and equipped selections
+ */
+export const GetInventoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "acquiredAt": zod.coerce.date(),
+  "item": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['LOGO', 'DRIVER_SKIN']),
+  "rarity": zod.enum(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC']),
+  "price": zod.number().int(),
+  "assetPath": zod.string(),
+  "characterId": zod.string().nullable(),
+  "available": zod.number().int(),
+  "isDefault": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+})
+})),
+  "equipped": zod.array(zod.object({
+  "userId": zod.string(),
+  "slot": zod.string(),
+  "itemId": zod.string().nullable(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Equip or unequip an owned logo or compatible driver skin
+ */
+export const equipCosmeticBodySlotMax = 100;
+
+
+
+export const EquipCosmeticBody = zod.object({
+  "slot": zod.string().min(1).max(equipCosmeticBodySlotMax),
+  "itemId": zod.string().nullable()
+})
+
+export const EquipCosmeticResponse = zod.object({
+  "kind": zod.enum(['ok']),
+  "itemId": zod.string().nullable()
+})
+
+

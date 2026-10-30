@@ -21,6 +21,7 @@ import { characters } from "../../../redline-upgrade/src/game/characters";
 import { createMultiplayerMatch } from "../../../redline-upgrade/src/game/match";
 import type { BoardId } from "../../../redline-upgrade/src/game/boards";
 import { createMultiplayerState } from "../../../redline-upgrade/src/game/multiplayer";
+import { getCosmeticIdentity } from "./cosmetics";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -400,7 +401,7 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
         [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
       ]),
     );
-    const match = createMultiplayerMatch(
+    const baseMatch = createMultiplayerMatch(
       seated.map((player) => ({
         characterId: player.selectedCharacterId,
         // Career choice is intentionally randomized for every new match.
@@ -409,6 +410,18 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
       })),
       room.boardId as BoardId,
     );
+    const identityByUser = await getCosmeticIdentity(seated.map((player) => player.userId));
+    const match = {
+      ...baseMatch,
+      players: baseMatch.players.map((player, index) => {
+        const identity = identityByUser.get(seated[index].userId);
+        return {
+          ...player,
+          portraitImagePath: identity?.skins[player.characterId] ?? null,
+          playerLogoPath: identity?.logoPath ?? null,
+        };
+      }),
+    };
     const state = createMultiplayerState(match, seated.map((player) => player.userId));
     await tx.insert(roomMatchesTable).values({ roomId, version: 0, state });
 

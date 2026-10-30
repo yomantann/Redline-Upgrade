@@ -1,6 +1,8 @@
 import {
   GetAchievementProfileResponse,
   GetActiveSoloGameResponse,
+  EquipCosmeticBody,
+  PurchaseCosmeticBody,
   StartSoloGameBody,
   StartSoloGameResponse,
   SubmitSoloGameActionBody,
@@ -17,6 +19,7 @@ import {
   submitSoloGameAction,
   type SoloGameResult,
 } from "../lib/solo-games";
+import { equipCosmetic, getInventory, getShopCatalog, purchaseCosmetic } from "../lib/cosmetics";
 
 const router: IRouter = Router();
 
@@ -57,6 +60,42 @@ router.get("/credits", async (req: Request, res: Response): Promise<void> => {
     return { wallet, transactions };
   });
   res.status(200).json(result);
+});
+
+router.get("/shop/catalog", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+  res.status(200).json(await getShopCatalog(req.user.id));
+});
+
+router.post("/shop/purchase", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+  const parsed = PurchaseCosmeticBody.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 400, "Choose a valid cosmetic.");
+    return;
+  }
+  const result = await purchaseCosmetic(req.user.id, parsed.data.itemId);
+  if (result.kind === "ok") { res.status(201).json(result); return; }
+  const status = { wallet_missing: 409, not_found: 404, owned: 409, insufficient: 409 }[result.kind];
+  res.status(status).json({ error: result.kind, ...result });
+});
+
+router.get("/inventory", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+  res.status(200).json(await getInventory(req.user.id));
+});
+
+router.post("/inventory/equip", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+  const parsed = EquipCosmeticBody.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 400, "Choose a valid inventory item and slot.");
+    return;
+  }
+  const result = await equipCosmetic(req.user.id, parsed.data.slot, parsed.data.itemId);
+  if (result.kind === "ok") { res.status(200).json(result); return; }
+  const status = result.kind === "not_found" ? 404 : result.kind === "not_owned" ? 403 : 400;
+  res.status(status).json({ error: result.kind });
 });
 
 router.get("/solo-games/active", async (req: Request, res: Response): Promise<void> => {

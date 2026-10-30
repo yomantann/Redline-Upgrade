@@ -559,8 +559,13 @@ export async function recordCompletedGame(
   }
 
   const rewardSourceId = `${source}:${gameId}`;
-  const award = (amount: number, suffix: string, type: "GAME" | "ENDGAME" | "ACHIEVEMENT") =>
-    grantCredits(tx, userId, amount, type, rewardSourceId, `${type.toLowerCase()}:${rewardSourceId}:${suffix}`);
+  const creditRewardReceipt = { total: 0, game: 0, endgame: 0, milestones: 0 };
+  const award = async (amount: number, suffix: string, type: "GAME" | "ENDGAME" | "ACHIEVEMENT") => {
+    const granted = await grantCredits(tx, userId, amount, type, rewardSourceId, `${type.toLowerCase()}:${rewardSourceId}:${suffix}`);
+    if (!granted) return;
+    creditRewardReceipt.total += amount;
+    creditRewardReceipt[type === "GAME" ? "game" : type === "ENDGAME" ? "endgame" : "milestones"] += amount;
+  };
   await award(GAME_CREDIT_REWARDS.completion, "completion", "GAME");
   await award(GAME_CREDIT_REWARDS.placement[Math.min(placement - 1, 3)]!, "placement", "GAME");
   if (previousMetrics.completedGames === 0) await award(GAME_CREDIT_REWARDS.firstGame, "first-game", "GAME");
@@ -582,12 +587,19 @@ export async function recordCompletedGame(
   }
   if (acquiredUniqueIds.length > 0 && lostAssetIds.length === 0) await award(GAME_CREDIT_REWARDS.lossFree, "loss-free", "ENDGAME");
   for (const achievement of [...achievementCatalog, ...secretAchievementCatalog]) {
-    if (!previousAchievements.get(achievement.id)?.unlockedAt && !unlockedIds.includes(achievement.id)) continue;
-    await grantCredits(
+    // Only pay on the completion that first unlocks it; never backfill older milestones.
+    if (!unlockedIds.includes(achievement.id)) continue;
+    const granted = await grantCredits(
       tx, userId, ACHIEVEMENT_TIER_CREDITS[achievement.rarity], "ACHIEVEMENT",
       achievement.id, `achievement:${achievement.id}`,
     );
+    if (granted) {
+      const amount = ACHIEVEMENT_TIER_CREDITS[achievement.rarity];
+      creditRewardReceipt.total += amount;
+      creditRewardReceipt.milestones += amount;
+    }
   }
+  player.creditRewardReceipt = creditRewardReceipt;
 
   for (const assetId of new Set([...acquiredAssetIds, ...lostAssetIds, ...retainedIds])) {
     const old = oldAssets.get(assetId);

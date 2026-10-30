@@ -8,6 +8,8 @@ import { assets, getAsset, type AssetDefinition } from '@/game/assets';
 import { characters } from '@/game/characters';
 import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
+import { useLocation } from 'wouter';
+import { getPublicAssetUrl } from '@/lib/public-asset-url';
 import './pages.css';
 
 type ProfileTab = 'overview' | 'collection' | 'milestones' | 'history';
@@ -20,6 +22,11 @@ type CreditSummary = {
     gameEarned: number;
     endgameEarned: number;
   } | null;
+  transactions: { id: string; amount: number; type: string; sourceId: string; balanceAfter: number; createdAt: string }[];
+};
+type ProfileInventory = {
+  items: { acquiredAt: string; item: { id: string; name: string; category: string; assetPath: string } }[];
+  equipped: { slot: string; itemId: string | null }[];
 };
 type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
   category: AchievementCategory | 'SECRET';
@@ -47,6 +54,7 @@ const titleCase = (value: string) => value.toLowerCase().replace(/_/g, ' ').repl
 const metricLabel = (value: string) => titleCase(value.replace(/([A-Z])/g, ' $1'));
 
 export function ProfilePage() {
+  const [, navigate] = useLocation();
   const { user, isLoading, login } = useAuth(import.meta.env.BASE_URL);
   const profileQuery = useGetAchievementProfile({ query: { enabled: !!user, queryKey: getGetAchievementProfileQueryKey() } });
   const updateProfile = useUpdateCurrentProfile();
@@ -60,6 +68,7 @@ export function ProfilePage() {
   const [nameError, setNameError] = useState('');
   const [nameStatus, setNameStatus] = useState('');
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
+  const [profileInventory, setProfileInventory] = useState<ProfileInventory | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -73,9 +82,24 @@ export function ProfilePage() {
         return response.json() as Promise<CreditSummary>;
       })
       .then(data => { if (active) setCreditSummary(data); })
-      .catch(() => { if (active) setCreditSummary({ wallet: null }); });
+      .catch(() => { if (active) setCreditSummary({ wallet: null, transactions: [] }); });
     return () => { active = false; };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) { setProfileInventory(null); return; }
+    let active = true;
+    fetch('/api/inventory', { credentials: 'include' })
+      .then(response => {
+        if (!response.ok) throw new Error(`Inventory request failed (${response.status}).`);
+        return response.json() as Promise<ProfileInventory>;
+      })
+      .then(data => { if (active) setProfileInventory(data); })
+      .catch(() => { if (active) setProfileInventory(null); });
+    return () => { active = false; };
+  }, [user?.id]);
+  const equippedLogoId = profileInventory?.equipped.find(item => item.slot === 'logo')?.itemId;
+  const equippedLogo = profileInventory?.items.find(entry => entry.item.id === equippedLogoId)?.item;
 
   useEffect(() => {
     if (!isLoading && !user) login();
@@ -227,7 +251,7 @@ export function ProfilePage() {
           <span>{item.isSecret ? 'SECRET / REVEALED' : `${current.toLocaleString()} / ${target.toLocaleString()}`}</span>
           <span>{isUnlocked ? `UNLOCKED ${dateLabel(item.unlockedAt)} / GAME ${item.unlockGameId ?? '—'}` : 'LOCKED'}</span>
         </div>
-        <div className="red-reward">{item.creditReward} credits <small>PENDING / NOT PAID</small></div>
+        <div className="red-reward">{item.creditReward} credits <small>REWARD TIER</small></div>
       </article>
     );
   }
@@ -273,6 +297,9 @@ export function ProfilePage() {
                 </div>
               </div>
               <div className="red-profile-stamp">
+                <div className="red-profile-logo" aria-label={equippedLogo ? `Equipped logo: ${equippedLogo.name}` : 'Default logo equipped'}>
+                  {equippedLogo ? <img src={getPublicAssetUrl(equippedLogo.assetPath)} alt="" /> : <span>DEFAULT<br />MARK</span>}
+                </div>
                 <span className="mono">PERMANENT RECORD</span>
                 <strong>{String(unlocked).padStart(2, '0')}<i>/{String(total).padStart(2, '0')}</i></strong>
                 <span className="mono">MILESTONES SECURED</span>
@@ -318,6 +345,10 @@ export function ProfilePage() {
                           ['BEST FINAL VALUE', money(profile.metrics.highestFinalValue)],
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
+                      <div className="red-wallet-actions">
+                        <button className="red-inline-link" type="button" onClick={() => navigate('/shop')}>Black Market ↗</button>
+                        <button className="red-inline-link" type="button" onClick={() => navigate('/inventory')}>Inventory ↗</button>
+                      </div>
                     </section>
                     <section className="red-overview-grid">
                       <div className="red-section-heading"><span className="eyebrow">REDLINE CREDITS</span><h2>Wallet<br />ledger.</h2><p>Credits earned through completed games, endgame results, and milestones.</p></div>
@@ -327,8 +358,20 @@ export function ProfilePage() {
                           ['LIFETIME EARNED', creditSummary?.wallet?.lifetimeEarned.toLocaleString() ?? '—'],
                           ['LIFETIME SPENT', creditSummary?.wallet?.lifetimeSpent.toLocaleString() ?? '—'],
                           ['MILESTONE EARNED', creditSummary?.wallet?.achievementEarned.toLocaleString() ?? '—'],
+                          ['GAME EARNED', creditSummary?.wallet?.gameEarned.toLocaleString() ?? '—'],
+                          ['ENDGAME EARNED', creditSummary?.wallet?.endgameEarned.toLocaleString() ?? '—'],
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
+                    </section>
+                    <section className="red-credit-ledger">
+                      <div className="red-section-bar"><div><span className="eyebrow">LATEST CREDIT ACTIVITY</span><h2>Wallet transactions</h2></div></div>
+                      {creditSummary?.transactions?.length ? <div className="red-credit-rows">{creditSummary.transactions.slice(0, 8).map(transaction => (
+                        <div className="red-credit-row" key={transaction.id}>
+                          <span className="mono">{titleCase(transaction.type)} · {dateLabel(transaction.createdAt)}</span>
+                          <strong className={transaction.amount < 0 ? 'spent' : 'earned'}>{transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} ◈</strong>
+                          <span className="mono">BALANCE {transaction.balanceAfter.toLocaleString()}</span>
+                        </div>
+                      ))}</div> : <EmptyState title="No Credits activity yet" text="Completed-game and milestone rewards will appear here." />}
                     </section>
                     <section className="red-latest">
                       <div className="red-section-bar"><div><span className="eyebrow">LATEST RESULT</span><h2>From the table</h2></div><button className="red-inline-link" type="button" onClick={() => setTab('history')}>All game records <span aria-hidden="true">↗</span></button></div>

@@ -182,6 +182,7 @@ a { color: inherit; text-decoration: none; }
 /* Portraits are reference art in the UI; only the WebGL scene is a board figurine. */
 .character-portrait { position: relative; overflow: hidden; background: #1d2927; }
 .character-portrait img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center top; }
+.character-portrait .character-player-logo { position: absolute; z-index: 2; right: 5px; bottom: 5px; width: 28px; height: 28px; padding: 3px; object-fit: contain; object-position: center; border: 1px solid #d1b267; border-radius: 50%; background: #120e19; }
 .portrait-error { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; color: #d4e981; text-align: center; font: 10px 'Space Mono',monospace; }
 .tile-portrait { height: clamp(150px,13vw,190px); border-bottom: 1px solid #34403a; }
 .character-piece-stage { position: relative; isolation: isolate; overflow: hidden; min-height: 130px; background: radial-gradient(circle at 50% 38%,#364747 0%,#1a2927 40%,#0c1412 85%); }

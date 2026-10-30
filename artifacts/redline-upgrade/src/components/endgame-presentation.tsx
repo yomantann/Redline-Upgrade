@@ -211,7 +211,7 @@ export function EndgamePresentation({
       <section className="endgame-identity" aria-labelledby="endgame-identity-heading">
         <div className="endgame-portrait-wrap">
           {character ? (
-            <CharacterPortrait character={character} boardId={match.boardId} className="endgame-portrait" />
+            <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={match.boardId} className="endgame-portrait" />
           ) : (
             <div className="endgame-portrait-fallback" aria-label="Portrait unavailable">NO PORTRAIT</div>
           )}

@@ -584,7 +584,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                       <span className="game-player-position mono">{contestant.status === 'FINISHED' ? 'FINISHED' : contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>
                     </div>
                    <div className="game-player-summary-identity">
-                     {character && <CharacterPortrait character={character} boardId={match.boardId} className="game-player-summary-portrait" />}
+                      {character && <CharacterPortrait character={character} imagePath={contestant.portraitImagePath ?? undefined} logoPath={contestant.playerLogoPath} boardId={match.boardId} className="game-player-summary-portrait" />}
                      <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
                    </div>
                    <div className="game-player-summary-values">
@@ -613,7 +613,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                </div>
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
-                 {character && <CharacterPortrait character={character} boardId={match.boardId} className="game-player-portrait" />}
+                  {character && <CharacterPortrait character={character} imagePath={contestant.portraitImagePath ?? undefined} logoPath={contestant.playerLogoPath} boardId={match.boardId} className="game-player-portrait" />}
                   <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{remote ? ` // ${remote.seats[index]?.fastCpu ? 'FAST CPU' : remote.seats[index]?.cpuControlled ? 'CPU CONTROLLING' : remote.seats[index]?.connected ? 'CONNECTED' : 'DISCONNECTED'}` : ''}</small></div>
                </div>
               <div className="game-player-career">
