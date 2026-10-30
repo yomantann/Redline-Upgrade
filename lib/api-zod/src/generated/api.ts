@@ -26,6 +26,30 @@ export const GetCurrentAuthUserResponse = zod.object({
   "email": zod.string().email().nullable(),
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Update the authenticated user's app display name
+ */
+export const updateCurrentProfileBodyDisplayNameMax = 40;
+
+
+
+export const UpdateCurrentProfileBody = zod.object({
+  "displayName": zod.string().min(1).max(updateCurrentProfileBodyDisplayNameMax)
+})
+
+export const UpdateCurrentProfileResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.string().email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
   "profileImageUrl": zod.string().nullable()
 }),zod.null()])
 })

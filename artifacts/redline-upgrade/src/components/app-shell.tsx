@@ -38,7 +38,7 @@ function Header() {
             <span className="header-auth-state">ACCOUNT …</span>
           ) : user ? (
             <>
-              <span className="header-auth-user">{user.firstName || 'ACCOUNT'}</span>
+              <span className="header-auth-user">{user.displayName || user.firstName || 'ACCOUNT'}</span>
               <button className="header-link" type="button" onClick={logout}>SIGN OUT</button>
             </>
           ) : (
@@ -52,7 +52,7 @@ function Header() {
 
 function Footer() {
   const [location] = useLocation();
-  if (location === '/') {
+  if (location === '/' || location === '/profile') {
     return (
       <footer className="page-footer page-footer-home" aria-hidden="true">
         <div className="home-footer-signal">

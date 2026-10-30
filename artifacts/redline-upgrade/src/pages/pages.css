@@ -57,6 +57,15 @@
 .red-profile-user div:last-child { display: grid; gap: 3px; }
 .red-profile-user strong { font: 700 14px 'DM Sans',sans-serif; color: #e9e7dc; }
 .red-profile-user span { color: #84918a; font: 9px 'Space Mono',monospace; overflow-wrap: anywhere; }
+.red-profile-name-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.red-profile-name-actions .text-link { min-height: 28px; padding: 0; color: #d4e981; font: 700 8px 'Space Mono',monospace; text-transform: uppercase; }
+.red-profile-name-actions .text-link:disabled { opacity: .5; cursor: not-allowed; }
+.red-profile-name-form { display: grid; gap: 8px; margin-top: 7px; }
+.red-profile-name-form label { color: #aab6aa; font: 8px 'Space Mono',monospace; letter-spacing: .08em; text-transform: uppercase; }
+.red-profile-name-form input { width: min(100%,320px); min-height: 38px; padding: 0 10px; border: 1px solid #596b43; background: #101715; color: #e9e7dc; font: 12px 'DM Sans',sans-serif; }
+.red-profile-name-form input:focus-visible { outline: 2px solid #d4e981; outline-offset: 2px; }
+.red-profile-name-error { color: #ff9d8a !important; font: 9px 'Space Mono',monospace !important; }
+.red-profile-name-status { color: #d4e981 !important; font: 8px 'Space Mono',monospace !important; }
 .red-profile-stamp { min-height: 200px; padding: 21px 0 4px 26px; border-left: 1px solid #3a4840; display: flex; flex-direction: column; align-items: flex-start; color: #95a29a; }
 .red-profile-stamp > strong { font: 800 clamp(64px,8vw,108px)/.96 'Barlow Condensed',sans-serif; color: #d4e981; margin: 11px 0 3px; letter-spacing: -.04em; }
 .red-profile-stamp > strong i { font-style: normal; font-size: .38em; color: #86948b; letter-spacing: .03em; }
@@ -136,15 +145,17 @@
 .red-asset-card { display: grid; grid-template-columns: 37% minmax(0,1fr); min-height: 260px; border: 1px solid #35433a; background: #111917; }
 .red-asset-art { position: relative; min-height: 100%; overflow: hidden; background: #1b2420; border-right: 1px solid #35433a; }
 .red-asset-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.red-asset-mystery { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle,#202b25,#101715 68%); color: #d4e981; }
+.red-asset-mystery span { position: relative; z-index: 3; display: grid; place-items: center; width: 62px; height: 62px; border: 1px solid #65734c; border-radius: 50%; background: #141c18; box-shadow: 0 0 22px #d4e98120; font: 700 34px 'Space Mono',monospace; }
+.asset-not-retained .red-asset-art { background: #101715; }
+.asset-not-retained .red-asset-art::after { content: ''; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg,rgba(215,224,214,.07) 0 1px,transparent 1px 8px); }
 .red-rarity { position: absolute; z-index: 3; top: 9px; left: 8px; padding: 4px 6px; background: #101715; font: 700 7px 'Space Mono',monospace; }
 .red-asset-lock-state { position: absolute; z-index: 3; left: 8px; bottom: 9px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #9aa399; background: rgba(13,19,17,.92); color: #e3e8df; font: 700 7px 'Space Mono',monospace; letter-spacing: .1em; }
 .red-asset-lock-state::before { content: ''; width: 7px; height: 6px; border: 1px solid currentColor; border-radius: 1px; box-shadow: 0 -4px 0 -1px rgba(0,0,0,0), 0 -4px 0 -1px currentColor; }
 .asset-collected .red-asset-lock-state { border-color: #829c4d; color: #d4e981; }
-.asset-locked .red-asset-image { filter: grayscale(1) brightness(.48); }
-.asset-locked .red-asset-art::after { content: ''; position: absolute; z-index: 2; inset: 0; pointer-events: none; background: repeating-linear-gradient(135deg,rgba(215,224,214,.08) 0 1px,transparent 1px 8px); }
-.asset-locked .red-asset-copy h3 { color: #aeb8ad; }
-.asset-locked .red-asset-copy > p { color: #7e8a81; }
-.asset-locked .red-asset-counts strong { color: #8e9b91; }
+.asset-not-retained .red-asset-copy h3 { color: #aeb8ad; }
+.asset-not-retained .red-asset-copy > p { color: #7e8a81; }
+.asset-not-retained .red-asset-counts strong { color: #8e9b91; }
 .rarity-standard { color: #a9b8ad; border: 1px solid #6c7c71; }.rarity-rare { color: #88c6c2; border: 1px solid #58938e; }.rarity-elite { color: #f0bd76; border: 1px solid #aa7b3e; }
 .red-asset-copy { min-width: 0; padding: 15px; }
 .red-asset-copy > .mono { color: #819087; font-size: 7px; overflow-wrap: anywhere; }

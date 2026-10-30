@@ -18,7 +18,17 @@ export interface AuthUser {
   /** @nullable */
   lastName: string | null;
   /** @nullable */
+  displayName: string | null;
+  /** @nullable */
   profileImageUrl: string | null;
+}
+
+export interface ProfileUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  displayName: string;
 }
 
 export interface AuthUserEnvelope {

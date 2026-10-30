@@ -456,7 +456,7 @@ function Setup() {
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
               </div>}
               {remoteError && <p className="setup-lede" role="alert">{remoteError}</p>}
-              {!isLoading && !user && !isPreviewOnlyBoard && <p className="setup-lede">Guest games stay on this device. Sign in to save achievements and completed game history to your account.</p>}
+              {!isLoading && !user && !isPreviewOnlyBoard && <p className="setup-lede">Guest games stay on this device. Sign in to save milestones and completed game history to your account.</p>}
           </div>
           <div className="setup-aside">
               <div className={`setup-art ${isBioBoard ? 'bio-setup-art' : isHauntedBoard ? 'haunted-setup-art' : ''}`}>
@@ -574,9 +574,9 @@ function AchievementNotice() {
   ];
   if (!awards.length || dismissedKey === key) return null;
   return (
-    <aside className={`achievement-unlock-notice ${awards.some(award => award.rarity === 'MYTHIC') ? 'is-mythic' : ''}`} role="status" aria-live="polite" aria-label="New achievements unlocked">
-      <div className="achievement-notice-top"><span className="mono">PROGRESSION UPDATE / {awards.length} NEW</span><button type="button" onClick={() => setDismissedKey(key)} aria-label="Dismiss achievement notification">×</button></div>
-      <h2>{awards.some(award => award.rarity === 'MYTHIC') ? 'Mythic achievement secured' : awards.length === 1 ? 'Achievement unlocked' : 'Achievements unlocked'}</h2>
+    <aside className={`achievement-unlock-notice ${awards.some(award => award.rarity === 'MYTHIC') ? 'is-mythic' : ''}`} role="status" aria-live="polite" aria-label="New milestones unlocked">
+      <div className="achievement-notice-top"><span className="mono">MILESTONE UPDATE / {awards.length} NEW</span><button type="button" onClick={() => setDismissedKey(key)} aria-label="Dismiss milestone notification">×</button></div>
+      <h2>{awards.some(award => award.rarity === 'MYTHIC') ? 'Mythic milestone secured' : awards.length === 1 ? 'Milestone unlocked' : 'Milestones unlocked'}</h2>
       <ul>{awards.map(award => <li key={award.id}>{award.artwork && <img className="achievement-notice-art" src={award.artwork} alt="" />}<strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
     </aside>
   );

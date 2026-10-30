@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AuthUser } from "@workspace/api-client-react";
 
 export type { AuthUser };
+export const AUTH_USER_UPDATED_EVENT = "redline:auth-user-updated";
 
 type AuthState = {
   user: AuthUser | null;
@@ -17,25 +18,28 @@ export function useAuth(basePath: string): AuthState {
 
   useEffect(() => {
     let cancelled = false;
-
-    fetch("/api/auth/user", { credentials: "include", cache: "no-store" })
-      .then((response) => {
+    let requestVersion = 0;
+    const refresh = async (showLoading: boolean) => {
+      const version = ++requestVersion;
+      if (showLoading) setIsLoading(true);
+      try {
+        const response = await fetch("/api/auth/user", { credentials: "include", cache: "no-store" });
         if (!response.ok) throw new Error(`Authentication status returned ${response.status}`);
-        return response.json() as Promise<{ user: AuthUser | null }>;
-      })
-      .then(({ user: authenticatedUser }) => {
-        if (cancelled) return;
-        setUser(authenticatedUser ?? null);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setUser(null);
-        setIsLoading(false);
-      });
+        const { user: authenticatedUser } = await response.json() as { user: AuthUser | null };
+        if (!cancelled && version === requestVersion) setUser(authenticatedUser ?? null);
+      } catch {
+        if (!cancelled && version === requestVersion) setUser(null);
+      } finally {
+        if (!cancelled && version === requestVersion) setIsLoading(false);
+      }
+    };
+    const refreshAfterProfileUpdate = () => { void refresh(false); };
+    void refresh(true);
+    window.addEventListener(AUTH_USER_UPDATED_EVENT, refreshAfterProfileUpdate);
 
     return () => {
       cancelled = true;
+      window.removeEventListener(AUTH_USER_UPDATED_EVENT, refreshAfterProfileUpdate);
     };
   }, []);
 

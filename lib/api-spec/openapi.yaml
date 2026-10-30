@@ -44,6 +44,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthUserEnvelope"
+  /auth/profile:
+    patch:
+      tags: [Auth]
+      operationId: updateCurrentProfile
+      summary: Update the authenticated user's app display name
+      parameters:
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: App profile name updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+        "400":
+          description: Profile name is invalid.
+        "401":
+          description: Authentication is required.
+        "404":
+          description: The authenticated account record was not found.
   /login:
     get:
       tags: [Auth]
@@ -641,7 +667,7 @@ components:
         - status
     AuthUser:
       type: object
-      required: [id, email, firstName, lastName, profileImageUrl]
+      required: [id, email, firstName, lastName, displayName, profileImageUrl]
       properties:
         id:
           type: string
@@ -652,8 +678,18 @@ components:
           type: [string, "null"]
         lastName:
           type: [string, "null"]
+        displayName:
+          type: [string, "null"]
         profileImageUrl:
           type: [string, "null"]
+    ProfileUpdate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 40
     AuthUserEnvelope:
       type: object
       required: [user]

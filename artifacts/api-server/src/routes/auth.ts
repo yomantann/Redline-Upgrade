@@ -1,4 +1,8 @@
-import { GetCurrentAuthUserResponse } from "@workspace/api-zod";
+import {
+  GetCurrentAuthUserResponse,
+  UpdateCurrentProfileBody,
+  UpdateCurrentProfileResponse,
+} from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
@@ -86,12 +90,56 @@ function toSessionUser(user: Awaited<ReturnType<typeof upsertUser>>): SessionDat
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    displayName: user.displayName,
     profileImageUrl: user.profileImageUrl,
   };
 }
 
-router.get("/auth/user", (req: Request, res: Response): void => {
-  res.json(GetCurrentAuthUserResponse.parse({ user: req.isAuthenticated() ? req.user : null }));
+router.get("/auth/user", async (req: Request, res: Response): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.json(GetCurrentAuthUserResponse.parse({ user: null }));
+    return;
+  }
+
+  const [account] = await db.select({ displayName: usersTable.displayName })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user.id))
+    .limit(1);
+  res.json(GetCurrentAuthUserResponse.parse({
+    user: { ...req.user, displayName: account?.displayName ?? null },
+  }));
+});
+
+router.patch("/auth/profile", async (req: Request, res: Response): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Authentication is required." });
+    return;
+  }
+
+  const parsed = UpdateCurrentProfileBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const displayName = parsed.data.displayName.trim();
+  if (!displayName || displayName.length > 40) {
+    res.status(400).json({ error: "Profile name must contain 1 to 40 characters." });
+    return;
+  }
+
+  const [account] = await db.update(usersTable)
+    .set({ displayName })
+    .where(eq(usersTable.id, req.user.id))
+    .returning({ displayName: usersTable.displayName });
+  if (!account) {
+    res.status(404).json({ error: "Account profile not found." });
+    return;
+  }
+
+  res.json(UpdateCurrentProfileResponse.parse({
+    user: { ...req.user, displayName: account.displayName },
+  }));
 });
 
 router.get("/login", async (req: Request, res: Response): Promise<void> => {

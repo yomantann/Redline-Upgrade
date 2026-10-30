@@ -275,19 +275,19 @@ export function EndgamePresentation({
 
       <section className="endgame-achievements" aria-labelledby="endgame-achievements-heading">
         <div className="endgame-section-label">
-          <span className="eyebrow">ACHIEVEMENT VIEW // SUPPLIED DATA ONLY</span>
+          <span className="eyebrow">MILESTONE VIEW // SUPPLIED DATA ONLY</span>
           <h2 id="endgame-achievements-heading" className="display">Receipts<br /><span>from the run.</span></h2>
         </div>
         <div className="endgame-achievement-list">
           {!hasAchievements ? (
             <div className="endgame-achievement-pending">
-              <span className="mono">ACHIEVEMENTS PENDING</span>
-              <p>No achievement view models have been supplied by the engine.</p>
+              <span className="mono">MILESTONES PENDING</span>
+              <p>No milestone view models have been supplied by the engine.</p>
             </div>
           ) : achievements.length === 0 ? (
             <div className="endgame-achievement-pending">
-              <span className="mono">NO ACHIEVEMENTS RECORDED</span>
-              <p>The supplied achievement list is empty.</p>
+              <span className="mono">NO MILESTONES RECORDED</span>
+              <p>The supplied milestone list is empty.</p>
             </div>
           ) : (
             achievements.map((achievement, index) => (

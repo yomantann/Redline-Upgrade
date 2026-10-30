@@ -29,6 +29,7 @@ export * from './matchSeat';
 export * from './matchSnapshot';
 export * from './matchSnapshotMatch';
 export * from './matchSnapshotYou';
+export * from './profileUpdate';
 export * from './readyInput';
 export * from './retainedAssetRecord';
 export * from './room';

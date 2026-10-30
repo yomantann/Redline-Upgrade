@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'wouter';
-import { useAuth } from '@workspace/replit-auth-web';
-import { getGetAchievementProfileQueryKey, useGetAchievementProfile } from '@workspace/api-client-react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { AUTH_USER_UPDATED_EVENT, useAuth } from '@workspace/replit-auth-web';
+import { getGetAchievementProfileQueryKey, useGetAchievementProfile, useUpdateCurrentProfile } from '@workspace/api-client-react';
 import type { CompletedGameRecord } from '@workspace/api-client-react';
 import type { AchievementCategory, AchievementDefinition } from '@/game/achievement-catalog';
 import { achievementCatalog, achievementCategoryLabels } from '@/game/achievement-catalog';
@@ -11,7 +10,7 @@ import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
 import './pages.css';
 
-type ProfileTab = 'overview' | 'collection' | 'achievements' | 'history';
+type ProfileTab = 'overview' | 'collection' | 'milestones' | 'history';
 type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
   category: AchievementCategory | 'SECRET';
   isSecret: boolean;
@@ -24,7 +23,7 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
-  SECRET: 'Secret Achievements',
+  SECRET: 'Secret Milestones',
 };
 const dateLabel = (value: string | null | undefined) => value
   ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
@@ -36,20 +35,24 @@ const titleCase = (value: string) => value.toLowerCase().replace(/_/g, ' ').repl
 const metricLabel = (value: string) => titleCase(value.replace(/([A-Z])/g, ' $1'));
 
 export function ProfilePage() {
-  const [, navigate] = useLocation();
-  const { user, isLoading, login, logout } = useAuth(import.meta.env.BASE_URL);
+  const { user, isLoading, login } = useAuth(import.meta.env.BASE_URL);
   const profileQuery = useGetAchievementProfile({ query: { enabled: !!user, queryKey: getGetAchievementProfileQueryKey() } });
+  const updateProfile = useUpdateCurrentProfile();
   const profile = profileQuery.data;
   const [tab, setTab] = useState<ProfileTab>('overview');
   const [category, setCategory] = useState<AchievementCategory | 'SECRET'>('ASSET_COLLECTION');
   const [collectionFilter, setCollectionFilter] = useState<'all' | 'held' | 'ever'>('all');
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [nameStatus, setNameStatus] = useState('');
 
   useEffect(() => {
     if (!isLoading && !user) login();
   }, [isLoading, user, login]);
 
-  const name = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : '';
+  const name = user?.displayName?.trim() || (user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : '');
   const achievementList = useMemo<AchievementDisplay[]>(() => {
     const progress = new Map((profile?.achievements ?? []).map(item => [item.achievementId, item]));
     return [
@@ -66,7 +69,7 @@ export function ProfilePage() {
       ...(profile?.achievements ?? []).filter(item => item.isSecret).map(item => ({
         id: item.achievementId,
         name: item.name ?? '???',
-        description: item.description ?? '??? — SECRET ACHIEVEMENT',
+        description: item.description ?? '??? — SECRET MILESTONE',
         category: 'SECRET' as const,
         metric: '',
         target: 1,
@@ -96,13 +99,35 @@ export function ProfilePage() {
     .sort((a, b) => (b.record?.retainedCount ?? 0) - (a.record?.retainedCount ?? 0))[0];
   const categoryAchievements = achievementList.filter(item => item.category === category);
   const unlocked = profile?.unlockedCount ?? 0;
-  const total = profile?.totalCount ?? achievementCatalog.length;
+  const total = profile?.totalCount ?? achievementCatalog.length + 25;
   const completedGames = profile?.history ?? [];
+  const gamesPlayed = profile?.metrics.completedGames ?? completedGames.length;
+  const gamesWon = profile?.metrics.wins ?? completedGames.filter(game => game.placement === 1).length;
+  const winRate = gamesPlayed ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
   const latestGame = useMemo(() => [...completedGames].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0], [completedGames]);
   const latestAwards = useMemo(() => {
     const unlockedIds = new Set(latestGame?.unlockedAchievementIds ?? []);
     return achievementList.filter(achievement => unlockedIds.has(achievement.id) && achievement.unlockedAt);
   }, [latestGame, achievementList]);
+
+  async function saveDisplayName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const displayName = displayNameDraft.trim();
+    if (!displayName || displayName.length > 40) {
+      setNameError('Enter a profile name between 1 and 40 characters.');
+      return;
+    }
+    setNameError('');
+    setNameStatus('');
+    try {
+      await updateProfile.mutateAsync({ data: { displayName } });
+      window.dispatchEvent(new Event(AUTH_USER_UPDATED_EVENT));
+      setIsEditingName(false);
+      setNameStatus('Profile name saved.');
+    } catch {
+      setNameError('Could not save your profile name. Please try again.');
+    }
+  }
 
   function achievementCard(item: AchievementDisplay) {
     const target = item.id === 'complete-asset-catalog' ? assets.length : item.target;
@@ -111,9 +136,9 @@ export function ProfilePage() {
     const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
     if (item.isSecret && !isUnlocked) {
       return (
-        <article className="red-achievement is-locked is-secret" key={item.id} aria-label="Locked secret achievement">
+        <article className="red-achievement is-locked is-secret" key={item.id} aria-label="Locked secret milestone">
           <div className="red-achievement-top"><div className="red-mystery-art" aria-hidden="true"><span>?</span></div><span className="red-tier">CLASSIFIED</span></div>
-          <h3>??? — SECRET ACHIEVEMENT</h3>
+          <h3>??? — SECRET MILESTONE</h3>
           <p>Its identity and requirements remain hidden until earned.</p>
           <div className="red-secret-seal mono">SEALED / 0 DATA RELEASED</div>
         </article>
@@ -123,7 +148,7 @@ export function ProfilePage() {
       <article className={`red-achievement ${isUnlocked ? 'is-unlocked' : 'is-locked'} ${item.isSecret ? `is-secret tier-card-${item.rarity.toLowerCase()}` : ''}`} key={item.id}>
         <div className="red-achievement-top">
           {item.isSecret && item.artwork
-            ? <img className="red-secret-art" src={item.artwork} alt={`${item.rarity} achievement emblem`} />
+            ? <img className="red-secret-art" src={item.artwork} alt={`${item.rarity} milestone emblem`} />
             : <span className="red-achievement-glyph" aria-hidden="true">{isUnlocked ? '✓' : '—'}</span>}
           <span className={`red-tier tier-${item.rarity.toLowerCase()}`}>{item.rarity}</span>
         </div>
@@ -152,20 +177,46 @@ export function ProfilePage() {
                 <h1 className="display">THE<br /><span className="title-outline">LONG GAME</span></h1>
                 <div className="red-profile-user">
                   {user.profileImageUrl ? <img className="profile-avatar" src={user.profileImageUrl} alt="" /> : <div className="red-avatar-fallback" aria-hidden="true">{(name || 'R').slice(0, 1).toUpperCase()}</div>}
-                  <div><strong data-testid="text-profile-name">{name || 'Player'}</strong><span>{user.email ?? 'Account record'}</span></div>
+                  <div className="red-profile-identity-copy">
+                    <strong data-testid="text-profile-name">{name || 'Player'}</strong>
+                    <span aria-label="Sign-in email, read only">{user.email ?? 'Account email unavailable'} · READ ONLY</span>
+                    {isEditingName ? (
+                      <form className="red-profile-name-form" onSubmit={saveDisplayName}>
+                        <label htmlFor="profile-display-name">Profile name</label>
+                        <input
+                          id="profile-display-name"
+                          value={displayNameDraft}
+                          onChange={event => setDisplayNameDraft(event.target.value)}
+                          maxLength={40}
+                          autoComplete="nickname"
+                          required
+                        />
+                        {nameError && <span className="red-profile-name-error" role="alert">{nameError}</span>}
+                        <div className="red-profile-name-actions">
+                          <button className="action lime-action" type="submit" disabled={updateProfile.isPending}>{updateProfile.isPending ? 'Saving…' : 'Save name'}</button>
+                          <button className="text-link" type="button" disabled={updateProfile.isPending} onClick={() => { setIsEditingName(false); setNameError(''); }}>Cancel</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="red-profile-name-actions">
+                        <button className="text-link" type="button" onClick={() => { setDisplayNameDraft(name); setNameError(''); setNameStatus(''); setIsEditingName(true); }}>Edit name</button>
+                        {nameStatus && <span className="red-profile-name-status" role="status">{nameStatus}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="red-profile-stamp">
                 <span className="mono">PERMANENT RECORD</span>
                 <strong>{String(unlocked).padStart(2, '0')}<i>/{String(total).padStart(2, '0')}</i></strong>
-                <span className="mono">ACHIEVEMENTS SECURED</span>
+                <span className="mono">MILESTONES SECURED</span>
                 <div className="red-stamp-rule" />
                 <span className="red-account-id mono">ID · {user.id}</span>
               </div>
             </header>
 
             <nav className="red-profile-nav" aria-label="Profile sections">
-              {([['overview', 'Overview'], ['collection', 'Asset record'], ['achievements', 'Achievements'], ['history', 'Game history']] as const).map(([id, label], index) => (
+              {([['overview', 'Overview'], ['collection', 'Asset record'], ['milestones', 'Milestones'], ['history', 'Game history']] as const).map(([id, label], index) => (
                 <button key={id} type="button" className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}>
                   <span>0{index + 1}</span>{label}
                 </button>
@@ -184,21 +235,21 @@ export function ProfilePage() {
               <div className="red-profile-content">
                 {latestAwards.length > 0 && latestGame && <section className="red-award-notice" aria-labelledby="red-award-title">
                   <div className="red-award-signal" aria-hidden="true">+</div>
-                  <div className="red-award-copy"><span className="mono">LATEST MATCH / {dateLabel(latestGame.completedAt)} / {titleCase(latestGame.mode)}</span><h2 id="red-award-title">{latestAwards.length === 1 ? 'New achievement secured.' : `${latestAwards.length} new achievements secured.`}</h2>
+                  <div className="red-award-copy"><span className="mono">LATEST MATCH / {dateLabel(latestGame.completedAt)} / {titleCase(latestGame.mode)}</span><h2 id="red-award-title">{latestAwards.length === 1 ? 'New milestone secured.' : `${latestAwards.length} new milestones secured.`}</h2>
                     <ul>{latestAwards.map(award => <li key={award.id}><strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
                   </div>
-                  <button type="button" className="red-award-link" onClick={() => setTab('achievements')}>View award record <span aria-hidden="true">↗</span></button>
+                  <button type="button" className="red-award-link" onClick={() => setTab('milestones')}>View milestone record <span aria-hidden="true">↗</span></button>
                 </section>}
                 {tab === 'overview' && (
                   <>
                     <section className="red-overview-grid">
-                      <div className="red-section-heading"><span className="eyebrow">CAREER SNAPSHOT</span><h2>Every run<br />leaves a mark.</h2><p>Progress persists across completed Standard and Bio matches. Character and career choices remain per game.</p></div>
+                      <div className="red-section-heading"><span className="eyebrow">PLAYER PERFORMANCE</span><h2>Performance<br />stats.</h2><p>Completed games, first-place finishes, win rate, and best final value across Standard and Bio matches.</p></div>
                       <div className="red-metrics-grid">
                         {[
-                          ['COMPLETED GAMES', profile.metrics.completedGames ?? completedGames.length],
-                          ['ACHIEVEMENTS', `${unlocked} / ${total}`],
-                          ['ASSETS ACQUIRED', profile.metrics.assetsAcquired ?? profile.collection.reduce((sum, entry) => sum + entry.acquiredCount, 0)],
-                          ['ASSETS RETAINED', profile.metrics.assetsRetained ?? profile.collection.reduce((sum, entry) => sum + entry.retainedCount, 0)],
+                          ['GAMES PLAYED', gamesPlayed],
+                          ['GAMES WON', gamesWon],
+                          ['WIN RATE', `${winRate}%`],
+                          ['BEST FINAL VALUE', money(profile.metrics.highestFinalValue)],
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
                     </section>
@@ -243,8 +294,11 @@ export function ProfilePage() {
                     {collection.length ? <div className="red-assets-grid">{collection.map(({ definition, record }) => {
                       const isCollected = (record?.acquiredCount ?? 0) > 0;
                       const isEverRetained = (record?.retainedCount ?? 0) > 0;
-                      return <article className={`red-asset-card ${isCollected ? 'asset-collected' : 'asset-locked'}`} key={definition.id} aria-label={`${definition.name}, ${isCollected ? 'collected' : 'locked'}`}>
-                        <div className="red-asset-art"><AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} /><span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'HELD THROUGH FINISH' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
+                      return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${definition.name}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
+                        <div className="red-asset-art">{isEverRetained
+                          ? <AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} />
+                          : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
+                          <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
                         <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)} / {definition.id}</span><h3>{definition.name}</h3><p>{definition.description}</p>
                           <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
                           <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
@@ -253,11 +307,11 @@ export function ProfilePage() {
                     })}</div> : <EmptyState title={collectionFilter === 'held' ? 'Nothing held at finish' : 'No acquired assets'} text={collectionFilter === 'held' ? 'No asset records show endgame retention yet. The full catalog remains available under Full catalog.' : 'No asset records show acquisitions for this account yet.'} />}
                   </section>
                 )}
-                {tab === 'achievements' && (
+                {tab === 'milestones' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">100 STANDARD / 25 SECRET / 125 TOTAL</span><h2>Progress, recorded.</h2><p className="red-section-copy">{profile.standardUnlockedCount} standard and {profile.secretUnlockedCount} secret achievements secured. Rewards are listed as pending; this profile does not represent wallet payment.</p></div></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">100 STANDARD / 25 SECRET / 125 TOTAL MILESTONES</span><h2>Milestones, recorded.</h2><p className="red-section-copy">{profile.standardUnlockedCount} standard and {profile.secretUnlockedCount} secret milestones secured. Credit rewards are listed as pending; this profile does not represent wallet payment.</p></div></div>
                     <div className="red-category-layout">
-                      <nav className="red-category-nav" aria-label="Achievement categories">{categories.map((item, index) => {
+                      <nav className="red-category-nav" aria-label="Milestone categories">{categories.map((item, index) => {
                         const categoryDefs = achievementList.filter(def => def.category === item);
                         const categoryUnlocked = categoryDefs.filter(def => !!def.unlockedAt).length;
                         return <button key={item} type="button" className={category === item ? 'selected' : ''} aria-current={category === item ? 'true' : undefined} onClick={() => setCategory(item)}><span>0{index + 1}</span><b>{categoryLabels[item]}</b><small>{categoryUnlocked}/{categoryDefs.length}</small></button>;
@@ -286,7 +340,6 @@ export function ProfilePage() {
                 )}
               </div>
             )}
-            <footer className="red-profile-footer red-profile-account-actions"><span className="mono">ACCOUNT-BOUND PROGRESSION / SERVER RECORD</span><button className="action secondary" type="button" onClick={logout}>Sign out</button><button className="text-link" type="button" onClick={() => navigate('/')}>← Home</button></footer>
           </>
         )}
       </main>
@@ -308,7 +361,7 @@ function GameDetails({ game, achievements }: { game: CompletedGameRecord; achiev
       <div><span className="mono">FINAL STATS</span>{stats.length ? <dl className="red-stat-list">{stats.map(([key, value]) => <div key={key}><dt>{metricLabel(key)}</dt><dd>{value.toLocaleString()}</dd></div>)}</dl> : <p>No final stats recorded.</p>}</div>
       <div><span className="mono">ASSETS ACQUIRED</span><p>{acquired.length ? acquired.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
       <div><span className="mono">ASSETS LOST</span><p>{lost.length ? lost.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
-      <div><span className="mono">ACHIEVEMENTS UNLOCKED</span><p>{unlocked.length ? unlocked.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
+      <div><span className="mono">MILESTONES RECORDED</span><p>{unlocked.length ? unlocked.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
     </div>
     <div className="red-snapshot-head"><span className="mono">ENDGAME SNAPSHOT / HELD AT FINISH</span><span className="mono">{game.retainedAssets.length} ASSETS</span></div>
     {game.retainedAssets.length ? <div className="red-snapshot-grid">{game.retainedAssets.map(item => {

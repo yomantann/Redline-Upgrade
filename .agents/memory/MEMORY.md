@@ -8,3 +8,4 @@
 - [Bio Upgrade release gate](bio-upgrade-release-gate.md) — keep Bio gated until its own party experience is ready; retain the unique Bio-only pawn palette.
 - [Account progression records](account-progression-records.md) — award permanent progress only from authenticated, server-authoritative completed games; do not backfill older or abandoned runs.
 - [Secret achievement privacy](secret-achievement-privacy.md) — keep secret definitions and progress server-only until unlock; freeze collection eligibility by catalog version.
+- [Profile identity fields](profile-identity-fields.md) — app display name is editable; sign-in email remains provider-managed and read-only.
