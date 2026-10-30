@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import {
@@ -91,7 +91,16 @@ function rarityFor(name: string, category: "LOGO" | "DRIVER_SKIN", id?: string):
 }
 
 function catalogFromAssets() {
-  const publicRoot = resolve(process.cwd(), "../redline-upgrade/public");
+  const publicRootCandidates = [
+    resolve(process.cwd(), "../redline-upgrade/public"),
+    resolve(process.cwd(), "../redline-upgrade/dist/public"),
+  ];
+  const publicRoot = publicRootCandidates.find((root) =>
+    existsSync(resolve(root, "Icons")) && existsSync(resolve(root, "Skins")),
+  );
+  if (!publicRoot) {
+    throw new Error(`Cosmetic asset directories not found. Checked: ${publicRootCandidates.join(", ")}`);
+  }
   const logosDir = resolve(publicRoot, "Icons");
   const skinsDir = resolve(publicRoot, "Skins");
   const logos = readdirSync(logosDir).filter((file) => /\.png$/i.test(file)
