@@ -20,3 +20,4 @@
 export * from "./auth";
 export * from "./rooms";
 export * from "./progression";
+export * from "./credits";

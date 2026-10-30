@@ -18,6 +18,7 @@ import { calculateAssetValue } from "../../../redline-upgrade/src/game/endgame";
 import type { Match } from "../../../redline-upgrade/src/game/match";
 import type { MatchAssetEvent } from "../../../redline-upgrade/src/game/multiplayer";
 import { secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
+import { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS, grantCredits } from "./credit-wallet";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type GameSource = "SOLO" | "MULTIPLAYER";
@@ -332,6 +333,8 @@ export async function recordCompletedGame(
     )).limit(1);
   if (existing.length) return [];
 
+  const gameRewardId = `${source}:${gameId}`;
+
   validateAchievementCatalog(assets.length);
   const allAssetEvents = eventLedger?.length ? [...eventLedger] : assetEventsFromMatch(match);
   const playerEvents = allAssetEvents.filter((event) => event.playerIndex === playerIndex);
@@ -341,7 +344,10 @@ export async function recordCompletedGame(
   const lostAssetIds = allAssetEvents
     .filter((event) => event.type === "ASSET_TRANSFERRED" && event.targetPlayerId === player.playerId)
     .map((event) => event.assetId);
-  const retainedAssets = [...new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)))]
+  const finalGambleLost = player.endgame?.status === "RESOLVED"
+    && player.endgame.choice === "FINAL_GAMBLE"
+    && player.endgame.gambleStake?.won === false;
+  const retainedAssets = (finalGambleLost ? [] : [...new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)))])
     .map((assetId) => ({ assetId, level: player.assetLevels[assetId] ?? 1 }));
   const retainedIds = retainedAssets.map((asset) => asset.assetId);
   const retainedSet = new Set(retainedIds);
@@ -389,6 +395,27 @@ export async function recordCompletedGame(
   const transferCount = playerEvents.filter((event) => event.type === "ASSET_TRANSFERRED").length;
   const upgradeCount = player.history.assetUpgrades;
   const isWin = placement === 1;
+  const wonCareerIds = new Set(facts.wonCareerIds ?? []);
+  const wonCharacterIds = new Set(facts.wonCharacterIds ?? []);
+  const priorWinRows = await tx.select({
+    careerId: completedGameHistoryTable.careerId,
+    characterId: completedGameHistoryTable.characterId,
+  }).from(completedGameHistoryTable).where(and(
+    eq(completedGameHistoryTable.userId, userId),
+    eq(completedGameHistoryTable.placement, 1),
+  ));
+  const wasFirstWin = isWin && previousMetrics.wins === 0;
+  const wasFirstCareerWin = isWin && player.careerId !== null
+    && !priorWinRows.some((row) => row.careerId === player.careerId);
+  const wasFirstCharacterWin = isWin
+    && !priorWinRows.some((row) => row.characterId === player.characterId);
+  if (isWin) {
+    facts.hasEverWon = ["true"];
+    if (player.careerId) wonCareerIds.add(player.careerId);
+    wonCharacterIds.add(player.characterId);
+    facts.wonCareerIds = [...wonCareerIds];
+    facts.wonCharacterIds = [...wonCharacterIds];
+  }
   const wealthRankThreshold = [...match.players]
     .filter((candidate) => candidate.status === "FINISHED")
     .map((candidate) => candidate.wealth)
@@ -508,7 +535,7 @@ export async function recordCompletedGame(
       updatedAt: completedAt,
     }).onConflictDoUpdate({
       target: [userAchievementsTable.userId, userAchievementsTable.achievementId],
-      set: { progress, unlockedAt, unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null), updatedAt: completedAt },
+      set: { progress, unlockedAt, unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null), rewardCredits: achievement.creditReward, updatedAt: completedAt },
     });
   }
   for (const achievement of secretAchievementCatalog) {
@@ -527,8 +554,39 @@ export async function recordCompletedGame(
       updatedAt: completedAt,
     }).onConflictDoUpdate({
       target: [userAchievementsTable.userId, userAchievementsTable.achievementId],
-      set: { progress, unlockedAt, unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null), updatedAt: completedAt },
+      set: { progress, unlockedAt, unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null), rewardCredits: achievement.creditReward, updatedAt: completedAt },
     });
+  }
+
+  const rewardSourceId = `${source}:${gameId}`;
+  const award = (amount: number, suffix: string, type: "GAME" | "ENDGAME" | "ACHIEVEMENT") =>
+    grantCredits(tx, userId, amount, type, rewardSourceId, `${type.toLowerCase()}:${rewardSourceId}:${suffix}`);
+  await award(GAME_CREDIT_REWARDS.completion, "completion", "GAME");
+  await award(GAME_CREDIT_REWARDS.placement[Math.min(placement - 1, 3)]!, "placement", "GAME");
+  if (previousMetrics.completedGames === 0) await award(GAME_CREDIT_REWARDS.firstGame, "first-game", "GAME");
+  if (wasFirstWin) await award(GAME_CREDIT_REWARDS.firstWin, "first-win", "GAME");
+  if (wasFirstCareerWin) await award(GAME_CREDIT_REWARDS.firstCareerWin, `career-win:${player.careerId}`, "GAME");
+  if (wasFirstCharacterWin) await award(GAME_CREDIT_REWARDS.firstCharacterWin, `character-win:${player.characterId}`, "GAME");
+
+  const retentionReward = GAME_CREDIT_REWARDS.retention.find((threshold) => retainedIds.length >= threshold.minimum);
+  if (retentionReward) await award(retentionReward.credits, "retention", "ENDGAME");
+  if (retainedAssets.some((asset) => asset.level >= 4)) await award(GAME_CREDIT_REWARDS.levelFourRetained, "level-four-retained", "ENDGAME");
+  const endgame = player.endgame;
+  if (endgame?.status === "RESOLVED" && endgame.choice === "DOUBLE_DOWN" && (endgame.finalGameValue ?? 0) > endgame.baseValue) {
+    await award(GAME_CREDIT_REWARDS.doubleDownSuccess, "double-down", "ENDGAME");
+    if (isWin) await award(GAME_CREDIT_REWARDS.winAfterDoubleDown, "win-after-double-down", "ENDGAME");
+  }
+  if (endgame?.status === "RESOLVED" && endgame.choice === "FINAL_GAMBLE" && endgame.gambleStake?.won) {
+    await award(GAME_CREDIT_REWARDS.finalGambleSuccess, "final-gamble", "ENDGAME");
+    if (isWin) await award(GAME_CREDIT_REWARDS.winAfterFinalGamble, "win-after-final-gamble", "ENDGAME");
+  }
+  if (acquiredUniqueIds.length > 0 && lostAssetIds.length === 0) await award(GAME_CREDIT_REWARDS.lossFree, "loss-free", "ENDGAME");
+  for (const achievement of [...achievementCatalog, ...secretAchievementCatalog]) {
+    if (!previousAchievements.get(achievement.id)?.unlockedAt && !unlockedIds.includes(achievement.id)) continue;
+    await grantCredits(
+      tx, userId, ACHIEVEMENT_TIER_CREDITS[achievement.rarity], "ACHIEVEMENT",
+      achievement.id, `achievement:${achievement.id}`,
+    );
   }
 
   for (const assetId of new Set([...acquiredAssetIds, ...lostAssetIds, ...retainedIds])) {

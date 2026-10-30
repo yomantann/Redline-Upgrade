@@ -11,6 +11,16 @@ import { AppShell } from '@/components/app-shell';
 import './pages.css';
 
 type ProfileTab = 'overview' | 'collection' | 'milestones' | 'history';
+type CreditSummary = {
+  wallet: {
+    balance: number;
+    lifetimeEarned: number;
+    lifetimeSpent: number;
+    achievementEarned: number;
+    gameEarned: number;
+    endgameEarned: number;
+  } | null;
+};
 type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
   category: AchievementCategory | 'SECRET';
   isSecret: boolean;
@@ -49,6 +59,23 @@ export function ProfilePage() {
   const [displayNameDraft, setDisplayNameDraft] = useState('');
   const [nameError, setNameError] = useState('');
   const [nameStatus, setNameStatus] = useState('');
+  const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setCreditSummary(null);
+      return;
+    }
+    let active = true;
+    fetch('/api/credits', { credentials: 'include' })
+      .then(response => {
+        if (!response.ok) throw new Error(`Credits request failed (${response.status}).`);
+        return response.json() as Promise<CreditSummary>;
+      })
+      .then(data => { if (active) setCreditSummary(data); })
+      .catch(() => { if (active) setCreditSummary({ wallet: null }); });
+    return () => { active = false; };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isLoading && !user) login();
@@ -292,6 +319,17 @@ export function ProfilePage() {
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
                     </section>
+                    <section className="red-overview-grid">
+                      <div className="red-section-heading"><span className="eyebrow">REDLINE CREDITS</span><h2>Wallet<br />ledger.</h2><p>Credits earned through completed games, endgame results, and milestones.</p></div>
+                      <div className="red-metrics-grid">
+                        {[
+                          ['AVAILABLE', creditSummary?.wallet?.balance.toLocaleString() ?? (creditSummary ? 'UNAVAILABLE' : '…')],
+                          ['LIFETIME EARNED', creditSummary?.wallet?.lifetimeEarned.toLocaleString() ?? '—'],
+                          ['LIFETIME SPENT', creditSummary?.wallet?.lifetimeSpent.toLocaleString() ?? '—'],
+                          ['MILESTONE EARNED', creditSummary?.wallet?.achievementEarned.toLocaleString() ?? '—'],
+                        ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
+                      </div>
+                    </section>
                     <section className="red-latest">
                       <div className="red-section-bar"><div><span className="eyebrow">LATEST RESULT</span><h2>From the table</h2></div><button className="red-inline-link" type="button" onClick={() => setTab('history')}>All game records <span aria-hidden="true">↗</span></button></div>
                       {completedGames.length ? (() => {
@@ -343,7 +381,7 @@ export function ProfilePage() {
                 )}
                 {tab === 'milestones' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">{profile.standardCount} STANDARD / {profile.secretCount} SECRET / {profile.totalCount} TOTAL MILESTONES</span><h2>Milestone progress</h2><p className="red-section-copy">Track progress from completed games. Secret milestones stay hidden until earned. Reward credits are shown for reference; this page does not confirm a payout.</p></div></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">{profile.standardCount} STANDARD / {profile.secretCount} SECRET / {profile.totalCount} TOTAL MILESTONES</span><h2>Milestone progress</h2><p className="red-section-copy">Track progress from completed games. Secret milestones stay hidden until earned. Credits are paid once when a milestone unlocks; earlier unlocks reconcile with the next completed game.</p></div></div>
                     <div className="red-category-layout">
                       <nav className="red-category-nav" aria-label="Milestone categories">{categories.map((item, index) => {
                         const categoryDefs = achievementList.filter(def => def.category === item);

@@ -154,12 +154,12 @@ const gameplay: AchievementRow[] = [
 ];
 
 const tierCredits: Record<AchievementTier, number> = {
-  BRONZE: 25,
-  SILVER: 50,
-  GOLD: 100,
-  PLATINUM: 200,
-  LEGENDARY: 500,
-  MYTHIC: 1_000,
+  BRONZE: 50,
+  SILVER: 125,
+  GOLD: 300,
+  PLATINUM: 600,
+  LEGENDARY: 1_500,
+  MYTHIC: 4_000,
 };
 
 function categoryRows(category: AchievementCategory, rows: AchievementRow[]): AchievementDefinition[] {

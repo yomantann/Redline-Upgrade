@@ -8,6 +8,8 @@ import {
   SubmitSoloGameActionResponse,
 } from "@workspace/api-zod";
 import { Router, type IRouter, type Request, type Response } from "express";
+import { desc, eq } from "drizzle-orm";
+import { creditTransactionsTable, creditWalletsTable, db } from "@workspace/db";
 import { getAchievementProfile } from "../lib/progression";
 import {
   getActiveSoloGame,
@@ -41,6 +43,20 @@ router.get("/achievement-profile", async (req: Request, res: Response): Promise<
   if (!requireAuthenticated(req, res)) return;
   const profile = await getAchievementProfile(req.user.id);
   res.status(200).json(GetAchievementProfileResponse.parse(profile));
+});
+
+router.get("/credits", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAuthenticated(req, res)) return;
+  const result = await db.transaction(async (tx) => {
+    await tx.insert(creditWalletsTable).values({ userId: req.user.id }).onConflictDoNothing();
+    const [wallet] = await tx.select().from(creditWalletsTable)
+      .where(eq(creditWalletsTable.userId, req.user.id)).limit(1);
+    const transactions = await tx.select().from(creditTransactionsTable)
+      .where(eq(creditTransactionsTable.userId, req.user.id))
+      .orderBy(desc(creditTransactionsTable.createdAt)).limit(50);
+    return { wallet, transactions };
+  });
+  res.status(200).json(result);
 });
 
 router.get("/solo-games/active", async (req: Request, res: Response): Promise<void> => {

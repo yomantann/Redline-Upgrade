@@ -91,7 +91,7 @@ export const secretAchievementCatalog: readonly SecretAchievementDefinition[] = 
     metric,
     target,
     rarity: rarity as AchievementTier & ("LEGENDARY" | "MYTHIC"),
-    creditReward,
+    creditReward: rarity === "MYTHIC" ? 4_000 : 1_500,
     artwork: artwork(index),
   }),
 );
