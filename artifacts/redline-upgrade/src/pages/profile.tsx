@@ -8,6 +8,7 @@ import { assets, getAsset, type AssetDefinition } from '@/game/assets';
 import { characters } from '@/game/characters';
 import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
+import { getProfileAssetTier, profileAssetTierOrder, profileAssetTierRank, type ProfileAssetTier } from '@/lib/profile-asset-tier';
 import { useLocation } from 'wouter';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
 import { CreditEarningGuide } from '@/components/credit-earning-guide';
@@ -39,8 +40,6 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 };
 
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
-const assetRarityOrder: AssetDefinition['rarity'][] = ['STANDARD', 'RARE', 'ELITE'];
-const assetRarityRank: Record<AssetDefinition['rarity'], number> = { STANDARD: 0, RARE: 1, ELITE: 2 };
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
   SECRET: 'Secret Milestones',
@@ -140,9 +139,9 @@ export function ProfilePage() {
   }, [profile?.achievements]);
   const collectionByAssetId = useMemo(() => new Map((profile?.collection ?? []).map(entry => [entry.assetId, entry])), [profile?.collection]);
   const allAssets = useMemo(() => assets
-    .map(definition => ({ definition, record: collectionByAssetId.get(definition.id) }))
+    .map(definition => ({ definition, profileTier: getProfileAssetTier(definition), record: collectionByAssetId.get(definition.id) }))
     .sort((a, b) => Number((b.record?.acquiredCount ?? 0) > 0) - Number((a.record?.acquiredCount ?? 0) > 0)
-      || assetRarityRank[a.definition.rarity] - assetRarityRank[b.definition.rarity]
+      || profileAssetTierRank[a.profileTier] - profileAssetTierRank[b.profileTier]
       || a.definition.name.localeCompare(b.definition.name)), [collectionByAssetId]);
   const collection = useMemo(() => allAssets
     .filter(({ record }) => collectionFilter === 'all' || (collectionFilter === 'held' ? (record?.retainedCount ?? 0) > 0 : (record?.acquiredCount ?? 0) > 0)), [allAssets, collectionFilter]);
@@ -160,9 +159,9 @@ export function ProfilePage() {
 
     return acquisitionGroups.map(group => ({
       ...group,
-      rarities: assetRarityOrder.map(rarity => ({
+      rarities: profileAssetTierOrder.map(rarity => ({
         rarity,
-        items: group.items.filter(({ definition }) => definition.rarity === rarity),
+        items: group.items.filter(({ profileTier }) => profileTier === rarity),
       })).filter(group => group.items.length > 0),
     })).filter(group => group.rarities.length > 0);
   }, [collection, collectionFilter]);
@@ -215,16 +214,17 @@ export function ProfilePage() {
     }
   }
 
-  function assetCard({ definition, record }: (typeof collection)[number]) {
+  function assetCard({ definition, profileTier, record }: (typeof collection)[number]) {
     const isCollected = (record?.acquiredCount ?? 0) > 0;
     const isEverRetained = (record?.retainedCount ?? 0) > 0;
     const highestRetainedLevel = isEverRetained ? Math.min(4, Math.max(1, highestRetainedLevelByAsset.get(definition.id) ?? 1)) : null;
-    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${isEverRetained ? definition.name : 'Unknown asset'}, ${isEverRetained ? `retained at level ${highestRetainedLevel}` : isCollected ? 'collected but not retained' : 'locked'}`}>
+    return <article className={`red-asset-card profile-tier-${profileTier.toLowerCase()} ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${isEverRetained ? definition.name : 'Unknown asset'}, ${isEverRetained ? `retained at level ${highestRetainedLevel}` : isCollected ? 'collected but not retained' : 'locked'}`}>
       <div className="red-asset-art">{isEverRetained
         ? <AssetArtwork assetId={definition.id} level={highestRetainedLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${definition.name}, level ${highestRetainedLevel}`} />
         : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
-        <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
+        <span className={`red-rarity rarity-${profileTier.toLowerCase()}`}>{profileTier}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
       <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)}</span><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
+        {isEverRetained && <div className="red-asset-pricing"><span className="mono">BASE COST</span><strong>{money(definition.cost)}</strong></div>}
         <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
         <div className="red-asset-level-info"><span className="mono">HIGHEST RETAINED LEVEL</span><strong>{highestRetainedLevel ? `LEVEL ${highestRetainedLevel}` : '—'}</strong></div>
         <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>

@@ -1,4 +1,4 @@
-import type { AchievementTier } from "../../../redline-upgrade/src/game/achievement-catalog";
+import { achievementCatalog, type AchievementTier } from "../../../redline-upgrade/src/game/achievement-catalog";
 
 export interface SecretAchievementDefinition {
   id: string;
@@ -9,6 +9,23 @@ export interface SecretAchievementDefinition {
   rarity: "LEGENDARY" | "MYTHIC";
   creditReward: number;
   artwork: string;
+}
+
+export function calculateSecretAssetMilestoneMetrics(
+  currentMetrics: Record<string, number>,
+  retainedAssets: readonly { assetId: string; level: number }[],
+): Record<string, number> {
+  const levelThreeOrHigherCount = retainedAssets.filter((asset) => asset.level >= 3).length;
+  const retainedAnyLevelFour = retainedAssets.some((asset) => asset.level >= 4);
+  const retainedSupercarAtLevelFour = retainedAssets.some((asset) => asset.assetId === "supercar" && asset.level >= 4);
+  const retainedMansionAtLevelFour = retainedAssets.some((asset) => asset.assetId === "mansion" && asset.level >= 4);
+  return {
+    secretLevelFourGames: (currentMetrics.secretLevelFourGames ?? 0) + (retainedAnyLevelFour ? 1 : 0),
+    secretTripleLevelPortfolio: Math.max(currentMetrics.secretTripleLevelPortfolio ?? 0, levelThreeOrHigherCount >= 3 ? 1 : 0),
+    secretFourSlotLevelThree: Math.max(currentMetrics.secretFourSlotLevelThree ?? 0, retainedAssets.length === 4 && levelThreeOrHigherCount === 4 ? 1 : 0),
+    secretSupercarLevelFour: Math.max(currentMetrics.secretSupercarLevelFour ?? 0, retainedSupercarAtLevelFour ? 1 : 0),
+    secretMansionLevelFour: Math.max(currentMetrics.secretMansionLevelFour ?? 0, retainedMansionAtLevelFour ? 1 : 0),
+  };
 }
 
 const records = [
@@ -36,12 +53,18 @@ const records = [
   ["THE PERFECT RUN", "Win after acquiring an asset at every milestone space where you landed.", "secretPerfectRun", 1, "MYTHIC", 5000],
   ["THE CENTURION", "Win 100 completed games.", "secretCenturion", 100, "MYTHIC", 5000],
   ["THE REDLINE MYTH", "Unlock all 100 standard achievements.", "secretRedlineMyth", 100, "MYTHIC", 5000],
-  ["BEYOND THE REDLINE", "Unlock every other achievement in the 125-achievement catalog.", "secretBeyondTheRedline", 124, "MYTHIC", 5000],
+  ["BEYOND THE REDLINE", "Unlock every other milestone in the catalog.", "secretBeyondTheRedline", 124, "MYTHIC", 5000],
+  ["LEVEL FOUR LEGACY", "Retain at least one Level 4 asset in five completed games.", "secretLevelFourGames", 5, "MYTHIC", 5000],
+  ["TRIPLE-TIER PORTFOLIO", "Finish a completed game retaining three or more assets at Level 3 or higher.", "secretTripleLevelPortfolio", 1, "LEGENDARY", 2500],
+  ["FOUR-SLOT ASCENDANCY", "Finish holding all four asset slots with every asset at Level 3 or higher.", "secretFourSlotLevelThree", 1, "MYTHIC", 5000],
+  ["PEAK SUPERCAR", "Retain a Supercar at Level 4 through a completed game.", "secretSupercarLevelFour", 1, "LEGENDARY", 2500],
+  ["MANSION MAXIMUM", "Retain a Mansion at Level 4 through a completed game.", "secretMansionLevelFour", 1, "LEGENDARY", 2500],
 ] as const;
 
 // Each award has its own silhouette, not a recolor of a shared icon. The SVGs
 // remain server-side and are sent only with an unlocked achievement record.
 const iconPaths = [
+  "M48 13v70 M13 48h70 M24 24l48 48 M72 24 24 72 M40 22l8-9 8 9 M74 40l9 8-9 8 M40 74l8 9 8-9 M22 40l-9 8 9 8",
   "M48 9 78 20v22c0 20-12 34-30 45C30 76 18 62 18 42V20z M48 24v43 M32 45h32",
   "M48 12 68 31 48 51 28 31z M48 51v27 M34 78h28 M22 31h52",
   "M18 72h60l-6-38-15 13-9-25-9 25-15-13z M30 83h36",
@@ -66,6 +89,11 @@ const iconPaths = [
   "M48 10 56 33l24 1-19 14 7 24-20-14-20 14 7-24-19-14 24-1z M48 42v17",
   "M24 20h48v60H24z M34 32h28v14H34z M34 55h28 M34 66h18",
   "M48 9 58 29l22 3-16 15 4 22-20-11-20 11 4-22-16-15 22-3z M48 35v20 M38 45h20",
+  "M22 70h52 M28 59h40 M34 48h28 M40 37h16 M45 26h6 M48 12v14 M34 70V58 M48 70V47 M62 70V58",
+  "M18 69h60l-7-16H27z M28 53l8-18h24l10 18 M37 35l4-10h14l5 10 M31 69v8 M65 69v8 M34 59h7 M55 59h7",
+  "M20 20h22v22H20z M54 20h22v22H54z M20 54h22v22H20z M54 54h22v22H54z M42 42h12v12H42z",
+  "M16 65h64l-7-15H27z M27 50l11-15h23l14 15 M40 35l6-12h10l7 12 M27 66v9 M68 66v9 M33 57h8 M59 57h8",
+  "M20 78V30l28-17 28 17v48 M29 78V43h38v35 M38 52h8v10h-8z M54 52h8v10h-8z M42 78V64h12v14 M16 78h64",
 ] as const;
 
 const colors = [
@@ -74,6 +102,7 @@ const colors = [
   "#b19cff", "#81e0cf", "#e9b5ff", "#ffd078", "#85c7ff",
   "#ff9c76", "#cab1ff", "#ffdf78", "#83e6b9", "#ff91b8",
   "#9fdbff", "#e9c77c", "#ffab73", "#a8d8ff", "#ffdf8b",
+  "#d6c3ff", "#7cd8ff", "#f2c65f", "#ff906f", "#c0ef88",
 ] as const;
 
 function artwork(index: number): string {
@@ -89,7 +118,9 @@ export const secretAchievementCatalog: readonly SecretAchievementDefinition[] = 
     name,
     description,
     metric,
-    target,
+    target: metric === "secretBeyondTheRedline"
+      ? achievementCatalog.length + records.filter((record) => record[2] !== "secretBeyondTheRedline").length
+      : target,
     rarity: rarity as AchievementTier & ("LEGENDARY" | "MYTHIC"),
     creditReward: rarity === "MYTHIC" ? 4_000 : 1_500,
     artwork: artwork(index),

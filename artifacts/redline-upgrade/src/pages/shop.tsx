@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { AppShell } from '@/components/app-shell';
 import { CreditEarningGuide } from '@/components/credit-earning-guide';
+import { characters as rosterCharacters } from '@/game/characters';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
 import './pages.css';
 
@@ -13,6 +14,11 @@ type InventoryResponse = { items: { acquiredAt: string; item: CatalogItem }[]; e
 const money = (value: number) => value.toLocaleString();
 const characterName = (id: string | null) => id ? id.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
 const rarityRank: Record<string, number> = { UNCOMMON: 0, COMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4, MYTHIC: 5 };
+const characterRank = new Map(rosterCharacters.map((character, index) => [character.id, index]));
+const compareCosmetics = (a: CatalogItem, b: CatalogItem) =>
+  (rarityRank[a.rarity] ?? 99) - (rarityRank[b.rarity] ?? 99)
+  || (characterRank.get(a.characterId ?? '') ?? Number.MAX_SAFE_INTEGER) - (characterRank.get(b.characterId ?? '') ?? Number.MAX_SAFE_INTEGER)
+  || a.name.localeCompare(b.name);
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { credentials: 'include' });
@@ -56,8 +62,7 @@ export function ShopPage() {
   const equipped = new Set((catalog?.equipped ?? []).map(row => row.itemId).filter(Boolean));
   const items = useMemo(() => (catalog?.items.filter(item => item.category === category) ?? [])
     .sort((a, b) => Number(owned.has(b.id)) - Number(owned.has(a.id))
-      || (rarityRank[a.rarity] ?? 99) - (rarityRank[b.rarity] ?? 99)
-      || a.name.localeCompare(b.name)), [catalog, category]);
+      || compareCosmetics(a, b)), [catalog, category]);
 
   async function buy(item: CatalogItem) {
     setBusy(true);
@@ -114,7 +119,7 @@ export function ShopPage() {
       </header>
       <MarketNav current="shop" />
       <section className="market-section">
-        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · UNCOMMON FIRST, THEN BY RARITY</p></div>
+        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · RARITY FIRST · CHARACTER ORDER</p></div>
           <div className="market-filters" role="group" aria-label="Shop category">
             <button className={category === 'LOGO' ? 'selected' : ''} onClick={() => setCategory('LOGO')}>LOGOS</button>
             <button className={category === 'DRIVER_SKIN' ? 'selected' : ''} onClick={() => setCategory('DRIVER_SKIN')}>DRIVER SKINS</button>
@@ -185,11 +190,12 @@ export function InventoryPage() {
     && (character === 'ALL' || item.characterId === character)
     && (rarity === 'ALL' || item.rarity === rarity)
     && (equippedFilter === 'ALL' || (equippedFilter === 'EQUIPPED' ? data?.equipped.some(row => row.itemId === item.id) : !data?.equipped.some(row => row.itemId === item.id))),
-  ).sort((a, b) => (rarityRank[a.item.rarity] ?? 99) - (rarityRank[b.item.rarity] ?? 99)
-    || a.item.name.localeCompare(b.item.name));
+  ).sort((a, b) => compareCosmetics(a.item, b.item));
   const inventoryRarities = [...new Set((data?.items ?? []).map(row => row.item.rarity))]
     .sort((a, b) => (rarityRank[a] ?? 99) - (rarityRank[b] ?? 99));
-  const characters = [...new Set((data?.items ?? []).map(({ item }) => item.characterId).filter((id): id is string => Boolean(id)))].sort();
+  const inventoryCharacterIds = rosterCharacters
+    .map(({ id }) => id)
+    .filter(id => (data?.items ?? []).some(({ item }) => item.characterId === id));
   const equippedItems = (data?.items ?? []).filter(({ item }) => data?.equipped.some(row => row.itemId === item.id));
   async function equip(item: CatalogItem, remove = false) {
     const slot = item.category === 'LOGO' ? 'logo' : `skin:${item.characterId}`;
@@ -212,7 +218,7 @@ export function InventoryPage() {
     </header>
     <MarketNav current="inventory" />
     <section className="market-section">
-      <div className="market-section-heading"><div><span className="market-kicker">ACCOUNT-BOUND COSMETICS</span><h2>Equipment locker.</h2></div><div className="market-filters"><button onClick={() => navigate('/shop')}>BROWSE MARKET ↗</button></div></div>
+      <div className="market-section-heading"><div><span className="market-kicker">ACCOUNT-BOUND COSMETICS</span><h2>Equipment locker.</h2><p className="market-sort-note">UNCOMMON FIRST · THEN BY CHARACTER</p></div><div className="market-filters"><button onClick={() => navigate('/shop')}>BROWSE MARKET ↗</button></div></div>
       <section className="market-equipped" aria-labelledby="market-equipped-title">
         <div><span className="market-kicker">ACTIVE LOADOUT</span><h3 id="market-equipped-title">Currently equipped</h3></div>
         <div className="market-equipped-items">
@@ -223,7 +229,7 @@ export function InventoryPage() {
             <span><small>PLAYER LOGO</small><strong>{equippedItems.find(({ item }) => item.category === 'LOGO')?.item.name ?? 'Default Redline logo'}</strong></span>
           </div>
           {equippedItems.filter(({ item }) => item.category === 'DRIVER_SKIN').map(({ item }) => (
-            <div className="market-equipped-card" key={item.id}><img src={getPublicAssetUrl(item.assetPath)} alt="" /><span><small>{characterName(item.characterId)}</small><strong>{item.name}</strong></span></div>
+            <div className={`market-equipped-card rarity-${item.rarity.toLowerCase()}`} key={item.id}><img src={getPublicAssetUrl(item.assetPath)} alt="" /><span><small>{characterName(item.characterId)}</small><strong>{item.name}</strong></span></div>
           ))}
           {!equippedItems.some(({ item }) => item.category === 'DRIVER_SKIN') && <span className="market-equipped-empty">No driver skin equipped</span>}
         </div>
@@ -232,7 +238,7 @@ export function InventoryPage() {
       {error && <div className="market-alert" role="alert">{error}<button onClick={() => load().catch(() => setError('Inventory could not load.'))}>Retry</button></div>}
       <div className="inventory-filters">
         <label>Category<select value={category} onChange={e => setCategory(e.target.value)}><option value="ALL">All</option><option value="LOGO">Logos</option><option value="DRIVER_SKIN">Driver skins</option></select></label>
-        <label>Character<select value={character} onChange={e => setCharacter(e.target.value)}><option value="ALL">All characters</option>{characters.map(id => <option key={id} value={id}>{characterName(id)}</option>)}</select></label>
+        <label>Character<select value={character} onChange={e => setCharacter(e.target.value)}><option value="ALL">All characters</option>{inventoryCharacterIds.map(id => <option key={id} value={id}>{characterName(id)}</option>)}</select></label>
         <label>Rarity<select value={rarity} onChange={e => setRarity(e.target.value)}><option value="ALL">All rarities</option>{inventoryRarities.map(value => <option key={value}>{value}</option>)}</select></label>
         <label>Status<select value={equippedFilter} onChange={e => setEquippedFilter(e.target.value)}><option value="ALL">All</option><option value="EQUIPPED">Equipped</option><option value="UNEQUIPPED">Unequipped</option></select></label>
       </div>

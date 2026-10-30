@@ -13,9 +13,10 @@ function Header() {
 
   return (
     <header className="site-header">
-      <button className="brand" type="button" onClick={() => navigate('/')}>
+      <button className="brand" type="button" onClick={() => navigate('/')} aria-label={location === '/' ? 'Go to homepage' : 'Exit to homepage'} title={location === '/' ? 'Home' : 'Exit to homepage'}>
+        <span className="header-home-exit" aria-hidden="true">{location === '/' ? 'HOME' : 'EXIT'}</span>
         <span className="brand-mark" aria-hidden="true" />
-        REDLINE <span className="muted">/</span> UPGRADE
+        <span className="brand-wordmark">REDLINE <span className="muted">/</span> UPGRADE</span>
       </button>
       <div className="header-right mono">
         <button className={`header-link ${activeRoster ? 'active' : ''}`} type="button" onClick={() => navigate('/characters')}>

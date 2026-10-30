@@ -17,7 +17,7 @@ import { careers } from "../../../redline-upgrade/src/game/careers";
 import { calculateAssetValue } from "../../../redline-upgrade/src/game/endgame";
 import type { Match } from "../../../redline-upgrade/src/game/match";
 import type { MatchAssetEvent } from "../../../redline-upgrade/src/game/multiplayer";
-import { secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
+import { calculateSecretAssetMilestoneMetrics, secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
 import { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS, grantCredits } from "./credit-wallet";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -64,6 +64,11 @@ const emptyMetrics = (): Record<string, number> => ({
   purchases: 0,
   assetUpgrades: 0,
   assetTransfers: 0,
+  secretLevelFourGames: 0,
+  secretTripleLevelPortfolio: 0,
+  secretFourSlotLevelThree: 0,
+  secretSupercarLevelFour: 0,
+  secretMansionLevelFour: 0,
 });
 
 export interface CompletionPlayer {
@@ -236,6 +241,8 @@ function computeSecretMetrics(args: {
   const lostThisGame = new Set(lostAssetIds);
   const perfectHeist = retainedIds.length === 4 && acquiredUnique.size === 4
     && retainedIds.every((assetId) => acquiredUnique.has(assetId)) && lostThisGame.size === 0;
+  const retainedAssetLevels = retainedIds.map((assetId) => ({ assetId, level: player.assetLevels[assetId] ?? 1 }));
+  const secretAssetMetrics = calculateSecretAssetMilestoneMetrics(currentMetrics, retainedAssetLevels);
   const minStartingSalary = Math.min(...careers.flatMap((career) => career.salaryTiers));
   const winningCareerPairCount = careerPair ? characterCareerWins.get(careerPair) ?? 0 : 0;
   return {
@@ -266,6 +273,7 @@ function computeSecretMetrics(args: {
     secretPerfectRun: perfectMilestones ? 1 : 0,
     secretCenturion: currentMetrics.wins ?? 0,
     secretRedlineMyth: standardUnlockedCount,
+    ...secretAssetMetrics,
     secretBeyondTheRedline: 0,
   };
 }
@@ -511,7 +519,7 @@ export async function recordCompletedGame(
     standardUnlockedCount,
   });
   const priorSecretUnlocks = new Set(oldAchievementRows.filter((row) => row.unlockedAt).map((row) => row.achievementId));
-  const otherSecretUnlocks = secretAchievementCatalog.slice(0, 24).filter((achievement) =>
+  const otherSecretUnlocks = secretAchievementCatalog.filter((achievement) => achievement.metric !== "secretBeyondTheRedline").filter((achievement) =>
     priorSecretUnlocks.has(achievement.id)
     || (nextMetricsWithSecrets[achievement.metric] ?? 0) >= achievement.target,
   ).length;
