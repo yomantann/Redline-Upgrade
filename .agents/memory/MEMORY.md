@@ -10,3 +10,4 @@
 - [Secret achievement privacy](secret-achievement-privacy.md) — keep secret definitions and progress server-only until unlock; freeze collection eligibility by catalog version.
 - [Profile identity fields](profile-identity-fields.md) — app display name is editable; sign-in email remains provider-managed and read-only.
 - [Portrait matte cleanup](portrait-matte-cropping.md) — crop baked-in borders in the source image; wrapper scaling cannot reliably remove them.
+- [Cosmetic catalog IDs](cosmetic-catalog-ids.md) — keep item IDs stable across asset renames so existing unlocks and equips remain linked.

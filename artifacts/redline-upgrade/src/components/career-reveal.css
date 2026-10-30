@@ -70,11 +70,7 @@
 .salary-row.salary-tier-2.active { background:#56645b; border-color:#56645b; color:#e9e7dc; }
 .salary-row.salary-tier-3.active { background:#d5aa55; border-color:#d5aa55; }
 .salary-row.salary-tier-4.active { background:#f5d27a; border-color:#f5d27a; }
-.career-bank { display:flex; justify-content:space-between; align-items:end; gap:15px; padding:24px 28px; border-top:1px solid #435047; }
-.career-bank strong { font:800 clamp(32px,4vw,54px)/1 'Barlow Condensed',sans-serif; color:#d4e981; font-variant-numeric:tabular-nums; }
-.career-bank small { display:block; color:#7f9383; font-size:10px; margin-top:5px; }
-.career-actions { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:25px; margin-top:25px; }
-.career-actions p { color:#859689; max-width:380px; margin:0; }
+.career-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:25px; margin-top:25px; }
 .career-actions .action { min-width:250px; }
 .career-unavailable { min-height:60dvh; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:22px; }
 .career-unavailable h1 { font-size:clamp(75px,12vw,160px); margin:0; }
@@ -100,7 +96,7 @@
   .career-reveal-heading h1 { font-size:clamp(76px,20vw,110px); }
   .career-feature { min-height:395px; padding:22px 22px 30px; }
   .career-feature-bottom h2 { font-size:clamp(58px,15vw,85px); }
-  .career-category,.career-ability,.salary-panel,.career-bank { padding-left:19px; padding-right:19px; }
+  .career-category,.career-ability,.salary-panel { padding-left:19px; padding-right:19px; }
   .career-decks { padding-left:19px; padding-right:19px; }
   .career-decks-header { display:block; }
   .career-decks-header p { margin-top:7px; text-align:left; }

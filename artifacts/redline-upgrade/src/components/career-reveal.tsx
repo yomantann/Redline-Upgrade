@@ -95,14 +95,9 @@ export function CareerReveal() {
             <span className="mono">STARTING ATTRIBUTES / +{STARTING_ATTRIBUTE_POINTS} CAREER POINTS</span>
             <p>AI Skill {player.aiSkill} · Fame {player.fame} · Lifestyle {player.lifestyle} · Influence {player.influence}. Every career grants the same total; only the split differs.</p>
           </div>
-          <div className="career-bank">
-            <div><span className="mono">STARTING WEALTH</span><small>Balance at the starting line</small></div>
-            <strong data-testid="text-starting-wealth">{formatMoney(player.wealth)}</strong>
-          </div>
         </div>
       </section>
       <div className="career-actions">
-        <p className="mono">SALARY: {formatMoney(player.salaryAmount)} / PAYDAY CHANGES YOUR WEALTH</p>
         <button className="action lime-action" type="button" onClick={() => { acknowledgeCareer(); navigate('/board'); }} data-testid="button-continue-board">Continue to board <span aria-hidden="true">↗</span></button>
       </div>
     </main>
