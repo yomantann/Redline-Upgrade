@@ -20,10 +20,78 @@ const prefixCharacter: Record<string, string> = {
   accuser: "accuser", alpha: "alpha_prime", anointed: "anointed", click: "click_click",
   dash: "rainbow_dash", executive: "executive_p", frost: "frostbyte", guardian: "guardian_h",
   hotwired: "hotwired", lowflame: "low_flame", pain: "pain_hider", panic: "panic_bot",
-  rind: "the_rind", roll: "roll_safe", wandering: "wandering_eye",
+  primate: "primate", rind: "the_rind", roll: "roll_safe", sad: "sadman", wandering: "wandering_eye",
 };
 const stableIdsByAsset: Record<string, string> = {
   "click_tommy.png": "skin-click2-png",
+};
+const namedSkinsByAsset: Record<string, string> = {
+  "executive4.png": "Skyline Last Look",
+  "executive5.png": "Prototype Negotiator",
+  "guardian1.png": "Glacier Bastion",
+  "guardian2.png": "Event Horizon Warden",
+  "hotwired1.png": "Ignition Watch",
+  "hotwired3.png": "Afterburn Operator",
+  "hotwired5.png": "Emberline Mechanic",
+  "hotwired6.png": "Pyre Circuit",
+  "lowflame1.png": "Quiet Prowler",
+  "lowflame3.png": "Last Stop Drifter",
+  "lowflame4.png": "Quiet Current",
+  "pain1.png": "Unfinished Portrait",
+  "pain2.png": "Scarlight Resolve",
+  "panic1.png": "Closing Bell Dealer",
+  "panic2.png": "Backdoor Operator",
+  "panic3.png": "Static in the Walls",
+  "panic4.png": "Blue Siren Exo",
+  "panic5.png": "Ashfall Enforcer",
+  "primate1.png": "Roofline Pouncer",
+  "primate2.png": "Canopy Circuit",
+  "primate3.png": "Verdant Echo",
+  "sad2.png": "Rainbound Stranger",
+  "sad3.png": "Blue Hour Operator",
+  "sad4.png": "The Last Warm Cup",
+  "sad5.png": "Quiet Exit",
+  "wandering3.png": "Neon Wayfinder",
+  "wandering4.png": "Crossing Shadows",
+  "wandering5.png": "Rootbound Watcher",
+  "wandering6.png": "Cinder Pilgrim",
+  "wandering7.png": "Lantern-Eyed Stranger",
+  "wandering8.png": "All-Seeing Veil",
+  "wandering9.png": "Gloamwing Sovereign",
+};
+const rarityByNewSkinAsset: Record<string, Rarity> = {
+  "executive4.png": "RARE",
+  "executive5.png": "EPIC",
+  "guardian1.png": "EPIC",
+  "guardian2.png": "LEGENDARY",
+  "hotwired1.png": "RARE",
+  "hotwired3.png": "RARE",
+  "hotwired5.png": "EPIC",
+  "hotwired6.png": "EPIC",
+  "lowflame1.png": "EPIC",
+  "lowflame3.png": "RARE",
+  "lowflame4.png": "UNCOMMON",
+  "pain1.png": "UNCOMMON",
+  "pain2.png": "RARE",
+  "panic1.png": "UNCOMMON",
+  "panic2.png": "RARE",
+  "panic3.png": "RARE",
+  "panic4.png": "EPIC",
+  "panic5.png": "LEGENDARY",
+  "primate1.png": "EPIC",
+  "primate2.png": "RARE",
+  "primate3.png": "RARE",
+  "sad2.png": "RARE",
+  "sad3.png": "EPIC",
+  "sad4.png": "UNCOMMON",
+  "sad5.png": "RARE",
+  "wandering3.png": "RARE",
+  "wandering4.png": "UNCOMMON",
+  "wandering5.png": "EPIC",
+  "wandering6.png": "EPIC",
+  "wandering7.png": "RARE",
+  "wandering8.png": "LEGENDARY",
+  "wandering9.png": "LEGENDARY",
 };
 const rareNames = ["cosmic", "abyssal", "divine", "glitchosaurus", "stormhare", "valhalla", "ragnar", "sovereign"];
 const epicNames = ["prime", "apex", "sentinel", "hewn knight", "damning duchess", "grand larceny", "executioner"];
@@ -109,11 +177,21 @@ function cosmeticAssetManifest(): CosmeticAssetManifest {
   return { logos: parsed.logos, skins: parsed.skins };
 }
 
+function skinAssetParts(file: string): { prefix: string; title?: string } | undefined {
+  const namedAsset = file.match(/^([a-z]+)_(.+)\.png$/i);
+  if (namedAsset) return { prefix: namedAsset[1].toLowerCase(), title: namedAsset[2] };
+  const unnamedAsset = file.match(/^([a-z]+)\d+\.png$/i);
+  if (unnamedAsset && namedSkinsByAsset[file.toLowerCase()]) {
+    return { prefix: unnamedAsset[1].toLowerCase() };
+  }
+  return undefined;
+}
+
 function catalogFromAssets() {
   const manifest = cosmeticAssetManifest();
   const skins = manifest.skins.filter((file) => {
-    const match = file.match(/^([a-z]+)_(.+)\.png$/i);
-    return Boolean(match && prefixCharacter[match[1].toLowerCase()]);
+    const parts = skinAssetParts(file);
+    return Boolean(parts && prefixCharacter[parts.prefix]);
   });
   return [
     ...manifest.logos.map((file) => {
@@ -123,11 +201,12 @@ function catalogFromAssets() {
       return { id, name, category: "LOGO", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Icons/${file}`, characterId: null, available: 1, isDefault: 0 };
     }),
     ...skins.map((file) => {
-      const [prefix, ...title] = file.replace(/\.png$/i, "").split("_");
-      const name = title.join("_").replace(/([a-z])(\d+)$/i, "$1 ($2)");
-      const id = stableIdsByAsset[file.toLowerCase()] ?? `skin-${slug(file)}`;
-      const rarity = rarityFor(name, "DRIVER_SKIN", id);
-      const characterId = prefixCharacter[prefix.toLowerCase()];
+      const assetKey = file.toLowerCase();
+      const parts = skinAssetParts(file)!;
+      const name = namedSkinsByAsset[assetKey] ?? parts.title!.replace(/([a-z])(\d+)$/i, "$1 ($2)");
+      const id = stableIdsByAsset[assetKey] ?? `skin-${slug(file)}`;
+      const rarity = rarityByNewSkinAsset[assetKey] ?? rarityFor(name, "DRIVER_SKIN", id);
+      const characterId = prefixCharacter[parts.prefix];
       return { id, name: displayName(name), category: "DRIVER_SKIN", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Skins/${file}`, characterId, available: 1, isDefault: 0 };
     }),
   ];
