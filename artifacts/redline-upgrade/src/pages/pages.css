@@ -205,10 +205,20 @@
 .red-achievements-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,220px),1fr)); gap: 9px; }
 .red-achievement { min-width: 0; padding: 14px; border: 1px solid #344139; background: #111917; }
 .red-achievement.is-unlocked { border-color: #596b43; background: linear-gradient(145deg,#18211b,#111715 68%); }
+.red-achievement.profile-tier-uncommon { --tier-accent: #e0e5e9; --tier-surface: #47515a; }
+.red-achievement.profile-tier-rare { --tier-accent: #78c9f3; --tier-surface: #17344a; }
+.red-achievement.profile-tier-epic { --tier-accent: #f0ca68; --tier-surface: #59451f; }
+.red-achievement.profile-tier-legendary { --tier-accent: #d4a0ff; --tier-surface: #3e2857; }
+.red-achievement[class*="profile-tier-"] { border-color: color-mix(in srgb,var(--tier-accent) 55%,#344139); background: linear-gradient(160deg,var(--tier-surface),#100e15 78%); }
+.red-achievement.is-unlocked[class*="profile-tier-"] { border-color: var(--tier-accent); background: linear-gradient(145deg,var(--tier-surface),#111715 68%); }
 .red-achievement-top { display: flex; align-items: center; justify-content: space-between; }
 .red-achievement-glyph { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #59675e; color: #718078; font: 700 12px 'Space Mono',monospace; }
 .is-unlocked .red-achievement-glyph { border-color: #a9c75e; color: #d4e981; }
 .red-tier { color: #8e9b91; font: 700 7px 'Space Mono',monospace; letter-spacing: .08em; }
+.red-achievement[class*="profile-tier-"] .red-tier { color: var(--tier-accent); }
+.red-achievement[class*="profile-tier-"] .red-progress-line span { background: var(--tier-accent); }
+.red-achievement[class*="profile-tier-"] .red-achievement-glyph { border-color: color-mix(in srgb,var(--tier-accent) 50%,#59675e); }
+.red-achievement.is-unlocked[class*="profile-tier-"] .red-achievement-glyph { border-color: var(--tier-accent); color: var(--tier-accent); }
 .tier-bronze { color: #c99468; }.tier-silver { color: #c2d0c8; }.tier-gold { color: #e5cf78; }.tier-platinum { color: #93c9c4; }.tier-legendary { color: #f19a7d; }
 .red-achievement h3 { margin: 13px 0 6px; font: 700 19px 'Barlow Condensed',sans-serif; text-transform: uppercase; color: #e7e9dc; }
 .red-achievement p { min-height: 39px; margin: 0; color: #909c93; font-size: 10px; line-height: 1.5; }
@@ -223,8 +233,8 @@
 .red-mystery-art span { filter: blur(2.4px); font: 700 32px 'Barlow Condensed',sans-serif; }
 .red-secret-seal { margin-top: 24px; padding-top: 10px; border-top: 1px solid #2d3832; color: #66736a; font-size: 7px; letter-spacing: .08em; }
 .red-secret-art { display: block; width: 58px; height: 58px; filter: drop-shadow(0 0 9px #9b8cff70); animation: secretReveal .55s cubic-bezier(.2,.8,.3,1) both; }
-.red-achievement.is-secret.is-unlocked { border-color: #6b708d; background: linear-gradient(145deg,#211d2b,#111715 70%); }
-.red-achievement.tier-card-mythic { border-color: #8770c2; animation: mythicPulse 3.2s ease-in-out infinite; }
+.red-achievement.is-secret.is-unlocked { border-color: var(--tier-accent); background: linear-gradient(145deg,var(--tier-surface),#111715 70%); }
+.red-achievement.tier-card-mythic { border-color: var(--tier-accent); animation: mythicPulse 3.2s ease-in-out infinite; }
 .red-achievement.tier-card-mythic:before { content: ""; position: absolute; inset: -55% -25%; pointer-events: none; background: linear-gradient(110deg,transparent 42%,#d8c8ff18 50%,transparent 58%); transform: translateX(-35%); animation: mythicSweep 5s ease-in-out infinite; }
 .tier-mythic { color: #d2b5ff; text-shadow: 0 0 8px #bb91ff70; }
 @keyframes secretReveal { from { opacity: 0; transform: scale(.65) rotate(-14deg); filter: blur(6px); } to { opacity: 1; transform: scale(1) rotate(0); filter: drop-shadow(0 0 9px #9b8cff70); } }

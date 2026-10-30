@@ -40,13 +40,13 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 };
 
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
-const milestoneTierRank: Record<AchievementDefinition['rarity'], number> = {
-  BRONZE: 0,
-  SILVER: 1,
-  GOLD: 2,
-  PLATINUM: 3,
-  LEGENDARY: 4,
-  MYTHIC: 5,
+const milestoneDisplayTier: Record<AchievementDefinition['rarity'], ProfileAssetTier> = {
+  BRONZE: 'UNCOMMON',
+  SILVER: 'RARE',
+  GOLD: 'EPIC',
+  PLATINUM: 'EPIC',
+  LEGENDARY: 'LEGENDARY',
+  MYTHIC: 'LEGENDARY',
 };
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
@@ -182,7 +182,7 @@ export function ProfilePage() {
     .sort((a, b) => (b.record?.retainedCount ?? 0) - (a.record?.retainedCount ?? 0))[0];
   const categoryAchievements = achievementList
     .filter(item => item.category === category)
-    .sort((a, b) => milestoneTierRank[a.rarity] - milestoneTierRank[b.rarity] || a.name.localeCompare(b.name));
+    .sort((a, b) => profileAssetTierRank[milestoneDisplayTier[a.rarity]] - profileAssetTierRank[milestoneDisplayTier[b.rarity]] || a.name.localeCompare(b.name));
   const unlocked = profile?.unlockedCount ?? 0;
   const total = profile?.totalCount ?? achievementCatalog.length + 25;
   const completedGames = profile?.history ?? [];
@@ -246,6 +246,7 @@ export function ProfilePage() {
     const target = item.id === 'complete-asset-catalog' ? assets.length : item.target;
     const current = Math.min(target, Math.max(0, item.progress));
     const isUnlocked = !!item.unlockedAt;
+    const displayTier = milestoneDisplayTier[item.rarity];
     const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
     if (item.isSecret && !isUnlocked) {
       return (
@@ -258,12 +259,12 @@ export function ProfilePage() {
       );
     }
     return (
-      <article className={`red-achievement ${isUnlocked ? 'is-unlocked' : 'is-locked'} ${item.isSecret ? `is-secret tier-card-${item.rarity.toLowerCase()}` : ''}`} key={item.id}>
+      <article className={`red-achievement ${isUnlocked ? 'is-unlocked' : 'is-locked'} profile-tier-${displayTier.toLowerCase()} ${item.isSecret ? `is-secret tier-card-${item.rarity.toLowerCase()}` : ''}`} key={item.id}>
         <div className="red-achievement-top">
           {item.isSecret && item.artwork
-            ? <img className="red-secret-art" src={item.artwork} alt={`${item.rarity} milestone emblem`} />
+            ? <img className="red-secret-art" src={item.artwork} alt={`${displayTier} milestone emblem`} />
             : <span className="red-achievement-glyph" aria-hidden="true">{isUnlocked ? '✓' : '—'}</span>}
-          <span className={`red-tier tier-${item.rarity.toLowerCase()}`}>{item.rarity}</span>
+          <span className={`red-tier rarity-${displayTier.toLowerCase()}`}>{displayTier}</span>
         </div>
         <h3>{item.name}</h3>
         <p>{item.description}</p>
