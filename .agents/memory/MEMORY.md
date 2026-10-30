@@ -11,4 +11,4 @@
 - [Profile identity fields](profile-identity-fields.md) — app display name is editable; sign-in email remains provider-managed and read-only.
 - [Portrait matte cleanup](portrait-matte-cropping.md) — crop baked-in borders in the source image; wrapper scaling cannot reliably remove them.
 - [Cosmetic catalog IDs](cosmetic-catalog-ids.md) — keep item IDs stable across asset renames so existing unlocks and equips remain linked.
-- [Production shop assets](shop-production-assets.md) — API production includes the web build output, not the web source `public` directory.
+- [Production shop assets](shop-production-assets.md) — generate a filename-only cosmetics manifest inside API output; the API runtime lacks frontend asset folders.

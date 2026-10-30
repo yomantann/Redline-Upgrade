@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { readdir, rm, writeFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -120,6 +120,19 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  const publicDir = path.resolve(artifactDir, "../redline-upgrade/public");
+  const logosDir = path.resolve(publicDir, "Icons");
+  const skinsDir = path.resolve(publicDir, "Skins");
+  const [logos, skins] = await Promise.all([readdir(logosDir), readdir(skinsDir)]);
+  const manifest = {
+    logos: logos.filter((file) => /\.png$/i.test(file) && !file.toLowerCase().startsWith("redline_auction_")).sort(),
+    skins: skins.filter((file) => /\.png$/i.test(file)).sort(),
+  };
+  if (manifest.logos.length === 0 || manifest.skins.length === 0) {
+    throw new Error(`Cosmetic asset manifest is incomplete: ${manifest.logos.length} logos, ${manifest.skins.length} skins.`);
+  }
+  await writeFile(path.resolve(distDir, "cosmetic-assets.json"), JSON.stringify(manifest), "utf8");
 }
 
 buildAll().catch((err) => {

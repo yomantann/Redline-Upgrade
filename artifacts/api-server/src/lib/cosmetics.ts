@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import {
@@ -90,27 +90,33 @@ function rarityFor(name: string, category: "LOGO" | "DRIVER_SKIN", id?: string):
   return "UNCOMMON";
 }
 
-function catalogFromAssets() {
-  const publicRootCandidates = [
-    resolve(process.cwd(), "../redline-upgrade/public"),
-    resolve(process.cwd(), "../redline-upgrade/dist/public"),
+type CosmeticAssetManifest = { logos: string[]; skins: string[] };
+
+function cosmeticAssetManifest(): CosmeticAssetManifest {
+  const candidates = [
+    resolve(process.cwd(), "artifacts/api-server/dist/cosmetic-assets.json"),
+    resolve(process.cwd(), "dist/cosmetic-assets.json"),
   ];
-  const publicRoot = publicRootCandidates.find((root) =>
-    existsSync(resolve(root, "Icons")) && existsSync(resolve(root, "Skins")),
-  );
-  if (!publicRoot) {
-    throw new Error(`Cosmetic asset directories not found. Checked: ${publicRootCandidates.join(", ")}`);
+  const manifestPath = candidates.find((candidate) => existsSync(candidate));
+  if (!manifestPath) {
+    throw new Error(`Cosmetic asset manifest not found. Checked: ${candidates.join(", ")}`);
   }
-  const logosDir = resolve(publicRoot, "Icons");
-  const skinsDir = resolve(publicRoot, "Skins");
-  const logos = readdirSync(logosDir).filter((file) => /\.png$/i.test(file)
-    && !file.toLowerCase().startsWith("redline_auction_"));
-  const skins = readdirSync(skinsDir).filter((file) => {
+  const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as Partial<CosmeticAssetManifest>;
+  if (!Array.isArray(parsed.logos) || !Array.isArray(parsed.skins)
+    || [...parsed.logos, ...parsed.skins].some((file) => typeof file !== "string")) {
+    throw new Error(`Cosmetic asset manifest is invalid: ${manifestPath}`);
+  }
+  return { logos: parsed.logos, skins: parsed.skins };
+}
+
+function catalogFromAssets() {
+  const manifest = cosmeticAssetManifest();
+  const skins = manifest.skins.filter((file) => {
     const match = file.match(/^([a-z]+)_(.+)\.png$/i);
     return Boolean(match && prefixCharacter[match[1].toLowerCase()]);
   });
   return [
-    ...logos.map((file) => {
+    ...manifest.logos.map((file) => {
       const name = displayName(file);
       const id = `logo-${slug(file)}`;
       const rarity = rarityFor(name, "LOGO", id);

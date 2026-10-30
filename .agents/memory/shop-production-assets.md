@@ -3,8 +3,8 @@ name: Production shop asset paths
 description: Shop catalog discovery must account for packaged frontend assets in the API production runtime.
 ---
 
-The API service is packaged separately from the frontend source directory. In production, the source `public` folder is absent, while the frontend's configured `dist/public` output is available alongside the API service.
+The API deployment runtime contains the API build output but neither the frontend source `public` directory nor the frontend `dist/public` output. The catalog generator only needs cosmetic filenames; the web artifact serves the actual images through their asset paths.
 
-**Why:** Production shop requests failed when catalog generation scanned the frontend source folder, even though the published frontend build contained the skin and logo assets.
+**Why:** Production shop requests returned 500s because the API package did not contain either frontend asset directory. Copying the large image files into the API package is unnecessary and would substantially increase its size.
 
-**How to apply:** API code that discovers shop assets should support both the source folder used in development and the packaged frontend build output used in production. Confirm the current deployment layout before changing these paths.
+**How to apply:** Generate a compact logo/skin filename manifest from the frontend source during the API build, place it in the API build output, and read it at runtime. Keep the actual images in the web artifact and preserve their existing public asset paths.
