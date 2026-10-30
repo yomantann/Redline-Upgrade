@@ -13,7 +13,8 @@ import {
   updateRoomSettings,
   type RoomDetails,
 } from '@workspace/api-client-react';
-import { useAuth } from '@workspace/replit-auth-web';
+import { useUpdateCurrentProfile } from '@workspace/api-client-react';
+import { AUTH_USER_UPDATED_EVENT, useAuth } from '@workspace/replit-auth-web';
 import { AppShell } from '@/components/app-shell';
 import { useGame } from '@/game/state';
 import { GameScreen } from '@/components/game-screen';
@@ -49,18 +50,61 @@ function SignInGate({ login }: { login: () => void }) {
 function CreateJoin({ onEnter }: { onEnter: (details: RoomDetails) => void }) {
   const [, navigate] = useLocation();
   const { selectedBoardId } = useGame();
+  const { user } = useAuth(import.meta.env.BASE_URL);
+  const updateProfile = useUpdateCurrentProfile();
   const board = getBoardDefinition(selectedBoardId);
+  const currentName = user?.displayName?.trim() || [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+  const [displayName, setDisplayName] = useState(currentName);
+  const [savedDisplayName, setSavedDisplayName] = useState(currentName);
+  const [nameStatus, setNameStatus] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setDisplayName(currentName);
+    setSavedDisplayName(currentName);
+  }, [user?.id, user?.displayName, user?.firstName, user?.lastName]);
+
+  const persistDisplayName = async () => {
+    const nextName = displayName.trim();
+    if (!nextName || nextName.length > 40) {
+      setError('Enter a lobby name between 1 and 40 characters.');
+      return false;
+    }
+    if (nextName === savedDisplayName) return true;
+    try {
+      await updateProfile.mutateAsync({ data: { displayName: nextName } });
+      window.dispatchEvent(new Event(AUTH_USER_UPDATED_EVENT));
+      setSavedDisplayName(nextName);
+      setNameStatus('Saved to your profile and multiplayer lobby.');
+      return true;
+    } catch {
+      setError('Could not save your display name. Please try again.');
+      return false;
+    }
+  };
+
   const run = async (action: () => Promise<RoomDetails>) => {
     setBusy(true);
     setError(null);
+    setNameStatus('');
     try {
+      if (!await persistDisplayName()) return;
       onEnter(await action());
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveName = async () => {
+    setBusy(true);
+    setError(null);
+    setNameStatus('');
+    try {
+      if (await persistDisplayName()) setNameStatus('Display name saved.');
     } finally {
       setBusy(false);
     }
@@ -71,6 +115,16 @@ function CreateJoin({ onEnter }: { onEnter: (details: RoomDetails) => void }) {
       <div className="eyebrow">MULTIPLAYER // STEP 03</div>
       <h1 className="display platform-title">Create or<br /><span className="title-outline">join a room.</span></h1>
       <p className="platform-lede"><span className="mono lime">SELECTED BOARD</span> {board.name}</p>
+      <div className="platform-card lobby-name-card">
+        <span className="mono platform-kicker">LOBBY IDENTITY</span>
+        <label className="mono platform-label" htmlFor="lobby-display-name">DISPLAY NAME</label>
+        <div className="lobby-name-controls">
+          <input id="lobby-display-name" className="platform-input lobby-display-name-input" value={displayName} maxLength={40} autoComplete="nickname" onChange={event => setDisplayName(event.target.value)} data-testid="input-lobby-display-name" />
+          <button className="action secondary" type="button" disabled={busy || displayName.trim() === savedDisplayName} onClick={() => void saveName()} data-testid="button-save-lobby-name">Save name</button>
+        </div>
+        <p className="platform-hint">Saved to your profile and shown to players in the lobby and match.</p>
+        {nameStatus && <p className="platform-hint lime" role="status">{nameStatus}</p>}
+      </div>
       <div className="platform-grid">
         <div className="platform-card">
           <span className="mono platform-kicker">HOST</span>

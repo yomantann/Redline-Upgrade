@@ -180,6 +180,16 @@ export function ProfilePage() {
   const gamesPlayed = profile?.metrics.completedGames ?? completedGames.length;
   const gamesWon = profile?.metrics.wins ?? completedGames.filter(game => game.placement === 1).length;
   const winRate = gamesPlayed ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+  const highestRetainedLevelByAsset = useMemo(() => {
+    const levels = new Map<string, number>();
+    for (const game of completedGames) {
+      for (const retained of game.retainedAssets ?? []) {
+        const level = Math.max(1, Math.min(4, retained.level || 1));
+        levels.set(retained.assetId, Math.max(levels.get(retained.assetId) ?? 0, level));
+      }
+    }
+    return levels;
+  }, [completedGames]);
   const latestGame = useMemo(() => [...completedGames].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0], [completedGames]);
   const latestAwards = useMemo(() => {
     const unlockedIds = new Set(latestGame?.unlockedAchievementIds ?? []);
@@ -208,13 +218,15 @@ export function ProfilePage() {
   function assetCard({ definition, record }: (typeof collection)[number]) {
     const isCollected = (record?.acquiredCount ?? 0) > 0;
     const isEverRetained = (record?.retainedCount ?? 0) > 0;
-    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${isEverRetained ? definition.name : 'Unknown asset'}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
+    const highestRetainedLevel = isEverRetained ? Math.min(4, Math.max(1, highestRetainedLevelByAsset.get(definition.id) ?? 1)) : null;
+    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${isEverRetained ? definition.name : 'Unknown asset'}, ${isEverRetained ? `retained at level ${highestRetainedLevel}` : isCollected ? 'collected but not retained' : 'locked'}`}>
       <div className="red-asset-art">{isEverRetained
-        ? <AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} />
+        ? <AssetArtwork assetId={definition.id} level={highestRetainedLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${definition.name}, level ${highestRetainedLevel}`} />
         : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
         <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
       <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)}</span><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
         <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
+        <div className="red-asset-level-info"><span className="mono">HIGHEST RETAINED LEVEL</span><strong>{highestRetainedLevel ? `LEVEL ${highestRetainedLevel}` : '—'}</strong></div>
         <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
       </div>
     </article>;
@@ -414,13 +426,13 @@ export function ProfilePage() {
                       <p><span className="mono">BEST ENDGAME PORTFOLIO</span><strong>{money(profile.metrics.highestAssetPortfolio)}</strong></p>
                     </div>
                     {collection.length ? <div className="red-asset-record-groups">
-                      {collectionSections.map(section => <section className="red-asset-acquisition-group" key={section.key} aria-label={`${section.label} assets`}>
-                        <div className="red-asset-group-heading"><h3>{section.label}</h3><span>{section.rarities.reduce((count, group) => count + group.items.length, 0)} assets</span></div>
+                      {collectionSections.map(section => <details className="red-asset-acquisition-group" key={section.key} aria-label={`${section.label} assets`} open>
+                        <summary className="red-asset-group-heading"><h3>{section.label}</h3><span>{section.rarities.reduce((count, group) => count + group.items.length, 0)} assets</span></summary>
                         {section.rarities.map(group => <section className="red-asset-rarity-group" key={`${section.key}-${group.rarity}`}>
                           <div className="red-asset-rarity-heading"><h4>{titleCase(group.rarity)} rarity</h4><span>{group.items.length}</span></div>
                           <div className="red-assets-grid">{group.items.map(assetCard)}</div>
                         </section>)}
-                      </section>)}
+                      </details>)}
                     </div> : <EmptyState title={collectionFilter === 'held' ? 'Nothing held at finish' : 'No acquired assets'} text={collectionFilter === 'held' ? 'No asset records show endgame retention yet. The full catalog remains available under Full catalog.' : 'No asset records show acquisitions for this account yet.'} />}
                   </section>
                 )}

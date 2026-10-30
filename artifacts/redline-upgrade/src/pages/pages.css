@@ -10,6 +10,10 @@
 .platform-card strong { color: #e9e7dc; font: 800 34px/1 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .platform-input { width: 100%; min-height: 52px; padding: 0 14px; background: #0d1312; border: 1px solid #65706a; color: #e9e7dc; font-size: 20px; letter-spacing: .3em; text-transform: uppercase; }
 .platform-input:focus-visible { outline: 2px solid #d4e981; outline-offset: 1px; }
+.lobby-name-card { max-width: 680px; }
+.lobby-name-controls { display: flex; align-items: center; gap: 12px; width: 100%; }
+.lobby-display-name-input { min-width: 0; min-height: 46px; flex: 1; font-size: 16px; letter-spacing: .02em; text-transform: none; }
+.lobby-name-card .platform-hint { margin: 0; }
 .platform-error { margin: 0; padding: 12px 16px; border: 1px solid #f96346; color: #ff9d8a; background: rgba(249,99,70,.08); font-size: 13px; }
 .platform-hint { margin: 0; color: #8f9a93; font-size: 10px; letter-spacing: .08em; }
 .lobby-head { display: flex; flex-wrap: wrap; gap: 28px; justify-content: space-between; align-items: end; }
@@ -166,6 +170,9 @@
 .red-asset-counts div + div { border-left: 1px solid #344139; }
 .red-asset-counts strong { font: 700 20px 'Barlow Condensed',sans-serif; color: #d4e981; }
 .red-asset-counts span { color: #819087; font: 6px 'Space Mono',monospace; }
+.red-asset-level-info { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -3px 0 12px; padding: 8px 5px; border-bottom: 1px solid #344139; }
+.red-asset-level-info .mono { color: #819087; font-size: 7px; }
+.red-asset-level-info strong { color: #d4e981; font: 700 12px 'Space Mono',monospace; white-space: nowrap; }
 .red-asset-dates { display: grid; gap: 6px; margin: 0; }
 .red-asset-dates div { display: flex; justify-content: space-between; gap: 6px; font-size: 8px; }
 .red-asset-dates dt { color: #7f8e84; }
@@ -291,7 +298,10 @@
 .red-collection-highlights strong { color: #e9e7dc; font: 600 12px 'DM Sans',sans-serif; overflow-wrap: anywhere; }
 .red-asset-record-groups { display: grid; gap: 24px; }
 .red-asset-acquisition-group { min-width: 0; padding-top: 12px; border-top: 1px solid #46554b; }
-.red-asset-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.red-asset-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 13px; cursor: pointer; list-style: none; }
+.red-asset-group-heading::-webkit-details-marker { display: none; }
+.red-asset-group-heading::after { content: '−'; color: #d4e981; font: 12px 'Space Mono',monospace; }
+.red-asset-acquisition-group:not([open]) > .red-asset-group-heading::after { content: '+'; }
 .red-asset-group-heading h3 { margin: 0; color: #e9e7dc; font: 700 24px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .red-asset-group-heading > span,.red-asset-rarity-heading > span { color: #87958b; font: 8px 'Space Mono',monospace; white-space: nowrap; }
 .red-asset-rarity-group + .red-asset-rarity-group { margin-top: 17px; }
@@ -344,13 +354,20 @@
 .market-item-copy .market-kicker { min-height: 12px; font-size: 7px; }
 .market-item-copy h3 { min-height: 39px; margin: 7px 0 10px; color: #f2ebf3; font: 600 17px/1.08 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .market-item-meta { display: flex; justify-content: space-between; gap: 8px; color: #aa9db2; font: 7px 'Space Mono',monospace; text-transform: uppercase; }
-.market-item-meta span:first-child { color: var(--market-gold); }
+.market-item-meta span:first-child { color: var(--market-gold); font: 700 12px 'Space Mono',monospace; }
 .market-buy { min-height: 39px; margin: 0 12px 12px; color: #170f1d; border: 0; background: linear-gradient(90deg,#e9c875,#bd8fda); font: 700 9px 'Space Mono',monospace; cursor: pointer; }
 .market-buy:hover:not(:disabled) { filter: brightness(1.12); }
 .market-buy:disabled { color: #9d91a4; border: 1px solid #493c50; background: #211b28; cursor: not-allowed; }
 .market-unequip { min-height: 30px; margin: -5px 12px 12px; color: #bda9cb; border: 1px solid #594668; background: transparent; font: 8px 'Space Mono',monospace; cursor: pointer; }
 .market-coming { max-width: 1420px; min-height: 145px; display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 22px auto 0; padding: 26px; border: 1px solid #44344e; background: linear-gradient(110deg,#21192b,#121019); }
 .market-coming p { margin: 10px 0 0; color: #b3a8ba; font-size: 12px; }
+.market-coming-toggle { display: block; }
+.market-coming-toggle:not([open]) { min-height: 0; }
+.market-coming-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer; list-style: none; }
+.market-coming-summary::-webkit-details-marker { display: none; }
+.market-coming-summary::after { content: '−'; color: var(--market-gold); font: 14px 'Space Mono',monospace; }
+.market-coming-toggle:not([open]) .market-coming-summary::after { content: '+'; }
+.market-coming-description { margin-top: 12px !important; }
 .market-coming-badge { flex: 0 0 auto; padding: 9px 11px; color: var(--market-gold); border: 1px solid #806a43; font: 8px 'Space Mono',monospace; }
 .market-credit-coming { border-color: #40364a; background: linear-gradient(110deg,#19151e,#0f0d14); }
 .market-empty { max-width: 1420px; margin: 22px auto; padding: 34px; color: #c1b6c8; border: 1px dashed #574563; text-align: center; }
@@ -410,6 +427,8 @@
 .credit-guide-disclosure.is-compact .red-credit-guide li strong { color: var(--market-gold); font-size: 8px; }
 .market-sort-note { margin: 7px 0 0; color: #a99cb3; font: 8px 'Space Mono',monospace; }
 @media(max-width:700px) {
+  .lobby-name-controls { align-items: stretch; flex-direction: column; }
+  .lobby-name-controls .action { width: 100%; }
   .market-hero { grid-template-columns: 1fr; }
   .market-hero h1 { font-size: clamp(70px,19vw,110px); }
   .market-wallet { max-width: none; }
@@ -422,6 +441,10 @@
   .market-item-copy h3 { font-size: 14px; }
   .market-item-meta { flex-direction: column; gap: 5px; }
   .market-coming { align-items: flex-start; flex-direction: column; padding: 20px; }
+  .market-coming-summary { align-items: flex-start; gap: 12px; }
+  .market-coming-summary .market-coming-badge { display: none; }
+  .market-coming-summary h2 { font-size: 30px; }
+  .market-coming-description { font-size: 11px !important; }
   .inventory-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .red-credit-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
   .red-credit-row .mono:last-child { grid-column: 1 / -1; }

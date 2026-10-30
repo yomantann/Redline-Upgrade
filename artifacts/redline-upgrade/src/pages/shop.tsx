@@ -143,8 +143,14 @@ export function ShopPage() {
           </div>
         )}
       </section>
-      <section className="market-coming"><div><span className="market-kicker">IN DEVELOPMENT</span><h2>Pawn skins and board cosmetics</h2><p>Pawn skins and board cosmetics are in development.</p></div><span className="market-coming-badge">IN DEVELOPMENT</span></section>
-      <section className="market-coming market-credit-coming"><div><span className="market-kicker">FUTURE PAYMENT OPTIONS</span><h2>Get more Credits</h2><p>Credit bundles are not available yet. No payment is taken and no Credits are granted here.</p></div><span className="market-coming-badge">COMING SOON</span></section>
+      <details className="market-coming market-coming-toggle" open>
+        <summary className="market-coming-summary"><div><span className="market-kicker">IN DEVELOPMENT</span><h2>Pawn skins and board cosmetics</h2></div><span className="market-coming-badge">IN DEVELOPMENT</span></summary>
+        <p className="market-coming-description">Pawn skins and board cosmetics are in development.</p>
+      </details>
+      <details className="market-coming market-credit-coming market-coming-toggle" open>
+        <summary className="market-coming-summary"><div><span className="market-kicker">FUTURE PAYMENT OPTIONS</span><h2>Get more Credits</h2></div><span className="market-coming-badge">COMING SOON</span></summary>
+        <p className="market-coming-description">Credit bundles are not available yet. No payment is taken and no Credits are granted here.</p>
+      </details>
       {selected && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setSelected(null); }}>
         <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="market-confirm-title">
           <button className="market-modal-close" onClick={() => setSelected(null)} aria-label="Close purchase confirmation">×</button>

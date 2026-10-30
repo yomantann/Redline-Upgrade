@@ -57,6 +57,7 @@ async function loadPlayers(tx: Tx | typeof db, roomId: string) {
   return tx
     .select({
       player: roomPlayersTable,
+      displayName: usersTable.displayName,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
     })
@@ -86,10 +87,10 @@ async function buildDetails(tx: Tx | typeof db, room: GameRoom): Promise<RoomDet
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     },
-    players: rows.map(({ player, firstName, lastName }) => ({
+    players: rows.map(({ player, displayName, firstName, lastName }) => ({
       userId: player.userId,
       displayName:
-        [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
+        displayName?.trim() || [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
       slot: player.slot,
       status:
         player.status === "joined" && isStale(player, DISCONNECT_AFTER_MS, now)
@@ -396,9 +397,9 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
 
     const seated = players.slice(0, MAX_ROOM_PLAYERS);
     const names = new Map(
-      (await loadPlayers(tx, roomId)).map(({ player, firstName, lastName }) => [
+      (await loadPlayers(tx, roomId)).map(({ player, displayName, firstName, lastName }) => [
         player.userId,
-        [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
+        displayName?.trim() || [firstName, lastName].filter(Boolean).join(" ").trim() || `Player ${player.slot + 1}`,
       ]),
     );
     const baseMatch = createMultiplayerMatch(
