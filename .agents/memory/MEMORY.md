@@ -7,3 +7,4 @@
 - [Haunted artwork scope](haunted-artwork-scope.md) — Haunted character portraits belong to Haunted selection and, later, the Haunted board only.
 - [Bio Upgrade release gate](bio-upgrade-release-gate.md) — keep Bio gated until its own party experience is ready; retain the unique Bio-only pawn palette.
 - [Account progression records](account-progression-records.md) — award permanent progress only from authenticated, server-authoritative completed games; do not backfill older or abandoned runs.
+- [Secret achievement privacy](secret-achievement-privacy.md) — keep secret definitions and progress server-only until unlock; freeze collection eligibility by catalog version.

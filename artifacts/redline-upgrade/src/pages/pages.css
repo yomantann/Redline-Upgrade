@@ -190,6 +190,21 @@
 .red-achievement-foot span:last-child { text-align: right; }
 .red-reward { margin-top: 11px; padding-top: 9px; border-top: 1px solid #2d3832; color: #c6d88a; font: 8px 'Space Mono',monospace; }
 .red-reward small { display: block; margin-top: 4px; color: #879087; font: 6px 'Space Mono',monospace; letter-spacing: .06em; }
+.red-achievement.is-secret { position: relative; overflow: hidden; }
+.red-mystery-art { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid #59675e; background: radial-gradient(circle,#39423d 0 2px,#18211d 3px 13px,#111917 14px); color: #78827b; }
+.red-mystery-art span { filter: blur(2.4px); font: 700 32px 'Barlow Condensed',sans-serif; }
+.red-secret-seal { margin-top: 24px; padding-top: 10px; border-top: 1px solid #2d3832; color: #66736a; font-size: 7px; letter-spacing: .08em; }
+.red-secret-art { display: block; width: 58px; height: 58px; filter: drop-shadow(0 0 9px #9b8cff70); animation: secretReveal .55s cubic-bezier(.2,.8,.3,1) both; }
+.red-achievement.is-secret.is-unlocked { border-color: #6b708d; background: linear-gradient(145deg,#211d2b,#111715 70%); }
+.red-achievement.tier-card-mythic { border-color: #8770c2; animation: mythicPulse 3.2s ease-in-out infinite; }
+.red-achievement.tier-card-mythic:before { content: ""; position: absolute; inset: -55% -25%; pointer-events: none; background: linear-gradient(110deg,transparent 42%,#d8c8ff18 50%,transparent 58%); transform: translateX(-35%); animation: mythicSweep 5s ease-in-out infinite; }
+.tier-mythic { color: #d2b5ff; text-shadow: 0 0 8px #bb91ff70; }
+@keyframes secretReveal { from { opacity: 0; transform: scale(.65) rotate(-14deg); filter: blur(6px); } to { opacity: 1; transform: scale(1) rotate(0); filter: drop-shadow(0 0 9px #9b8cff70); } }
+@keyframes mythicPulse { 0%,100% { box-shadow: 0 0 0 #bca1ff00; } 50% { box-shadow: 0 0 18px #bca1ff20; } }
+@keyframes mythicSweep { 0%,25% { transform: translateX(-55%); } 70%,100% { transform: translateX(55%); } }
+@media (prefers-reduced-motion: reduce) {
+  .red-secret-art,.red-achievement.tier-card-mythic,.red-achievement.tier-card-mythic:before { animation: none; }
+}
 .red-empty-state,.red-state-card { display: flex; align-items: flex-start; gap: 18px; padding: 28px; border: 1px dashed #4b5a50; background: #111917; }
 .red-empty-mark { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid #d4e981; color: #d4e981; font: 20px 'Space Mono',monospace; }
 .red-empty-state h3,.red-state-card h2 { margin: 0 0 5px; color: #e9e7dc; font: 700 24px 'Barlow Condensed',sans-serif; text-transform: uppercase; }

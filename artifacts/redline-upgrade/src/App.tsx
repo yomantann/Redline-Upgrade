@@ -20,6 +20,7 @@ import { ShopPage } from '@/pages/shop';
 import { boardAvailabilityLabel } from '@/game/boards';
 import { useAuth } from '@workspace/replit-auth-web';
 import { achievementCatalog } from '@/game/achievement-catalog';
+import { getAchievementProfile } from '@workspace/api-client-react';
 
 function Artwork({
   index = 0,
@@ -542,14 +543,41 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 function AchievementNotice() {
   const { newAchievementIds } = useGame();
   const [dismissedKey, setDismissedKey] = useState('');
-  const awards = achievementCatalog.filter(achievement => newAchievementIds.includes(achievement.id));
   const key = newAchievementIds.join('|');
+  const standardAwards = achievementCatalog.filter(achievement => newAchievementIds.includes(achievement.id));
+  const [secretAwards, setSecretAwards] = useState<{ id: string; name: string; description: string; rarity?: string; artwork?: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!newAchievementIds.some(id => id.startsWith('secret-'))) {
+      setSecretAwards([]);
+      return () => { cancelled = true; };
+    }
+    getAchievementProfile().then(profile => {
+      if (cancelled) return;
+      setSecretAwards(profile.achievements
+        .filter(item => item.isSecret && newAchievementIds.includes(item.achievementId) && item.name && item.description)
+        .map(item => ({
+          id: item.achievementId,
+          name: item.name!,
+          description: item.description!,
+          rarity: item.rarity,
+          artwork: item.artwork,
+        })));
+    }).catch(() => {
+      if (!cancelled) setSecretAwards([]);
+    });
+    return () => { cancelled = true; };
+  }, [key]);
+  const awards = [
+    ...standardAwards.map(achievement => ({ id: achievement.id, name: achievement.name, description: achievement.description, rarity: achievement.rarity, artwork: undefined })),
+    ...secretAwards,
+  ];
   if (!awards.length || dismissedKey === key) return null;
   return (
-    <aside className="achievement-unlock-notice" role="status" aria-live="polite" aria-label="New achievements unlocked">
+    <aside className={`achievement-unlock-notice ${awards.some(award => award.rarity === 'MYTHIC') ? 'is-mythic' : ''}`} role="status" aria-live="polite" aria-label="New achievements unlocked">
       <div className="achievement-notice-top"><span className="mono">PROGRESSION UPDATE / {awards.length} NEW</span><button type="button" onClick={() => setDismissedKey(key)} aria-label="Dismiss achievement notification">×</button></div>
-      <h2>{awards.length === 1 ? 'Achievement unlocked' : 'Achievements unlocked'}</h2>
-      <ul>{awards.map(award => <li key={award.id}><strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
+      <h2>{awards.some(award => award.rarity === 'MYTHIC') ? 'Mythic achievement secured' : awards.length === 1 ? 'Achievement unlocked' : 'Achievements unlocked'}</h2>
+      <ul>{awards.map(award => <li key={award.id}>{award.artwork && <img className="achievement-notice-art" src={award.artwork} alt="" />}<strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
     </aside>
   );
 }

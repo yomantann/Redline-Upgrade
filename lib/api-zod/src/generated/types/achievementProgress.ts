@@ -5,13 +5,22 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AchievementProgressRarity } from './achievementProgressRarity';
 
 export interface AchievementProgress {
   achievementId: string;
-  progress: number;
+  isSecret: boolean;
+  /** Omitted for locked secret achievements. */
+  progress?: number;
   /** @nullable */
   unlockedAt: Date | null;
   /** @nullable */
   unlockGameId: string | null;
-  rewardCredits: number;
+  /** Omitted for locked secret achievements. */
+  rewardCredits?: number;
+  name?: string;
+  description?: string;
+  rarity?: AchievementProgressRarity;
+  /** Unlocked secret achievement artwork as an inline SVG data URL. */
+  artwork?: string;
 }

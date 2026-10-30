@@ -119,13 +119,22 @@ export const GetAchievementProfileResponse = zod.object({
   "metrics": zod.record(zod.string(), zod.number()),
   "achievements": zod.array(zod.object({
   "achievementId": zod.string(),
-  "progress": zod.number().int(),
+  "isSecret": zod.boolean(),
+  "progress": zod.number().int().optional().describe('Omitted for locked secret achievements.'),
   "unlockedAt": zod.coerce.date().nullable(),
   "unlockGameId": zod.string().nullable(),
-  "rewardCredits": zod.number().int()
+  "rewardCredits": zod.number().int().optional().describe('Omitted for locked secret achievements.'),
+  "name": zod.string().optional(),
+  "description": zod.string().optional(),
+  "rarity": zod.enum(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'LEGENDARY', 'MYTHIC']).optional(),
+  "artwork": zod.string().optional().describe('Unlocked secret achievement artwork as an inline SVG data URL.')
 })),
   "unlockedCount": zod.number().int(),
   "totalCount": zod.number().int(),
+  "standardCount": zod.number().int(),
+  "secretCount": zod.number().int(),
+  "standardUnlockedCount": zod.number().int(),
+  "secretUnlockedCount": zod.number().int(),
   "collection": zod.array(zod.object({
   "assetId": zod.string(),
   "acquiredCount": zod.number().int(),

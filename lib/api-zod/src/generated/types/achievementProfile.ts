@@ -15,6 +15,10 @@ export interface AchievementProfile {
   achievements: AchievementProgress[];
   unlockedCount: number;
   totalCount: number;
+  standardCount: number;
+  secretCount: number;
+  standardUnlockedCount: number;
+  secretUnlockedCount: number;
   collection: AssetCollectionEntry[];
   history: CompletedGameRecord[];
 }

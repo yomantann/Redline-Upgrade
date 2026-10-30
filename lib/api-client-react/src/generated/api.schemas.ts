@@ -245,14 +245,34 @@ export interface ActiveSoloGameResponse {
 
 export type AchievementProfileMetrics = {[key: string]: number};
 
+export type AchievementProgressRarity = typeof AchievementProgressRarity[keyof typeof AchievementProgressRarity];
+
+
+export const AchievementProgressRarity = {
+  BRONZE: 'BRONZE',
+  SILVER: 'SILVER',
+  GOLD: 'GOLD',
+  PLATINUM: 'PLATINUM',
+  LEGENDARY: 'LEGENDARY',
+  MYTHIC: 'MYTHIC',
+} as const;
+
 export interface AchievementProgress {
   achievementId: string;
-  progress: number;
+  isSecret: boolean;
+  /** Omitted for locked secret achievements. */
+  progress?: number;
   /** @nullable */
   unlockedAt: string | null;
   /** @nullable */
   unlockGameId: string | null;
-  rewardCredits: number;
+  /** Omitted for locked secret achievements. */
+  rewardCredits?: number;
+  name?: string;
+  description?: string;
+  rarity?: AchievementProgressRarity;
+  /** Unlocked secret achievement artwork as an inline SVG data URL. */
+  artwork?: string;
 }
 
 export interface AssetCollectionEntry {
@@ -313,6 +333,10 @@ export interface AchievementProfile {
   achievements: AchievementProgress[];
   unlockedCount: number;
   totalCount: number;
+  standardCount: number;
+  secretCount: number;
+  standardUnlockedCount: number;
+  secretUnlockedCount: number;
   collection: AssetCollectionEntry[];
   history: CompletedGameRecord[];
 }

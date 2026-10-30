@@ -12,9 +12,12 @@ import {
   validateAchievementCatalog,
 } from "../../../redline-upgrade/src/game/achievement-catalog";
 import { assets, getAsset } from "../../../redline-upgrade/src/game/assets";
+import { characters } from "../../../redline-upgrade/src/game/characters";
+import { careers } from "../../../redline-upgrade/src/game/careers";
 import { calculateAssetValue } from "../../../redline-upgrade/src/game/endgame";
 import type { Match } from "../../../redline-upgrade/src/game/match";
 import type { MatchAssetEvent } from "../../../redline-upgrade/src/game/multiplayer";
+import { secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type GameSource = "SOLO" | "MULTIPLAYER";
@@ -84,6 +87,186 @@ function toMetrics(value: unknown): Record<string, number> {
     if (typeof metric === "number" && Number.isFinite(metric)) result[key] = metric;
   }
   return result;
+}
+
+type SecretRun = {
+  retainedCount: number;
+  lossFree: boolean;
+  topDecileWealth: boolean;
+  won: boolean;
+  startingCareerId: string | null;
+  endingCareerId: string | null;
+};
+
+const SECRET_ASSET_CATALOG_VERSION = "redline-assets-v1";
+// Frozen v1 eligibility: future additions to the normal asset catalog do not
+// retroactively change collection achievements already earned under this set.
+const SECRET_ASSET_CATALOG_V1 = [
+  "budget-racer", "flex-car", "supercar", "electric-hypercar", "luxury-travel", "vip-life", "low-key-life",
+  "creator-lifestyle", "cyber-dog", "golden-retriever", "robot-cat", "chaos-monkey", "index-fund", "tech-investment",
+  "degen-investment", "starter-condo", "luxury-apartment", "beach-house", "mansion", "street-tuner", "electric-coupe",
+  "executive-sedan", "track-special", "grand-tourer", "prototype-one", "studio-life", "city-weekends", "wellness-club",
+  "art-collector", "private-retreat", "global-elite", "rescue-pup", "street-cat", "drone-bird", "fox-companion",
+  "holo-hound", "legendary-companion", "savings-bond", "community-fund", "green-energy", "venture-seed",
+  "creator-fund", "deep-tech-fund", "moonshot-portfolio", "shared-loft", "townhouse", "smart-home",
+  "skyline-penthouse", "country-estate", "landmark-residence", "aero-sprint", "solar-sculptor", "rally-specter",
+  "vector-roadster", "chrono-coupe", "biofuel-rally", "monocoque-gt", "drift-phantom", "tidal-ev", "orbital-racer",
+  "smart-wardrobe", "immersive-theater", "wellness-capsule", "private-chef", "orbital-tour", "vinyl-room",
+  "aurora-sauna", "ceramic-studio", "night-market-pass", "slow-living-retreat", "nanodrone-owl", "shiba-companion",
+  "pocket-hedgehog", "signal-parrot", "therapy-llama", "coral-axolotl", "mechanical-ferret", "moon-rabbit",
+  "miniature-pony", "rescue-crow", "fusion-grid", "quantum-basket", "robotics-fund", "municipal-bonds",
+  "lunar-mining", "water-rights", "synthetic-biology", "art-market-fund", "agri-tech", "retrofit-trust",
+  "forest-cabin", "modular-urban-home", "floating-villa", "desert-observatory", "micro-loft", "lakeside-compound",
+  "vertical-garden-tower", "eco-farmhouse", "heritage-hotel", "coastal-lighthouse",
+] as const;
+
+function secretRecentRuns(facts: Record<string, string[]>): SecretRun[] {
+  return (facts.secretRecentRuns ?? []).flatMap((value) => {
+    try {
+      const run = JSON.parse(value) as SecretRun;
+      return typeof run.won === "boolean" ? [run] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function trailingCount<T>(items: readonly T[], predicate: (item: T) => boolean): number {
+  let count = 0;
+  for (let index = items.length - 1; index >= 0 && predicate(items[index]); index -= 1) count += 1;
+  return count;
+}
+
+function countFacts(facts: Record<string, string[]>, key: string): string[] {
+  return [...new Set(facts[key] ?? [])];
+}
+
+function computeSecretMetrics(args: {
+  currentMetrics: Record<string, number>;
+  facts: Record<string, string[]>;
+  run: SecretRun;
+  oldAssets: Map<string, { acquiredCount: number; gamesRetained: number; retainedCount: number }>;
+  acquiredAssetIds: string[];
+  retainedIds: string[];
+  lostAssetIds: string[];
+  player: Match["players"][number];
+  match: Match;
+  playerIndex: number;
+  portfolioValue: number;
+  topDecileWealth: boolean;
+  isWin: boolean;
+  standardUnlockedCount: number;
+}): Record<string, number> {
+  const {
+    currentMetrics, facts, run, oldAssets, acquiredAssetIds, retainedIds, lostAssetIds,
+    player, match, playerIndex, portfolioValue, topDecileWealth, isWin, standardUnlockedCount,
+  } = args;
+  facts.secretAssetCatalogVersion = [SECRET_ASSET_CATALOG_VERSION];
+  const recentRuns = [...secretRecentRuns(facts), run].slice(-25);
+  facts.secretRecentRuns = recentRuns.map((entry) => JSON.stringify(entry));
+
+  const wonCharacterIds = countFacts(facts, "secretWonCharacterIds");
+  const wonCareerIds = countFacts(facts, "secretWonCareerIds");
+  const characterCareerWins = new Map<string, number>();
+  for (const value of facts.secretCharacterCareerWins ?? []) {
+    try {
+      const [key, count] = JSON.parse(value) as [string, number];
+      if (typeof key === "string" && Number.isFinite(count)) characterCareerWins.set(key, count);
+    } catch {
+      // Ignore an incomplete legacy fact rather than preventing game completion.
+    }
+  }
+  const startingCareerId = run.startingCareerId;
+  const careerPair = startingCareerId ? `${player.characterId}|${startingCareerId}` : "";
+  if (isWin) {
+    wonCharacterIds.push(player.characterId);
+    (player.history.careerIds ?? []).forEach((id) => wonCareerIds.push(id));
+    if (careerPair) characterCareerWins.set(careerPair, (characterCareerWins.get(careerPair) ?? 0) + 1);
+  }
+  facts.secretWonCharacterIds = [...new Set(wonCharacterIds)];
+  facts.secretWonCareerIds = [...new Set(wonCareerIds)];
+  facts.secretCharacterCareerWins = [...characterCareerWins].map(([key, count]) => JSON.stringify([key, count]));
+
+  const retainedSet = new Set(retainedIds);
+  const assetGamesRetained = new Map([...oldAssets].map(([id, row]) => [id, row.gamesRetained + (retainedSet.has(id) ? 1 : 0)]));
+  const immortalStreak = trailingCount(recentRuns, (entry) => entry.retainedCount >= 3);
+  const noLossStreak = trailingCount(recentRuns, (entry) => entry.lossFree);
+  const undefeatedStreak = trailingCount(recentRuns, (entry) => entry.won);
+  const careerImmortalityStreak = trailingCount(recentRuns, (entry) =>
+    entry.won && Boolean(entry.startingCareerId) && entry.startingCareerId === entry.endingCareerId,
+  );
+  const qualifiesSixDimensions = player.wealth >= 1_000_000
+    && player.aiSkill >= 50
+    && player.fame >= 100
+    && player.lifestyle >= 100
+    && player.influence >= 100
+    && portfolioValue >= 1_000_000;
+  const trackedValues = [player.wealth, player.aiSkill, player.fame, player.lifestyle, player.influence, portfolioValue];
+  const absoluteDominance = isWin && trackedValues.every((value, index) =>
+    match.players.every((opponent, opponentIndex) => opponentIndex === playerIndex || value > [
+      opponent.wealth,
+      opponent.aiSkill,
+      opponent.fame,
+      opponent.lifestyle,
+      opponent.influence,
+      calculateAssetValue(opponent),
+    ][index]),
+  );
+  const checkpointPositions = match.lateGameCheckpoint?.positions ?? [];
+  const atLastCheckpoint = checkpointPositions.length === match.players.length
+    && checkpointPositions[playerIndex] === Math.min(...checkpointPositions);
+  const endgameBases = match.players.map((candidate) => candidate.endgame?.baseValue);
+  const atLastFinalDecision = endgameBases.every((value): value is number => typeof value === "number")
+    && player.endgame !== null
+    && player.endgame.baseValue === Math.min(...endgameBases);
+  const visitedMilestones = new Set(player.history.milestoneSpacesVisited ?? []);
+  const completedMilestones = new Set(player.history.milestoneSpacesCompleted ?? []);
+  const perfectMilestones = isWin && visitedMilestones.size > 0
+    && [...visitedMilestones].every((space) => completedMilestones.has(space));
+  const eligibleAssets = SECRET_ASSET_CATALOG_V1;
+  const everyAssetRetained = eligibleAssets.length > 0 && eligibleAssets.every((assetId) =>
+    (oldAssets.get(assetId)?.retainedCount ?? 0) > 0 || retainedSet.has(assetId),
+  );
+  const everyAssetAcquiredTwice = eligibleAssets.length > 0 && eligibleAssets.every((assetId) =>
+    (oldAssets.get(assetId)?.acquiredCount ?? 0) + acquiredAssetIds.filter((id) => id === assetId).length >= 2,
+  );
+  const acquiredUnique = new Set(acquiredAssetIds);
+  // No sale action exists in the current game rules; this tracks asset transfers away.
+  const lostThisGame = new Set(lostAssetIds);
+  const perfectHeist = retainedIds.length === 4 && acquiredUnique.size === 4
+    && retainedIds.every((assetId) => acquiredUnique.has(assetId)) && lostThisGame.size === 0;
+  const minStartingSalary = Math.min(...careers.flatMap((career) => career.salaryTiers));
+  const winningCareerPairCount = careerPair ? characterCareerWins.get(careerPair) ?? 0 : 0;
+  return {
+    ...currentMetrics,
+    secretImmortalPortfolio: immortalStreak,
+    secretDiamondHands: Math.max(currentMetrics.secretDiamondHands ?? 0, ...assetGamesRetained.values(), 0),
+    secretGrandCollector: everyAssetRetained ? 1 : 0,
+    secretUntouchableEmpire: noLossStreak,
+    secretVault: currentMetrics.gamesHeldAssets ?? 0,
+    secretCollectorsParadox: everyAssetAcquiredTwice ? 1 : 0,
+    secretPerfectHeist: perfectHeist ? 1 : 0,
+    secretBillionairesClub: (currentMetrics.secretBillionairesClub ?? 0) + (topDecileWealth ? 1 : 0),
+    secretSixDimensionalGenius: qualifiesSixDimensions ? 1 : 0,
+    secretAbsoluteDominance: absoluteDominance ? 1 : 0,
+    secretImpossibleComeback: isWin && atLastCheckpoint ? 1 : 0,
+    secretPerfectBalance: [player.aiSkill, player.fame, player.lifestyle, player.influence].every((value) =>
+      value >= 25 && value === player.aiSkill,
+    ) ? 1 : 0,
+    secretMasterOfAllTrades: wonCharacterIds.length,
+    secretChameleon: wonCareerIds.length,
+    secretCareerImmortality: careerImmortalityStreak,
+    secretUnderdogLegend: isWin && player.history.startingSalary === minStartingSalary ? 1 : 0,
+    secretUltimateSpecialist: winningCareerPairCount,
+    secretUndefeated: undefeatedStreak,
+    secretFinalGambler: (currentMetrics.secretFinalGambler ?? 0) + (isWin && player.history.finalGambles > 0 ? 1 : 0),
+    secretDoubleDownDynasty: (currentMetrics.secretDoubleDownDynasty ?? 0) + (isWin && player.history.doubleDowns > 0 ? 1 : 0),
+    secretLastSecondLegend: isWin && atLastFinalDecision ? 1 : 0,
+    secretPerfectRun: perfectMilestones ? 1 : 0,
+    secretCenturion: currentMetrics.wins ?? 0,
+    secretRedlineMyth: standardUnlockedCount,
+    secretBeyondTheRedline: 0,
+  };
 }
 
 function assetEventsFromMatch(match: Match): MatchAssetEvent[] {
@@ -206,6 +389,11 @@ export async function recordCompletedGame(
   const transferCount = playerEvents.filter((event) => event.type === "ASSET_TRANSFERRED").length;
   const upgradeCount = player.history.assetUpgrades;
   const isWin = placement === 1;
+  const wealthRankThreshold = [...match.players]
+    .filter((candidate) => candidate.status === "FINISHED")
+    .map((candidate) => candidate.wealth)
+    .sort((a, b) => b - a)[Math.max(0, Math.ceil(match.players.filter((candidate) => candidate.status === "FINISHED").length * 0.1) - 1)];
+  const topDecileWealth = wealthRankThreshold !== undefined && player.wealth >= wealthRankThreshold;
   const completedAttributes = player.aiSkill + player.fame + player.lifestyle + player.influence;
   const careerIds = [...new Set([...(player.history.careerIds ?? []), player.careerId, player.secondCareer?.careerId]
     .filter((id): id is string => Boolean(id)))];
@@ -265,12 +453,68 @@ export async function recordCompletedGame(
   const oldAchievementRows = await tx.select().from(userAchievementsTable)
     .where(eq(userAchievementsTable.userId, userId));
   const previousAchievements = new Map(oldAchievementRows.map((row) => [row.achievementId, row]));
+  const standardUnlockedCount = achievementCatalog.filter((achievement) => {
+    const previous = previousAchievements.get(achievement.id);
+    const target = achievement.id === "complete-asset-catalog" ? assets.length : achievement.target;
+    return Boolean(previous?.unlockedAt) || getAchievementProgress(achievement, nextMetrics, assets.length) >= target;
+  }).length;
+  const startingCareerId = player.history.careerIds?.[0] ?? player.careerId;
+  const secretRun: SecretRun = {
+    retainedCount: retainedIds.length,
+    lossFree: lostAssetIds.length === 0,
+    topDecileWealth,
+    won: isWin,
+    startingCareerId,
+    endingCareerId: player.careerId,
+  };
+  const nextMetricsWithSecrets = computeSecretMetrics({
+    currentMetrics: nextMetrics,
+    facts,
+    run: secretRun,
+    oldAssets,
+    acquiredAssetIds,
+    retainedIds,
+    lostAssetIds,
+    player,
+    match,
+    playerIndex,
+    portfolioValue,
+    topDecileWealth,
+    isWin,
+    standardUnlockedCount,
+  });
+  const priorSecretUnlocks = new Set(oldAchievementRows.filter((row) => row.unlockedAt).map((row) => row.achievementId));
+  const otherSecretUnlocks = secretAchievementCatalog.slice(0, 24).filter((achievement) =>
+    priorSecretUnlocks.has(achievement.id)
+    || (nextMetricsWithSecrets[achievement.metric] ?? 0) >= achievement.target,
+  ).length;
+  nextMetricsWithSecrets.secretBeyondTheRedline = standardUnlockedCount + otherSecretUnlocks;
+
   const unlockedIds: string[] = [];
   for (const achievement of achievementCatalog) {
     const previous = previousAchievements.get(achievement.id);
     const target = achievement.id === "complete-asset-catalog" ? assets.length : achievement.target;
-    const progress = getAchievementProgress(achievement, nextMetrics, assets.length);
+    const progress = getAchievementProgress(achievement, nextMetricsWithSecrets, assets.length);
     const newlyUnlocked = !previous?.unlockedAt && progress >= target;
+    if (newlyUnlocked) unlockedIds.push(achievement.id);
+    const unlockedAt = previous?.unlockedAt ?? (newlyUnlocked ? completedAt : null);
+    await tx.insert(userAchievementsTable).values({
+      userId,
+      achievementId: achievement.id,
+      progress,
+      unlockedAt,
+      unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null),
+      rewardCredits: achievement.creditReward,
+      updatedAt: completedAt,
+    }).onConflictDoUpdate({
+      target: [userAchievementsTable.userId, userAchievementsTable.achievementId],
+      set: { progress, unlockedAt, unlockGameId: previous?.unlockGameId ?? (newlyUnlocked ? gameId : null), updatedAt: completedAt },
+    });
+  }
+  for (const achievement of secretAchievementCatalog) {
+    const previous = previousAchievements.get(achievement.id);
+    const progress = Math.min(achievement.target, Math.max(0, nextMetricsWithSecrets[achievement.metric] ?? 0));
+    const newlyUnlocked = !previous?.unlockedAt && progress >= achievement.target;
     if (newlyUnlocked) unlockedIds.push(achievement.id);
     const unlockedAt = previous?.unlockedAt ?? (newlyUnlocked ? completedAt : null);
     await tx.insert(userAchievementsTable).values({
@@ -323,7 +567,7 @@ export async function recordCompletedGame(
   facts.characterIds = [...characterIds];
   facts.careerIds = [...careers];
   await tx.update(achievementProfilesTable).set({
-    metrics: nextMetrics,
+    metrics: nextMetricsWithSecrets,
     lifetimeFacts: facts,
     updatedAt: completedAt,
   }).where(eq(achievementProfilesTable.userId, userId));
@@ -367,22 +611,53 @@ export async function getAchievementProfile(userId: string) {
   const history = await db.select().from(completedGameHistoryTable)
     .where(eq(completedGameHistoryTable.userId, userId))
     .orderBy(desc(completedGameHistoryTable.completedAt));
-  const metrics = toMetrics(profile?.metrics);
-  const unlockedCount = achievementCatalog.filter((achievement) => Boolean(savedAchievements.get(achievement.id)?.unlockedAt)).length;
+  const allMetrics = toMetrics(profile?.metrics);
+  const metrics = Object.fromEntries(Object.entries(allMetrics).filter(([key]) => !key.startsWith("secret")));
+  const standardUnlockedCount = achievementCatalog.filter((achievement) => Boolean(savedAchievements.get(achievement.id)?.unlockedAt)).length;
+  const secretUnlockedCount = secretAchievementCatalog.filter((achievement) => Boolean(savedAchievements.get(achievement.id)?.unlockedAt)).length;
+  const unlockedCount = standardUnlockedCount + secretUnlockedCount;
   return {
     metrics,
-    achievements: achievementCatalog.map((achievement) => {
-      const row = savedAchievements.get(achievement.id);
-      return {
-        achievementId: achievement.id,
-        progress: row?.progress ?? 0,
-        unlockedAt: row?.unlockedAt ?? null,
-        unlockGameId: row?.unlockGameId ?? null,
-        rewardCredits: achievement.creditReward,
-      };
-    }),
+    achievements: [
+      ...achievementCatalog.map((achievement) => {
+        const row = savedAchievements.get(achievement.id);
+        return {
+          achievementId: achievement.id,
+          isSecret: false,
+          name: achievement.name,
+          description: achievement.description,
+          rarity: achievement.rarity,
+          progress: row?.progress ?? 0,
+          unlockedAt: row?.unlockedAt ?? null,
+          unlockGameId: row?.unlockGameId ?? null,
+          rewardCredits: achievement.creditReward,
+        };
+      }),
+      ...secretAchievementCatalog.map((achievement) => {
+        const row = savedAchievements.get(achievement.id);
+        const unlocked = Boolean(row?.unlockedAt);
+        return {
+          achievementId: achievement.id,
+          isSecret: true,
+          unlockedAt: row?.unlockedAt ?? null,
+          unlockGameId: row?.unlockGameId ?? null,
+          ...(unlocked ? {
+            name: achievement.name,
+            description: achievement.description,
+            rarity: achievement.rarity,
+            artwork: achievement.artwork,
+            progress: achievement.target,
+            rewardCredits: achievement.creditReward,
+          } : {}),
+        };
+      }),
+    ],
     unlockedCount,
-    totalCount: achievementCatalog.length,
+    totalCount: achievementCatalog.length + secretAchievementCatalog.length,
+    standardCount: achievementCatalog.length,
+    secretCount: secretAchievementCatalog.length,
+    standardUnlockedCount,
+    secretUnlockedCount,
     collection,
     history,
   };

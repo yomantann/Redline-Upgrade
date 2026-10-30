@@ -9,6 +9,7 @@
 export * from './achievementProfile';
 export * from './achievementProfileMetrics';
 export * from './achievementProgress';
+export * from './achievementProgressRarity';
 export * from './activeSoloGameResponse';
 export * from './assetCollectionEntry';
 export * from './authUser';

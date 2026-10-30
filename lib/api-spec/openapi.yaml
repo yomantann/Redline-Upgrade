@@ -922,7 +922,7 @@ components:
             - type: "null"
     AchievementProfile:
       type: object
-      required: [metrics, achievements, unlockedCount, totalCount, collection, history]
+      required: [metrics, achievements, unlockedCount, totalCount, standardCount, secretCount, standardUnlockedCount, secretUnlockedCount, collection, history]
       properties:
         metrics:
           type: object
@@ -936,6 +936,14 @@ components:
           type: integer
         totalCount:
           type: integer
+        standardCount:
+          type: integer
+        secretCount:
+          type: integer
+        standardUnlockedCount:
+          type: integer
+        secretUnlockedCount:
+          type: integer
         collection:
           type: array
           items:
@@ -946,12 +954,15 @@ components:
             $ref: "#/components/schemas/CompletedGameRecord"
     AchievementProgress:
       type: object
-      required: [achievementId, progress, unlockedAt, unlockGameId, rewardCredits]
+      required: [achievementId, isSecret, unlockedAt, unlockGameId]
       properties:
         achievementId:
           type: string
+        isSecret:
+          type: boolean
         progress:
           type: integer
+          description: Omitted for locked secret achievements.
         unlockedAt:
           type: [string, "null"]
           format: date-time
@@ -959,6 +970,17 @@ components:
           type: [string, "null"]
         rewardCredits:
           type: integer
+          description: Omitted for locked secret achievements.
+        name:
+          type: string
+        description:
+          type: string
+        rarity:
+          type: string
+          enum: [BRONZE, SILVER, GOLD, PLATINUM, LEGENDARY, MYTHIC]
+        artwork:
+          type: string
+          description: Unlocked secret achievement artwork as an inline SVG data URL.
     AssetCollectionEntry:
       type: object
       required: [assetId, acquiredCount, retainedCount, lostCount, gamesAcquired, gamesRetained, firstAcquiredAt, firstRetainedAt, lastAcquiredAt, lastRetainedAt]

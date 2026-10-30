@@ -159,6 +159,7 @@ const tierCredits: Record<AchievementTier, number> = {
   GOLD: 100,
   PLATINUM: 200,
   LEGENDARY: 500,
+  MYTHIC: 1_000,
 };
 
 function categoryRows(category: AchievementCategory, rows: AchievementRow[]): AchievementDefinition[] {
