@@ -70,7 +70,8 @@ function Home() {
               <span className="title-outline">Upgrade</span>
             </h1>
             <p className="home-intro">
-              A multi-board game platform. Choose a board, then play solo or create a room with friends.
+              <strong>Build Your Empire. Risk It All.</strong>
+              <span>Roll. Rise. Risk. Repeat.</span>
             </p>
             <div className="home-actions">
               <button className="action" type="button" onClick={start}>

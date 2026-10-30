@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { AppShell } from '@/components/app-shell';
+import { CreditEarningGuide } from '@/components/credit-earning-guide';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
 import './pages.css';
 
@@ -11,7 +12,7 @@ type CatalogResponse = { items: CatalogItem[]; ownedItemIds: string[]; equipped:
 type InventoryResponse = { items: { acquiredAt: string; item: CatalogItem }[]; equipped: { slot: string; itemId: string | null }[] };
 const money = (value: number) => value.toLocaleString();
 const characterName = (id: string | null) => id ? id.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
-const rarityRank: Record<string, number> = { MYTHIC: 0, LEGENDARY: 1, EPIC: 2, RARE: 3, UNCOMMON: 4, COMMON: 5 };
+const rarityRank: Record<string, number> = { UNCOMMON: 0, COMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4, MYTHIC: 5 };
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { credentials: 'include' });
@@ -109,11 +110,11 @@ export function ShopPage() {
           <h1>BLACK<br /><span>MARKET</span></h1>
           <p>Rare identities change hands here. Credits earned in completed games are the only currency.</p>
         </div>
-        <aside className="market-wallet"><span>AVAILABLE CREDITS</span><strong>◈ {wallet ? money(wallet.balance) : '—'}</strong><button onClick={() => navigate('/inventory')}>VIEW INVENTORY ↗</button></aside>
+        <aside className="market-wallet"><span>AVAILABLE CREDITS</span><strong>◈ {wallet ? money(wallet.balance) : '—'}</strong><button onClick={() => navigate('/inventory')}>VIEW INVENTORY ↗</button><CreditEarningGuide compact /></aside>
       </header>
       <MarketNav current="shop" />
       <section className="market-section">
-        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · THEN HIGHEST RARITY</p></div>
+        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · UNCOMMON FIRST, THEN BY RARITY</p></div>
           <div className="market-filters" role="group" aria-label="Shop category">
             <button className={category === 'LOGO' ? 'selected' : ''} onClick={() => setCategory('LOGO')}>LOGOS</button>
             <button className={category === 'DRIVER_SKIN' ? 'selected' : ''} onClick={() => setCategory('DRIVER_SKIN')}>DRIVER SKINS</button>
@@ -178,7 +179,10 @@ export function InventoryPage() {
     && (character === 'ALL' || item.characterId === character)
     && (rarity === 'ALL' || item.rarity === rarity)
     && (equippedFilter === 'ALL' || (equippedFilter === 'EQUIPPED' ? data?.equipped.some(row => row.itemId === item.id) : !data?.equipped.some(row => row.itemId === item.id))),
-  );
+  ).sort((a, b) => (rarityRank[a.item.rarity] ?? 99) - (rarityRank[b.item.rarity] ?? 99)
+    || a.item.name.localeCompare(b.item.name));
+  const inventoryRarities = [...new Set((data?.items ?? []).map(row => row.item.rarity))]
+    .sort((a, b) => (rarityRank[a] ?? 99) - (rarityRank[b] ?? 99));
   const characters = [...new Set((data?.items ?? []).map(({ item }) => item.characterId).filter((id): id is string => Boolean(id)))].sort();
   const equippedItems = (data?.items ?? []).filter(({ item }) => data?.equipped.some(row => row.itemId === item.id));
   async function equip(item: CatalogItem, remove = false) {
@@ -223,7 +227,7 @@ export function InventoryPage() {
       <div className="inventory-filters">
         <label>Category<select value={category} onChange={e => setCategory(e.target.value)}><option value="ALL">All</option><option value="LOGO">Logos</option><option value="DRIVER_SKIN">Driver skins</option></select></label>
         <label>Character<select value={character} onChange={e => setCharacter(e.target.value)}><option value="ALL">All characters</option>{characters.map(id => <option key={id} value={id}>{characterName(id)}</option>)}</select></label>
-        <label>Rarity<select value={rarity} onChange={e => setRarity(e.target.value)}><option value="ALL">All rarities</option>{[...new Set((data?.items ?? []).map(row => row.item.rarity))].map(value => <option key={value}>{value}</option>)}</select></label>
+        <label>Rarity<select value={rarity} onChange={e => setRarity(e.target.value)}><option value="ALL">All rarities</option>{inventoryRarities.map(value => <option key={value}>{value}</option>)}</select></label>
         <label>Status<select value={equippedFilter} onChange={e => setEquippedFilter(e.target.value)}><option value="ALL">All</option><option value="EQUIPPED">Equipped</option><option value="UNEQUIPPED">Unequipped</option></select></label>
       </div>
       {!data && !error ? <div className="market-empty">Opening your vault…</div> : filtered.length === 0 ? <div className="market-empty"><h3>No matching owned items</h3><p>Purchases appear here immediately.</p><button className="market-buy" onClick={() => navigate('/shop')}>VISIT BLACK MARKET</button></div> : (

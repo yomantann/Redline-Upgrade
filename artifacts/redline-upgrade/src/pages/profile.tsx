@@ -10,7 +10,7 @@ import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
 import { useLocation } from 'wouter';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
-import { CREDIT_EARNING_GUIDE } from '@/game/credit-rewards';
+import { CreditEarningGuide } from '@/components/credit-earning-guide';
 import './pages.css';
 
 type ProfileTab = 'overview' | 'collection' | 'milestones' | 'history';
@@ -39,8 +39,8 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 };
 
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
-const assetRarityOrder: AssetDefinition['rarity'][] = ['ELITE', 'RARE', 'STANDARD'];
-const assetRarityRank: Record<AssetDefinition['rarity'], number> = { ELITE: 0, RARE: 1, STANDARD: 2 };
+const assetRarityOrder: AssetDefinition['rarity'][] = ['STANDARD', 'RARE', 'ELITE'];
+const assetRarityRank: Record<AssetDefinition['rarity'], number> = { STANDARD: 0, RARE: 1, ELITE: 2 };
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
   SECRET: 'Secret Milestones',
@@ -70,7 +70,6 @@ export function ProfilePage() {
   const [nameStatus, setNameStatus] = useState('');
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
   const [profileInventory, setProfileInventory] = useState<ProfileInventory | null>(null);
-  const [creditsGuideOpen, setCreditsGuideOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -364,15 +363,7 @@ export function ProfilePage() {
                           ['ENDGAME EARNED', creditSummary?.wallet?.endgameEarned.toLocaleString() ?? '—'],
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
-                      <div className="red-credit-guide-tools">
-                        <button className="red-inline-link" type="button" aria-expanded={creditsGuideOpen} aria-controls="credits-earning-guide" onClick={() => setCreditsGuideOpen(open => !open)}>
-                          {creditsGuideOpen ? 'Hide earning guide ↑' : 'How to earn Credits ↗'}
-                        </button>
-                      </div>
-                      {creditsGuideOpen && <div className="red-credit-guide" id="credits-earning-guide">
-                        <div><span className="eyebrow">CREDIT EARNING GUIDE</span><h3>Ways to earn.</h3><p>Game and endgame rewards are granted when an authenticated game is completed. Qualifying rewards can stack.</p></div>
-                        <ul>{CREDIT_EARNING_GUIDE.map(row => <li key={row.title}><span>{row.title}</span><strong>{row.value}{row.value !== 'Reward varies' ? ' Credits' : ''}</strong></li>)}</ul>
-                      </div>}
+                      <CreditEarningGuide />
                     </section>
                     <section className="red-credit-ledger">
                       <div className="red-section-bar"><div><span className="eyebrow">LATEST CREDIT ACTIVITY</span><h2>Wallet transactions</h2></div></div>
@@ -406,7 +397,7 @@ export function ProfilePage() {
                 )}
                 {tab === 'collection' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">YOUR ASSET RECORD</span><h2>Asset archive</h2><p className="red-section-copy">Acquired assets appear first, then sort from highest to lowest rarity. Artwork appears after an asset is retained through a completed game.</p></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">YOUR ASSET RECORD</span><h2>Asset archive</h2><p className="red-section-copy">Acquired assets appear first, then sort from the Standard tier up to Elite. Artwork appears after an asset is retained through a completed game.</p></div>
                       <div className="red-filter-set" role="group" aria-label="Filter asset collection">{([['all', 'Full catalog'], ['ever', 'Acquired'], ['held', 'Held at finish']] as const).map(([value, label]) => <button key={value} type="button" className={collectionFilter === value ? 'selected' : ''} aria-pressed={collectionFilter === value} onClick={() => setCollectionFilter(value)}>{label}</button>)}</div>
                     </div>
                     <div className="red-collection-summary" aria-label="Lifetime asset collection summary">

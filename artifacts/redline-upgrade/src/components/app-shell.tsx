@@ -52,7 +52,7 @@ function Header() {
 
 function Footer() {
   const [location] = useLocation();
-  if (location === '/' || location === '/profile') {
+  if (location === '/' || location === '/profile' || location === '/shop') {
     return (
       <footer className="page-footer page-footer-home" aria-hidden="true">
         <div className="home-footer-signal">

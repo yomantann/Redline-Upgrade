@@ -220,6 +220,8 @@ a { color: inherit; text-decoration: none; }
 .home-title span { display: block; }
 .home-title .title-outline { color: transparent; -webkit-text-stroke: 1px #e9e7dc; }
 .home-intro { max-width: 370px; font-size: clamp(16px,1.45vw,20px); line-height: 1.6; color: #bbc2b7; margin: 27px 0 34px; }
+.home-intro strong { display: block; color: #e9e7dc; font-weight: 700; }
+.home-intro span { display: block; margin-top: 4px; color: #bbc2b7; font-size: .82em; letter-spacing: .04em; }
 .home-actions { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
 .home-low { margin-top: auto; padding-top: 58px; color: #76827b; display: flex; gap: 30px; }
 .home-visual { position: relative; display: grid; place-items: center; border-left: 1px solid #303a37; min-height: 650px; overflow: hidden; background: radial-gradient(circle at 48% 40%,#28302c,#111917 52%,#0d1312 75%); }

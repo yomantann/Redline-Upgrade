@@ -392,13 +392,22 @@
 .red-credit-row strong { text-align: right; font: 700 18px 'Barlow Condensed',sans-serif; }
 .red-credit-row strong.earned { color: #d4e981; }
 .red-credit-row strong.spent { color: #f0948f; }
-.red-credit-guide-tools { grid-column: 1 / -1; }
+.credit-guide-disclosure { grid-column: 1 / -1; }
+.credit-guide-disclosure > summary { display: flex; align-items: center; justify-content: space-between; width: fit-content; min-height: 38px; gap: 12px; padding: 0 12px; color: #d4e981; border: 1px solid #667b46; background: #172018; font: 700 8px 'Space Mono',monospace; cursor: pointer; list-style: none; }
+.credit-guide-disclosure > summary::-webkit-details-marker { display: none; }
+.credit-guide-disclosure > summary:hover { background: #202c1e; }
+.credit-guide-disclosure.is-compact { margin-top: 16px; padding-top: 12px; border-top: 1px solid #745c3c; }
+.credit-guide-disclosure.is-compact > summary { min-height: 32px; padding-inline: 9px; color: var(--market-gold); border-color: #806a43; background: #1b1620; font-size: 7px; }
+.credit-guide-disclosure.is-compact > summary:hover { background: #292034; }
 .red-credit-guide { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px,.75fr) minmax(0,1.25fr); gap: 20px; margin-top: 6px; padding: 20px; border: 1px solid #46554b; background: #111815; }
+.credit-guide-disclosure.is-compact .red-credit-guide { grid-template-columns: 1fr; gap: 12px; padding: 12px; border-color: #594766; background: #120f17; }
 .red-credit-guide h3 { margin: 7px 0; color: #d4e981; font: 700 26px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .red-credit-guide p { margin: 0; color: #9ba99e; font-size: 11px; line-height: 1.5; }
 .red-credit-guide ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; margin: 0; padding: 0; list-style: none; }
 .red-credit-guide li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #2d3931; color: #c3cec3; font-size: 10px; }
 .red-credit-guide li strong { color: #d4e981; font: 700 9px 'Space Mono',monospace; text-align: right; white-space: nowrap; }
+.credit-guide-disclosure.is-compact .red-credit-guide li { color: #c1b6c8; font-size: 9px; }
+.credit-guide-disclosure.is-compact .red-credit-guide li strong { color: var(--market-gold); font-size: 8px; }
 .market-sort-note { margin: 7px 0 0; color: #a99cb3; font: 8px 'Space Mono',monospace; }
 @media(max-width:700px) {
   .market-hero { grid-template-columns: 1fr; }
