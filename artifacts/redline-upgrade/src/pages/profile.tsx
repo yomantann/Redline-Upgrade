@@ -40,6 +40,14 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 };
 
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
+const milestoneTierRank: Record<AchievementDefinition['rarity'], number> = {
+  BRONZE: 0,
+  SILVER: 1,
+  GOLD: 2,
+  PLATINUM: 3,
+  LEGENDARY: 4,
+  MYTHIC: 5,
+};
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
   SECRET: 'Secret Milestones',
@@ -172,7 +180,9 @@ export function ProfilePage() {
     .sort((a, b) => (b.record?.acquiredCount ?? 0) - (a.record?.acquiredCount ?? 0))[0];
   const mostRetained = [...allAssets].filter(({ record }) => (record?.retainedCount ?? 0) > 0)
     .sort((a, b) => (b.record?.retainedCount ?? 0) - (a.record?.retainedCount ?? 0))[0];
-  const categoryAchievements = achievementList.filter(item => item.category === category);
+  const categoryAchievements = achievementList
+    .filter(item => item.category === category)
+    .sort((a, b) => milestoneTierRank[a.rarity] - milestoneTierRank[b.rarity] || a.name.localeCompare(b.name));
   const unlocked = profile?.unlockedCount ?? 0;
   const total = profile?.totalCount ?? achievementCatalog.length + 25;
   const completedGames = profile?.history ?? [];
