@@ -9,6 +9,7 @@ import {
   type MatchSnapshot,
   type SoloGameSnapshot,
 } from '@workspace/api-client-react';
+import { AUTH_USER_UPDATED_EVENT } from '@workspace/replit-auth-web';
 import { toClientAction } from './multiplayer';
 import type { Player } from './player';
 import { createPlayer } from './player';
@@ -157,6 +158,20 @@ export function GameProvider({
         // Starting a new game remains available; the server reports persistent-game errors on actions.
       });
     return () => { cancelled = true; };
+  }, [authLoading, accountId, setSoloGameSnapshot]);
+  useEffect(() => {
+    if (authLoading || !accountId) return;
+    let cancelled = false;
+    const refreshActiveGameName = () => {
+      void getActiveSoloGame()
+        .then(({ game }) => { if (!cancelled && game) setSoloGameSnapshot(game); })
+        .catch(() => {});
+    };
+    window.addEventListener(AUTH_USER_UPDATED_EVENT, refreshActiveGameName);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(AUTH_USER_UPDATED_EVENT, refreshActiveGameName);
+    };
   }, [authLoading, accountId, setSoloGameSnapshot]);
   const achievementLookupRef = useRef<string | null>(null);
   useEffect(() => {

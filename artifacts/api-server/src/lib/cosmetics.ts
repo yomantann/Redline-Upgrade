@@ -27,6 +27,7 @@ const epicNames = ["prime", "apex", "sentinel", "hewn knight", "damning duchess"
 const legendaryNames = ["final evolution", "myth", "immortal", "ultimate", "chosen", "perfect"];
 const rarityOverridesById: Partial<Record<string, Rarity>> = {
   "skin-alpha-alphimus-png": "EPIC",
+  "skin-click2-png": "RARE",
   "skin-dash-board-burst-png": "RARE",
   "skin-anointed-clean-cut-png": "EPIC",
   "skin-frost-corporal-whiteout-png": "EPIC",
@@ -52,7 +53,7 @@ const rarityOverridesById: Partial<Record<string, Rarity>> = {
   "skin-hotwired-pyra-png": "RARE",
   "skin-hotwired-pyra2-png": "RARE",
   "skin-rind-sewer-sharpshooter-png": "EPIC",
-  "skin-click-sir-whiskers-wrong-png": "EPIC",
+  "skin-click-sir-whiskers-wrong-png": "LEGENDARY",
   "skin-lowflame-the-bounty-can-wait-png": "EPIC",
   "skin-pain-the-walking-wound-png": "LEGENDARY",
   "skin-guardian-unmoved-marshal-png": "RARE",
@@ -94,7 +95,7 @@ function catalogFromAssets() {
     && !file.toLowerCase().startsWith("redline_auction_"));
   const skins = readdirSync(skinsDir).filter((file) => {
     const match = file.match(/^([a-z]+)_(.+)\.png$/i);
-    return Boolean(match && prefixCharacter[match[1].toLowerCase()]);
+    return file.toLowerCase() === "click2.png" || Boolean(match && prefixCharacter[match[1].toLowerCase()]);
   });
   return [
     ...logos.map((file) => {
@@ -104,11 +105,13 @@ function catalogFromAssets() {
       return { id, name, category: "LOGO", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Icons/${file}`, characterId: null, available: 1, isDefault: 0 };
     }),
     ...skins.map((file) => {
+      const isClickClickBase = file.toLowerCase() === "click2.png";
       const [prefix, ...title] = file.replace(/\.png$/i, "").split("_");
-      const name = title.join("_").replace(/([a-z])(\d+)$/i, "$1 ($2)");
+      const name = isClickClickBase ? "Click Click" : title.join("_").replace(/([a-z])(\d+)$/i, "$1 ($2)");
       const id = `skin-${slug(file)}`;
       const rarity = rarityFor(name, "DRIVER_SKIN", id);
-      return { id, name: displayName(name), category: "DRIVER_SKIN", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Skins/${file}`, characterId: prefixCharacter[prefix.toLowerCase()], available: 1, isDefault: 0 };
+      const characterId = isClickClickBase ? prefixCharacter.click : prefixCharacter[prefix.toLowerCase()];
+      return { id, name: displayName(name), category: "DRIVER_SKIN", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Skins/${file}`, characterId, available: 1, isDefault: 0 };
     }),
   ];
 }

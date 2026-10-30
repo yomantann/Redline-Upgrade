@@ -52,23 +52,13 @@ function Header() {
 }
 
 function Footer() {
-  const [location] = useLocation();
-  if (location === '/' || location === '/profile' || location === '/shop') {
-    return (
-      <footer className="page-footer page-footer-home" aria-hidden="true">
-        <div className="home-footer-signal">
-          <span className="home-footer-rail" />
-          <span className="home-footer-orbit"><i /></span>
-          <span className="home-footer-mark" />
-        </div>
-      </footer>
-    );
-  }
-
   return (
-    <footer className="page-footer mono">
-      <span>REDLINE UPGRADE // LOCAL MATCH</span>
-      <span>21 IDENTITIES // 75 SPACES // 2 × D4</span>
+    <footer className="page-footer page-footer-home" aria-hidden="true">
+      <div className="home-footer-signal">
+        <span className="home-footer-rail" />
+        <span className="home-footer-orbit"><i /></span>
+        <span className="home-footer-mark" />
+      </div>
     </footer>
   );
 }

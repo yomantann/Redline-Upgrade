@@ -374,6 +374,11 @@ function Characters() {
     setSelectedId(pick.id);
   };
   const selectedImagePath = equippedSkinPaths[selected.id] ?? getCharacterImagePath(selected.id, selectedBoardId);
+  const rosterSubtitle = isBioBoard
+    ? 'Choose your player for Bio Upgrade. Your career and salary are assigned at the start of each game.'
+    : isHauntedBoard
+      ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.'
+      : null;
 
   return (
     <AppShell>
@@ -383,7 +388,7 @@ function Characters() {
           {isBioBoard && <AgeRestrictionBadge />}
           <div className="roster-heading-row">
             <h1 className="display roster-title">Choose<br /><span className="title-outline">your player</span></h1>
-            <p className="roster-subtitle">{isBioBoard ? 'Choose your player for Bio Upgrade. Your career and salary are assigned at the start of each game.' : isHauntedBoard ? 'Choose a Haunted Upgrade identity. Your selection is saved now; the board and its rules are still in development.' : 'Every run begins with an operating system. Select the identity that feels most like a warning.'}</p>
+            {rosterSubtitle && <p className="roster-subtitle">{rosterSubtitle}</p>}
           </div>
         </section>
         <section className="roster-layout">

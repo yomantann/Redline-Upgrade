@@ -38,19 +38,40 @@ function snapshot(gameId: string, version: number, state: SoloGameState, newlyUn
   return { gameId, version, match: state.match, newlyUnlocked };
 }
 
+function accountDisplayName(user?: { displayName?: string | null; firstName?: string | null; lastName?: string | null }, fallback = "You"): string {
+  return user?.displayName?.trim()
+    || [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim()
+    || fallback;
+}
+
+function withPlayerDisplayName(state: SoloGameState, displayName: string): SoloGameState {
+  return {
+    ...state,
+    match: {
+      ...state.match,
+      players: state.match.players.map((player, index) => index === 0 ? { ...player, displayName } : player),
+    },
+  };
+}
+
 export async function getActiveSoloGame(userId: string): Promise<SoloGameSnapshot | null> {
   const [game] = await db.select().from(soloGamesTable)
     .where(and(eq(soloGamesTable.userId, userId), eq(soloGamesTable.status, "active")))
     .orderBy(desc(soloGamesTable.updatedAt))
     .limit(1);
   if (!game) return null;
-  const state = game.state as SoloGameState;
+  const [user] = await db.select({
+    displayName: usersTable.displayName,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+  }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const state = withPlayerDisplayName(game.state as SoloGameState, accountDisplayName(user));
   return snapshot(game.id, game.version, state);
 }
 
 export async function startSoloGame(userId: string, boardId: string, characterId: string, displayName = "You"): Promise<SoloGameResult> {
   return db.transaction(async (tx): Promise<SoloGameResult> => {
-    const [user] = await tx.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName })
+    const [user] = await tx.select({ id: usersTable.id, displayName: usersTable.displayName, firstName: usersTable.firstName, lastName: usersTable.lastName })
       .from(usersTable).where(eq(usersTable.id, userId)).for("update").limit(1);
     if (!user) return { kind: "not_found" };
     const board = findBoardDefinition(boardId);
@@ -58,7 +79,7 @@ export async function startSoloGame(userId: string, boardId: string, characterId
       return { kind: "invalid", message: "Choose an available board and a valid character." };
     }
 
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || displayName;
+    const name = accountDisplayName(user, displayName);
     let match: Match;
     try {
       match = createMatch(characterId, board.id, "SINGLE_PLAYER");
@@ -100,7 +121,12 @@ export async function submitSoloGameAction(
     if (!game) return { kind: "not_found" };
     if (game.status !== "active") return { kind: "conflict", message: "This solo game is no longer active." };
     if (game.version !== expectedVersion) return { kind: "conflict", message: "The game state changed. Refresh and try again." };
-    const current = game.state as SoloGameState;
+    const [user] = await tx.select({
+      displayName: usersTable.displayName,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+    }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const current = withPlayerDisplayName(game.state as SoloGameState, accountDisplayName(user));
     const result = applySoloPlayerAction(current.match, action as ClientAction);
     if (!result) return { kind: "conflict", message: "That action is not allowed right now." };
     const nextState: SoloGameState = {
