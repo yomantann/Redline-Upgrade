@@ -306,7 +306,7 @@ function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
   const history = player.history;
   const nextHistory = { ...history };
   let changed = false;
-  const increment = (key: Exclude<keyof typeof history, 'careerIds'>) => {
+  const increment = (key: Exclude<keyof typeof history, 'careerIds' | 'milestoneSpacesVisited' | 'milestoneSpacesCompleted'>) => {
     const value = history[key];
     if (typeof value === 'number') {
       nextHistory[key] = value + 1;
@@ -341,6 +341,12 @@ function recordPlayerMatchHistory(match: Match, event: AnyGameEvent): Match {
       break;
     case 'ASSET_UPGRADED':
       increment('assetUpgrades');
+      break;
+    case 'MILESTONE':
+      if (event.spaceNumber !== undefined && !(history.milestoneSpacesVisited ?? []).includes(event.spaceNumber)) {
+        nextHistory.milestoneSpacesVisited = [...(history.milestoneSpacesVisited ?? []), event.spaceNumber];
+        changed = true;
+      }
       break;
     case 'UPGRADE_TOKEN_SPENT':
       increment('upgradeTokensSpent');
@@ -521,7 +527,18 @@ function isBlocked(match: Match, playerId: string, effectType: EffectType, delta
 }
 
 function updatePlayer(match: Match, index: number, update: (player: MatchPlayer) => MatchPlayer): Match {
-  return { ...match, players: match.players.map((player, playerIndex) => playerIndex === index ? update(player) : player) };
+  const current = match.players[index];
+  if (!current) return match;
+  const nextPlayer = update(current);
+  const players = match.players.map((player, playerIndex) => playerIndex === index ? nextPlayer : player);
+  const crossedLateCheckpoint = !match.lateGameCheckpoint && current.position < 60 && nextPlayer.position >= 60;
+  return {
+    ...match,
+    players,
+    ...(crossedLateCheckpoint
+      ? { lateGameCheckpoint: { space: 60, positions: players.map((player) => player.position) } }
+      : {}),
+  };
 }
 
 function openAbilityDecision(match: Match, details: Record<string, unknown>): Match {

@@ -119,6 +119,8 @@ export interface Match {
   wealthEvents: WealthEvent[];
   /** Player indexes in the order they reached space 75. */
   finishOrder: number[];
+  /** First positions snapshot when any player reaches the late-game checkpoint. */
+  lateGameCheckpoint: { space: number; positions: number[] } | null;
   endgameAttributeBonuses: EndgameAttributeBonus[] | null;
   pending: PendingDecision | null;
   eventLog: EventLogEntry[];
@@ -351,7 +353,7 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     return {
       ...player,
       careerId: career.id,
-      history: { ...player.history, careerIds: [career.id] },
+      history: { ...player.history, careerIds: [career.id], startingSalary: salaryAmount },
       salaryTier,
       salaryAmount,
       wealth: startingWealth(career, salaryAmount),
@@ -380,6 +382,7 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
     lastLanding: null,
     wealthEvents: [],
     finishOrder: [],
+    lateGameCheckpoint: null,
     endgameAttributeBonuses: null,
     pending: null,
     eventLog: [],
@@ -797,7 +800,22 @@ function purchase(match: Match, assetId: string): Match {
   const player = match.players[match.turnIndex];
   const category: AssetCategory | null = pending.slot === 'companion' ? pending.category ?? null : pending.slot;
   if (!asset || asset.category !== category || !pending.offeredAssetIds?.includes(assetId) || player.equipment[pending.slot] || asset.cost > player.wealth) return match;
-  const [updated, statDrafts] = applyAssetStats(match, match.turnIndex, assetId);
+  const [assetUpdated, statDrafts] = applyAssetStats(match, match.turnIndex, assetId);
+  const visitedMilestones = assetUpdated.players[match.turnIndex].history.milestoneSpacesVisited ?? [];
+  const updated = visitedMilestones.includes(pending.space)
+    ? {
+        ...assetUpdated,
+        players: assetUpdated.players.map((candidate, index) => index === match.turnIndex
+          ? {
+              ...candidate,
+              history: {
+                ...candidate.history,
+                milestoneSpacesCompleted: [...new Set([...(candidate.history.milestoneSpacesCompleted ?? []), pending.space])],
+              },
+            }
+          : candidate),
+      }
+    : assetUpdated;
   const current = match.players[match.turnIndex];
   const nextPlayer = updated.players[match.turnIndex];
   const wealthEvent: WealthEvent = { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: nextPlayer.wealth - current.wealth, kind: 'PURCHASE', space: pending.space };
@@ -1369,6 +1387,15 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         wealthEvents: match.wealthEvents,
         stepsRemaining: match.stepsRemaining - 1,
       };
+      if (!moved.lateGameCheckpoint && previousPosition < 60 && position >= 60) {
+        moved = {
+          ...moved,
+          lateGameCheckpoint: {
+            space: 60,
+            positions: moved.players.map((player) => player.position),
+          },
+        };
+      }
       const effectiveSalary = effectiveSalaryAmount(current);
       const salaryGate = applySalaryGate(moved, match.turnIndex, previousPosition, position);
       moved = {

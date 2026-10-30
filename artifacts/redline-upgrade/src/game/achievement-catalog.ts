@@ -7,7 +7,7 @@ export type AchievementCategory =
   | 'WINNING'
   | 'GAMEPLAY';
 
-export type AchievementTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'LEGENDARY';
+export type AchievementTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'LEGENDARY' | 'MYTHIC';
 
 export interface AchievementDefinition {
   id: string;

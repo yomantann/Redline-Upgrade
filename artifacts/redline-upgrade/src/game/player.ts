@@ -33,10 +33,13 @@ export interface PlayerMatchHistory {
   finalGambles: number;
   largestWealthSwing: number;
   playerEncounters: number;
+  startingSalary: number;
   careerIds: string[];
   careerChanges: number;
   assetUpgrades: number;
   upgradeTokensSpent: number;
+  milestoneSpacesVisited: number[];
+  milestoneSpacesCompleted: number[];
 }
 
 export type PlayerStat = 'wealth' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
@@ -76,10 +79,13 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
       finalGambles: 0,
       largestWealthSwing: 0,
       playerEncounters: 0,
+      startingSalary: 0,
       careerIds: [],
       careerChanges: 0,
       assetUpgrades: 0,
       upgradeTokensSpent: 0,
+      milestoneSpacesVisited: [],
+      milestoneSpacesCompleted: [],
     },
   };
 }
