@@ -289,6 +289,15 @@
 .red-collection-highlights { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 10px; margin-bottom: 26px; }
 .red-collection-highlights p { min-width: 0; margin: 0; padding: 13px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #35433a; background: #111917; }
 .red-collection-highlights strong { color: #e9e7dc; font: 600 12px 'DM Sans',sans-serif; overflow-wrap: anywhere; }
+.red-asset-record-groups { display: grid; gap: 24px; }
+.red-asset-acquisition-group { min-width: 0; padding-top: 12px; border-top: 1px solid #46554b; }
+.red-asset-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.red-asset-group-heading h3 { margin: 0; color: #e9e7dc; font: 700 24px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
+.red-asset-group-heading > span,.red-asset-rarity-heading > span { color: #87958b; font: 8px 'Space Mono',monospace; white-space: nowrap; }
+.red-asset-rarity-group + .red-asset-rarity-group { margin-top: 17px; }
+.red-asset-rarity-heading { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.red-asset-rarity-heading h4 { margin: 0; color: #adb9ad; font: 700 9px 'Space Mono',monospace; letter-spacing: .08em; text-transform: uppercase; }
+.red-asset-rarity-heading::after { content: ''; height: 1px; flex: 1; background: #344139; }
 @media (max-width: 600px) {
   .red-collection-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .red-collection-highlights { grid-template-columns: 1fr; }

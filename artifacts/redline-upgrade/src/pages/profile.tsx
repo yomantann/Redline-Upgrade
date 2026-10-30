@@ -4,7 +4,7 @@ import { getGetAchievementProfileQueryKey, useGetAchievementProfile, useUpdateCu
 import type { CompletedGameRecord } from '@workspace/api-client-react';
 import type { AchievementCategory, AchievementDefinition } from '@/game/achievement-catalog';
 import { achievementCatalog, achievementCategoryLabels } from '@/game/achievement-catalog';
-import { assets, getAsset } from '@/game/assets';
+import { assets, getAsset, type AssetDefinition } from '@/game/assets';
 import { characters } from '@/game/characters';
 import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
@@ -21,6 +21,8 @@ type AchievementDisplay = Omit<AchievementDefinition, 'category'> & {
 };
 
 const categories = [...Object.keys(achievementCategoryLabels), 'SECRET'] as (AchievementCategory | 'SECRET')[];
+const assetRarityOrder: AssetDefinition['rarity'][] = ['ELITE', 'RARE', 'STANDARD'];
+const assetRarityRank: Record<AssetDefinition['rarity'], number> = { ELITE: 0, RARE: 1, STANDARD: 2 };
 const categoryLabels: Record<AchievementCategory | 'SECRET', string> = {
   ...achievementCategoryLabels,
   SECRET: 'Secret Milestones',
@@ -87,9 +89,31 @@ export function ProfilePage() {
   const collectionByAssetId = useMemo(() => new Map((profile?.collection ?? []).map(entry => [entry.assetId, entry])), [profile?.collection]);
   const allAssets = useMemo(() => assets
     .map(definition => ({ definition, record: collectionByAssetId.get(definition.id) }))
-    .sort((a, b) => Number((b.record?.acquiredCount ?? 0) > 0) - Number((a.record?.acquiredCount ?? 0) > 0) || a.definition.name.localeCompare(b.definition.name)), [collectionByAssetId]);
+    .sort((a, b) => Number((b.record?.acquiredCount ?? 0) > 0) - Number((a.record?.acquiredCount ?? 0) > 0)
+      || assetRarityRank[a.definition.rarity] - assetRarityRank[b.definition.rarity]
+      || a.definition.name.localeCompare(b.definition.name)), [collectionByAssetId]);
   const collection = useMemo(() => allAssets
     .filter(({ record }) => collectionFilter === 'all' || (collectionFilter === 'held' ? (record?.retainedCount ?? 0) > 0 : (record?.acquiredCount ?? 0) > 0)), [allAssets, collectionFilter]);
+  const collectionSections = useMemo(() => {
+    const acquisitionGroups = collectionFilter === 'all'
+      ? [
+        { key: 'acquired', label: 'Acquired', items: collection.filter(({ record }) => (record?.acquiredCount ?? 0) > 0) },
+        { key: 'not-acquired', label: 'Not yet acquired', items: collection.filter(({ record }) => (record?.acquiredCount ?? 0) === 0) },
+      ]
+      : [{
+        key: collectionFilter,
+        label: collectionFilter === 'held' ? 'Held at finish' : 'Acquired',
+        items: collection,
+      }];
+
+    return acquisitionGroups.map(group => ({
+      ...group,
+      rarities: assetRarityOrder.map(rarity => ({
+        rarity,
+        items: group.items.filter(({ definition }) => definition.rarity === rarity),
+      })).filter(group => group.items.length > 0),
+    })).filter(group => group.rarities.length > 0);
+  }, [collection, collectionFilter]);
   const uniqueCollected = allAssets.filter(({ record }) => (record?.acquiredCount ?? 0) > 0).length;
   const uniqueRetained = allAssets.filter(({ record }) => (record?.retainedCount ?? 0) > 0).length;
   const collectionCompletion = assets.length ? Math.round(uniqueCollected / assets.length * 100) : 0;
@@ -127,6 +151,21 @@ export function ProfilePage() {
     } catch {
       setNameError('Could not save your profile name. Please try again.');
     }
+  }
+
+  function assetCard({ definition, record }: (typeof collection)[number]) {
+    const isCollected = (record?.acquiredCount ?? 0) > 0;
+    const isEverRetained = (record?.retainedCount ?? 0) > 0;
+    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${definition.name}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
+      <div className="red-asset-art">{isEverRetained
+        ? <AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} />
+        : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
+        <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
+      <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)} / {definition.id}</span><h3>{definition.name}</h3><p>{definition.description}</p>
+        <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
+        <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
+      </div>
+    </article>;
   }
 
   function achievementCard(item: AchievementDisplay) {
@@ -275,7 +314,7 @@ export function ProfilePage() {
                 )}
                 {tab === 'collection' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">ACQUIRED / RETAINED / LOST</span><h2>Asset archive</h2><p className="red-section-copy">Ever collected records include assets later lost. Held at endgame counts only assets retained through a completed match.</p></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">YOUR ASSET RECORD</span><h2>Asset archive</h2><p className="red-section-copy">Acquired assets appear first, then sort from highest to lowest rarity. Artwork appears after an asset is retained through a completed game.</p></div>
                       <div className="red-filter-set" role="group" aria-label="Filter asset collection">{([['all', 'Full catalog'], ['ever', 'Acquired'], ['held', 'Held at finish']] as const).map(([value, label]) => <button key={value} type="button" className={collectionFilter === value ? 'selected' : ''} aria-pressed={collectionFilter === value} onClick={() => setCollectionFilter(value)}>{label}</button>)}</div>
                     </div>
                     <div className="red-collection-summary" aria-label="Lifetime asset collection summary">
@@ -291,25 +330,20 @@ export function ProfilePage() {
                       <p><span className="mono">MOST RETAINED</span><strong>{mostRetained ? `${mostRetained.definition.name} × ${mostRetained.record?.retainedCount ?? 0}` : 'No retained assets yet'}</strong></p>
                       <p><span className="mono">BEST ENDGAME PORTFOLIO</span><strong>{money(profile.metrics.highestAssetPortfolio)}</strong></p>
                     </div>
-                    {collection.length ? <div className="red-assets-grid">{collection.map(({ definition, record }) => {
-                      const isCollected = (record?.acquiredCount ?? 0) > 0;
-                      const isEverRetained = (record?.retainedCount ?? 0) > 0;
-                      return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${definition.name}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
-                        <div className="red-asset-art">{isEverRetained
-                          ? <AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} />
-                          : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
-                          <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
-                        <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)} / {definition.id}</span><h3>{definition.name}</h3><p>{definition.description}</p>
-                          <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
-                          <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
-                        </div>
-                      </article>;
-                    })}</div> : <EmptyState title={collectionFilter === 'held' ? 'Nothing held at finish' : 'No acquired assets'} text={collectionFilter === 'held' ? 'No asset records show endgame retention yet. The full catalog remains available under Full catalog.' : 'No asset records show acquisitions for this account yet.'} />}
+                    {collection.length ? <div className="red-asset-record-groups">
+                      {collectionSections.map(section => <section className="red-asset-acquisition-group" key={section.key} aria-label={`${section.label} assets`}>
+                        <div className="red-asset-group-heading"><h3>{section.label}</h3><span>{section.rarities.reduce((count, group) => count + group.items.length, 0)} assets</span></div>
+                        {section.rarities.map(group => <section className="red-asset-rarity-group" key={`${section.key}-${group.rarity}`}>
+                          <div className="red-asset-rarity-heading"><h4>{titleCase(group.rarity)} rarity</h4><span>{group.items.length}</span></div>
+                          <div className="red-assets-grid">{group.items.map(assetCard)}</div>
+                        </section>)}
+                      </section>)}
+                    </div> : <EmptyState title={collectionFilter === 'held' ? 'Nothing held at finish' : 'No acquired assets'} text={collectionFilter === 'held' ? 'No asset records show endgame retention yet. The full catalog remains available under Full catalog.' : 'No asset records show acquisitions for this account yet.'} />}
                   </section>
                 )}
                 {tab === 'milestones' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">100 STANDARD / 25 SECRET / 125 TOTAL MILESTONES</span><h2>Milestones, recorded.</h2><p className="red-section-copy">{profile.standardUnlockedCount} standard and {profile.secretUnlockedCount} secret milestones secured. Credit rewards are listed as pending; this profile does not represent wallet payment.</p></div></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">{profile.standardCount} STANDARD / {profile.secretCount} SECRET / {profile.totalCount} TOTAL MILESTONES</span><h2>Milestone progress</h2><p className="red-section-copy">Track progress from completed games. Secret milestones stay hidden until earned. Reward credits are shown for reference; this page does not confirm a payout.</p></div></div>
                     <div className="red-category-layout">
                       <nav className="red-category-nav" aria-label="Milestone categories">{categories.map((item, index) => {
                         const categoryDefs = achievementList.filter(def => def.category === item);
