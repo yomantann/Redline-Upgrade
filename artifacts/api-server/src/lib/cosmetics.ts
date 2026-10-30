@@ -15,6 +15,7 @@ type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "LEGENDARY" | "MYTHIC";
 const rarityPrice: Record<Rarity, number> = {
   COMMON: 300, UNCOMMON: 600, RARE: 1_200, EPIC: 2_500, LEGENDARY: 5_000, MYTHIC: 10_000,
 };
+const freeCosmeticIds = new Set(["logo-golden-skull-png", "skin-accuser-dreamer-png"]);
 const prefixCharacter: Record<string, string> = {
   accuser: "accuser", alpha: "alpha_prime", anointed: "anointed", click: "click_click",
   dash: "rainbow_dash", executive: "executive_p", frost: "frostbyte", guardian: "guardian_h",
@@ -57,13 +58,15 @@ function catalogFromAssets() {
     ...logos.map((file) => {
       const name = displayName(file);
       const rarity = rarityFor(name, "LOGO");
-      return { id: `logo-${slug(file)}`, name, category: "LOGO", rarity, price: rarityPrice[rarity], assetPath: `Icons/${file}`, characterId: null, available: 1, isDefault: 0 };
+      const id = `logo-${slug(file)}`;
+      return { id, name, category: "LOGO", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Icons/${file}`, characterId: null, available: 1, isDefault: 0 };
     }),
     ...skins.map((file) => {
       const [prefix, ...title] = file.replace(/\.png$/i, "").split("_");
       const name = title.join("_").replace(/([a-z])(\d+)$/i, "$1 ($2)");
       const rarity = rarityFor(name, "DRIVER_SKIN");
-      return { id: `skin-${slug(file)}`, name: displayName(name), category: "DRIVER_SKIN", rarity, price: rarityPrice[rarity], assetPath: `Skins/${file}`, characterId: prefixCharacter[prefix.toLowerCase()], available: 1, isDefault: 0 };
+      const id = `skin-${slug(file)}`;
+      return { id, name: displayName(name), category: "DRIVER_SKIN", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Skins/${file}`, characterId: prefixCharacter[prefix.toLowerCase()], available: 1, isDefault: 0 };
     }),
   ];
 }
@@ -115,6 +118,12 @@ export async function purchaseCosmetic(userId: string, itemId: string) {
     const [alreadyOwned] = await tx.select().from(cosmeticOwnershipTable).where(and(eq(cosmeticOwnershipTable.userId, userId), eq(cosmeticOwnershipTable.itemId, itemId))).limit(1);
     if (alreadyOwned) return { kind: "owned" as const };
     if (wallet.balance < item.price) return { kind: "insufficient" as const, balance: wallet.balance, price: item.price };
+    if (item.price === 0) {
+      const [ownership] = await tx.insert(cosmeticOwnershipTable).values({ userId, itemId, transactionId: null })
+        .onConflictDoNothing().returning({ itemId: cosmeticOwnershipTable.itemId });
+      if (!ownership) return { kind: "owned" as const };
+      return { kind: "ok" as const, balance: wallet.balance, item };
+    }
     const nextBalance = wallet.balance - item.price;
     const [transaction] = await tx.insert(creditTransactionsTable).values({
       userId, amount: -item.price, type: "PURCHASE", sourceId: itemId,

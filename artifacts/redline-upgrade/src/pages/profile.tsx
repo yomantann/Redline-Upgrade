@@ -10,6 +10,7 @@ import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
 import { useLocation } from 'wouter';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
+import { CREDIT_EARNING_GUIDE } from '@/game/credit-rewards';
 import './pages.css';
 
 type ProfileTab = 'overview' | 'collection' | 'milestones' | 'history';
@@ -69,6 +70,7 @@ export function ProfilePage() {
   const [nameStatus, setNameStatus] = useState('');
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
   const [profileInventory, setProfileInventory] = useState<ProfileInventory | null>(null);
+  const [creditsGuideOpen, setCreditsGuideOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -207,12 +209,12 @@ export function ProfilePage() {
   function assetCard({ definition, record }: (typeof collection)[number]) {
     const isCollected = (record?.acquiredCount ?? 0) > 0;
     const isEverRetained = (record?.retainedCount ?? 0) > 0;
-    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${definition.name}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
+    return <article className={`red-asset-card ${isCollected ? 'asset-collected' : ''} ${isEverRetained ? 'asset-retained' : 'asset-not-retained'}`} key={definition.id} aria-label={`${isEverRetained ? definition.name : 'Unknown asset'}, ${isEverRetained ? 'retained' : isCollected ? 'collected but not retained' : 'locked'}`}>
       <div className="red-asset-art">{isEverRetained
         ? <AssetArtwork assetId={definition.id} className="red-asset-image" alt={definition.name} />
         : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
         <span className={`red-rarity rarity-${definition.rarity.toLowerCase()}`}>{definition.rarity}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
-      <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)} / {definition.id}</span><h3>{definition.name}</h3><p>{definition.description}</p>
+      <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)}</span><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
         <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
         <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
       </div>
@@ -362,6 +364,15 @@ export function ProfilePage() {
                           ['ENDGAME EARNED', creditSummary?.wallet?.endgameEarned.toLocaleString() ?? '—'],
                         ].map(([label, value], index) => <div className="red-metric" key={label}><span className="mono">0{index + 1} / {label}</span><strong>{value}</strong></div>)}
                       </div>
+                      <div className="red-credit-guide-tools">
+                        <button className="red-inline-link" type="button" aria-expanded={creditsGuideOpen} aria-controls="credits-earning-guide" onClick={() => setCreditsGuideOpen(open => !open)}>
+                          {creditsGuideOpen ? 'Hide earning guide ↑' : 'How to earn Credits ↗'}
+                        </button>
+                      </div>
+                      {creditsGuideOpen && <div className="red-credit-guide" id="credits-earning-guide">
+                        <div><span className="eyebrow">CREDIT EARNING GUIDE</span><h3>Ways to earn.</h3><p>Game and endgame rewards are granted when an authenticated game is completed. Qualifying rewards can stack.</p></div>
+                        <ul>{CREDIT_EARNING_GUIDE.map(row => <li key={row.title}><span>{row.title}</span><strong>{row.value}{row.value !== 'Reward varies' ? ' Credits' : ''}</strong></li>)}</ul>
+                      </div>}
                     </section>
                     <section className="red-credit-ledger">
                       <div className="red-section-bar"><div><span className="eyebrow">LATEST CREDIT ACTIVITY</span><h2>Wallet transactions</h2></div></div>
@@ -407,7 +418,7 @@ export function ProfilePage() {
                       <div><span className="mono">GAMES WITH RETENTION</span><strong>{(profile.metrics.gamesHeldAssets ?? 0).toLocaleString()}</strong></div>
                     </div>
                     <div className="red-collection-highlights">
-                      <p><span className="mono">MOST ACQUIRED</span><strong>{mostAcquired ? `${mostAcquired.definition.name} × ${mostAcquired.record?.acquiredCount ?? 0}` : 'No acquisitions yet'}</strong></p>
+                      <p><span className="mono">MOST ACQUIRED</span><strong>{mostAcquired ? (mostAcquired.record?.retainedCount ? `${mostAcquired.definition.name} × ${mostAcquired.record.acquiredCount}` : `? × ${mostAcquired.record?.acquiredCount ?? 0}`) : 'No acquisitions yet'}</strong></p>
                       <p><span className="mono">MOST RETAINED</span><strong>{mostRetained ? `${mostRetained.definition.name} × ${mostRetained.record?.retainedCount ?? 0}` : 'No retained assets yet'}</strong></p>
                       <p><span className="mono">BEST ENDGAME PORTFOLIO</span><strong>{money(profile.metrics.highestAssetPortfolio)}</strong></p>
                     </div>
@@ -424,7 +435,7 @@ export function ProfilePage() {
                 )}
                 {tab === 'milestones' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">{profile.standardCount} STANDARD / {profile.secretCount} SECRET / {profile.totalCount} TOTAL MILESTONES</span><h2>Milestone progress</h2><p className="red-section-copy">Track progress from completed games. Secret milestones stay hidden until earned. Credits are paid once when a milestone unlocks; earlier unlocks reconcile with the next completed game.</p></div></div>
+                    <div className="red-section-bar"><div><span className="eyebrow">{profile.standardCount} STANDARD / {profile.secretCount} SECRET / {profile.totalCount} TOTAL MILESTONES</span><h2>Milestone progress</h2><p className="red-section-copy">Track progress from completed games. Secret milestones stay hidden until earned. Credits are paid once when a milestone first unlocks.</p></div></div>
                     <div className="red-category-layout">
                       <nav className="red-category-nav" aria-label="Milestone categories">{categories.map((item, index) => {
                         const categoryDefs = achievementList.filter(def => def.category === item);

@@ -11,6 +11,7 @@ type CatalogResponse = { items: CatalogItem[]; ownedItemIds: string[]; equipped:
 type InventoryResponse = { items: { acquiredAt: string; item: CatalogItem }[]; equipped: { slot: string; itemId: string | null }[] };
 const money = (value: number) => value.toLocaleString();
 const characterName = (id: string | null) => id ? id.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+const rarityRank: Record<string, number> = { MYTHIC: 0, LEGENDARY: 1, EPIC: 2, RARE: 3, UNCOMMON: 4, COMMON: 5 };
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { credentials: 'include' });
@@ -50,9 +51,12 @@ export function ShopPage() {
     load().catch(() => setError('The market could not load. Please retry.'));
   }, [user, load]);
   useEffect(() => { if (!isLoading && !user) login(); }, [isLoading, user, login]);
-  const items = useMemo(() => catalog?.items.filter(item => item.category === category) ?? [], [catalog, category]);
   const owned = new Set(catalog?.ownedItemIds ?? []);
   const equipped = new Set((catalog?.equipped ?? []).map(row => row.itemId).filter(Boolean));
+  const items = useMemo(() => (catalog?.items.filter(item => item.category === category) ?? [])
+    .sort((a, b) => Number(owned.has(b.id)) - Number(owned.has(a.id))
+      || (rarityRank[a.rarity] ?? 99) - (rarityRank[b.rarity] ?? 99)
+      || a.name.localeCompare(b.name)), [catalog, category]);
 
   async function buy(item: CatalogItem) {
     setBusy(true);
@@ -78,6 +82,25 @@ export function ShopPage() {
     }
   }
 
+  async function equipItem(item: CatalogItem, remove = false) {
+    const slot = item.category === 'LOGO' ? 'logo' : `skin:${item.characterId}`;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/api/inventory/equip', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot, itemId: remove ? null : item.id }),
+      });
+      if (!response.ok) throw new Error('Could not update equipment.');
+      setNotice(remove ? `${item.name} unequipped.` : `${item.name} equipped.`);
+      await load();
+    } catch {
+      setError('Could not update equipment.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <AppShell>
     <main className="market-page">
       <header className="market-hero">
@@ -90,7 +113,7 @@ export function ShopPage() {
       </header>
       <MarketNav current="shop" />
       <section className="market-section">
-        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2></div>
+        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · THEN HIGHEST RARITY</p></div>
           <div className="market-filters" role="group" aria-label="Shop category">
             <button className={category === 'LOGO' ? 'selected' : ''} onClick={() => setCategory('LOGO')}>LOGOS</button>
             <button className={category === 'DRIVER_SKIN' ? 'selected' : ''} onClick={() => setCategory('DRIVER_SKIN')}>DRIVER SKINS</button>
@@ -106,26 +129,29 @@ export function ShopPage() {
               return <article className={`market-item rarity-${item.rarity.toLowerCase()}`} key={item.id}>
                 <div className="market-art"><img src={getPublicAssetUrl(item.assetPath)} alt={item.name} loading="lazy" /><span className="market-rarity">{item.rarity}</span></div>
                 <div className="market-item-copy"><span className="market-kicker">{item.category === 'LOGO' ? 'PLAYER LOGO' : characterName(item.characterId)}</span><h3>{item.name}</h3>
-                  <div className="market-item-meta"><span>◈ {money(item.price)}</span><span>{isEquipped ? 'EQUIPPED' : isOwned ? 'OWNED' : 'AVAILABLE'}</span></div>
+                  <div className="market-item-meta"><span>{item.price === 0 ? 'FREE' : `◈ ${money(item.price)}`}</span><span>{isEquipped ? 'EQUIPPED' : isOwned ? 'OWNED' : 'AVAILABLE'}</span></div>
                 </div>
-                <button className="market-buy" disabled={isOwned} onClick={() => { setError(''); setSelected(item); }}>
-                  {isEquipped ? 'EQUIPPED' : isOwned ? 'OWNED' : (wallet && wallet.balance < item.price) ? 'INSUFFICIENT CREDITS' : 'BUY'}
-                </button>
+                {isOwned
+                  ? <><button className="market-buy" disabled={busy || isEquipped} onClick={() => equipItem(item)}>{isEquipped ? 'EQUIPPED' : 'EQUIP'}</button>
+                    {isEquipped && <button className="market-unequip" disabled={busy} onClick={() => equipItem(item, true)}>UNEQUIP</button>}</>
+                  : <button className="market-buy" disabled={busy || (item.price > 0 && (!wallet || wallet.balance < item.price))} onClick={() => { setError(''); setSelected(item); }}>
+                    {item.price === 0 ? 'UNLOCK FREE' : (wallet && wallet.balance < item.price) ? 'INSUFFICIENT CREDITS' : 'BUY'}
+                  </button>}
               </article>;
             })}
           </div>
         )}
       </section>
-      <section className="market-coming"><div><span className="market-kicker">IN DEVELOPMENT</span><h2>3D Pawn Skins</h2><p>Distinct pawn cosmetics are planned for a future release.</p></div><span className="market-coming-badge">COMING SOON</span></section>
+      <section className="market-coming"><div><span className="market-kicker">IN DEVELOPMENT</span><h2>Pawn skins and board cosmetics</h2><p>Pawn skins and board cosmetics are in development.</p></div><span className="market-coming-badge">IN DEVELOPMENT</span></section>
       <section className="market-coming market-credit-coming"><div><span className="market-kicker">FUTURE PAYMENT OPTIONS</span><h2>Get more Credits</h2><p>Credit bundles are not available yet. No payment is taken and no Credits are granted here.</p></div><span className="market-coming-badge">COMING SOON</span></section>
       {selected && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setSelected(null); }}>
         <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="market-confirm-title">
           <button className="market-modal-close" onClick={() => setSelected(null)} aria-label="Close purchase confirmation">×</button>
           <img src={getPublicAssetUrl(selected.assetPath)} alt={selected.name} />
-          <span className="market-kicker">PURCHASE CONFIRMATION · {selected.rarity}</span><h2 id="market-confirm-title">{selected.name}</h2>
+          <span className="market-kicker">{selected.price === 0 ? 'FREE UNLOCK' : 'PURCHASE CONFIRMATION'} · {selected.rarity}</span><h2 id="market-confirm-title">{selected.name}</h2>
           <p>{selected.category === 'LOGO' ? 'Player logo' : `${characterName(selected.characterId)} driver skin`}</p>
-          <div className="market-confirm-price"><span>PRICE</span><strong>◈ {money(selected.price)}</strong><span>REMAINING</span><strong>◈ {money(Math.max(0, (wallet?.balance ?? 0) - selected.price))}</strong></div>
-          <button className="market-buy market-confirm-button" disabled={busy || !wallet || wallet.balance < selected.price} onClick={() => buy(selected)}>{busy ? 'PROCESSING…' : 'CONFIRM PURCHASE'}</button>
+          <div className="market-confirm-price"><span>PRICE</span><strong>{selected.price === 0 ? 'FREE' : `◈ ${money(selected.price)}`}</strong><span>REMAINING</span><strong>◈ {money(Math.max(0, (wallet?.balance ?? 0) - selected.price))}</strong></div>
+          <button className="market-buy market-confirm-button" disabled={busy || (selected.price > 0 && (!wallet || wallet.balance < selected.price))} onClick={() => buy(selected)}>{busy ? 'PROCESSING…' : selected.price === 0 ? 'UNLOCK FREE' : 'CONFIRM PURCHASE'}</button>
           <button className="market-cancel" disabled={busy} onClick={() => setSelected(null)}>CANCEL</button>
         </section>
       </div>}

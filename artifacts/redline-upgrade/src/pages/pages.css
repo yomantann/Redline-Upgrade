@@ -392,6 +392,14 @@
 .red-credit-row strong { text-align: right; font: 700 18px 'Barlow Condensed',sans-serif; }
 .red-credit-row strong.earned { color: #d4e981; }
 .red-credit-row strong.spent { color: #f0948f; }
+.red-credit-guide-tools { grid-column: 1 / -1; }
+.red-credit-guide { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px,.75fr) minmax(0,1.25fr); gap: 20px; margin-top: 6px; padding: 20px; border: 1px solid #46554b; background: #111815; }
+.red-credit-guide h3 { margin: 7px 0; color: #d4e981; font: 700 26px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
+.red-credit-guide p { margin: 0; color: #9ba99e; font-size: 11px; line-height: 1.5; }
+.red-credit-guide ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 18px; margin: 0; padding: 0; list-style: none; }
+.red-credit-guide li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #2d3931; color: #c3cec3; font-size: 10px; }
+.red-credit-guide li strong { color: #d4e981; font: 700 9px 'Space Mono',monospace; text-align: right; white-space: nowrap; }
+.market-sort-note { margin: 7px 0 0; color: #a99cb3; font: 8px 'Space Mono',monospace; }
 @media(max-width:700px) {
   .market-hero { grid-template-columns: 1fr; }
   .market-hero h1 { font-size: clamp(70px,19vw,110px); }
@@ -409,5 +417,7 @@
   .red-credit-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
   .red-credit-row .mono:last-child { grid-column: 1 / -1; }
   .red-wallet-actions { flex-wrap: wrap; }
+  .red-credit-guide { grid-template-columns: 1fr; padding: 15px; }
+  .red-credit-guide ul { grid-template-columns: 1fr; }
 }
 @media(prefers-reduced-motion:reduce) { .market-item { transition: none; } }

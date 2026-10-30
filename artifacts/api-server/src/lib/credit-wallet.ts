@@ -1,27 +1,9 @@
 import { eq } from "drizzle-orm";
 import { creditTransactionsTable, creditWalletsTable, db } from "@workspace/db";
+import { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS } from "../../../redline-upgrade/src/game/credit-rewards";
+export { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS } from "../../../redline-upgrade/src/game/credit-rewards";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-export const GAME_CREDIT_REWARDS = {
-  completion: 50,
-  placement: [200, 100, 50, 20],
-  firstGame: 100,
-  firstCareerWin: 75,
-  firstCharacterWin: 75,
-  firstWin: 250,
-  retention: [{ minimum: 5, credits: 100 }, { minimum: 3, credits: 50 }, { minimum: 1, credits: 25 }],
-  levelFourRetained: 75,
-  doubleDownSuccess: 100,
-  finalGambleSuccess: 150,
-  winAfterDoubleDown: 150,
-  winAfterFinalGamble: 250,
-  lossFree: 50,
-} as const;
-
-export const ACHIEVEMENT_TIER_CREDITS = {
-  BRONZE: 50, SILVER: 125, GOLD: 300, PLATINUM: 600, LEGENDARY: 1_500, MYTHIC: 4_000,
-} as const;
 
 export async function grantCredits(
   tx: Tx,
