@@ -25,6 +25,35 @@ const prefixCharacter: Record<string, string> = {
 const rareNames = ["cosmic", "abyssal", "divine", "glitchosaurus", "stormhare", "valhalla", "ragnar", "sovereign"];
 const epicNames = ["prime", "apex", "sentinel", "hewn knight", "damning duchess", "grand larceny", "executioner"];
 const legendaryNames = ["final evolution", "myth", "immortal", "ultimate", "chosen", "perfect"];
+const rarityOverridesById: Partial<Record<string, Rarity>> = {
+  "skin-alpha-alphimus-png": "RARE",
+  "skin-dash-board-burst-png": "RARE",
+  "skin-anointed-clean-cut-png": "EPIC",
+  "skin-frost-corporal-whiteout-png": "RARE",
+  "skin-wandering-dohyun-s-last-run-png": "EPIC",
+  "skin-frost-frozen-front-png": "LEGENDARY",
+  "skin-frost-cryo-png": "RARE",
+  "skin-rind-gutter-gladiator-png": "RARE",
+  "skin-pain-highborn-elder-png": "RARE",
+  "skin-accuser-little-witness-png": "RARE",
+  "skin-lowflame-orbital-rest-png": "EPIC",
+  "skin-anointed-pontifex-of-masks-png": "RARE",
+  "skin-hotwired-pyra-png": "RARE",
+  "skin-hotwired-pyra2-png": "RARE",
+  "skin-rind-sewer-sharpshooter-png": "EPIC",
+  "skin-click-sir-whiskers-wrong-png": "EPIC",
+  "skin-lowflame-the-bounty-can-wait-png": "EPIC",
+  "skin-pain-the-walking-wound-png": "LEGENDARY",
+  "skin-guardian-unmoved-marshal-png": "RARE",
+  "skin-dash-yatai-yang-png": "EPIC",
+  "skin-alpha-abyssal-prime-png": "RARE",
+  "skin-alpha-abyssal-prime2-png": "RARE",
+  "skin-anointed-divine-sentinel-png": "RARE",
+  "skin-alpha-prime-time-png": "UNCOMMON",
+  "skin-frost-skaldi-s-chosen-png": "RARE",
+  "skin-alpha-the-hewn-knight-png": "LEGENDARY",
+  "skin-rind-ronin-rind-png": "LEGENDARY",
+};
 function slug(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -32,7 +61,9 @@ function slug(value: string) {
 function displayName(value: string) {
   return value.replace(/\.png$/i, "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
-function rarityFor(name: string, category: "LOGO" | "DRIVER_SKIN"): Rarity {
+function rarityFor(name: string, category: "LOGO" | "DRIVER_SKIN", id?: string): Rarity {
+  const override = id ? rarityOverridesById[id] : undefined;
+  if (override) return override;
   const lower = name.toLowerCase();
   if (legendaryNames.some((word) => lower.includes(word))) return "LEGENDARY";
   if (epicNames.some((word) => lower.includes(word))) return "EPIC";
@@ -57,15 +88,15 @@ function catalogFromAssets() {
   return [
     ...logos.map((file) => {
       const name = displayName(file);
-      const rarity = rarityFor(name, "LOGO");
       const id = `logo-${slug(file)}`;
+      const rarity = rarityFor(name, "LOGO", id);
       return { id, name, category: "LOGO", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Icons/${file}`, characterId: null, available: 1, isDefault: 0 };
     }),
     ...skins.map((file) => {
       const [prefix, ...title] = file.replace(/\.png$/i, "").split("_");
       const name = title.join("_").replace(/([a-z])(\d+)$/i, "$1 ($2)");
-      const rarity = rarityFor(name, "DRIVER_SKIN");
       const id = `skin-${slug(file)}`;
+      const rarity = rarityFor(name, "DRIVER_SKIN", id);
       return { id, name: displayName(name), category: "DRIVER_SKIN", rarity, price: freeCosmeticIds.has(id) ? 0 : rarityPrice[rarity], assetPath: `Skins/${file}`, characterId: prefixCharacter[prefix.toLowerCase()], available: 1, isDefault: 0 };
     }),
   ];
