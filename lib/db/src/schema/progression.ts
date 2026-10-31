@@ -143,3 +143,24 @@ export const completedGameHistoryTable = pgTable(
     index("completed_game_user_completed_idx").on(table.userId, table.completedAt),
   ],
 );
+
+/** Best authoritative result per authenticated player, scoring mode, and category. */
+export const personalBestRecordsTable = pgTable(
+  "personal_best_records",
+  {
+    userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    mode: varchar("mode", { length: 20 }).notNull(),
+    category: varchar("category", { length: 40 }).notNull(),
+    recordValue: integer("record_value").notNull(),
+    previousValue: integer("previous_value"),
+    gameId: varchar("game_id", { length: 80 }).notNull(),
+    achievedAt: timestamp("achieved_at", { withTimezone: true }).notNull().defaultNow(),
+    characterId: varchar("character_id", { length: 80 }).notNull(),
+    careerId: varchar("career_id", { length: 80 }),
+    relevantAssetId: varchar("relevant_asset_id", { length: 100 }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.mode, table.category], name: "personal_best_records_pk" }),
+    index("personal_best_records_user_idx").on(table.userId),
+  ],
+);

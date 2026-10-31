@@ -489,6 +489,30 @@ export interface CompletedGameRecord {
   completedAt: string;
 }
 
+export type PersonalBestRecordMode = typeof PersonalBestRecordMode[keyof typeof PersonalBestRecordMode];
+
+
+export const PersonalBestRecordMode = {
+  STANDARD: 'STANDARD',
+  BIO: 'BIO',
+} as const;
+
+export interface PersonalBestRecord {
+  userId: string;
+  mode: PersonalBestRecordMode;
+  category: string;
+  recordValue: number;
+  /** @nullable */
+  previousValue: number | null;
+  gameId: string;
+  achievedAt: string;
+  characterId: string;
+  /** @nullable */
+  careerId: string | null;
+  /** @nullable */
+  relevantAssetId: string | null;
+}
+
 export interface AchievementProfile {
   metrics: AchievementProfileMetrics;
   achievements: AchievementProgress[];
@@ -500,6 +524,7 @@ export interface AchievementProfile {
   secretUnlockedCount: number;
   collection: AssetCollectionEntry[];
   history: CompletedGameRecord[];
+  personalBests: PersonalBestRecord[];
 }
 
 export interface CreditWallet {

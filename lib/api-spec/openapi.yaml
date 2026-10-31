@@ -1127,7 +1127,7 @@ components:
             - type: "null"
     AchievementProfile:
       type: object
-      required: [metrics, achievements, unlockedCount, totalCount, standardCount, secretCount, standardUnlockedCount, secretUnlockedCount, collection, history]
+      required: [metrics, achievements, unlockedCount, totalCount, standardCount, secretCount, standardUnlockedCount, secretUnlockedCount, collection, history, personalBests]
       properties:
         metrics:
           type: object
@@ -1157,6 +1157,36 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompletedGameRecord"
+        personalBests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonalBestRecord"
+    PersonalBestRecord:
+      type: object
+      required: [userId, mode, category, recordValue, previousValue, gameId, achievedAt, characterId, careerId, relevantAssetId]
+      properties:
+        userId:
+          type: string
+        mode:
+          type: string
+          enum: [STANDARD, BIO]
+        category:
+          type: string
+        recordValue:
+          type: integer
+        previousValue:
+          type: [integer, "null"]
+        gameId:
+          type: string
+        achievedAt:
+          type: string
+          format: date-time
+        characterId:
+          type: string
+        careerId:
+          type: [string, "null"]
+        relevantAssetId:
+          type: [string, "null"]
     AchievementProgress:
       type: object
       required: [achievementId, isSecret, unlockedAt, unlockGameId]

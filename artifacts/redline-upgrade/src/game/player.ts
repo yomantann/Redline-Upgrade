@@ -5,6 +5,9 @@ export interface Player {
   playerId: string;
   /** Server-authoritative completion rewards, present after a saved account game. */
   creditRewardReceipt?: { total: number; game: number; endgame: number; milestones: number } | null;
+  /** Public category labels for new authenticated records; detailed values are viewer-private. */
+  personalBestCategories?: string[];
+  personalBestDetails?: PersonalBestDetail[];
   /** Account cosmetic portrait only; never affects pawn geometry or gameplay. */
   portraitImagePath?: string | null;
   playerLogoPath?: string | null;
@@ -30,6 +33,21 @@ export interface Player {
   heldUpgradeTokens: number;
   upgrades: string[];
   history: PlayerMatchHistory;
+}
+
+export interface PersonalBestDetail {
+  category: string;
+  label: string;
+  value: number;
+  previousValue: number | null;
+  improvement: number;
+  isNewRecord: boolean;
+  isBaseline: boolean;
+  mode: 'STANDARD' | 'BIO';
+  achievedAt: string;
+  characterId: string;
+  careerId: string | null;
+  relevantAssetId?: string;
 }
 
 export interface PlayerMatchHistory {

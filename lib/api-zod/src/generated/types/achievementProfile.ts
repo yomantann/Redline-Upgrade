@@ -9,6 +9,7 @@ import type { AchievementProfileMetrics } from './achievementProfileMetrics';
 import type { AchievementProgress } from './achievementProgress';
 import type { AssetCollectionEntry } from './assetCollectionEntry';
 import type { CompletedGameRecord } from './completedGameRecord';
+import type { PersonalBestRecord } from './personalBestRecord';
 
 export interface AchievementProfile {
   metrics: AchievementProfileMetrics;
@@ -21,4 +22,5 @@ export interface AchievementProfile {
   secretUnlockedCount: number;
   collection: AssetCollectionEntry[];
   history: CompletedGameRecord[];
+  personalBests: PersonalBestRecord[];
 }

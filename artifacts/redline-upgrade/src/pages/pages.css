@@ -83,6 +83,19 @@
 .red-profile-nav button.active span { color: #f96346; }
 .red-profile-content { padding: 0 clamp(22px,6vw,96px) 38px; }
 .red-overview-grid { display: grid; grid-template-columns: minmax(220px,.7fr) minmax(0,1.3fr); gap: clamp(30px,7vw,110px); padding: 55px 0 58px; border-bottom: 1px solid #303a37; }
+.red-personal-bests { padding:42px 0 48px; border-bottom:1px solid #303a37; }
+.red-personal-bests > .red-section-bar { margin-bottom:20px; }
+.red-personal-best-modes { display:grid; gap:18px; }
+.red-personal-best-mode { padding:16px; border:1px solid #4e5745; background:linear-gradient(110deg,#1b241b,#111715); }
+.red-personal-best-mode.mode-bio { border-color:#6b5078; background:linear-gradient(110deg,#241b2a,#111017); }
+.red-personal-best-mode h3 { margin:0 0 12px; color:#d4e981; font:700 22px 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.red-personal-best-mode.mode-bio h3 { color:#d4a0ff; }
+.red-personal-best-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); border-top:1px solid #35423b; border-left:1px solid #35423b; }
+.red-personal-best-card { min-height:94px; display:grid; align-content:space-between; gap:7px; padding:12px; border-right:1px solid #35423b; border-bottom:1px solid #35423b; }
+.red-personal-best-card .mono { color:#87948a; font-size:7px; text-transform:uppercase; }
+.red-personal-best-card strong { color:#d4e981; font:700 22px 'Barlow Condensed',sans-serif; }
+.red-personal-best-mode.mode-bio .red-personal-best-card strong { color:#d4a0ff; }
+.red-personal-best-card small { color:#a0aaa1; font-size:8px; line-height:1.5; }
 .red-section-heading h2,.red-section-bar h2 { margin: 15px 0 12px; color: #e9e7dc; font: 800 clamp(38px,5vw,63px)/.92 'Barlow Condensed',sans-serif; text-transform: uppercase; letter-spacing: -.02em; }
 .red-section-heading p,.red-section-copy { max-width: 400px; margin: 0; color: #94a198; font-size: 13px; line-height: 1.65; }
 .red-metrics-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-content: center; }
@@ -362,6 +375,30 @@
 .market-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 27px; }
 .market-section-heading h2,.market-coming h2 { margin: 8px 0 0; font: 700 clamp(32px,5vw,55px)/.95 'Barlow Condensed',sans-serif; text-transform: uppercase; }
 .market-sort-note { margin: 9px 0 0; color: #aa9cb2; font: 8px 'Space Mono',monospace; letter-spacing: .06em; }
+.market-owned-section,.market-purchase-section { margin-bottom: 34px; }
+.market-owned-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:13px; padding-bottom:11px; border-bottom:1px solid #45374f; }
+.market-owned-heading h3 { margin:6px 0 0; color:#f3edf5; font:700 clamp(24px,3vw,36px)/.95 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.market-owned-heading > span { color:#b8a9bf; font:8px 'Space Mono',monospace; white-space:nowrap; }
+.market-owned-empty { margin:0; padding:15px 17px; color:#afa4b5; border:1px dashed #51415c; background:#130f18; font-size:11px; }
+.market-owned-row { display:flex; gap:13px; overflow-x:auto; overscroll-behavior-x:contain; padding:2px 2px 14px; scroll-snap-type:x proximity; }
+.market-owned-row .market-item { flex:0 0 215px; scroll-snap-align:start; }
+.market-owned-row .market-art { height:170px; }
+.market-rarity-groups { display:none; }
+.market-rarity-group { --tier-accent:#9ba6ad; --tier-surface:#242a30; margin-top:8px; border:1px solid color-mix(in srgb,var(--tier-accent) 58%,#392e42); background:linear-gradient(110deg,color-mix(in srgb,var(--tier-surface) 56%,#100d14),#100d14); }
+.market-rarity-group.rarity-common { --tier-accent:#929ba1; --tier-surface:#272b2e; }
+.market-rarity-group.rarity-uncommon { --tier-accent:#e0e5e9; --tier-surface:#47515a; }
+.market-rarity-group.rarity-rare { --tier-accent:#78c9f3; --tier-surface:#17344a; }
+.market-rarity-group.rarity-epic { --tier-accent:#f0ca68; --tier-surface:#59451f; }
+.market-rarity-group.rarity-legendary { --tier-accent:#d4a0ff; --tier-surface:#3e2857; }
+.market-rarity-group.rarity-mythic { --tier-accent:#ff8ab4; --tier-surface:#512137; }
+.market-rarity-group > summary { min-height:54px; display:grid; grid-template-columns:minmax(0,1fr) auto 22px; align-items:center; gap:12px; padding:0 14px; cursor:pointer; list-style:none; }
+.market-rarity-group > summary::-webkit-details-marker { display:none; }
+.market-rarity-group-title { color:var(--tier-accent); font:700 11px 'Space Mono',monospace; letter-spacing:.08em; }
+.market-rarity-group-count { color:#c3b7c9; font:8px 'Space Mono',monospace; }
+.market-rarity-group-chevron { color:var(--tier-accent); font:18px 'Space Mono',monospace; text-align:center; }
+.market-rarity-group-products { padding:0 12px 14px; }
+.market-rarity-group-products .market-item { min-width:0; }
+.market-rarity-group-products .market-art { height:180px; }
 .market-filters { display: flex; gap: 8px; }
 .market-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(205px,1fr)); gap: 15px; }
 .market-item { --tier-accent: #9ba6ad; --tier-surface: #242a30; min-width: 0; display: flex; flex-direction: column; border: 1px solid color-mix(in srgb,var(--tier-accent) 55%,var(--market-line)); background: linear-gradient(160deg,var(--tier-surface),#100e15 78%); transition: transform .2s,border-color .2s,box-shadow .2s; }
@@ -487,7 +524,24 @@
   .market-filters { width: 100%; }
   .market-filters button { padding-inline: 10px; }
   .market-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+  .market-purchase-grid { display:none; }
+  .market-rarity-groups { display:block; }
+  .market-owned-row { gap:9px; }
+  .market-owned-row .market-item { flex-basis: min(72vw,230px); }
+  .market-owned-row .market-art { height:155px; }
+  .market-owned-heading { align-items:center; }
+  .market-rarity-group > summary { min-height:50px; padding-inline:11px; }
+  .market-rarity-group-products { padding:0 8px 10px; }
+  .market-rarity-group-products .market-art { height:145px; }
+  .market-rarity-group-products .market-item-copy { padding:10px 10px 8px; }
+  .market-rarity-group-products .market-item-copy h3 { min-height:32px; font-size:15px; }
+  .market-rarity-group-products .market-preview-button { margin-inline:7px; }
+  .market-rarity-group-products .market-buy { margin-inline:8px; }
   .market-art { height: 170px; }
+  .red-personal-bests { padding:32px 0; }
+  .red-personal-best-mode { padding:11px; }
+  .red-personal-best-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .red-personal-best-card { min-height:82px; padding:9px; }
   .market-item-copy { padding: 10px; }
   .market-item-copy h3 { font-size: 14px; }
   .market-item-meta { flex-direction: column; gap: 5px; }

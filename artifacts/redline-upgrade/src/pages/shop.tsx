@@ -20,6 +20,40 @@ const compareCosmetics = (a: CatalogItem, b: CatalogItem) =>
   || (characterRank.get(a.characterId ?? '') ?? Number.MAX_SAFE_INTEGER) - (characterRank.get(b.characterId ?? '') ?? Number.MAX_SAFE_INTEGER)
   || a.name.localeCompare(b.name);
 
+function MarketItemCard({
+  item,
+  owned,
+  equipped,
+  busy,
+  canAfford,
+  onPreview,
+  onBuy,
+  onEquip,
+}: {
+  item: CatalogItem;
+  owned: boolean;
+  equipped: boolean;
+  busy: boolean;
+  canAfford: boolean;
+  onPreview: (item: CatalogItem) => void;
+  onBuy: (item: CatalogItem) => void;
+  onEquip: (item: CatalogItem, remove?: boolean) => void;
+}) {
+  return <article className={`market-item rarity-${item.rarity.toLowerCase()}`} key={item.id}>
+    <div className="market-art"><img src={getPublicAssetUrl(item.assetPath)} alt={item.name} loading="lazy" /><span className="market-rarity">{item.rarity}</span></div>
+    <div className="market-item-copy"><span className="market-kicker">{item.category === 'LOGO' ? 'PLAYER LOGO' : characterName(item.characterId)}</span><h3>{item.name}</h3>
+      <div className="market-item-meta"><span>{item.price === 0 ? 'FREE' : `◈ ${money(item.price)}`}</span><span>{equipped ? 'EQUIPPED' : owned ? 'OWNED' : 'AVAILABLE'}</span></div>
+    </div>
+    <button className="market-preview-button" type="button" onClick={() => onPreview(item)} aria-label={`Preview ${item.name}`}>PREVIEW</button>
+    {owned
+      ? <><button className="market-buy" disabled={busy || equipped} onClick={() => onEquip(item)}>{equipped ? 'EQUIPPED' : 'EQUIP'}</button>
+        {equipped && <button className="market-unequip" disabled={busy} onClick={() => onEquip(item, true)}>UNEQUIP</button>}</>
+      : <button className="market-buy" disabled={busy || (item.price > 0 && !canAfford)} onClick={() => onBuy(item)}>
+        {item.price === 0 ? 'UNLOCK FREE' : canAfford ? 'BUY' : 'INSUFFICIENT CREDITS'}
+      </button>}
+  </article>;
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error(`Request failed (${response.status}).`);
@@ -46,6 +80,7 @@ export function ShopPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [expandedRarities, setExpandedRarities] = useState<string[]>([]);
   const load = useCallback(async () => {
     const [nextCatalog, creditResponse] = await Promise.all([
       getJson<CatalogResponse>('/api/shop/catalog'),
@@ -59,11 +94,16 @@ export function ShopPage() {
     load().catch(() => setError('The market could not load. Please retry.'));
   }, [user, load]);
   useEffect(() => { if (!isLoading && !user) login(); }, [isLoading, user, login]);
-  const owned = new Set(catalog?.ownedItemIds ?? []);
-  const equipped = new Set((catalog?.equipped ?? []).map(row => row.itemId).filter(Boolean));
+  const owned = useMemo(() => new Set(catalog?.ownedItemIds ?? []), [catalog?.ownedItemIds]);
+  const equipped = useMemo(() => new Set((catalog?.equipped ?? []).map(row => row.itemId).filter((id): id is string => Boolean(id))), [catalog?.equipped]);
   const items = useMemo(() => (catalog?.items.filter(item => item.category === category) ?? [])
-    .sort((a, b) => Number(owned.has(b.id)) - Number(owned.has(a.id))
-      || compareCosmetics(a, b)), [catalog, category]);
+    .slice().sort(compareCosmetics), [catalog, category]);
+  const ownedItems = useMemo(() => items.filter(item => owned.has(item.id)), [items, owned]);
+  const purchasableItems = useMemo(() => items.filter(item => !owned.has(item.id)), [items, owned]);
+  const rarityGroups = useMemo(() => Object.keys(rarityRank)
+    .sort((a, b) => rarityRank[a]! - rarityRank[b]!)
+    .map(rarity => ({ rarity, items: purchasableItems.filter(item => item.rarity === rarity) }))
+    .filter(group => group.items.length > 0), [purchasableItems]);
 
   async function buy(item: CatalogItem) {
     setBusy(true);
@@ -120,7 +160,7 @@ export function ShopPage() {
       </header>
       <MarketNav current="shop" />
       <section className="market-section">
-        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">UNLOCKED FIRST · RARITY FIRST · CHARACTER ORDER</p></div>
+        <div className="market-section-heading"><div><span className="market-kicker">THE COLLECTION</span><h2>Choose your mark.</h2><p className="market-sort-note">OWNED COLLECTION · THEN RARITY · CHARACTER ORDER</p></div>
           <div className="market-filters" role="group" aria-label="Shop category">
             <button className={category === 'LOGO' ? 'selected' : ''} onClick={() => setCategory('LOGO')}>LOGOS</button>
             <button className={category === 'DRIVER_SKIN' ? 'selected' : ''} onClick={() => setCategory('DRIVER_SKIN')}>DRIVER SKINS</button>
@@ -128,27 +168,49 @@ export function ShopPage() {
         </div>
         {error && <div className="market-alert" role="alert">{error}<button onClick={() => { setError(''); load().catch(() => setError('The market could not load.')); }}>Retry</button></div>}
         {notice && <div className="market-success" role="status">{notice}<button onClick={() => navigate('/inventory')}>Open Inventory ↗</button><button aria-label="Dismiss" onClick={() => setNotice('')}>×</button></div>}
-        {!catalog && !error ? <div className="market-empty">Opening secure exchange…</div> : !items.length ? <div className="market-empty">No items in this category.</div> : (
-          <div className="market-grid">
-            {items.map(item => {
-              const isOwned = owned.has(item.id);
-              const isEquipped = equipped.has(item.id);
-              return <article className={`market-item rarity-${item.rarity.toLowerCase()}`} key={item.id}>
-                <div className="market-art"><img src={getPublicAssetUrl(item.assetPath)} alt={item.name} loading="lazy" /><span className="market-rarity">{item.rarity}</span></div>
-                <div className="market-item-copy"><span className="market-kicker">{item.category === 'LOGO' ? 'PLAYER LOGO' : characterName(item.characterId)}</span><h3>{item.name}</h3>
-                  <div className="market-item-meta"><span>{item.price === 0 ? 'FREE' : `◈ ${money(item.price)}`}</span><span>{isEquipped ? 'EQUIPPED' : isOwned ? 'OWNED' : 'AVAILABLE'}</span></div>
-                </div>
-                 <button className="market-preview-button" type="button" onClick={() => { setError(''); setPreviewItem(item); }} aria-label={`Preview ${item.name}`}>PREVIEW</button>
-                {isOwned
-                  ? <><button className="market-buy" disabled={busy || isEquipped} onClick={() => equipItem(item)}>{isEquipped ? 'EQUIPPED' : 'EQUIP'}</button>
-                    {isEquipped && <button className="market-unequip" disabled={busy} onClick={() => equipItem(item, true)}>UNEQUIP</button>}</>
-                  : <button className="market-buy" disabled={busy || (item.price > 0 && (!wallet || wallet.balance < item.price))} onClick={() => { setError(''); setSelected(item); }}>
-                    {item.price === 0 ? 'UNLOCK FREE' : (wallet && wallet.balance < item.price) ? 'INSUFFICIENT CREDITS' : 'BUY'}
-                  </button>}
-              </article>;
-            })}
-          </div>
-        )}
+        {!catalog && !error ? <div className="market-empty">Opening secure exchange…</div> : !items.length ? <div className="market-empty">No items in this category.</div> : <>
+          <section className="market-owned-section" aria-labelledby="market-owned-heading">
+            <div className="market-owned-heading"><div><span className="market-kicker">YOUR ACCOUNT COLLECTION</span><h3 id="market-owned-heading">Owned &amp; Unlocked</h3></div><span>{ownedItems.length} ITEMS</span></div>
+            {ownedItems.length ? <div className="market-owned-row">
+              {ownedItems.map(item => <MarketItemCard key={item.id} item={item} owned equipped={equipped.has(item.id)} busy={busy} canAfford={true}
+                onPreview={item => { setError(''); setPreviewItem(item); }}
+                onBuy={item => { setError(''); setSelected(item); }}
+                onEquip={equipItem} />)}
+            </div> : <p className="market-owned-empty">Cosmetics you unlock will appear here.</p>}
+          </section>
+          <section className="market-purchase-section" aria-labelledby="market-purchase-heading">
+            <div className="market-owned-heading"><div><span className="market-kicker">BLACK MARKET CATALOG</span><h3 id="market-purchase-heading">Available to Purchase</h3></div><span>{purchasableItems.length} ITEMS</span></div>
+            {!purchasableItems.length ? <p className="market-owned-empty">You own every cosmetic in this category.</p> : <>
+              <div className="market-grid market-purchase-grid">
+                {purchasableItems.map(item => <MarketItemCard key={item.id} item={item} owned={false} equipped={false} busy={busy} canAfford={(wallet?.balance ?? 0) >= item.price}
+                  onPreview={item => { setError(''); setPreviewItem(item); }}
+                  onBuy={item => { setError(''); setSelected(item); }}
+                  onEquip={equipItem} />)}
+              </div>
+              <div className="market-rarity-groups" aria-label="Available cosmetics by rarity">
+                {rarityGroups.map(group => {
+                  const isOpen = expandedRarities.includes(group.rarity);
+                  return <details className={`market-rarity-group rarity-${group.rarity.toLowerCase()}`} key={group.rarity} open={isOpen}>
+                    <summary aria-expanded={isOpen} onClick={event => {
+                      event.preventDefault();
+                      setExpandedRarities(current => isOpen ? current.filter(value => value !== group.rarity) : [...current, group.rarity]);
+                    }}>
+                      <span className="market-rarity-group-title">{group.rarity}</span>
+                      <span className="market-rarity-group-count">{group.items.length} {group.items.length === 1 ? 'ITEM' : 'ITEMS'}</span>
+                      <span className="market-rarity-group-chevron" aria-hidden="true">{isOpen ? '−' : '+'}</span>
+                    </summary>
+                    <div className="market-grid market-rarity-group-products">
+                      {group.items.map(item => <MarketItemCard key={item.id} item={item} owned={false} equipped={false} busy={busy} canAfford={(wallet?.balance ?? 0) >= item.price}
+                        onPreview={item => { setError(''); setPreviewItem(item); }}
+                        onBuy={item => { setError(''); setSelected(item); }}
+                        onEquip={equipItem} />)}
+                    </div>
+                  </details>;
+                })}
+              </div>
+            </>}
+          </section>
+        </>}
       </section>
       <details className="market-coming market-coming-toggle" open>
         <summary className="market-coming-summary"><div><span className="market-kicker">IN DEVELOPMENT</span><h2>Pawn skins and board cosmetics</h2></div><span className="market-coming-badge">IN DEVELOPMENT</span></summary>

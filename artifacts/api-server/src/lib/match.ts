@@ -46,6 +46,14 @@ function buildSnapshot(
   const you = seatForUser(state, userId)!;
   const turn = describeTurn(state);
   const now = Date.now();
+  const matchForViewer = {
+    ...state.match,
+    players: state.match.players.map((player, index) => {
+      if (index === you.playerIndex) return player;
+      const { personalBestDetails: _privateDetails, ...publicPlayer } = player;
+      return publicPlayer;
+    }),
+  };
   return {
     roomId,
     version,
@@ -85,7 +93,7 @@ function buildSnapshot(
         ),
       };
     }),
-    match: state.match as unknown as MatchSnapshot["match"],
+    match: matchForViewer as unknown as MatchSnapshot["match"],
   };
 }
 

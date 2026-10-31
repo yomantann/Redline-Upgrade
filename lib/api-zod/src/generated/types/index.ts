@@ -52,6 +52,8 @@ export * from './matchSeat';
 export * from './matchSnapshot';
 export * from './matchSnapshotMatch';
 export * from './matchSnapshotYou';
+export * from './personalBestRecord';
+export * from './personalBestRecordMode';
 export * from './profileUpdate';
 export * from './purchaseCosmeticInput';
 export * from './purchaseCosmeticResult';

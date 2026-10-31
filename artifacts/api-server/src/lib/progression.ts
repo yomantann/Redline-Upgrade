@@ -1,8 +1,9 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import {
   achievementProfilesTable,
   completedGameHistoryTable,
   db,
+  personalBestRecordsTable,
   userAchievementsTable,
   userAssetCollectionTable,
 } from "@workspace/db";
@@ -17,6 +18,7 @@ import { careers } from "../../../redline-upgrade/src/game/careers";
 import { calculateAssetValue } from "../../../redline-upgrade/src/game/endgame";
 import { getFinalPlacementOrder, type Match } from "../../../redline-upgrade/src/game/match";
 import type { MatchAssetEvent } from "../../../redline-upgrade/src/game/multiplayer";
+import type { PersonalBestDetail } from "../../../redline-upgrade/src/game/player";
 import { calculateSecretAssetMilestoneMetrics, secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
 import { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS, grantCredits } from "./credit-wallet";
 
@@ -408,6 +410,137 @@ export async function recordCompletedGame(
   const portfolioValue = calculateAssetValue(player);
   const finalValue = player.endgame?.finalGameValue ?? player.endgame?.baseValue ?? 0;
   const placement = getFinalPlacementOrder(match.players, match.finishOrder).indexOf(playerIndex) + 1;
+  const personalBestMode = match.boardId === "BIO_UPGRADE" ? "BIO" as const : "STANDARD" as const;
+  const highestRetainedAsset = [...retainedAssets].sort((a, b) => b.level - a.level)[0];
+  const personalBestCandidates: Array<{ category: string; label: string; value: number; relevantAssetId?: string }> = [
+    { category: "FINAL_SCORE", label: "Final score", value: finalValue },
+    { category: "FINAL_WEALTH", label: "Final wealth", value: player.wealth },
+    { category: "ASSETS_RETAINED", label: "Assets retained", value: retainedAssets.length },
+    { category: "PORTFOLIO_VALUE", label: "Asset portfolio value", value: portfolioValue },
+    { category: "AI_SKILL", label: "AI Skill", value: player.aiSkill },
+    { category: "FAME", label: "Fame", value: player.fame },
+    { category: "LIFESTYLE", label: "Lifestyle", value: player.lifestyle },
+    { category: "INFLUENCE", label: "Influence", value: player.influence },
+    { category: "UPGRADE_TOKENS", label: "Upgrade Tokens", value: player.endgame?.snapshot?.upgradeTokens ?? player.upgradeTokens },
+    { category: "ASSET_UPGRADE_LEVEL", label: "Highest retained asset level", value: highestRetainedAsset?.level ?? 0, ...(highestRetainedAsset ? { relevantAssetId: highestRetainedAsset.assetId } : {}) },
+  ];
+  const oldPersonalBests = await tx.select().from(personalBestRecordsTable)
+    .where(and(
+      eq(personalBestRecordsTable.userId, userId),
+      eq(personalBestRecordsTable.mode, personalBestMode),
+    ));
+  const personalBestByCategory = new Map(oldPersonalBests.map((row) => [row.category, row]));
+  // Adopt comparable legacy history as the baseline before evaluating this game's result.
+  // Older snapshots did not persist endgame Upgrade Tokens, so that category starts its
+  // baseline with the first result recorded after this feature was introduced.
+  const priorGames = await tx.select().from(completedGameHistoryTable)
+    .where(eq(completedGameHistoryTable.userId, userId))
+    .orderBy(asc(completedGameHistoryTable.completedAt));
+  const historicalBest = new Map<string, {
+    recordValue: number;
+    gameId: string;
+    achievedAt: Date;
+    characterId: string;
+    careerId: string | null;
+    relevantAssetId: string | null;
+  }>();
+  for (const game of priorGames) {
+    const gameMode = game.boardId === "BIO_UPGRADE" ? "BIO" : "STANDARD";
+    if (gameMode !== personalBestMode) continue;
+    const highestRetained = [...(game.retainedAssets ?? [])].sort((a, b) => b.level - a.level)[0];
+    const historicalCandidates: Array<{ category: string; value: number | undefined; relevantAssetId?: string }> = [
+      { category: "FINAL_SCORE", value: game.finalValue },
+      { category: "FINAL_WEALTH", value: game.finalStats.wealth },
+      { category: "ASSETS_RETAINED", value: game.retainedAssets.length },
+      { category: "PORTFOLIO_VALUE", value: game.portfolioValue },
+      { category: "AI_SKILL", value: game.finalStats.aiSkill },
+      { category: "FAME", value: game.finalStats.fame },
+      { category: "LIFESTYLE", value: game.finalStats.lifestyle },
+      { category: "INFLUENCE", value: game.finalStats.influence },
+      ...(highestRetained ? [{ category: "ASSET_UPGRADE_LEVEL", value: highestRetained.level, relevantAssetId: highestRetained.assetId }] : []),
+    ];
+    for (const historical of historicalCandidates) {
+      if (typeof historical.value !== "number" || !Number.isFinite(historical.value)) continue;
+      const best = historicalBest.get(historical.category);
+      if (!best || historical.value > best.recordValue) {
+        historicalBest.set(historical.category, {
+          recordValue: historical.value,
+          gameId: game.gameId,
+          achievedAt: game.completedAt,
+          characterId: game.characterId,
+          careerId: game.careerId,
+          relevantAssetId: historical.relevantAssetId ?? null,
+        });
+      }
+    }
+  }
+  for (const [category, best] of historicalBest) {
+    if (personalBestByCategory.has(category)) continue;
+    const seeded = {
+      userId,
+      mode: personalBestMode,
+      category,
+      recordValue: best.recordValue,
+      previousValue: null,
+      gameId: best.gameId,
+      achievedAt: best.achievedAt,
+      characterId: best.characterId,
+      careerId: best.careerId,
+      relevantAssetId: best.relevantAssetId,
+    };
+    await tx.insert(personalBestRecordsTable).values(seeded).onConflictDoNothing();
+    personalBestByCategory.set(category, seeded);
+  }
+  const personalBestDetails: PersonalBestDetail[] = [];
+  const newPersonalBestCategories: string[] = [];
+  for (const candidate of personalBestCandidates) {
+    // A zero asset-upgrade level means no eligible retained asset; do not create a misleading record.
+    if (candidate.category === "ASSET_UPGRADE_LEVEL" && candidate.value === 0) continue;
+    const previous = personalBestByCategory.get(candidate.category);
+    const isBaseline = !previous;
+    const isNewRecord = Boolean(previous && candidate.value > previous.recordValue);
+    if (isBaseline || isNewRecord) {
+      const record = {
+        userId,
+        mode: personalBestMode,
+        category: candidate.category,
+        recordValue: candidate.value,
+        previousValue: previous?.recordValue ?? null,
+        gameId,
+        achievedAt: completedAt,
+        characterId: player.characterId,
+        careerId: player.careerId,
+        relevantAssetId: candidate.relevantAssetId ?? null,
+      };
+      if (previous) {
+        await tx.update(personalBestRecordsTable).set(record).where(and(
+          eq(personalBestRecordsTable.userId, userId),
+          eq(personalBestRecordsTable.mode, personalBestMode),
+          eq(personalBestRecordsTable.category, candidate.category),
+        ));
+      } else {
+        await tx.insert(personalBestRecordsTable).values(record).onConflictDoNothing();
+      }
+      const detail: PersonalBestDetail = {
+        category: candidate.category,
+        label: candidate.label,
+        value: candidate.value,
+        previousValue: previous?.recordValue ?? null,
+        improvement: previous ? candidate.value - previous.recordValue : 0,
+        isNewRecord,
+        isBaseline,
+        mode: personalBestMode,
+        achievedAt: completedAt.toISOString(),
+        characterId: player.characterId,
+        careerId: player.careerId,
+        ...(candidate.relevantAssetId ? { relevantAssetId: candidate.relevantAssetId } : {}),
+      };
+      personalBestDetails.push(detail);
+      if (isNewRecord) newPersonalBestCategories.push(candidate.category);
+    }
+  }
+  player.personalBestCategories = newPersonalBestCategories;
+  player.personalBestDetails = personalBestDetails;
   const previousMetrics = toMetrics(profile.metrics);
   const facts = toFacts(profile.lifetimeFacts);
   const oldAssetRows = await tx.select().from(userAssetCollectionTable)
@@ -757,6 +890,9 @@ export async function getAchievementProfile(userId: string) {
   const history = await db.select().from(completedGameHistoryTable)
     .where(eq(completedGameHistoryTable.userId, userId))
     .orderBy(desc(completedGameHistoryTable.completedAt));
+  const personalBests = await db.select().from(personalBestRecordsTable)
+    .where(eq(personalBestRecordsTable.userId, userId))
+    .orderBy(personalBestRecordsTable.mode, personalBestRecordsTable.category);
   const allMetrics = toMetrics(profile?.metrics);
   const metrics = Object.fromEntries(Object.entries(allMetrics).filter(([key]) => !key.startsWith("secret")));
   const standardUnlockedCount = achievementCatalog.filter((achievement) => Boolean(savedAchievements.get(achievement.id)?.unlockedAt)).length;
@@ -806,5 +942,6 @@ export async function getAchievementProfile(userId: string) {
     secretUnlockedCount,
     collection,
     history,
+    personalBests,
   };
 }

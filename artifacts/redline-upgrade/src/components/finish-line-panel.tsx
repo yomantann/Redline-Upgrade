@@ -72,6 +72,18 @@ function finishOrdinal(place: number) {
   return `${place}${suffix}`;
 }
 
+function personalBestValue(category: string, value: number) {
+  return ['FINAL_SCORE', 'FINAL_WEALTH', 'PORTFOLIO_VALUE'].includes(category)
+    ? formatMoney(value)
+    : category === 'ASSET_UPGRADE_LEVEL'
+      ? `LEVEL ${value}`
+      : value.toLocaleString();
+}
+
+function personalBestCategoryLabel(category: string) {
+  return category.replaceAll('_', ' ');
+}
+
 function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   const { snapshot } = endgame;
   const career = snapshot.careerId ? getCareer(snapshot.careerId) : undefined;
@@ -446,7 +458,21 @@ export function MatchResultsPanel({
                         ? `Final Gamble won: the stake added ${formatMoney(endgame.gambleStake.wealth + endgame.gambleStake.assetValue + endgame.gambleStake.tokenValue)} to final value; assets remain owned.`
                         : `Final Gamble lost: ${formatMoney(endgame.gambleStake?.wealth ?? 0)} Wealth, ${formatMoney(endgame.gambleStake?.assetValue ?? 0)} in assets, and ${endgame.gambleStake?.tokens ?? 0} Upgrade Tokens were forfeited.`}</p>}
                       <small className="finish-order-result mono">ENDGAME OUTCOME / {endgame.choice === 'CASH_OUT' ? 'BASE VALUE LOCKED AT 1×' : endgame.choice === 'DOUBLE_DOWN' ? `2D4 ROLL · ${endgame.effectiveRoll} · ${endgame.multiplier}×` : endgame.choice === 'FINAL_GAMBLE' ? (endgame.gambleStake?.won ? '50/50 STAKE WON' : '50/50 STAKE LOST') : 'NOT RECORDED'}</small>
+                      {!!player.personalBestCategories?.length && <div className="finish-line-personal-best-badges" aria-label="New Personal Best categories">
+                        {player.personalBestCategories.map(category => <span key={category}>NEW PERSONAL BEST · {personalBestCategoryLabel(category)}</span>)}
+                      </div>}
                    </div>
+                    {!!player.personalBestDetails?.length && <details className="finish-line-personal-best-details">
+                      <summary>Personal Best details · {player.personalBestDetails.length} records</summary>
+                      <div className="finish-line-personal-best-list">
+                        {player.personalBestDetails.map(record => <article key={record.category}>
+                          <span className="mono">{record.label} · {record.mode} · {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(record.achievedAt))}</span>
+                          <strong>{record.isBaseline ? 'BASELINE RECORDED' : record.isNewRecord ? 'NEW PERSONAL BEST' : 'PERSONAL BEST'}</strong>
+                          <div><span>Previous best: {record.previousValue === null ? '—' : personalBestValue(record.category, record.previousValue)}</span><span>New best: {personalBestValue(record.category, record.value)}</span><span>Improvement: {record.isBaseline ? 'Baseline' : `+${personalBestValue(record.category, record.improvement)}`}</span></div>
+                          {record.category === 'ASSET_UPGRADE_LEVEL' && record.relevantAssetId && <small>{getAsset(record.relevantAssetId)?.name ?? record.relevantAssetId}</small>}
+                        </article>)}
+                      </div>
+                    </details>}
                     {player.creditRewardReceipt && <div className="finish-line-credit-receipt" data-testid={`credit-receipt-${player.playerId}`}>
                       <span className="mono">REDLINE CREDITS EARNED</span>
                       <strong>+{player.creditRewardReceipt.total.toLocaleString()} ◈</strong>

@@ -223,6 +223,18 @@ export const GetAchievementProfileResponse = zod.object({
 }),zod.null()]).optional(),
   "unlockedAchievementIds": zod.array(zod.string()),
   "completedAt": zod.coerce.date()
+})),
+  "personalBests": zod.array(zod.object({
+  "userId": zod.string(),
+  "mode": zod.enum(['STANDARD', 'BIO']),
+  "category": zod.string(),
+  "recordValue": zod.number().int(),
+  "previousValue": zod.number().int().nullable(),
+  "gameId": zod.string(),
+  "achievedAt": zod.coerce.date(),
+  "characterId": zod.string(),
+  "careerId": zod.string().nullable(),
+  "relevantAssetId": zod.string().nullable()
 }))
 })
 

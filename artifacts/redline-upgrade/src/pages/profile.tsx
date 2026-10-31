@@ -206,12 +206,6 @@ export function ProfilePage() {
   const selectedAssetLevel = selectedAssetId ? highestRetainedLevelByAsset.get(selectedAssetId) ?? 1 : 1;
   const selectedAssetGames = selectedAssetId ? completedGames.filter(game => game.acquiredAssetIds.includes(selectedAssetId)) : [];
   const selectedAssetRetentionGames = selectedAssetId ? completedGames.filter(game => game.retainedAssets.some(asset => asset.assetId === selectedAssetId)) : [];
-  const latestGame = useMemo(() => [...completedGames].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0], [completedGames]);
-  const latestAwards = useMemo(() => {
-    const unlockedIds = new Set(latestGame?.unlockedAchievementIds ?? []);
-    return achievementList.filter(achievement => unlockedIds.has(achievement.id) && achievement.unlockedAt);
-  }, [latestGame, achievementList]);
-
   async function saveDisplayName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const displayName = displayNameDraft.trim();
@@ -358,13 +352,6 @@ export function ProfilePage() {
               <section className="red-state-card"><span className="eyebrow">NO PROFILE RECORD</span><h2>No progression record yet.</h2><p>Completed games will appear here when the server has a record for this account.</p></section>
             ) : (
               <div className="red-profile-content">
-                {latestAwards.length > 0 && latestGame && <section className="red-award-notice" aria-labelledby="red-award-title">
-                  <div className="red-award-signal" aria-hidden="true">+</div>
-                  <div className="red-award-copy"><span className="mono">LATEST MATCH / {dateLabel(latestGame.completedAt)} / {titleCase(latestGame.mode)}</span><h2 id="red-award-title">{latestAwards.length === 1 ? 'New milestone secured.' : `${latestAwards.length} new milestones secured.`}</h2>
-                    <ul>{latestAwards.map(award => <li key={award.id}><strong>{award.name}</strong><span>{award.description}</span></li>)}</ul>
-                  </div>
-                  <button type="button" className="red-award-link" onClick={() => setTab('milestones')}>View milestone record <span aria-hidden="true">↗</span></button>
-                </section>}
                 {tab === 'overview' && (
                   <>
                     <section className="red-overview-grid">
@@ -381,6 +368,32 @@ export function ProfilePage() {
                         <button className="red-inline-link" type="button" onClick={() => navigate('/shop')}>Black Market ↗</button>
                         <button className="red-inline-link" type="button" onClick={() => navigate('/inventory')}>Inventory ↗</button>
                       </div>
+                    </section>
+                    <section className="red-personal-bests" aria-labelledby="red-personal-bests-heading">
+                      <div className="red-section-bar"><div><span className="eyebrow">RECORD BOOK</span><h2 id="red-personal-bests-heading">Personal bests.</h2><p className="red-section-copy">Your top completed-game result in each tracked category, kept separate by Standard and Bio mode.</p></div></div>
+                      {profile.personalBests.length ? <div className="red-personal-best-modes">
+                        {(['STANDARD', 'BIO'] as const).map(mode => {
+                          const records = profile.personalBests.filter(record => record.mode === mode);
+                          if (!records.length) return null;
+                          return <section className={`red-personal-best-mode mode-${mode.toLowerCase()}`} key={mode} aria-label={`${mode} mode personal bests`}>
+                            <h3>{mode === 'BIO' ? 'Bio Upgrade' : 'Standard Redline'}</h3>
+                            <div className="red-personal-best-grid">{records.map(record => {
+                              const label = record.category.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+                              const value = ['FINAL_SCORE', 'FINAL_WEALTH', 'PORTFOLIO_VALUE'].includes(record.category)
+                                ? money(record.recordValue)
+                                : record.category === 'ASSET_UPGRADE_LEVEL'
+                                  ? `Level ${record.recordValue}`
+                                  : record.recordValue.toLocaleString();
+                              const character = characters.find(item => item.id === record.characterId);
+                              return <article className="red-personal-best-card" key={`${mode}-${record.category}`}>
+                                <span className="mono">{label}</span><strong>{value}</strong>
+                                <small>{dateLabel(record.achievedAt)} · {character?.name ?? titleCase(record.characterId)}{record.careerId ? ` · ${titleCase(record.careerId)}` : ''}</small>
+                                {record.category === 'ASSET_UPGRADE_LEVEL' && record.relevantAssetId && <small>{assets.find(asset => asset.id === record.relevantAssetId)?.name ?? titleCase(record.relevantAssetId)}</small>}
+                              </article>;
+                            })}</div>
+                          </section>;
+                        })}
+                      </div> : <EmptyState title="No personal records yet" text="Records are established by authenticated completed games and do not include abandoned runs." />}
                     </section>
                     <section className="red-overview-grid">
                       <div className="red-section-heading"><span className="eyebrow">REDLINE CREDITS</span><h2>Wallet<br />ledger.</h2><p>Credits earned through completed games, endgame results, and milestones.</p></div>

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db, usersTable, achievementProfilesTable, userAchievementsTable, completedGameHistoryTable, userAssetCollectionTable } from "@workspace/db";
+import { db, usersTable, achievementProfilesTable, userAchievementsTable, completedGameHistoryTable, personalBestRecordsTable, userAssetCollectionTable } from "@workspace/db";
 import { GetAchievementProfileResponse } from "@workspace/api-zod";
 import { getAchievementProfile, recordCompletedGame } from "../src/lib/progression.ts";
 import { assets } from "../../redline-upgrade/src/game/assets.ts";
@@ -120,8 +120,64 @@ try {
     }
     assertionsCompleted = true;
   });
+  // Simulate a returning account whose completed-game history predates the PB table.
+  await db.delete(personalBestRecordsTable).where(eq(personalBestRecordsTable.userId, userId));
+  const createRecordRun = (boardId, finalValue, wealth) => {
+    const start = createMatch(characters[0].id, boardId, "SINGLE_PLAYER");
+    const players = start.players.map((candidate, index) => {
+      const basePlayer = index === 0 ? {
+        ...candidate,
+        status: "FINISHED",
+        wealth,
+        aiSkill: 25,
+        fame: 25,
+        lifestyle: 25,
+        influence: 25,
+        equipment: { ...candidate.equipment, car: car.id, property: property.id },
+        assetLevels: { ...candidate.assetLevels, [car.id]: 2, [property.id]: 1 },
+      } : { ...candidate, status: "FINISHED" };
+      return index === 0 ? {
+        ...basePlayer,
+        endgame: {
+          status: "RESOLVED",
+          choice: "CASH_OUT",
+          baseValue: finalValue,
+          finalGameValue: finalValue,
+          snapshot: { ...basePlayer },
+        },
+      } : basePlayer;
+    });
+    return { ...start, phase: "complete", finishOrder: [0, 1, 2, 3], players };
+  };
+  const tieGameId = randomUUID();
+  const improvedGameId = randomUUID();
+  const bioGameId = randomUUID();
+  await db.transaction(async (tx) => {
+    const tieRun = createRecordRun("REDLINE_UPGRADE", 620_000, 120_000);
+    await recordCompletedGame(tx, "SOLO", tieGameId, userId, tieRun, 0, []);
+    if (tieRun.players[0].personalBestCategories?.length) {
+      throw new Error("An equal result was incorrectly labeled a new Personal Best.");
+    }
+    const improvedRun = createRecordRun("REDLINE_UPGRADE", 620_001, 120_001);
+    await recordCompletedGame(tx, "SOLO", improvedGameId, userId, improvedRun, 0, []);
+    if (improvedRun.players[0].personalBestCategories?.join(",") !== "FINAL_SCORE,FINAL_WEALTH") {
+      throw new Error(`Personal Bests were not awarded only for strictly improved categories: ${improvedRun.players[0].personalBestCategories?.join(",") ?? "(none)"}.`);
+    }
+    const bioRun = createRecordRun("BIO_UPGRADE", 620_000, 120_000);
+    await recordCompletedGame(tx, "SOLO", bioGameId, userId, bioRun, 0, []);
+    if (bioRun.players[0].personalBestCategories?.length) {
+      throw new Error("The first Bio result should establish baselines without announcing a sweep of new records.");
+    }
+  });
   const rawProfile = await getAchievementProfile(userId);
   const profile = GetAchievementProfileResponse.parse(rawProfile);
+  const standardFinalScore = profile.personalBests.find((record) => record.mode === "STANDARD" && record.category === "FINAL_SCORE");
+  const bioFinalScore = profile.personalBests.find((record) => record.mode === "BIO" && record.category === "FINAL_SCORE");
+  if (profile.personalBests.length !== 20 || standardFinalScore?.recordValue !== 620_001
+      || standardFinalScore.previousValue !== 620_000 || standardFinalScore.gameId === gameId
+      || bioFinalScore?.recordValue !== 620_000 || bioFinalScore.gameId === standardFinalScore.gameId) {
+    throw new Error("Mode-specific Personal Best persistence or strict improvement tracking is incorrect.");
+  }
   const lockedSecret = profile.achievements.find((item) => item.achievementId === "secret-01");
   const revealedSecret = profile.achievements.find((item) => item.achievementId === "secret-12");
   if (profile.totalCount !== expectedAchievementCount || profile.standardCount !== 100 || profile.secretCount !== expectedSecretCount) {
@@ -140,6 +196,9 @@ try {
   if (Object.keys(profile.metrics).some((key) => key.startsWith("secret"))) {
     throw new Error("The profile response exposed hidden secret metrics.");
   }
+  const savedRuns = await db.select().from(completedGameHistoryTable)
+    .where(eq(completedGameHistoryTable.userId, userId));
+  if (savedRuns.length !== 4) throw new Error("The test did not store each distinct completed game exactly once.");
 } finally {
   await db.delete(usersTable).where(eq(usersTable.id, userId));
 }
