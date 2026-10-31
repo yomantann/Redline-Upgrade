@@ -323,7 +323,7 @@ export function createMatch(
  * character or career are filled with unique random choices; explicit picks must be unique.
  */
 export function createMultiplayerMatch(
-  seats: ReadonlyArray<{ characterId: string | null; careerId: string | null; displayName: string }>,
+  seats: ReadonlyArray<{ characterId: string | null; careerId: string | null; displayName: string; isCPU?: boolean }>,
   boardId: BoardId = DEFAULT_BOARD_ID,
 ): Match {
   const board = getBoardDefinition(boardId);
@@ -339,7 +339,7 @@ export function createMultiplayerMatch(
     characterId: seat.characterId ?? freeCharacters.pop()!,
     displayName: seat.displayName,
     careerId: seat.careerId ?? freeCareers.pop()!,
-    isCPU: false,
+    isCPU: seat.isCPU ?? false,
   })));
 }
 
@@ -427,6 +427,7 @@ export type MatchAction =
   | { type: 'SWITCH_CAREER' }
   | { type: 'SELECT_CAREER'; careerId: string }
   | { type: 'ACKNOWLEDGE_CAREER' }
+  | { type: 'ACKNOWLEDGE_CAREER_REVEAL' }
   | { type: 'RESOLVE_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
@@ -1352,6 +1353,8 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
 /** Guard each transition so stale timers and repeated clicks cannot reapply an effect. */
 export function advanceMatch(match: Match, action: MatchAction): Match {
   switch (action.type) {
+    case 'ACKNOWLEDGE_CAREER_REVEAL':
+      return match;
     case 'ROLL': {
       if (match.phase !== 'ready' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       const { die1, die2, total, doubles } = action.result;
