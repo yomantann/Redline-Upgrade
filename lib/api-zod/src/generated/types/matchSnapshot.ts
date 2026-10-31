@@ -23,6 +23,11 @@ export interface MatchSnapshot {
   /** @nullable */
   pausedAt: number | null;
   abandoned: boolean;
+  /**
+     * @items.minimum 0
+     * @items.maximum 3
+     */
+  careerRevealPendingPlayerIndexes: number[];
   seats: MatchSeat[];
   /** The canonical Match (same shape as the single-player reducer state, including eventLog). */
   match: MatchSnapshotMatch;

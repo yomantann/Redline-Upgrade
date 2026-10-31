@@ -923,6 +923,61 @@ components:
               type: string
               minLength: 1
               maxLength: 40
+            cardId:
+              type: string
+              minLength: 1
+              maxLength: 80
+            participantIds:
+              type: array
+              maxItems: 2
+              items:
+                type: string
+                minLength: 1
+                maxLength: 80
+            passed:
+              type: boolean
+            resolution:
+              oneOf:
+                - type: string
+                  maxLength: 120
+                - type: object
+                  required: [kind]
+                  properties:
+                    kind:
+                      type: string
+                      enum: [STAT_DESTINATION, ASSET_INTERACTION, CAREER_SWAP]
+                    stat:
+                      type: string
+                      enum: [aiSkill, fame, influence]
+                    choice:
+                      type: string
+                      enum: [STEAL, SWAP, DECLINE]
+                    accept:
+                      type: boolean
+            targetPlayerId:
+              type: string
+              minLength: 1
+              maxLength: 80
+            category:
+              type: string
+              enum: [pet, investment]
+            assetId:
+              type: string
+              minLength: 1
+              maxLength: 80
+            mode:
+              type: string
+              enum: [UPGRADE_ASSET, RECOVER_MILESTONE]
+            choice:
+              type: string
+              enum: [CASH_OUT, DOUBLE_DOWN, FINAL_GAMBLE]
+            step:
+              type: string
+              enum: [KEEP, SWITCH, ACKNOWLEDGE, SELECT]
+            careerId:
+              type: string
+              minLength: 1
+              maxLength: 80
     MatchSeat:
       type: object
       required: [userId, playerId, playerIndex, displayName, connected, missedTurns, kicked, cpuControlled, cpuTurns, fastCpu]
@@ -949,7 +1004,7 @@ components:
           type: boolean
     MatchSnapshot:
       type: object
-      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, pausedAt, abandoned, seats, match]
+      required: [roomId, version, you, currentPlayerIndex, currentUserId, actionAt, autoplayAfterMs, maxMissedTurns, pausedAt, abandoned, careerRevealPendingPlayerIndexes, seats, match]
       properties:
         roomId:
           type: string
@@ -981,6 +1036,12 @@ components:
           type: [integer, "null"]
         abandoned:
           type: boolean
+        careerRevealPendingPlayerIndexes:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 3
         seats:
           type: array
           items:

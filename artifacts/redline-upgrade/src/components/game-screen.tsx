@@ -8,6 +8,7 @@ import { createMatch, type Match, type MatchAction, type PendingDecision, type W
 import type { BoardId } from '@/game/boards';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
+import { calculateEndgameBaseValue } from '@/game/endgame';
 import type { EventLogEntry } from '@/game/events/types';
 import { FINISH_ORDER_WEALTH_REWARDS, formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { availableUpgradeTokens } from '@/game/upgrade-tokens';
@@ -27,7 +28,9 @@ import { EndgameAttributeBonusSummary } from './endgame-attribute-bonus-summary'
 import { SpaceIcon } from './space-icon';
 import { CareerDeckBadges } from './career-deck-badges';
 import { AgeRestrictionBadge } from './age-restriction-badge';
+import { MultiplayerCareerReveal } from './multiplayer-career-reveal';
 import './game-screen.css';
+import './mobile-gameplay.css';
 
 function WealthCounter({ amount, compact = false }: { amount: number; compact?: boolean }) {
   const [display, setDisplay] = useState(amount);
@@ -447,9 +450,16 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   const roll = match.roll;
   const rollDisabledReason = active.isCPU
     ? 'CPU turn'
+    : remote && remote.careerRevealPendingPlayerIndexes.length > 0
+      ? 'Waiting for all players to confirm their career'
     : match.phase !== 'ready'
       ? 'Available when your turn is ready'
       : undefined;
+  const remoteCareerPlayer = remote ? match.players[remote.youIndex] : undefined;
+  const remoteCareer = remoteCareerPlayer?.careerId ? getCareer(remoteCareerPlayer.careerId) : undefined;
+  const needsRemoteCareerConfirmation = Boolean(
+    remote && remote.careerRevealPendingPlayerIndexes.includes(remote.youIndex),
+  );
   const cardResultSummary = pending?.kind === 'CARD' && pending.stage === 'resolved'
     ? summarizeCardResolution(match.eventLog, active.playerId)
     : undefined;
@@ -516,6 +526,19 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
       {isBioBoard && <AgeRestrictionBadge />}
       {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
+      {remote && remote.careerRevealPendingPlayerIndexes.length > 0 && !needsRemoteCareerConfirmation && (
+        <div className="career-reveal-waiting-banner mono" role="status" data-testid="text-career-confirmation-waiting">
+          WAITING FOR EVERY PLAYER TO CONFIRM THEIR CAREER
+        </div>
+      )}
+      {needsRemoteCareerConfirmation && remoteCareerPlayer && remoteCareer && (
+        <MultiplayerCareerReveal
+          player={remoteCareerPlayer}
+          career={remoteCareer}
+          waitingForPlayers={Math.max(0, (remote?.careerRevealPendingPlayerIndexes.length ?? 0) - 1)}
+          onConfirm={() => dispatchMatch({ type: 'ACKNOWLEDGE_CAREER_REVEAL' })}
+        />
+      )}
       <section className="game-head">
         <div>
           <span className="eyebrow">{remote ? 'ONLINE MATCH' : 'MATCH 01 / LOCAL TABLETOP'}</span>
@@ -530,7 +553,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
        {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong>{purchaseNotice.currentWealth !== undefined && <span className="mono">WEALTH NOW / {formatMoney(purchaseNotice.currentWealth)}</span>}</div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 
- {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} />}
+ {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} boardId={match.boardId} />}
 
       <section className="game-players" aria-label="Players, careers and finances">
         {match.players.map((contestant, index) => {
@@ -551,8 +574,14 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             { label: 'LIFESTYLE', stat: 'lifestyle', value: contestant.lifestyle },
             { label: 'INFLUENCE', stat: 'influence', value: contestant.influence },
           ];
-          const summaryStats: { label: string; stat?: PlayerStat; value: string }[] = [
+          const assetCount = Object.values(contestant.equipment).filter(Boolean).length;
+          const coreSummaryStats: { label: string; stat?: PlayerStat; value: string }[] = [
             { label: 'WEALTH', stat: 'wealth', value: formatMoney(contestant.wealth) },
+            { label: 'ASSETS', value: String(assetCount) },
+            { label: 'SCORE', value: formatMoney(calculateEndgameBaseValue(contestant)) },
+          ];
+          const summaryStats: { label: string; stat?: PlayerStat; value: string }[] = compactPlayerLayout ? coreSummaryStats : [
+            ...coreSummaryStats,
             { label: 'PAYDAY', value: formatMoney(paydaySalary) },
             { label: 'UPGRADE TOKENS', value: String(contestant.upgradeTokens) },
             ...playerStats.slice(1).map(stat => ({ ...stat, value: stat.value.toLocaleString() })),
@@ -585,7 +614,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                     </div>
                    <div className="game-player-summary-identity">
                       {character && <CharacterPortrait character={character} imagePath={contestant.portraitImagePath ?? undefined} logoPath={contestant.playerLogoPath} boardId={match.boardId} className="game-player-summary-portrait" />}
-                     <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong><small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
+                     <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong>{remote && <small>{contestant.displayName}{index === remote.youIndex ? ' · YOU' : ''}</small>}<small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
                    </div>
                    <div className="game-player-summary-values">
                       {summaryStats.map(({ label, stat, value }) => {
@@ -707,6 +736,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           partyPlayers={match.players}
           partyActorId={active.playerId}
           partyCanAct={!remote || remote.youIndex === remote.currentPlayerIndex}
+         boardId={match.boardId}
          cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}

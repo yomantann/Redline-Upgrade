@@ -20,3 +20,9 @@ Keep authentication hooks outside `game/state.tsx`; pass account identity and lo
 **Why:** Importing the browser auth hook into game state made the Vite SSR harness fail to resolve the auth package's React dependency.
 
 **How to apply:** Keep reducer and game-state modules importable without browser auth so server-side rendering and game regression scripts can load them independently.
+
+When the SSR harness renders UI that reaches the linked auth package, dedupe React and keep that package inside Vite's SSR transform rather than Node externalization.
+
+**Why:** Node resolved the auth package's React peer dependency from the shared package directory, where no local React installation exists.
+
+**How to apply:** If the harness reports that it cannot resolve React from a linked workspace package, adjust its Vite `resolve.dedupe` and `ssr.noExternal` settings before changing application dependencies.

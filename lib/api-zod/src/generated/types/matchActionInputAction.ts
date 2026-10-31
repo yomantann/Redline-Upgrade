@@ -5,6 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MatchActionInputActionCategory } from './matchActionInputActionCategory';
+import type { MatchActionInputActionChoice } from './matchActionInputActionChoice';
+import type { MatchActionInputActionMode } from './matchActionInputActionMode';
+import type { MatchActionInputActionResolution } from './matchActionInputActionResolution';
+import type { MatchActionInputActionStep } from './matchActionInputActionStep';
 
 /**
  * Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).
@@ -15,5 +20,37 @@ export type MatchActionInputAction = {
      * @maxLength 40
      */
   type: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  cardId?: string;
+  /**
+     * @maxItems 2
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  participantIds?: string[];
+  passed?: boolean;
+  resolution?: MatchActionInputActionResolution;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  targetPlayerId?: string;
+  category?: MatchActionInputActionCategory;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  assetId?: string;
+  mode?: MatchActionInputActionMode;
+  choice?: MatchActionInputActionChoice;
+  step?: MatchActionInputActionStep;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  careerId?: string;
   [key: string]: unknown;
  };

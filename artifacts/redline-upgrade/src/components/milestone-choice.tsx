@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { assetOptions, getAsset, type AssetCategory, type AssetDefinition } from '@/game/assets';
 import { getAbility } from '@/game/abilities';
 import { formatMoney, getCareer, getCategory, SALARY_TIERS, type Career } from '@/game/careers';
 import type { MatchAction, MatchPlayer, PendingDecision } from '@/game/match';
+import type { BoardId } from '@/game/boards';
 import { effectiveSalaryAmount } from '@/game/player';
 import { CareerGlyph } from './career-reveal';
 import { CareerDeckBadges } from './career-deck-badges';
 import { SpaceIcon } from './space-icon';
 import { AssetArtwork } from './asset-artwork';
+import { PlayerTargetOption } from './player-target-option';
+import { ExpandableText } from './expandable-text';
 import './milestone-choice.css';
 
-type Props = { pending: PendingDecision; player: MatchPlayer; players: MatchPlayer[]; onAction: (action: MatchAction) => void };
+type Props = { pending: PendingDecision; player: MatchPlayer; players: MatchPlayer[]; onAction: (action: MatchAction) => void; boardId?: BoardId };
 const statLabels: Record<string, string> = { aiSkill: 'AI SKILL', fame: 'FAME', lifestyle: 'LIFESTYLE', influence: 'INFLUENCE', wealth: 'WEALTH' };
 const titles: Record<string, string> = { car: 'Choose your car.', lifestyle: 'Choose your lifestyle.', pet: 'Choose your companion.', investment: 'Choose your investment.', property: 'Choose your property.' };
 
@@ -18,7 +21,7 @@ function Header({ space, eyebrow, title, highlighted, description }: { space: nu
   return (
     <div className="milestone-heading">
       <div><span className="eyebrow">SPACE {String(space).padStart(2, '0')} // {eyebrow}</span><h2>{title} {highlighted && <span>{highlighted}</span>}</h2></div>
-      <p>{description}</p>
+      <ExpandableText text={description} className="milestone-header-description" />
     </div>
   );
 }
@@ -63,20 +66,22 @@ function CareerCard({ career, index, onSelect }: { career: Career; index: number
       <div className="milestone-card-body">
         <span className="milestone-card-kicker mono"><CareerGlyph icon={category?.icon ?? career.categoryId} className="career-kicker-glyph" /> {category?.name ?? career.categoryId}</span>
         <h3>{career.name}</h3>
-        <p className="milestone-card-desc">{career.description}</p>
+        <ExpandableText text={career.description} className="milestone-card-desc" />
         <div className="milestone-card-price"><span className="mono">SALARY RANGE</span><strong>{formatMoney(career.salaryTiers[0])}–{formatMoney(career.salaryTiers[3])}</strong></div>
         <div className="career-tier-strip" aria-label="Four salary tiers">{career.salaryTiers.map((salary, tier) => <span className={`salary-tier-${tier + 1}`} key={tier}><small>{SALARY_TIERS[tier]}</small><b>{formatMoney(salary)}</b></span>)}</div>
         <CareerDeckBadges career={career} />
         <div className="milestone-effects"><span>ABILITY / {career.abilityName}</span></div>
-        <p className="milestone-passive">{career.abilityDescription}</p>
+        <ExpandableText text={career.abilityDescription} className="milestone-passive" />
         <button className="milestone-buy" type="button" onClick={onSelect} data-testid={`button-select-career-${career.id}`}><span>SELECT CAREER</span><span aria-hidden="true">↗</span></button>
       </div>
     </article>
   );
 }
 
-export function MilestoneChoice({ pending, player, players, onAction }: Props) {
+export function MilestoneChoice({ pending, player, players, onAction, boardId = 'REDLINE_UPGRADE' }: Props) {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+  const [selectedTargetPlayerId, setSelectedTargetPlayerId] = useState<string | null>(null);
+  useEffect(() => setSelectedTargetPlayerId(null), [pending.kind, pending.space]);
   const currentCareer = player.careerId ? getCareer(player.careerId) : undefined;
   const category = pending.kind === 'ASSET' ? pending.category ?? (pending.slot === 'companion' ? null : pending.slot) : null;
   const offers = pending.kind === 'ASSET' ? pending.offeredAssetIds : undefined;
@@ -103,10 +108,22 @@ export function MilestoneChoice({ pending, player, players, onAction }: Props) {
             TAKE PAYDAY / {formatMoney(effectiveSalaryAmount(player))}
           </button>
           {targets.map(target => (
-            <button className="milestone-skip" type="button" key={target.playerId} onClick={() => onAction({ type: 'PUSH_PLAYER_BACK', targetPlayerId: target.playerId })} data-testid={`button-push-back-${target.playerId}`}>
-              FORGO PAYDAY / SEND {target.displayName} BACK 4
-            </button>
+            <PlayerTargetOption
+              key={target.playerId}
+              player={target}
+              boardId={boardId}
+              selected={selectedTargetPlayerId === target.playerId}
+              onSelect={() => setSelectedTargetPlayerId(target.playerId)}
+            />
           ))}
+          {selectedTargetPlayerId && (
+            <button
+              className="action lime-action"
+              type="button"
+              onClick={() => onAction({ type: 'PUSH_PLAYER_BACK', targetPlayerId: selectedTargetPlayerId })}
+              data-testid={`button-push-back-${selectedTargetPlayerId}`}
+            >CONFIRM TARGET / FORGO PAYDAY</button>
+          )}
           {!targets.length && <p>No active opponent can be sent back; take the payday instead.</p>}
         </div>
       </section>
@@ -161,6 +178,9 @@ export function MilestoneChoice({ pending, player, players, onAction }: Props) {
                 </p>
               )}
             </>
+          )}
+          {targetPlayer && (
+            <PlayerTargetOption player={targetPlayer} boardId={boardId} selected disabled onSelect={() => undefined} />
           )}
         </div>
 

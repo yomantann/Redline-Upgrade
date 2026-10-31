@@ -1,0 +1,63 @@
+@media (max-width: 700px) {
+  .card-draw-panel {
+    align-items: end;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .card-draw-modal-card {
+    width: min(720px, 100%);
+    max-height: 94dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: clamp(14px, 4vw, 22px);
+  }
+
+  .card-draw-copy h2 {
+    font-size: clamp(24px, 7vw, 38px);
+    line-height: 1;
+  }
+
+  .card-draw-action > .action,
+  .card-draw-action > button,
+  .card-choice-option,
+  .bio-party-outcome select,
+  .bio-party-outcome input {
+    min-height: 48px;
+  }
+
+  .card-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bio-party-targets {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .card-draw-panel .expandable-text-toggle {
+    min-height: 40px;
+    padding: 9px 0;
+  }
+
+  .game-player-summary-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .career-reveal-waiting-banner {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 12px;
+    color: #d0f47c;
+    background: #141d18;
+    text-align: center;
+    font-size: .72rem;
+  }
+}
+
+.career-reveal-waiting-banner {
+  margin: 10px 0;
+  border: 1px solid rgba(208, 244, 124, .35);
+  border-radius: 8px;
+}

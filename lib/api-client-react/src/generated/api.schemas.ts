@@ -124,6 +124,48 @@ export interface SelectionInput {
   characterId?: string | null;
 }
 
+export type MatchActionInputActionResolution = string | {
+  kind: 'STAT_DESTINATION' | 'ASSET_INTERACTION' | 'CAREER_SWAP';
+  stat?: 'aiSkill' | 'fame' | 'influence';
+  choice?: 'STEAL' | 'SWAP' | 'DECLINE';
+  accept?: boolean;
+};
+
+export type MatchActionInputActionCategory = typeof MatchActionInputActionCategory[keyof typeof MatchActionInputActionCategory];
+
+
+export const MatchActionInputActionCategory = {
+  pet: 'pet',
+  investment: 'investment',
+} as const;
+
+export type MatchActionInputActionMode = typeof MatchActionInputActionMode[keyof typeof MatchActionInputActionMode];
+
+
+export const MatchActionInputActionMode = {
+  UPGRADE_ASSET: 'UPGRADE_ASSET',
+  RECOVER_MILESTONE: 'RECOVER_MILESTONE',
+} as const;
+
+export type MatchActionInputActionChoice = typeof MatchActionInputActionChoice[keyof typeof MatchActionInputActionChoice];
+
+
+export const MatchActionInputActionChoice = {
+  CASH_OUT: 'CASH_OUT',
+  DOUBLE_DOWN: 'DOUBLE_DOWN',
+  FINAL_GAMBLE: 'FINAL_GAMBLE',
+} as const;
+
+export type MatchActionInputActionStep = typeof MatchActionInputActionStep[keyof typeof MatchActionInputActionStep];
+
+
+export const MatchActionInputActionStep = {
+  KEEP: 'KEEP',
+  SWITCH: 'SWITCH',
+  ACKNOWLEDGE: 'ACKNOWLEDGE',
+  SELECT: 'SELECT',
+} as const;
+
 /**
  * Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).
  */
@@ -133,6 +175,38 @@ export type MatchActionInputAction = {
      * @maxLength 40
      */
   type: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  cardId?: string;
+  /**
+     * @maxItems 2
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  participantIds?: string[];
+  passed?: boolean;
+  resolution?: MatchActionInputActionResolution;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  targetPlayerId?: string;
+  category?: MatchActionInputActionCategory;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  assetId?: string;
+  mode?: MatchActionInputActionMode;
+  choice?: MatchActionInputActionChoice;
+  step?: MatchActionInputActionStep;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  careerId?: string;
   [key: string]: unknown;
  };
 
@@ -184,6 +258,11 @@ export interface MatchSnapshot {
   /** @nullable */
   pausedAt: number | null;
   abandoned: boolean;
+  /**
+     * @items.minimum 0
+     * @items.maximum 3
+     */
+  careerRevealPendingPlayerIndexes: number[];
   seats: MatchSeat[];
   /** The canonical Match (same shape as the single-player reducer state, including eventLog). */
   match: MatchSnapshotMatch;

@@ -2,22 +2,26 @@ import { useEffect, useState } from 'react';
 import type { CardDefinition } from '@/game/cards';
 import type { PartyChallenge } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
-import type { Player } from '@/game/player';
+import type { MatchPlayer } from '@/game/match';
+import type { BoardId } from '@/game/boards';
 import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_MS, CPU_CARD_DRAW_SECONDS, CPU_CARD_RESULT_SECONDS } from '@/game/card-reveal-timing';
 import { decks, getDeck, type DeckId } from '@/game/decks';
 import { getCardArtworkUrl } from '@/game/card-artwork';
 import { RedlineCard } from './redline-card';
 import { getPartyParticipantIds } from '@/game/bio-party-targets';
+import { PlayerTargetOption } from './player-target-option';
+import { ExpandableText } from './expandable-text';
 
 function BioPartyCardFace({ card, compact = false }: { card: CardDefinition; compact?: boolean }) {
   const artworkUrl = getCardArtworkUrl(card.id);
+  const prompt = card.partyChallenge?.prompt ?? card.description;
   return (
     <div className={`bio-party-card ${compact ? 'bio-party-card-compact' : 'bio-party-card-active'}`} data-testid={compact ? `bio-party-card-${card.id}` : 'bio-party-prompt'}>
       {artworkUrl && <img src={artworkUrl} alt="" className="bio-party-card-art" loading="eager" decoding="async" />}
       <div className="bio-party-card-copy">
         <span className="mono">BIO UPGRADE / {getDeck(card.deck).name.toUpperCase()}</span>
         <b>{card.title}</b>
-        <p>{card.partyChallenge?.prompt ?? card.description}</p>
+        {compact ? <p>{prompt}</p> : <ExpandableText text={prompt} className="bio-party-card-expandable" />}
         {!compact && card.partyChallenge?.safetyNote && <small>{card.partyChallenge.safetyNote}</small>}
       </div>
     </div>
@@ -28,9 +32,10 @@ type Props = {
   activeDeck?: DeckId;
   activeCard?: CardDefinition;
   offeredCards?: CardDefinition[];
-  partyPlayers?: Player[];
+  partyPlayers?: MatchPlayer[];
   partyActorId?: string;
   partyCanAct?: boolean;
+  boardId?: BoardId;
   cardStage?: 'choice' | 'draw' | 'resolved';
   cardPiles?: CardPileMap;
   onResolveCard?: () => void;
@@ -51,6 +56,7 @@ export function CardTabletop({
   partyPlayers = [],
   partyActorId,
   partyCanAct = true,
+  boardId = 'REDLINE_UPGRADE',
   cardStage,
   cardPiles,
   onResolveCard,
@@ -115,7 +121,12 @@ export function CardTabletop({
             <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
             <h2>{cardStage === 'choice' ? 'Choose your Gamble card.' : activeCard?.title ?? 'Draw your card.'}</h2>
             <p><b>{actorLabel}</b> / {actorName} drew this card.</p>
-            <p>{cardStage === 'choice' ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.' : partyChallenge?.prompt ?? (activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.')}</p>
+            <ExpandableText
+              className="card-draw-description"
+              text={cardStage === 'choice'
+                ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.'
+                : partyChallenge?.prompt ?? (activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.') ?? ''}
+            />
           </div>
           {cardStage === 'choice' && offeredCards?.length ? (
             <div className="card-choice-grid" data-testid="gamble-card-choices">
@@ -148,13 +159,22 @@ export function CardTabletop({
                       {participatingNames.length ? `PARTICIPANTS: ${participatingNames.join(', ')}` : requiredParticipants ? 'CHOOSE THE PARTICIPANT BELOW.' : partyChallenge.choices ? 'CHOOSE YOUR CHALLENGE BELOW.' : 'EVERYONE ELSE PARTICIPATES.'}
                     </p>
                     {requiredParticipants > 0 && <div className="bio-party-targets" role="group" aria-label="Choose party challenge participants">
-                      {selectablePlayers.map(player => <button type="button" key={player.playerId} className="bio-party-target" aria-pressed={partyParticipantIds.includes(player.playerId)} disabled={!partyParticipantIds.includes(player.playerId) && partyParticipantIds.length >= requiredParticipants} onClick={() => togglePartyParticipant(player.playerId)}>{player.displayName}</button>)}
+                      {selectablePlayers.map(player => (
+                        <PlayerTargetOption
+                          key={player.playerId}
+                          player={player}
+                          boardId={boardId}
+                          selected={partyParticipantIds.includes(player.playerId)}
+                          disabled={!partyCanAct || (!partyParticipantIds.includes(player.playerId) && partyParticipantIds.length >= requiredParticipants)}
+                          onSelect={() => togglePartyParticipant(player.playerId)}
+                        />
+                      ))}
                     </div>}
                     <p className="mono">{partyChallenge.flow === 'VOTE' ? 'ASK THE TABLE TO VOTE, THEN RECORD THE OUTCOME.' : partyChallenge.flow === 'CHOICE' ? 'JOIN THE CHALLENGE OR PASS.' : 'COMPLETE THE CHALLENGE OR PASS.'}</p>
                     {partyChallenge.flow !== 'CONFIRM' && <label className="bio-party-outcome">{partyChallenge.flow === 'VOTE' ? 'Record the group vote' : 'Record the choice made'}{partyChallenge.choices
                       ? <select value={partyOutcome} onChange={event => setPartyOutcome(event.target.value)} data-testid="select-party-choice"><option value="">Choose a challenge</option>{partyChallenge.choices.map(choice => <option key={choice.label} value={choice.label}>{choice.label}</option>)}</select>
                       : <input value={partyOutcome} maxLength={120} onChange={event => setPartyOutcome(event.target.value)} placeholder={partyChallenge.flow === 'VOTE' ? 'Winning option / group result' : 'Choice selected'} />}</label>}
-                    <button type="button" className="action lime-action" disabled={!minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants || (partyChallenge.target === 'ALL_EXCEPT_SELF' && selectablePlayers.length === 0) || (partyChallenge.flow !== 'CONFIRM' && !partyOutcome.trim())} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false, partyOutcome.trim() || undefined)} data-testid="button-complete-party-challenge">CHALLENGE COMPLETE</button>
+                    <button type="button" className="action lime-action" disabled={!partyCanAct || !minimumReadTimeComplete || partyParticipantIds.length !== requiredParticipants || (partyChallenge.target === 'ALL_EXCEPT_SELF' && selectablePlayers.length === 0) || (partyChallenge.flow !== 'CONFIRM' && !partyOutcome.trim())} onClick={() => onResolvePartyChallenge?.(partyParticipantIds, false, partyOutcome.trim() || undefined)} data-testid="button-complete-party-challenge">{requiredParticipants > 0 ? 'CONFIRM TARGET' : 'CHALLENGE COMPLETE'}</button>
                     <button type="button" className="text-link" disabled={!minimumReadTimeComplete} onClick={() => onResolvePartyChallenge?.([], true)} data-testid="button-pass-party-challenge">PASS / NO PENALTY</button>
                   </div>
                 ) : <p className="mono">WAITING FOR {actorName.toUpperCase()} TO RESOLVE THE CHALLENGE.</p>
@@ -166,7 +186,8 @@ export function CardTabletop({
                 ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>
                 : <p className="mono">FINAL GAMBLE // CARD REVEALED, RESULT NEXT</p>}
             {!isCPU && !minimumReadTimeComplete && <small className="card-read-time-reason" id="card-read-time-reason">CARD ON TABLE / TAKE A MOMENT TO READ IT</small>}
-            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b><br />{activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'}</p>
+            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b></p>
+            <ExpandableText text={activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'} className="card-effect-description" />
           </div>
           </div>
         </section>

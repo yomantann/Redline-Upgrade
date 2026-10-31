@@ -57,6 +57,7 @@ function buildSnapshot(
     maxMissedTurns: MAX_MISSED_TURNS,
     pausedAt: state.pausedAt ?? null,
     abandoned: Boolean(state.abandoned),
+    careerRevealPendingPlayerIndexes: state.careerRevealPendingPlayerIndexes ?? [],
     seats: state.seats.map((seat) => {
       const member = members.find((candidate) => candidate.userId === seat.userId);
       return {
@@ -65,17 +66,19 @@ function buildSnapshot(
         playerIndex: seat.playerIndex,
         displayName: state.match.players[seat.playerIndex]?.displayName ?? "Player",
         missedTurns: state.missedTurns[seat.userId] ?? 0,
-        kicked: state.kicked.includes(seat.userId),
+        kicked: !seat.isCPU && state.kicked.includes(seat.userId),
         cpuControlled: Boolean(
-          member &&
-            (member.status === "left" ||
-              (member.status === "disconnected" &&
-                now - member.lastSeenAt.getTime() >= DISCONNECT_AFTER_MS + DISCONNECT_GRACE_MS)),
+          seat.isCPU ||
+            (member &&
+              (member.status === "left" ||
+                (member.status === "disconnected" &&
+                  now - member.lastSeenAt.getTime() >= DISCONNECT_AFTER_MS + DISCONNECT_GRACE_MS))),
         ),
         cpuTurns: state.cpuTurns?.[seat.userId] ?? 0,
         fastCpu: (state.cpuTurns?.[seat.userId] ?? 0) >= 4,
         connected: Boolean(
-          !state.kicked.includes(seat.userId) &&
+          !seat.isCPU &&
+            !state.kicked.includes(seat.userId) &&
             member &&
             member.status === "joined" &&
             now - member.lastSeenAt.getTime() <= DISCONNECT_AFTER_MS,
@@ -185,7 +188,7 @@ async function settleIdle(
 async function finalizeRoomMatch(tx: Tx, roomId: string, state: MultiplayerMatchState): Promise<void> {
   if (state.match.phase !== "complete") return;
   for (const seat of state.seats) {
-    if (!seat.userId || seat.playerIndex < 0) continue;
+    if (seat.isCPU || !seat.userId || seat.playerIndex < 0) continue;
     await recordCompletedGame(
       tx,
       "MULTIPLAYER",

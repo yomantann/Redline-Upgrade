@@ -24,6 +24,10 @@ export interface GameBoardProps {
 const redlineZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 const bioZones = ['NIGHTCLUB', 'CASINO ARCADE', 'VIP LOUNGE', 'HOLO BAR', 'ROOFTOP', 'FESTIVAL', 'THE ARENA'];
 
+function maximumBoardZoom(): number {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches ? 4.8 : 2.8;
+}
+
 export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE', preview = false }: GameBoardProps) {
   const isBio = boardId === 'BIO_UPGRADE';
   const boardSpaces = getBoardSpaces(boardId);
@@ -31,13 +35,18 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const zones = isBio ? bioZones : redlineZones;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(false);
-  const [zoom, setZoom] = useState(preview ? (isBio ? 1.15 : 1.5) : 1);
+  const [zoom, setZoom] = useState(() => {
+    if (preview) return isBio ? 1.15 : 1.5;
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches ? 2.1 : 1;
+  });
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [selectedSpace, setSelectedSpace] = useState<number | null>(null);
   const [hoveredSpace, setHoveredSpace] = useState<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
+  const touchPointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistance = useRef<number | null>(null);
   const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const active = players.find(p => p.playerId === activePlayerId);
   const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
@@ -72,18 +81,41 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (!stage) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      setZoom(value => Math.min(2.8, Math.max(0.7, value * (event.deltaY < 0 ? 1.12 : 1 / 1.12))));
+      setZoom(value => Math.min(maximumBoardZoom(), Math.max(0.7, value * (event.deltaY < 0 ? 1.12 : 1 / 1.12))));
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
     return () => stage.removeEventListener('wheel', onWheel);
   }, [wheelZoomEnabled]);
+  const defaultFollowZoom = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches ? 2.1 : 1;
   const centerCamera = () => { setOverview(true); setZoom(1); setPan({ x: 0, z: 0 }); };
   const startDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || (event.pointerType === 'touch' && !wheelZoomEnabled) || (event.target as HTMLElement).closest('button')) return;
-    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (event.pointerType === 'touch') {
+      touchPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (touchPointers.current.size >= 2) {
+        drag.current = null;
+        const [first, second] = [...touchPointers.current.values()];
+        pinchDistance.current = Math.hypot(first.x - second.x, first.y - second.y);
+        return;
+      }
+    }
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
   };
   const moveDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch' && touchPointers.current.has(event.pointerId)) {
+      touchPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (touchPointers.current.size >= 2) {
+        const [first, second] = [...touchPointers.current.values()];
+        const distance = Math.hypot(first.x - second.x, first.y - second.y);
+        const previous = pinchDistance.current;
+        if (previous && distance > 0) {
+          setZoom(value => Math.min(maximumBoardZoom(), Math.max(0.7, value * (distance / previous))));
+        }
+        pinchDistance.current = distance;
+        return;
+      }
+    }
     if (!drag.current || drag.current.id !== event.pointerId) return;
     const dx = event.clientX - drag.current.x;
     const dy = event.clientY - drag.current.y;
@@ -95,7 +127,14 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     }));
   };
   const stopDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (drag.current?.id === event.pointerId) drag.current = null;
+    touchPointers.current.delete(event.pointerId);
+    pinchDistance.current = null;
+    if (touchPointers.current.size === 1) {
+      const [id, point] = [...touchPointers.current.entries()][0];
+      drag.current = { ...point, id };
+    } else if (drag.current?.id === event.pointerId) {
+      drag.current = null;
+    }
   };
 
   return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''} ${preview ? 'ru-board--preview' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
@@ -103,14 +142,14 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       <div><span className="ru-board__overline">{isBio ? 'BIO UPGRADE / 21+ ONLY' : 'CIRCUIT 01 / PHYSICAL EDITION'}</span><h2 className="ru-board__title">{isBio ? 'The after-hours circuit' : 'The redline circuit'}<span className="ru-board__title-slash"> / 75</span></h2></div>
       <div className="ru-board__controls" role="group" aria-label="Board camera">
         <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={() => { setOverview(true); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={overview}>01 / FULL CIRCUIT</button>
-        <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => { setOverview(false); setPan({ x: 0, z: 0 }); setZoom(1); }} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
+        <button type="button" data-testid="button-board-follow" className={!overview ? 'selected' : ''} onClick={() => { setOverview(false); setPan({ x: 0, z: 0 }); setZoom(defaultFollowZoom()); }} aria-pressed={!overview}>02 / FOLLOW PAWN</button>
         <button type="button" onClick={() => setZoom(value => Math.max(0.7, +(value / 1.3).toFixed(2)))} aria-label="Zoom out">−</button>
-        <button type="button" onClick={() => setZoom(value => Math.min(2.8, +(value * 1.3).toFixed(2)))} aria-label="Zoom in">+</button>
+        <button type="button" onClick={() => setZoom(value => Math.min(maximumBoardZoom(), +(value * 1.3).toFixed(2)))} aria-label="Zoom in">+</button>
         <button type="button" className={wheelZoomEnabled ? 'selected' : ''} aria-pressed={wheelZoomEnabled} onClick={() => setWheelZoomEnabled(value => !value)} title="Only capture the scroll wheel when enabled">{wheelZoomEnabled ? 'SCROLL ZOOM ON' : 'ENABLE SCROLL ZOOM'}</button>
         <button type="button" onClick={centerCamera} aria-label="Reset and center board camera">CENTER</button>
       </div>
     </header>
-    <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+    <div className={`ru-board__stage ${wheelZoomEnabled ? 'zoom-armed' : ''}`} ref={stageRef} style={{ touchAction: 'none' }} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="ru-board__stage-index" aria-hidden="true"><span>{isBio ? 'BIO / UPGRADE' : 'REDLINE / UPGRADE'}</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
       {webgl === false && <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={setSelectedSpace} onSpaceHover={setHoveredSpace} />}

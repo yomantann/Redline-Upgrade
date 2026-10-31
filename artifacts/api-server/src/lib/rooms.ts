@@ -396,6 +396,7 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
     }
 
     const seated = players.slice(0, MAX_ROOM_PLAYERS);
+    const cpuCount = MAX_ROOM_PLAYERS - seated.length;
     const names = new Map(
       (await loadPlayers(tx, roomId)).map(({ player, displayName, firstName, lastName }) => [
         player.userId,
@@ -403,19 +404,31 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
       ]),
     );
     const baseMatch = createMultiplayerMatch(
-      seated.map((player) => ({
-        characterId: player.selectedCharacterId,
-        // Career choice is intentionally randomized for every new match.
-        careerId: null,
-        displayName: names.get(player.userId) ?? `Player ${player.slot + 1}`,
-      })),
+      [
+        ...seated.map((player) => ({
+          characterId: player.selectedCharacterId,
+          // Career choice is intentionally randomized for every new match.
+          careerId: null,
+          displayName: names.get(player.userId) ?? `Player ${player.slot + 1}`,
+        })),
+        ...Array.from({ length: cpuCount }, (_, index) => ({
+          characterId: null,
+          careerId: null,
+          displayName: `CPU ${index + 1}`,
+          isCPU: true,
+        })),
+      ],
       room.boardId as BoardId,
     );
     const identityByUser = await getCosmeticIdentity(seated.map((player) => player.userId));
     const match = {
       ...baseMatch,
       players: baseMatch.players.map((player, index) => {
-        const identity = identityByUser.get(seated[index].userId);
+        const humanSeat = seated[index];
+        if (!humanSeat) {
+          return { ...player, portraitImagePath: null, playerLogoPath: null };
+        }
+        const identity = identityByUser.get(humanSeat.userId);
         return {
           ...player,
           portraitImagePath: identity?.skins[player.characterId] ?? null,
@@ -423,7 +436,10 @@ export async function startRoomAsHost(roomId: string, userId: string): Promise<R
         };
       }),
     };
-    const state = createMultiplayerState(match, seated.map((player) => player.userId));
+    const state = createMultiplayerState(match, [
+      ...seated.map((player) => player.userId),
+      ...Array.from({ length: cpuCount }, () => null),
+    ]);
     await tx.insert(roomMatchesTable).values({ roomId, version: 0, state });
 
     const [started] = await tx

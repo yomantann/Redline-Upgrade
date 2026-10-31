@@ -401,6 +401,11 @@ export const GetRoomMatchParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const getRoomMatchResponseCareerRevealPendingPlayerIndexesItemMin = 0;
+export const getRoomMatchResponseCareerRevealPendingPlayerIndexesItemMax = 3;
+
+
+
 export const GetRoomMatchResponse = zod.object({
   "roomId": zod.string().uuid(),
   "version": zod.number().int(),
@@ -416,6 +421,7 @@ export const GetRoomMatchResponse = zod.object({
   "maxMissedTurns": zod.number().int(),
   "pausedAt": zod.number().int().nullable(),
   "abandoned": zod.boolean(),
+  "careerRevealPendingPlayerIndexes": zod.array(zod.number().int().min(getRoomMatchResponseCareerRevealPendingPlayerIndexesItemMin).max(getRoomMatchResponseCareerRevealPendingPlayerIndexesItemMax)),
   "seats": zod.array(zod.object({
   "userId": zod.string(),
   "playerId": zod.string(),
@@ -443,14 +449,49 @@ export const submitMatchActionBodyExpectedVersionMin = 0;
 
 export const submitMatchActionBodyActionTypeMax = 40;
 
+export const submitMatchActionBodyActionCardIdMax = 80;
+
+export const submitMatchActionBodyActionParticipantIdsItemMax = 80;
+
+export const submitMatchActionBodyActionParticipantIdsMax = 2;
+
+export const submitMatchActionBodyActionResolutionOneMax = 120;
+
+export const submitMatchActionBodyActionTargetPlayerIdMax = 80;
+
+export const submitMatchActionBodyActionAssetIdMax = 80;
+
+export const submitMatchActionBodyActionCareerIdMax = 80;
+
 
 
 export const SubmitMatchActionBody = zod.object({
   "expectedVersion": zod.number().int().min(submitMatchActionBodyExpectedVersionMin).optional().describe('Optional; the action is rejected with 409 if the state has moved on.'),
   "action": zod.object({
-  "type": zod.string().min(1).max(submitMatchActionBodyActionTypeMax)
+  "type": zod.string().min(1).max(submitMatchActionBodyActionTypeMax),
+  "cardId": zod.string().min(1).max(submitMatchActionBodyActionCardIdMax).optional(),
+  "participantIds": zod.array(zod.string().min(1).max(submitMatchActionBodyActionParticipantIdsItemMax)).max(submitMatchActionBodyActionParticipantIdsMax).optional(),
+  "passed": zod.boolean().optional(),
+  "resolution": zod.union([zod.string().max(submitMatchActionBodyActionResolutionOneMax),zod.object({
+  "kind": zod.enum(['STAT_DESTINATION', 'ASSET_INTERACTION', 'CAREER_SWAP']),
+  "stat": zod.enum(['aiSkill', 'fame', 'influence']).optional(),
+  "choice": zod.enum(['STEAL', 'SWAP', 'DECLINE']).optional(),
+  "accept": zod.boolean().optional()
+})]).optional(),
+  "targetPlayerId": zod.string().min(1).max(submitMatchActionBodyActionTargetPlayerIdMax).optional(),
+  "category": zod.enum(['pet', 'investment']).optional(),
+  "assetId": zod.string().min(1).max(submitMatchActionBodyActionAssetIdMax).optional(),
+  "mode": zod.enum(['UPGRADE_ASSET', 'RECOVER_MILESTONE']).optional(),
+  "choice": zod.enum(['CASH_OUT', 'DOUBLE_DOWN', 'FINAL_GAMBLE']).optional(),
+  "step": zod.enum(['KEEP', 'SWITCH', 'ACKNOWLEDGE', 'SELECT']).optional(),
+  "careerId": zod.string().min(1).max(submitMatchActionBodyActionCareerIdMax).optional()
 }).describe('Client intent (ROLL_DICE, MOVE, DRAW_CARD, USE_ABILITY, BUY_ASSET, USE_UPGRADE_TOKEN, GAMBLE, CHANGE_CAREER, END_TURN, ...).')
 })
+
+export const submitMatchActionResponseCareerRevealPendingPlayerIndexesItemMin = 0;
+export const submitMatchActionResponseCareerRevealPendingPlayerIndexesItemMax = 3;
+
+
 
 export const SubmitMatchActionResponse = zod.object({
   "roomId": zod.string().uuid(),
@@ -467,6 +508,7 @@ export const SubmitMatchActionResponse = zod.object({
   "maxMissedTurns": zod.number().int(),
   "pausedAt": zod.number().int().nullable(),
   "abandoned": zod.boolean(),
+  "careerRevealPendingPlayerIndexes": zod.array(zod.number().int().min(submitMatchActionResponseCareerRevealPendingPlayerIndexesItemMin).max(submitMatchActionResponseCareerRevealPendingPlayerIndexesItemMax)),
   "seats": zod.array(zod.object({
   "userId": zod.string(),
   "playerId": zod.string(),

@@ -1,0 +1,25 @@
+.expandable-text > p {
+  margin: 0;
+}
+
+.expandable-text:not(.expanded) > p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.expandable-text-toggle {
+  margin-top: 8px;
+  border: 0;
+  padding: 5px 0;
+  color: var(--board-lime, #d0f47c);
+  background: transparent;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}

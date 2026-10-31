@@ -23,7 +23,11 @@ if (seedArg !== 'random') {
 const vite = await createServer({
   configFile: false,
   plugins: [react()],
-  resolve: { alias: { '@': new URL('../src/', import.meta.url).pathname } },
+  resolve: {
+    alias: { '@': new URL('../src/', import.meta.url).pathname },
+    dedupe: ['react', 'react-dom'],
+  },
+  ssr: { noExternal: ['@workspace/replit-auth-web'] },
   optimizeDeps: { noDiscovery: true },
   server: { middlewareMode: true },
   appType: 'custom',
@@ -2072,6 +2076,11 @@ try {
   {
     const { createMultiplayerMatch } = await vite.ssrLoadModule('/src/game/match.ts');
     const { applyPlayerAction, createMultiplayerState, describeTurn, autoplayIfStale, AUTOPLAY_AFTER_MS } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
+    const confirmCareers = (state, userIds) => userIds.reduce((current, userId) => {
+      const result = applyPlayerAction(current, userId, { type: 'ACKNOWLEDGE_CAREER_REVEAL' });
+      assert.equal(result.ok, true, 'each human can acknowledge their career before their turn');
+      return result.state;
+    }, state);
     const mpMatch = createMultiplayerMatch([
       { characterId: null, careerId: null, displayName: 'A' },
       { characterId: null, careerId: null, displayName: 'B' },
@@ -2088,7 +2097,37 @@ try {
       { characterId: null, careerId: null, displayName: 'Bio B' },
     ], 'BIO_UPGRADE');
     assert.equal(bioMpMatch.boardId, 'BIO_UPGRADE', 'Bio can create a real two-player authoritative match');
-    let state = createMultiplayerState(mpMatch, ['u0', 'u1']);
+    for (const boardId of ['REDLINE_UPGRADE', 'BIO_UPGRADE']) {
+      const mixedMatch = createMultiplayerMatch([
+        { characterId: null, careerId: null, displayName: 'Human A' },
+        { characterId: null, careerId: null, displayName: 'Human B' },
+        { characterId: null, careerId: null, displayName: 'CPU 1', isCPU: true },
+        { characterId: null, careerId: null, displayName: 'CPU 2', isCPU: true },
+      ], boardId);
+      assert.equal(mixedMatch.players.length, 4, `${boardId} supports two humans and two CPU seats`);
+      assert.deepEqual(mixedMatch.players.map(player => player.isCPU), [false, false, true, true]);
+      assert.equal(new Set(mixedMatch.players.map(player => player.characterId)).size, 4, 'all four characters are unique');
+      assert.equal(new Set(mixedMatch.players.map(player => player.careerId)).size, 4, 'all four careers are unique');
+      const mixedState = confirmCareers(createMultiplayerState(mixedMatch, ['human-a', 'human-b', null, null]), ['human-a', 'human-b']);
+      assert.deepEqual(mixedState.seats.map(seat => seat.isCPU), [false, false, true, true]);
+      assert.equal(describeTurn({ ...mixedState, match: { ...mixedState.match, turnIndex: 2 } }).currentUserId, null, 'CPU seats have no human owner');
+      let cpuState = { ...mixedState, match: { ...mixedState.match, turnIndex: 2 }, actionAt: 0 };
+      cpuState = autoplayIfStale(cpuState, new Set(), 700).state;
+      assert.equal(cpuState.match.phase, 'rolling', 'CPU roll is published before its dice reveal');
+      cpuState = autoplayIfStale(cpuState, new Set(), 1400).state;
+      assert.equal(cpuState.match.phase, 'reveal', 'CPU reveal is synchronized as a separate phase');
+      cpuState = autoplayIfStale(cpuState, new Set(), 2100).state;
+      assert.equal(cpuState.match.phase, 'moving');
+      const cpuStart = cpuState.match.players[2].position;
+      cpuState = autoplayIfStale(cpuState, new Set(), 2800).state;
+      assert.equal(cpuState.match.players[2].position, cpuStart + 1, 'CPU pawns advance one visible step at a time');
+    }
+    const careerGateState = createMultiplayerState(mpMatch, ['u0', 'u1']);
+    assert.deepEqual(careerGateState.careerRevealPendingPlayerIndexes, [0, 1]);
+    assert.equal(applyPlayerAction(careerGateState, 'u0', { type: 'ROLL_DICE' }).reason, 'ILLEGAL_ACTION', 'the server blocks play until careers are confirmed');
+    const careerAck = applyPlayerAction(careerGateState, 'u0', { type: 'ACKNOWLEDGE_CAREER_REVEAL' });
+    assert.deepEqual(careerAck.state.careerRevealPendingPlayerIndexes, [1], 'career confirmation is shared with the other client');
+    let state = confirmCareers(careerGateState, ['u0', 'u1']);
     assert.equal(describeTurn(state).currentUserId, 'u0');
     const offTurn = applyPlayerAction(state, 'u1', { type: 'ROLL_DICE' });
     assert.deepEqual([offTurn.ok, offTurn.reason], [false, 'NOT_YOUR_TURN']);
@@ -2103,15 +2142,15 @@ try {
       pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: partyCardId, stage: 'resolved' },
       players: bioMpMatch.players.map(player => ({ ...player, position: 1 })),
     };
-    const partyMpState = createMultiplayerState(partyMpMatch, ['u0', 'u1']);
+    const partyMpState = confirmCareers(createMultiplayerState(partyMpMatch, ['u0', 'u1']), ['u0', 'u1']);
     assert.equal(applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [bioMpMatch.players[0].playerId], passed: false }).reason, 'ILLEGAL_ACTION', 'multiplayer rejects selecting yourself as another participant');
     const partyMpResult = applyPlayerAction(partyMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [bioMpMatch.players[1].playerId], passed: false });
     assert.equal(partyMpResult.ok, true, 'multiplayer accepts and synchronizes a valid Bio party challenge result');
     assert.equal(partyMpResult.state.match.phase, 'landed');
-    const voteMpState = createMultiplayerState({
+    const voteMpState = confirmCareers(createMultiplayerState({
       ...partyMpMatch,
       pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: 'bio-luxury-pitch', stage: 'resolved' },
-    }, ['u0', 'u1']);
+    }, ['u0', 'u1']), ['u0', 'u1']);
     const voteMpResult = applyPlayerAction(voteMpState, 'u0', { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: false, resolution: 'Group chose the best pitch' });
     assert.equal(voteMpResult.ok, true, 'multiplayer synchronizes a recorded Bio vote outcome');
     assert.match(voteMpResult.state.match.eventLog.findLast(event => event.eventType === 'CARD_RESOLVED')?.detail ?? '', /Group chose the best pitch/);
@@ -2120,18 +2159,27 @@ try {
     assert.equal(takeover.state.match.phase, 'landed', 'CPU takeover resolves the pending Bio challenge without stalling');
     const rolled = applyPlayerAction(state, 'u0', { type: 'ROLL_DICE' });
     assert.equal(rolled.ok, true);
-    assert.equal(rolled.state.match.phase, 'reveal');
+    assert.equal(rolled.state.match.phase, 'rolling', 'the server publishes the authoritative roll before reveal');
     assert.equal(applyPlayerAction(rolled.state, 'u0', { type: 'ROLL_DICE' }).reason, 'ILLEGAL_ACTION', 'cannot roll twice');
+    const revealed = applyPlayerAction(rolled.state, 'u0', { type: 'REVEAL' });
+    assert.equal(revealed.state.match.phase, 'reveal');
+    const moveStarted = applyPlayerAction(revealed.state, 'u0', { type: 'MOVE' });
+    assert.equal(moveStarted.state.match.phase, 'moving');
+    const beforeStep = moveStarted.state.match.players[0].position;
+    const oneStep = applyPlayerAction(moveStarted.state, 'u0', { type: 'STEP' });
+    assert.equal(oneStep.state.match.players[0].position, beforeStep + 1, 'each authoritative movement step arrives separately for animation');
     assert.equal(state.match.phase, 'ready', 'rejected and accepted actions do not mutate the input state');
     // Drive a full game through the action API only; every human decision is made via client actions.
-    state = createMultiplayerState(mpMatch, ['u0', 'u1']);
+    state = confirmCareers(createMultiplayerState(mpMatch, ['u0', 'u1']), ['u0', 'u1']);
     const owner = (s) => describeTurn(s).currentUserId;
     for (let i = 0; i < 4000 && state.match.phase !== 'complete'; i += 1) {
       const m = state.match;
       const user = m.phase === 'complete' ? null : owner(state);
       let action;
       if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+      else if (m.phase === 'rolling') action = { type: 'REVEAL' };
       else if (m.phase === 'reveal') action = { type: 'MOVE' };
+      else if (m.phase === 'moving') action = { type: 'STEP' };
       else if (m.phase === 'landed') action = { type: 'END_TURN' };
       else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
       else if (m.pending?.kind === 'CARD') action = m.pending.stage === 'choice'
@@ -2151,13 +2199,15 @@ try {
     assert.equal(state.match.phase, 'complete', 'a multiplayer match completes through client actions alone');
     assert.ok(state.match.eventLog.length > 0, 'actions flow through the shared event log');
     assert.equal(applyPlayerAction(state, 'u0', { type: 'END_TURN' }).reason, 'MATCH_COMPLETE');
-    let bioState = createMultiplayerState(bioMpMatch, ['bio-u0', 'bio-u1']);
+    let bioState = confirmCareers(createMultiplayerState(bioMpMatch, ['bio-u0', 'bio-u1']), ['bio-u0', 'bio-u1']);
     for (let i = 0; i < 6000 && bioState.match.phase !== 'complete'; i += 1) {
       const m = bioState.match;
       const user = describeTurn(bioState).currentUserId;
       let action;
       if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+      else if (m.phase === 'rolling') action = { type: 'REVEAL' };
       else if (m.phase === 'reveal') action = { type: 'MOVE' };
+      else if (m.phase === 'moving') action = { type: 'STEP' };
       else if (m.phase === 'landed') action = { type: 'END_TURN' };
       else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
       else if (m.pending?.kind === 'CARD') {
@@ -2188,23 +2238,26 @@ try {
     // transfer directly to the same CPU reducer after server recovery grants control.
     {
       const t0 = 1_000_000;
-      let idle = createMultiplayerState(createMultiplayerMatch([
+      let idle = { ...confirmCareers(createMultiplayerState(createMultiplayerMatch([
         { characterId: null, careerId: null, displayName: 'A' },
         { characterId: null, careerId: null, displayName: 'B' },
-      ]), ['u0', 'u1'], t0);
+      ]), ['u0', 'u1'], t0), ['u0', 'u1']), actionAt: t0 };
       assert.equal(autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS - 1).changed, false, 'no autoplay before one minute');
       let controlledState = idle;
       for (let step = 0; step < 20 && describeTurn(controlledState).currentUserId === 'u0'; step += 1) {
-        const controlled = autoplayIfStale(controlledState, new Set(['u0']), t0 + 1 + step * 2000);
+        const controlled = autoplayIfStale(controlledState, new Set(['u0']), t0 + 700 + step * 2000);
         assert.equal(controlled.changed, true, 'disconnected seats transfer to CPU control');
         controlledState = controlled.state;
       }
       assert.equal(controlledState.cpuTurns.u0, 1, 'CPU takeover counts a completed turn for the disconnected seat');
       assert.equal(describeTurn(controlledState).currentUserId, 'u1', 'the other human keeps the next turn');
-      let auto = autoplayIfStale(idle, t0 + AUTOPLAY_AFTER_MS);
-      assert.equal(auto.changed, true);
+      let autoState = idle;
+      for (let step = 0; step < 30 && describeTurn(autoState).currentUserId === 'u0'; step += 1) {
+        autoState = autoplayIfStale(autoState, t0 + AUTOPLAY_AFTER_MS + step * 2000).state;
+      }
+      const auto = { changed: true, state: autoState };
       assert.equal(auto.state.missedTurns.u0, 1);
-      assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay finishes the idle turn and passes it on');
+      assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay advances visible CPU phases and passes the turn on');
       assert.ok(auto.state.match.eventLog.some(entry => entry.eventType === 'DICE_ROLL'), 'autoplay goes through the shared event log');
       let allCpuState = idle;
       for (let step = 0; step < 4000 && allCpuState.match.phase !== 'complete'; step += 1) {

@@ -448,18 +448,38 @@ function StartAndFinish() {
 
 function LivePawn({ player, index, count, active, reduceMotion }: { player: MatchPlayer; index: number; count: number; active: boolean; reduceMotion: boolean }) {
   const position = Math.max(0, Math.min(75, player.position));
-  const point = BIO_ROUTE[position];
-  const previous = BIO_ROUTE[Math.max(0, position - 1)];
-  const next = BIO_ROUTE[Math.min(75, position + 1)];
-  const rotation = Math.atan2(next.x - previous.x, next.z - previous.z);
+  const travel = useRef({ from: position, to: position, elapsed: 1 });
+  const root = useRef<THREE.Group>(null);
   const angle = (index / Math.max(1, count)) * Math.PI * 2;
   const offset = count > 1 ? 0.53 : 0;
   const bob = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
+  useEffect(() => {
+    const state = travel.current;
+    if (state.to !== position) {
+      travel.current = { from: state.to, to: position, elapsed: 0 };
+    }
+  }, [position]);
+  useFrame(({ clock }, delta) => {
+    if (root.current) {
+      const state = travel.current;
+      state.elapsed = Math.min(1, state.elapsed + (reduceMotion ? 1 : delta / 0.32));
+      const t = state.elapsed * state.elapsed * (3 - 2 * state.elapsed);
+      const from = BIO_ROUTE[state.from];
+      const to = BIO_ROUTE[state.to];
+      const directionFrom = BIO_ROUTE[Math.max(0, state.from - 1)];
+      const directionTo = BIO_ROUTE[Math.min(75, state.to + 1)];
+      const rotation = Math.atan2(directionTo.x - directionFrom.x, directionTo.z - directionFrom.z);
+      root.current.position.set(
+        from.x + (to.x - from.x) * t + Math.cos(angle) * offset,
+        reduceMotion ? 0 : Math.sin(t * Math.PI) * (state.elapsed < 1 ? 0.34 : 0),
+        from.z + (to.z - from.z) * t + Math.sin(angle) * offset,
+      );
+      root.current.rotation.y = rotation;
+    }
     if (!bob.current || reduceMotion) return;
     bob.current.position.y = 0.21 + (active ? Math.sin(clock.elapsedTime * 3.1) * 0.07 : 0);
   });
-  return <group position={[point.x + Math.cos(angle) * offset, 0, point.z + Math.sin(angle) * offset]} rotation={[0, rotation, 0]}>
+  return <group ref={root}>
     <group ref={bob} position={[0, 0.21, 0]} scale={0.42}>
       <PawnModel characterId={player.characterId} boardId="BIO_UPGRADE" selected={active} />
     </group>
@@ -479,7 +499,8 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
     const aspect = size.width / Math.max(size.height, 1);
     // Bio's ~63×43 tabletop is larger than Standard's; size the orthographic
     // frustum to the actual Bio bounds while keeping the same follow angle.
-    const frustumHeight = (overview ? Math.max(47, 70 / aspect) : Math.max(11.5, 17 / aspect)) / zoom;
+    const mobile = size.width <= 700;
+    const frustumHeight = (overview ? Math.max(47, 70 / aspect) : Math.max(11.5, (mobile ? 14 : 17) / aspect)) / zoom;
     const orthographic = camera as THREE.OrthographicCamera;
     const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
     orthographic.left += (-frustumHeight * aspect / 2 - orthographic.left) * factor;

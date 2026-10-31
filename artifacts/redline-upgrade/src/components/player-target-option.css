@@ -1,0 +1,95 @@
+.player-target-option {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 11px;
+  color: inherit;
+  background: rgba(255, 255, 255, .045);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.player-target-option:focus-visible {
+  outline: 3px solid #d0f47c;
+  outline-offset: 2px;
+}
+
+.player-target-option:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+}
+
+.player-target-option.selected {
+  border-color: #d0f47c;
+  background: rgba(208, 244, 124, .12);
+  box-shadow: 0 0 0 1px rgba(208, 244, 124, .28);
+}
+
+.player-target-option-portrait {
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.player-target-option-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.player-target-option-copy strong,
+.player-target-option-copy span,
+.player-target-option-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-target-option-copy strong {
+  color: #fff;
+  font-size: .92rem;
+}
+
+.player-target-option-copy span {
+  color: #d0f47c;
+  font-size: .76rem;
+}
+
+.player-target-option-copy small {
+  color: #c2c9c3;
+  font-size: .67rem;
+  letter-spacing: .035em;
+}
+
+.player-target-option-check {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: #d0f47c;
+  font-weight: 800;
+}
+
+@media (max-width: 600px) {
+  .player-target-option {
+    min-height: 80px;
+    grid-template-columns: 58px minmax(0, 1fr) 28px;
+  }
+
+  .player-target-option-portrait {
+    width: 58px;
+    height: 58px;
+  }
+
+  .player-target-option-copy small {
+    font-size: .64rem;
+  }
+}

@@ -1,0 +1,116 @@
+.multiplayer-career-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(8, 11, 12, .92);
+  backdrop-filter: blur(16px);
+}
+
+.multiplayer-career-card {
+  width: min(650px, 100%);
+  max-height: min(90dvh, 900px);
+  overflow-y: auto;
+  padding: clamp(22px, 5vw, 44px);
+  border: 1px solid rgba(208, 244, 124, .38);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #1b2421, #111715 72%);
+  color: #f3f1e8;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .55), 0 0 50px rgba(208, 244, 124, .08);
+}
+
+.multiplayer-career-kicker,
+.multiplayer-career-ability > span,
+.multiplayer-career-salary > span {
+  color: #d0f47c;
+  font-size: .72rem;
+  letter-spacing: .14em;
+}
+
+.multiplayer-career-player {
+  margin: 24px 0 8px;
+  color: #a9b4ad;
+  font-size: .9rem;
+  text-transform: uppercase;
+}
+
+.multiplayer-career-card h2 {
+  margin: 0;
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  line-height: .98;
+}
+
+.multiplayer-career-description,
+.multiplayer-career-ability p {
+  color: #c4ccc5;
+  line-height: 1.6;
+}
+
+.multiplayer-career-card .expandable-text-toggle {
+  min-height: 42px;
+}
+
+.multiplayer-career-salary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 24px 0;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.multiplayer-career-salary > span {
+  grid-column: 1 / -1;
+}
+
+.multiplayer-career-salary strong {
+  color: #d0f47c;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+}
+
+.multiplayer-career-salary small {
+  color: #a9b4ad;
+  text-align: right;
+}
+
+.multiplayer-career-ability {
+  margin: 20px 0 26px;
+  padding-left: 16px;
+  border-left: 3px solid #d0f47c;
+}
+
+.multiplayer-career-ability h3 {
+  margin: 8px 0;
+  font-size: 1.15rem;
+}
+
+.multiplayer-career-card > .action {
+  width: 100%;
+  min-height: 54px;
+  justify-content: center;
+}
+
+.multiplayer-career-waiting {
+  display: block;
+  margin-top: 16px;
+  color: #bec8bd;
+  text-align: center;
+  font-size: .7rem;
+}
+
+@media (max-width: 600px) {
+  .multiplayer-career-backdrop {
+    align-items: end;
+    padding: 10px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+
+  .multiplayer-career-card {
+    max-height: 94dvh;
+    border-radius: 16px;
+  }
+}

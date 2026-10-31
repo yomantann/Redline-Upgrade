@@ -18,13 +18,16 @@ import { AUTH_USER_UPDATED_EVENT, useAuth } from '@workspace/replit-auth-web';
 import { AppShell } from '@/components/app-shell';
 import { useGame } from '@/game/state';
 import { GameScreen } from '@/components/game-screen';
-import { characters } from '@/game/characters';
-import { findBoardDefinition, getBoardDefinition } from '@/game/boards';
+import { characters, getCharacterImagePath } from '@/game/characters';
+import { findBoardDefinition, getBoardDefinition, type BoardId } from '@/game/boards';
+import { CharacterPortrait } from '@/components/character-portrait';
 import './pages.css';
+import './multiplayer.css';
 
 const ROOM_STORAGE_KEY = 'redline.activeRoomId';
 const POLL_MS = 3000;
 const MATCH_POLL_MS = 1500;
+const ACTIVE_MATCH_POLL_MS = 220;
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -160,6 +163,10 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
   const host = players.find((player) => player.userId === room.hostUserId);
   const others = players.filter((player) => player.userId !== room.hostUserId);
   const canStart = isHost && players.length >= room.minPlayers && others.every((player) => player.ready && player.status === 'joined');
+  const [characterDraft, setCharacterDraft] = useState<string | null>(me?.selectedCharacterId ?? null);
+  useEffect(() => setCharacterDraft(me?.selectedCharacterId ?? null), [me?.selectedCharacterId]);
+  const selectedCharacter = characters.find((character) => character.id === characterDraft);
+  const humanSeatsNeeded = Math.max(0, room.minPlayers - players.length);
 
   const run = async (action: () => Promise<RoomDetails>) => {
     setBusy(true);
@@ -184,6 +191,7 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
   };
 
   const slots = Array.from({ length: room.maxPlayers }, (_, slot) => players.find((player) => player.slot === slot) ?? null);
+  const humanSeatSlots = new Set(slots.flatMap((player, slot) => !player ? [slot] : []).slice(0, humanSeatsNeeded));
 
   return (
     <section className="platform-panel" data-testid="panel-lobby">
@@ -225,22 +233,67 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
                 </span>
               </>
             ) : (
-              <strong className="muted">Open seat</strong>
+              <strong className="muted">{humanSeatSlots.has(slot) ? 'Open human seat' : 'CPU fills if open'}</strong>
             )}
           </li>
         ))}
       </ul>
+      {room.status === 'waiting' && <p className="lobby-cpu-note mono">CPU PLAYERS FILL EVERY OPEN SEAT WHEN THE HOST STARTS</p>}
 
       {room.status === 'waiting' && me && (
-        <div className="lobby-setting mono" data-testid="panel-selection">
-          <span>YOUR CHARACTER</span>
-          <select className="platform-input" value={me.selectedCharacterId ?? ''} disabled={busy} onChange={(event) => void run(() => setRoomSelection(room.id, { characterId: event.target.value || null }))} data-testid="select-character">
-            <option value="">Random</option>
+        <div className="lobby-character-picker" data-testid="panel-selection">
+          <div className="lobby-character-picker-heading">
+            <div><span className="mono platform-kicker">YOUR CHARACTER</span><h2>Choose your identity</h2></div>
+            <span className="mono">{players.filter((player) => player.selectedCharacterId).length} SELECTED</span>
+          </div>
+          <div className="lobby-character-grid" role="group" aria-label="Choose a character">
+            <button
+              type="button"
+              className={`lobby-character-option lobby-character-random ${characterDraft === null ? 'selected' : ''}`}
+              aria-pressed={characterDraft === null}
+              disabled={busy}
+              onClick={() => setCharacterDraft(null)}
+              data-testid="button-character-random"
+            >
+              <span className="lobby-random-mark" aria-hidden="true">?</span><strong>Random</strong><small>Assigned at start</small>
+            </button>
             {characters.map((character) => {
               const takenBy = players.find((player) => player.userId !== userId && player.selectedCharacterId === character.id);
-              return <option key={character.id} value={character.id} disabled={Boolean(takenBy)}>{character.name}{takenBy ? ` (${takenBy.displayName})` : ''}</option>;
+              return (
+                <button
+                  type="button"
+                  key={character.id}
+                  className={`lobby-character-option ${characterDraft === character.id ? 'selected' : ''} ${takenBy ? 'taken' : ''}`}
+                  aria-pressed={characterDraft === character.id}
+                  aria-label={`${character.name}${takenBy ? `, selected by ${takenBy.displayName}` : ''}`}
+                  disabled={busy || Boolean(takenBy)}
+                  onClick={() => setCharacterDraft(character.id)}
+                  data-testid={`button-character-${character.id}`}
+                >
+                  <CharacterPortrait character={character} boardId={room.boardId as BoardId} className="lobby-character-portrait" />
+                  <strong>{character.name}</strong>
+                  {takenBy && <small>Chosen by {takenBy.displayName}</small>}
+                </button>
+              );
             })}
-          </select>
+          </div>
+          {selectedCharacter && (
+            <div className="lobby-character-preview" aria-live="polite">
+              <CharacterPortrait character={selectedCharacter} imagePath={getCharacterImagePath(selectedCharacter.id, room.boardId as BoardId)} boardId={room.boardId as BoardId} />
+              <div><h3>{selectedCharacter.name}</h3><p>{selectedCharacter.description}</p><strong>{selectedCharacter.abilityName}</strong><p>{selectedCharacter.abilityDescription}</p></div>
+            </div>
+          )}
+          <button
+            type="button"
+            className="action lime-action"
+            disabled={busy}
+            onClick={() => void run(async () => {
+              let updated = await setRoomSelection(room.id, { characterId: characterDraft });
+              if (!isHost) updated = await setRoomReady(room.id, { ready: true });
+              return updated;
+            })}
+            data-testid="button-confirm-character"
+          >Confirm character <span aria-hidden="true">↗</span></button>
         </div>
       )}
 
@@ -248,7 +301,7 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
         <>
           {isHost && (
             <div className="lobby-setting mono">
-              <span>MINIMUM PLAYERS TO START</span>
+              <span>MINIMUM HUMAN PLAYERS</span>
               <div className="lobby-stepper">
                 {[2, 3, 4].map((count) => (
                   <button key={count} type="button" className={room.minPlayers === count ? 'active' : ''} disabled={busy} onClick={() => run(() => updateRoomSettings(room.id, { minPlayers: count }))} aria-pressed={room.minPlayers === count} data-testid={`button-min-${count}`}>{count}</button>
@@ -268,7 +321,7 @@ function Lobby({ details, userId, onChange, onExit }: { details: RoomDetails; us
             )}
             <button className="action secondary" type="button" disabled={busy} onClick={leave} data-testid="button-leave-room">Leave room</button>
           </div>
-          {isHost && !canStart && <p className="platform-hint mono">Need at least {room.minPlayers} connected players, all ready.</p>}
+          {isHost && !canStart && <p className="platform-hint mono">Need {room.minPlayers} connected humans and ready players. CPUs fill open seats.</p>}
         </>
       )}
       {room.status !== 'waiting' && (
@@ -289,7 +342,7 @@ export function MultiplayerPage() {
   const [details, setDetails] = useState<RoomDetails | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [, navigate] = useLocation();
-  const { remote, setRemoteSnapshot, setRemoteConnected } = useGame();
+  const { match, remote, setRemoteSnapshot, setRemoteConnected } = useGame();
 
   const enter = useCallback((next: RoomDetails) => {
     sessionStorage.setItem(ROOM_STORAGE_KEY, next.room.id);
@@ -331,12 +384,18 @@ export function MultiplayerPage() {
   // room ID plus the user's seat restores the same slot and the current game state.
   const roomStatus = details?.room.status;
   const matchRunning = roomStatus === 'in_progress' || roomStatus === 'completed';
+  const animationPollActive = match?.phase === 'rolling'
+    || match?.phase === 'reveal'
+    || match?.phase === 'moving';
   const statusRef = useRef(roomStatus);
   statusRef.current = roomStatus;
   useEffect(() => {
     if (!user || !roomId || !matchRunning) return;
     let cancelled = false;
+    let loading = false;
     const load = async () => {
+      if (cancelled || loading) return;
+      loading = true;
       try {
         const snapshot = await getRoomMatch(roomId);
         if (!cancelled) { setRemoteSnapshot(snapshot); setRemoteConnected(true); }
@@ -349,15 +408,17 @@ export function MultiplayerPage() {
         } else if (err.status === 404) {
           setRemoteSnapshot(null);
         }
+      } finally {
+        loading = false;
       }
     };
     void load();
-    const timer = window.setInterval(load, MATCH_POLL_MS);
+    const timer = window.setInterval(load, animationPollActive ? ACTIVE_MATCH_POLL_MS : MATCH_POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [user, roomId, matchRunning, exit, setRemoteSnapshot, setRemoteConnected]);
+  }, [user, roomId, matchRunning, animationPollActive, exit, setRemoteSnapshot, setRemoteConnected]);
 
   useEffect(() => () => {
     setRemoteSnapshot(null);

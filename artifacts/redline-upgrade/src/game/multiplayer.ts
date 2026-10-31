@@ -12,6 +12,7 @@ export interface MultiplayerSeat {
   userId: string;
   playerId: string;
   playerIndex: number;
+  isCPU: boolean;
 }
 
 /** Persisted canonical state for one room's match. */
@@ -35,6 +36,8 @@ export interface MultiplayerMatchState {
   /** Recovery window elapsed; the match must not be counted as completed. */
   abandoned?: boolean;
   recoveryStatus?: 'PAUSED_NO_HUMANS' | 'ABANDONED' | null;
+  /** Human players who have not confirmed their initial career reveal. */
+  careerRevealPendingPlayerIndexes: number[];
 }
 
 export interface MatchAssetEvent {
@@ -74,12 +77,16 @@ function collectAssetEvents(previous: Match, next: Match): MatchAssetEvent[] {
 
 /** An idle player's turn is auto-played after this long. */
 export const AUTOPLAY_AFTER_MS = 60_000;
+/** Delay between visible CPU phases so every connected client can observe the shared state. */
+const CPU_VISIBLE_STEP_MS = 650;
 /** Consecutive missed turns that remove a player from the match. */
 export const MAX_MISSED_TURNS = 3;
 
 export type ClientAction =
   | { type: 'ROLL_DICE' }
+  | { type: 'REVEAL' }
   | { type: 'MOVE' }
+  | { type: 'STEP' }
   | { type: 'DRAW_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
@@ -95,6 +102,7 @@ export type ClientAction =
   | { type: 'GAMBLE'; choice: EndgameChoice }
   | { type: 'CHANGE_CAREER'; step: 'KEEP' | 'SWITCH' | 'ACKNOWLEDGE' }
   | { type: 'CHANGE_CAREER'; step: 'SELECT'; careerId: string }
+  | { type: 'ACKNOWLEDGE_CAREER_REVEAL' }
   | { type: 'END_TURN' };
 
 export type AbilityResolution =
@@ -111,7 +119,7 @@ const MAX_AUTO_STEPS = 100;
 const ENDGAME_CHOICES: readonly string[] = ['CASH_OUT', 'DOUBLE_DOWN', 'FINAL_GAMBLE'];
 
 export function seatForUser(state: MultiplayerMatchState, userId: string): MultiplayerSeat | undefined {
-  return state.seats.find((seat) => seat.userId === userId);
+  return state.seats.find((seat) => !seat.isCPU && seat.userId === userId);
 }
 
 /** The player index who must act right now (a pending ability decision can belong to someone else). */
@@ -137,7 +145,9 @@ function isString(value: unknown): value is string {
 export function toClientAction(action: MatchAction): ClientAction | null {
   switch (action.type) {
     case 'ROLL': return { type: 'ROLL_DICE' };
+    case 'REVEAL': return { type: 'REVEAL' };
     case 'MOVE': return { type: 'MOVE' };
+    case 'STEP': return { type: 'STEP' };
     case 'RESOLVE_CARD': return { type: 'DRAW_CARD' };
     case 'CHOOSE_GAMBLE_CARD': return { type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId };
     case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution };
@@ -153,6 +163,7 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'SWITCH_CAREER': return { type: 'CHANGE_CAREER', step: 'SWITCH' };
     case 'SELECT_CAREER': return { type: 'CHANGE_CAREER', step: 'SELECT', careerId: action.careerId };
     case 'ACKNOWLEDGE_CAREER': return { type: 'CHANGE_CAREER', step: 'ACKNOWLEDGE' };
+    case 'ACKNOWLEDGE_CAREER_REVEAL': return { type: 'ACKNOWLEDGE_CAREER_REVEAL' };
     case 'RESOLVE_ABILITY_STAT_DESTINATION': return { type: 'USE_ABILITY', resolution: { kind: 'STAT_DESTINATION', stat: action.stat } };
     case 'RESOLVE_ABILITY_ASSET_INTERACTION': return { type: 'USE_ABILITY', resolution: { kind: 'ASSET_INTERACTION', choice: action.choice } };
     case 'RESOLVE_ABILITY_CAREER_SWAP': return { type: 'USE_ABILITY', resolution: { kind: 'CAREER_SWAP', accept: action.accept } };
@@ -167,8 +178,11 @@ export function toClientAction(action: MatchAction): ClientAction | null {
 function toMatchActions(action: ClientAction): MatchAction[] | null {
   switch (action.type) {
     case 'ROLL_DICE':
-      return [{ type: 'ROLL', result: serverRollDice() }, { type: 'REVEAL' }];
+      return [{ type: 'ROLL', result: serverRollDice() }];
+    case 'REVEAL': return [{ type: 'REVEAL' }];
     case 'MOVE': return [{ type: 'MOVE' }];
+    case 'STEP': return [{ type: 'STEP' }];
+    case 'ACKNOWLEDGE_CAREER_REVEAL': return [];
     case 'DRAW_CARD': return [{ type: 'RESOLVE_CARD' }];
     case 'CHOOSE_GAMBLE_CARD': return isString(action.cardId) ? [{ type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId }] : null;
     case 'RESOLVE_PARTY_CHALLENGE':
@@ -237,6 +251,21 @@ export function applyPlayerAction(state: MultiplayerMatchState, userId: string, 
   const { match } = state;
   if (match.phase === 'complete') return reject('MATCH_COMPLETE', 'This match is over.');
   if (!action || typeof action !== 'object') return reject('INVALID_ACTION', 'Unknown action.');
+  if (action.type === 'ACKNOWLEDGE_CAREER_REVEAL') {
+    const pending = state.careerRevealPendingPlayerIndexes ?? [];
+    return {
+      ok: true,
+      state: {
+        ...state,
+        careerRevealPendingPlayerIndexes: pending.filter((playerIndex) => playerIndex !== seat.playerIndex),
+        actionAt: now,
+        missedTurns: { ...state.missedTurns, [userId]: 0 },
+      },
+    };
+  }
+  if ((state.careerRevealPendingPlayerIndexes ?? []).length > 0) {
+    return reject('ILLEGAL_ACTION', 'Every player must confirm their career before the match can begin.');
+  }
   const matchActions = toMatchActions(action);
   if (!matchActions) return reject('INVALID_ACTION', 'Unknown or malformed action.');
   if (actingPlayerIndex(match) !== seat.playerIndex) return reject('NOT_YOUR_TURN', 'It is not your turn.');
@@ -251,8 +280,6 @@ export function applyPlayerAction(state: MultiplayerMatchState, userId: string, 
   } catch {
     return reject('ILLEGAL_ACTION', 'That action is not allowed right now.');
   }
-  // Resuming after a decision can leave steps to walk; nobody needs to confirm those.
-  next = settleMovement(next);
   return {
     ok: true,
     state: {
@@ -301,23 +328,24 @@ export function describeTurn(state: MultiplayerMatchState) {
   const index = actingPlayerIndex(state.match);
   return {
     currentPlayerIndex: index,
-    currentUserId: state.seats.find((seat) => seat.playerIndex === index)?.userId ?? null,
+    currentUserId: state.seats.find((seat) => seat.playerIndex === index && !seat.isCPU)?.userId ?? null,
     turnOrder: state.match.players.map((player, playerIndex) => ({
       playerIndex,
       playerId: player.playerId,
-      userId: state.seats.find((seat) => seat.playerIndex === playerIndex)?.userId ?? null,
+      userId: state.seats.find((seat) => seat.playerIndex === playerIndex && !seat.isCPU)?.userId ?? null,
     })),
   };
 }
 
-export function createMultiplayerState(match: Match, userIdsBySlot: string[], now = Date.now()): MultiplayerMatchState {
+export function createMultiplayerState(match: Match, userIdsBySlot: Array<string | null>, now = Date.now()): MultiplayerMatchState {
   return {
     match,
     assetEvents: [],
     seats: match.players.map((player, playerIndex) => ({
-      userId: userIdsBySlot[playerIndex],
+      userId: userIdsBySlot[playerIndex] ?? `cpu:${match.matchId}:${player.playerId}`,
       playerId: player.playerId,
       playerIndex,
+      isCPU: player.isCPU,
     })),
     actionAt: now,
     missedTurns: {},
@@ -327,6 +355,7 @@ export function createMultiplayerState(match: Match, userIdsBySlot: string[], no
     pausedAt: null,
     abandoned: false,
     recoveryStatus: null,
+    careerRevealPendingPlayerIndexes: match.players.flatMap((player, playerIndex) => player.isCPU ? [] : [playerIndex]),
   };
 }
 
@@ -346,16 +375,13 @@ function asAutopilot(match: Match, index: number, action: MatchAction): Match {
 /** One autopilot step for the acting seat using the same reducer rules a human would face. */
 function autopilotStep(match: Match, index: number): Match {
   switch (match.phase) {
-    case 'ready': {
-      const rolled = advanceMatch(match, { type: 'ROLL', result: serverRollDice() });
-      return advanceMatch(rolled, { type: 'REVEAL' });
-    }
+    case 'ready': return advanceMatch(match, { type: 'ROLL', result: serverRollDice() });
     case 'rolling': return advanceMatch(match, { type: 'REVEAL' });
-    case 'reveal': return settleMovement(advanceMatch(match, { type: 'MOVE' }));
-    case 'moving': return settleMovement(match);
+    case 'reveal': return advanceMatch(match, { type: 'MOVE' });
+    case 'moving': return advanceMatch(match, { type: 'STEP' });
     case 'landed': return advanceMatch(match, { type: 'NEXT_TURN' });
     case 'decision':
-    case 'endgame': return settleMovement(asAutopilot(match, index, { type: 'AUTO_DECIDE' }));
+    case 'endgame': return asAutopilot(match, index, { type: 'AUTO_DECIDE' });
     default: return match;
   }
 }
@@ -384,14 +410,27 @@ export function autoplayIfStale(
   let state = initial;
   let changed = false;
   const newlyKicked: string[] = [];
+  const pendingCareer = state.careerRevealPendingPlayerIndexes ?? [];
+  const autoControlledIndexes = new Set(state.seats
+    .filter((seat) => seat.isCPU || state.kicked.includes(seat.userId) || cpuControlledUsers.has(seat.userId))
+    .map((seat) => seat.playerIndex));
+  const remainingCareerPending = pendingCareer.filter((playerIndex) => !autoControlledIndexes.has(playerIndex));
+  if (remainingCareerPending.length !== pendingCareer.length) {
+    state = { ...state, careerRevealPendingPlayerIndexes: remainingCareerPending };
+    changed = true;
+  }
   for (let guard = 0; guard < 500 && state.match.phase !== 'complete'; guard += 1) {
+    if ((state.careerRevealPendingPlayerIndexes ?? []).length > 0) break;
     const index = actingPlayerIndex(state.match);
     const seat = state.seats.find((candidate) => candidate.playerIndex === index);
     if (!seat) break;
     const isKicked = state.kicked.includes(seat.userId);
-    const cpuControlled = isKicked || cpuControlledUsers.has(seat.userId);
-    if (!cpuControlled && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
-    const fastCpu = cpuControlled && (state.cpuTurns?.[seat.userId] ?? 0) >= 4;
+    const cpuControlled = seat.isCPU || isKicked || cpuControlledUsers.has(seat.userId);
+    const automaticTurn = cpuControlled
+      || (state.missedTurns[seat.userId] !== undefined && state.missedTurns[seat.userId] === state.match.turnCounter);
+    if (!automaticTurn && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
+    const fastCpu = automaticTurn && (state.cpuTurns?.[seat.userId] ?? 0) >= 4;
+    if (automaticTurn && now - state.actionAt < (fastCpu ? 220 : CPU_VISIBLE_STEP_MS)) break;
 
     let { missedTurns, missedMarks, kicked } = state;
     const turnCounter = state.match.turnCounter;
@@ -404,7 +443,7 @@ export function autoplayIfStale(
     // Play the acting seat's decisions until control moves to someone else or the turn ends.
     let match = state.match;
     let progressed = false;
-    const stepLimit = cpuControlled && !fastCpu ? 1 : 400;
+    const stepLimit = automaticTurn ? 1 : 400;
     for (let step = 0; step < stepLimit && match.phase !== 'complete'; step += 1) {
       if (actingPlayerIndex(match) !== index || (step > 0 && match.turnCounter !== turnCounter)) break;
       const next = autopilotStep(match, index);

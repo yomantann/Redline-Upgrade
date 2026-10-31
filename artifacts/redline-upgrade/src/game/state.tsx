@@ -50,6 +50,7 @@ export interface RemoteInfo {
   maxMissedTurns: number;
   pausedAt: number | null;
   abandoned: boolean;
+  careerRevealPendingPlayerIndexes: number[];
   seats: MatchSnapshot['seats'];
 }
 
@@ -238,6 +239,7 @@ export function GameProvider({
     maxMissedTurns: snapshot.maxMissedTurns,
     pausedAt: snapshot.pausedAt,
     abandoned: snapshot.abandoned,
+    careerRevealPendingPlayerIndexes: snapshot.careerRevealPendingPlayerIndexes ?? [],
     seats: snapshot.seats,
   } : null, [snapshot]);
   const dispatchMatch = useCallback((action: MatchAction) => {
@@ -245,6 +247,10 @@ export function GameProvider({
     if (current) {
       const clientAction = toClientAction(action);
       if (!clientAction) return;
+      if (
+        clientAction.type !== 'ACKNOWLEDGE_CAREER_REVEAL' &&
+        current.you.playerIndex !== current.currentPlayerIndex
+      ) return;
       // Requests are sent one at a time, each against the newest known version, so rapid clicks or
       // timers never race each other into stale-version errors.
       sendChain.current = sendChain.current.then(async () => {
