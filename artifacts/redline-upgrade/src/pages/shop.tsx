@@ -42,6 +42,7 @@ export function ShopPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [category, setCategory] = useState<'LOGO' | 'DRIVER_SKIN'>('DRIVER_SKIN');
   const [selected, setSelected] = useState<CatalogItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<CatalogItem | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -137,6 +138,7 @@ export function ShopPage() {
                 <div className="market-item-copy"><span className="market-kicker">{item.category === 'LOGO' ? 'PLAYER LOGO' : characterName(item.characterId)}</span><h3>{item.name}</h3>
                   <div className="market-item-meta"><span>{item.price === 0 ? 'FREE' : `◈ ${money(item.price)}`}</span><span>{isEquipped ? 'EQUIPPED' : isOwned ? 'OWNED' : 'AVAILABLE'}</span></div>
                 </div>
+                 <button className="market-preview-button" type="button" onClick={() => { setError(''); setPreviewItem(item); }} aria-label={`Preview ${item.name}`}>PREVIEW</button>
                 {isOwned
                   ? <><button className="market-buy" disabled={busy || isEquipped} onClick={() => equipItem(item)}>{isEquipped ? 'EQUIPPED' : 'EQUIP'}</button>
                     {isEquipped && <button className="market-unequip" disabled={busy} onClick={() => equipItem(item, true)}>UNEQUIP</button>}</>
@@ -167,6 +169,20 @@ export function ShopPage() {
           <button className="market-cancel" disabled={busy} onClick={() => setSelected(null)}>CANCEL</button>
         </section>
       </div>}
+      {previewItem && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPreviewItem(null); }}>
+        <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="market-preview-title">
+          <button className="market-modal-close" onClick={() => setPreviewItem(null)} aria-label="Close preview">×</button>
+          <img src={getPublicAssetUrl(previewItem.assetPath)} alt={previewItem.name} />
+          <span className="market-kicker">{previewItem.category === 'LOGO' ? 'PLAYER LOGO' : `${characterName(previewItem.characterId)} DRIVER SKIN`} · {previewItem.rarity}</span>
+          <h2 id="market-preview-title">{previewItem.name}</h2>
+          <p>{owned.has(previewItem.id) ? (equipped.has(previewItem.id) ? 'This item is owned and equipped.' : 'This item is in your Inventory.') : 'Preview this cosmetic before unlocking it.'}</p>
+          <div className="market-confirm-price"><span>PRICE</span><strong>{previewItem.price === 0 ? 'FREE' : `◈ ${money(previewItem.price)}`}</strong><span>AVAILABLE</span><strong>◈ {money(wallet?.balance ?? 0)}</strong></div>
+          {owned.has(previewItem.id)
+            ? <button className="market-buy market-confirm-button" disabled={busy || equipped.has(previewItem.id)} onClick={() => equipItem(previewItem)}>{equipped.has(previewItem.id) ? 'EQUIPPED' : 'EQUIP FROM SHOP'}</button>
+            : <button className="market-buy market-confirm-button" disabled={busy} onClick={() => { setSelected(previewItem); setPreviewItem(null); }}>REVIEW UNLOCK</button>}
+          <button className="market-cancel" disabled={busy} onClick={() => setPreviewItem(null)}>CLOSE PREVIEW</button>
+        </section>
+      </div>}
     </main>
   </AppShell>;
 }
@@ -182,6 +198,7 @@ export function InventoryPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [previewItem, setPreviewItem] = useState<CatalogItem | null>(null);
   const load = useCallback(() => getJson<InventoryResponse>('/api/inventory').then(setData), []);
   useEffect(() => { if (user) load().catch(() => setError('Inventory could not load.')); }, [user, load]);
   useEffect(() => { if (!isLoading && !user) login(); }, [isLoading, user, login]);
@@ -250,6 +267,7 @@ export function InventoryPage() {
             return <article className={`market-item rarity-${item.rarity.toLowerCase()}`} key={item.id}>
               <div className="market-art"><img src={getPublicAssetUrl(item.assetPath)} alt={item.name} loading="lazy" /><span className="market-rarity">{item.rarity}</span></div>
               <div className="market-item-copy"><span className="market-kicker">{item.category === 'LOGO' ? 'PLAYER LOGO' : characterName(item.characterId)}</span><h3>{item.name}</h3><div className="market-item-meta"><span>ACQUIRED {new Date(acquiredAt).toLocaleDateString()}</span><span>{isEquipped ? 'EQUIPPED' : 'OWNED'}</span></div></div>
+               <button className="market-preview-button" type="button" onClick={() => { setError(''); setPreviewItem(item); }} aria-label={`Preview ${item.name}`}>PREVIEW</button>
               <button className="market-buy" disabled={busy || isEquipped} onClick={() => equip(item)}>{isEquipped ? 'EQUIPPED' : 'EQUIP'}</button>
               {isEquipped && <button className="market-unequip" disabled={busy} onClick={() => equip(item, true)}>UNEQUIP</button>}
             </article>;
@@ -257,5 +275,18 @@ export function InventoryPage() {
         </div>
       )}
     </section>
+    {previewItem && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPreviewItem(null); }}>
+      <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-preview-title">
+        <button className="market-modal-close" onClick={() => setPreviewItem(null)} aria-label="Close preview">×</button>
+        <img src={getPublicAssetUrl(previewItem.assetPath)} alt={previewItem.name} />
+        <span className="market-kicker">{previewItem.category === 'LOGO' ? 'PLAYER LOGO' : `${characterName(previewItem.characterId)} DRIVER SKIN`} · {previewItem.rarity}</span>
+        <h2 id="inventory-preview-title">{previewItem.name}</h2>
+        <p>{data?.equipped.some(row => row.itemId === previewItem.id) ? 'Currently equipped on your profile.' : 'Owned in your Inventory and ready to equip.'}</p>
+        <button className="market-buy market-confirm-button" disabled={busy} onClick={() => equip(previewItem, data?.equipped.some(row => row.itemId === previewItem.id) ?? false)}>
+          {data?.equipped.some(row => row.itemId === previewItem.id) ? 'UNEQUIP' : 'EQUIP'}
+        </button>
+        <button className="market-cancel" disabled={busy} onClick={() => setPreviewItem(null)}>CLOSE PREVIEW</button>
+      </section>
+    </div>}
   </main></AppShell>;
 }

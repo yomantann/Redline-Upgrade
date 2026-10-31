@@ -1222,6 +1222,68 @@ components:
           type: string
         level:
           type: integer
+    AssetDispositionRecord:
+      type: object
+      required: [assetId, status, reason]
+      properties:
+        assetId:
+          type: string
+        status:
+          type: string
+          enum: [RETAINED, LOST, UNEXPLAINED]
+        reason:
+          type: string
+          enum: [ENDGAME_RETAINED, FINAL_GAMBLE_LOSS, GAMBLE_CARD_FORFEITURE, TRANSFERRED_OUT, NO_DISPOSITION_EVENT]
+        sourceName:
+          type: string
+        level:
+          type: integer
+    EndgameResultRecord:
+      type: object
+      required: [choice, baseValue, finalValue, multiplier, effectiveRoll, dice, gambleCardId, gambleWon, stakedWealth, stakedAssetValue, stakedTokens]
+      properties:
+        choice:
+          type: [string, "null"]
+        baseValue:
+          type: [integer, "null"]
+        finalValue:
+          type: [integer, "null"]
+        multiplier:
+          type: [number, "null"]
+        effectiveRoll:
+          type: [integer, "null"]
+        dice:
+          type: [object, "null"]
+          required: [die1, die2, total]
+          properties:
+            die1:
+              type: integer
+            die2:
+              type: integer
+            total:
+              type: integer
+        gambleCardId:
+          type: [string, "null"]
+        gambleWon:
+          type: [boolean, "null"]
+        stakedWealth:
+          type: integer
+        stakedAssetValue:
+          type: integer
+        stakedTokens:
+          type: integer
+    CreditRewardReceipt:
+      type: object
+      required: [total, game, endgame, milestones]
+      properties:
+        total:
+          type: integer
+        game:
+          type: integer
+        endgame:
+          type: integer
+        milestones:
+          type: integer
     CompletedGameRecord:
       type: object
       required: [id, userId, source, gameId, boardId, mode, placement, finalValue, portfolioValue, characterId, careerId, finalStats, acquiredAssetIds, lostAssetIds, retainedAssets, unlockedAchievementIds, completedAt]
@@ -1242,6 +1304,8 @@ components:
           type: string
         placement:
           type: integer
+        boardFinishOrder:
+          type: [integer, "null"]
         finalValue:
           type: integer
         portfolioValue:
@@ -1266,6 +1330,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RetainedAssetRecord"
+        assetDispositions:
+          type: [array, "null"]
+          items:
+            $ref: "#/components/schemas/AssetDispositionRecord"
+        endgameResult:
+          oneOf:
+            - $ref: "#/components/schemas/EndgameResultRecord"
+            - type: "null"
+        creditRewardReceipt:
+          oneOf:
+            - $ref: "#/components/schemas/CreditRewardReceipt"
+            - type: "null"
         unlockedAchievementIds:
           type: array
           items:

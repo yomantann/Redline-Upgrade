@@ -26,10 +26,12 @@ export function getOwnedUpgradeableAssets(player: Pick<Player, 'equipment' | 'as
 }
 
 export function getEligibleRecoveryMilestones(
-  player: Pick<Player, 'position' | 'equipment'>,
+  player: Pick<Player, 'position' | 'equipment' | 'history'>,
 ): RecoverableMilestone[] {
   return RECOVERABLE_MILESTONES.filter((milestone) =>
-    player.position >= milestone.space && !player.equipment[milestone.slot],
+    player.position >= milestone.space
+      && !player.equipment[milestone.slot]
+      && !(player.history.milestoneSpacesCompleted ?? []).includes(milestone.space),
   ).map((milestone) => ({ ...milestone }));
 }
 
@@ -46,12 +48,16 @@ function randomIndex(length: number, random: () => number): number {
 
 /** Chooses a missed milestone first, then its asset category, then one eligible asset. */
 export function chooseRecoveredMilestoneAsset(
-  player: Pick<Player, 'position' | 'equipment'>,
+  player: Pick<Player, 'position' | 'equipment' | 'history'>,
   random: () => number = Math.random,
+  selectedSpace?: number,
 ): RecoveredMilestoneAsset | null {
   const milestones = getEligibleRecoveryMilestones(player);
   if (!milestones.length) return null;
-  const milestone = milestones[randomIndex(milestones.length, random)];
+  const milestone = selectedSpace === undefined
+    ? milestones[randomIndex(milestones.length, random)]
+    : milestones.find((entry) => entry.space === selectedSpace);
+  if (!milestone) return null;
   const category = milestone.categories[randomIndex(milestone.categories.length, random)];
   const options = assetOptions(category);
   if (!options.length) throw new Error(`No assets exist for recoverable category ${category}.`);

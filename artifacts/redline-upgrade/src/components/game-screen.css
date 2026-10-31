@@ -323,6 +323,30 @@
 .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1/-1; grid-row:3; }
 .game-screen:not(.game-screen-finish-line) > .game-tabletop { order:2; }
 .game-screen:not(.game-screen-finish-line) > .game-players { order:1; }
+.decision-inspection-toolbar { position:sticky; top:8px; z-index:20; display:flex; align-items:center; flex-wrap:wrap; gap:6px; width:max-content; max-width:100%; margin:0 0 12px auto; padding:7px; border:1px solid #53645a; background:#101813ee; box-shadow:0 8px 22px #0008; backdrop-filter:blur(8px); }
+.decision-inspection-toolbar > .mono { padding:0 7px; color:#97a696; font-size:8px; }
+.decision-inspection-toolbar button { min-height:34px; padding:0 9px; border:1px solid #39463d; background:#1b251e; color:#d8e3d5; font:8px 'Space Mono',monospace; cursor:pointer; }
+.decision-inspection-toolbar button[aria-pressed="true"] { border-color:#d4e981; color:#d4e981; }
+.decision-inspection-toolbar button:focus-visible { outline:2px solid #d4e981; outline-offset:2px; }
+.decision-inspection-board { margin:20px 0; padding:10px; border:1px solid #46534a; background:#111a14; }
+.decision-inspection-players { margin:20px 0; padding:15px; border:1px solid #46534a; background:#131c19; }
+.decision-inspection-players > h2 { margin:0 0 12px; color:#d4e981; font-size:10px; }
+.decision-inspection-player-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+.decision-inspection-player-grid > article { min-width:0; padding:12px; border:1px solid #39463d; background:#1a241d; }
+.decision-inspection-player-heading { display:flex; align-items:center; gap:10px; }
+.decision-inspection-portrait { flex:0 0 54px; width:54px; height:70px; }
+.decision-inspection-player-heading .mono { color:#9fb09f; font-size:8px; }
+.decision-inspection-player-heading h3 { margin:4px 0; color:#f0eee4; font:700 21px 'Barlow Condensed',sans-serif; text-transform:uppercase; }
+.decision-inspection-player-heading p { margin:0; color:#b7c1b4; font-size:10px; }
+.decision-inspection-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; margin:12px 0; }
+.decision-inspection-stats span { display:flex; justify-content:space-between; gap:5px; padding:6px; color:#9fb09f; border:1px solid #354238; font:8px 'Space Mono',monospace; }
+.decision-inspection-stats strong { color:#f0eee4; }
+@media(max-width:600px) {
+  .decision-inspection-toolbar { width:100%; justify-content:center; margin-inline:0; }
+  .decision-inspection-toolbar > .mono { width:100%; text-align:center; }
+  .decision-inspection-toolbar button { flex:1; min-width:100px; }
+  .decision-inspection-players { padding:10px; }
+}
 @media(max-width:1000px) {
   .game-tabletop { grid-template-columns:minmax(0,1fr); }
   .game-tabletop > .game-dice-panel { grid-column:1; grid-row:1; }

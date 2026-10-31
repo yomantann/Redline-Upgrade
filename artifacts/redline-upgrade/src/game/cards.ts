@@ -198,7 +198,7 @@ export const cards: readonly CardDefinition[] = [
   card('fame-upgrade-token', 'fame', 'Breakthrough Pass', 'A rare opening to improve an owned asset or hold for the endgame.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A spotlight frames a gold token above a rising award stage.', 'RARE', 'cards/fame/fame-upgrade-token.svg'),
   card('lifestyle-upgrade-token', 'lifestyle', 'Premium Upgrade', 'A one-time pass for a stronger asset, a recovered milestone, or later.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A refined travel case opens around a polished upgrade token and passport.', 'RARE', 'cards/lifestyle/lifestyle-upgrade-token.svg'),
   card('influence-upgrade-token', 'influence', 'Network Access', 'Use the connection to improve an asset or keep the opportunity for later.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'Two hands exchange a gold token over a dark, connected city map.', 'RARE', 'cards/influence/influence-upgrade-token.svg'),
-  card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, recover a missed milestone at random, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
+  card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, choose a missed milestone to recover, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
 ];
 
 export const allCards: readonly CardDefinition[] = [...cards, ...bioPartyCards];

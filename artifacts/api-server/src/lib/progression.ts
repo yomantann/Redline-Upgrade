@@ -15,7 +15,7 @@ import { assets, getAsset } from "../../../redline-upgrade/src/game/assets";
 import { characters } from "../../../redline-upgrade/src/game/characters";
 import { careers } from "../../../redline-upgrade/src/game/careers";
 import { calculateAssetValue } from "../../../redline-upgrade/src/game/endgame";
-import type { Match } from "../../../redline-upgrade/src/game/match";
+import { getFinalPlacementOrder, type Match } from "../../../redline-upgrade/src/game/match";
 import type { MatchAssetEvent } from "../../../redline-upgrade/src/game/multiplayer";
 import { calculateSecretAssetMilestoneMetrics, secretAchievementCatalog, SECRET_ACHIEVEMENT_IDS } from "./secret-achievements";
 import { ACHIEVEMENT_TIER_CREDITS, GAME_CREDIT_REWARDS, grantCredits } from "./credit-wallet";
@@ -26,6 +26,7 @@ export type GameSource = "SOLO" | "MULTIPLAYER";
 const emptyMetrics = (): Record<string, number> => ({
   assetsAcquired: 0,
   assetsLost: 0,
+  assetDispositionIssues: 0,
   uniqueAssets: 0,
   uniqueAssetsRetained: 0,
   maxSimultaneousAssets: 0,
@@ -41,6 +42,8 @@ const emptyMetrics = (): Record<string, number> => ({
   maxRetainedInOneGame: 0,
   retainedAcquiredAssets: 0,
   gamesHeldAssets: 0,
+  gamesAcquiredAndRetained: 0,
+  fullPortfolioGames: 0,
   perfectRetentionGames: 0,
   maxRetainedCategories: 0,
   eliteAssetsRetained: 0,
@@ -288,11 +291,13 @@ function assetEventsFromMatch(match: Match): MatchAssetEvent[] {
       assetId: event.assetId,
       targetPlayerId: event.targetPlayerId ?? null,
       assetLevel: event.assetLevel ?? null,
+      effectId: event.effectId,
+      reason: event.reason,
     }));
   }
   return match.eventLog.flatMap((event) => {
     if (
-      !["ASSET_ACQUIRED", "ASSET_PURCHASED", "ASSET_TRANSFERRED", "ASSET_UPGRADED"].includes(event.eventType)
+      !["ASSET_ACQUIRED", "ASSET_PURCHASED", "ASSET_TRANSFERRED", "ASSET_DISPOSED", "ASSET_UPGRADED"].includes(event.eventType)
       || !event.assetId
     ) return [];
     const playerIndex = match.players.findIndex((player) => player.playerId === event.playerId);
@@ -305,6 +310,8 @@ function assetEventsFromMatch(match: Match): MatchAssetEvent[] {
       assetId: event.assetId,
       targetPlayerId: event.targetPlayerId ?? null,
       assetLevel: event.assetLevel ?? null,
+      effectId: event.effectId,
+      reason: event.reason,
     }];
   });
 }
@@ -346,23 +353,61 @@ export async function recordCompletedGame(
   validateAchievementCatalog(assets.length);
   const allAssetEvents = eventLedger?.length ? [...eventLedger] : assetEventsFromMatch(match);
   const playerEvents = allAssetEvents.filter((event) => event.playerIndex === playerIndex);
-  const acquiredEvents = playerEvents.filter((event) => event.type === "ASSET_ACQUIRED");
-  const acquiredAssetIds = acquiredEvents.map((event) => event.assetId);
-  const acquiredUniqueIds = [...new Set(acquiredAssetIds)];
-  const lostAssetIds = allAssetEvents
+  const acquiredEvents = playerEvents.filter((event) => event.type === "ASSET_ACQUIRED" || event.type === "ASSET_PURCHASED");
+  const acquiredAssetIds = [...new Set(acquiredEvents.map((event) => event.assetId))];
+  const acquiredUniqueIds = acquiredAssetIds;
+  const transferredOutAssetIds = allAssetEvents
     .filter((event) => event.type === "ASSET_TRANSFERRED" && event.targetPlayerId === player.playerId)
     .map((event) => event.assetId);
+  const disposedEvents = playerEvents.filter((event) => event.type === "ASSET_DISPOSED");
+  const disposedEventsByAsset = new Map(disposedEvents.map((event) => [event.assetId, event]));
+  const transferredOutEvents = allAssetEvents.filter((event) =>
+    event.type === "ASSET_TRANSFERRED" && event.targetPlayerId === player.playerId,
+  );
+  const transferredOutEventsByAsset = new Map(transferredOutEvents.map((event) => [event.assetId, event]));
   const finalGambleLost = player.endgame?.status === "RESOLVED"
     && player.endgame.choice === "FINAL_GAMBLE"
     && player.endgame.gambleStake?.won === false;
-  const retainedAssets = (finalGambleLost ? [] : [...new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)))])
+  const finalGambleLostAssetIds = finalGambleLost
+    ? [...new Set(Object.values(player.endgame!.snapshot.equipment).filter((assetId): assetId is string => Boolean(assetId)))]
+    : [];
+  const retainedAssets = [...new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)))]
     .map((assetId) => ({ assetId, level: player.assetLevels[assetId] ?? 1 }));
   const retainedIds = retainedAssets.map((asset) => asset.assetId);
   const retainedSet = new Set(retainedIds);
+  const disposedAssetIds = [...new Set(disposedEvents.map((event) => event.assetId))];
+  const transferredOutUniqueIds = [...new Set(transferredOutAssetIds)];
+  const finalGambleLostSet = new Set(finalGambleLostAssetIds);
+  const transferredOutSet = new Set(transferredOutUniqueIds);
+  const lostAssetIds = [...new Set([...transferredOutAssetIds, ...finalGambleLostAssetIds, ...disposedAssetIds])];
+  const assetDispositionIds = [...new Set([...acquiredUniqueIds, ...retainedIds, ...transferredOutUniqueIds, ...finalGambleLostAssetIds, ...disposedAssetIds])];
+  const assetDispositions = assetDispositionIds.map((assetId) => {
+    const level = player.assetLevels[assetId] ?? 1;
+    if (retainedSet.has(assetId)) return { assetId, status: "RETAINED" as const, reason: "ENDGAME_RETAINED" as const, level };
+    if (finalGambleLostSet.has(assetId)) return { assetId, status: "LOST" as const, reason: "FINAL_GAMBLE_LOSS" as const, sourceName: "Final Gamble" };
+    const disposedEvent = disposedEventsByAsset.get(assetId);
+    if (disposedEvent) {
+      return {
+        assetId,
+        status: "LOST" as const,
+        reason: disposedEvent.effectId === "FINAL_GAMBLE_LOSS" ? "FINAL_GAMBLE_LOSS" as const : "GAMBLE_CARD_FORFEITURE" as const,
+        sourceName: disposedEvent.reason ?? "Gamble card",
+      };
+    }
+    if (transferredOutSet.has(assetId)) {
+      return {
+        assetId,
+        status: "LOST" as const,
+        reason: "TRANSFERRED_OUT" as const,
+        sourceName: transferredOutEventsByAsset.get(assetId)?.reason ?? "Player interaction",
+      };
+    }
+    return { assetId, status: "UNEXPLAINED" as const, reason: "NO_DISPOSITION_EVENT" as const };
+  });
   const retainedAcquiredIds = acquiredUniqueIds.filter((assetId) => retainedSet.has(assetId));
   const portfolioValue = calculateAssetValue(player);
   const finalValue = player.endgame?.finalGameValue ?? player.endgame?.baseValue ?? 0;
-  const placement = (match.finishOrder.indexOf(playerIndex) + 1) || match.players.length;
+  const placement = getFinalPlacementOrder(match.players, match.finishOrder).indexOf(playerIndex) + 1;
   const previousMetrics = toMetrics(profile.metrics);
   const facts = toFacts(profile.lifetimeFacts);
   const oldAssetRows = await tx.select().from(userAssetCollectionTable)
@@ -443,12 +488,13 @@ export async function recordCompletedGame(
 
   const nextMetrics: Record<string, number> = {
     ...previousMetrics,
-    assetsAcquired: previousMetrics.assetsAcquired + acquiredEvents.length,
+    assetsAcquired: previousMetrics.assetsAcquired + acquiredUniqueIds.length,
     assetsLost: previousMetrics.assetsLost + lostAssetIds.length,
+    assetDispositionIssues: previousMetrics.assetDispositionIssues + assetDispositions.filter((entry) => entry.status === "UNEXPLAINED").length,
     uniqueAssets: knownAssets.size,
     uniqueAssetsRetained: everRetainedAssets.size,
     maxSimultaneousAssets: Math.max(previousMetrics.maxSimultaneousAssets, retainedIds.length),
-    rareAcquired: previousMetrics.rareAcquired + acquiredEvents.filter((event) => getAsset(event.assetId)?.rarity === "RARE").length,
+    rareAcquired: previousMetrics.rareAcquired + acquiredUniqueIds.filter((assetId) => getAsset(assetId)?.rarity === "RARE").length,
     eliteAcquired: previousMetrics.eliteAcquired + acquiredEvents.filter((event) => getAsset(event.assetId)?.rarity === "ELITE").length,
     expensiveAcquired: previousMetrics.expensiveAcquired + acquiredEvents.filter((event) => (getAsset(event.assetId)?.cost ?? 0) >= 300_000).length,
     uniqueAssetCategories: categories.size,
@@ -460,6 +506,8 @@ export async function recordCompletedGame(
     maxRetainedInOneGame: Math.max(previousMetrics.maxRetainedInOneGame, retainedIds.length),
     retainedAcquiredAssets: previousMetrics.retainedAcquiredAssets + retainedAcquiredIds.length,
     gamesHeldAssets: previousMetrics.gamesHeldAssets + (retainedIds.length > 0 ? 1 : 0),
+    gamesAcquiredAndRetained: previousMetrics.gamesAcquiredAndRetained + (retainedAcquiredIds.length > 0 ? 1 : 0),
+    fullPortfolioGames: previousMetrics.fullPortfolioGames + (retainedIds.length === 4 ? 1 : 0),
     perfectRetentionGames: previousMetrics.perfectRetentionGames + (acquiredUniqueIds.length > 0 && lostThisGame.size === 0 ? 1 : 0),
     maxRetainedCategories: Math.max(previousMetrics.maxRetainedCategories, retainedCategories.size),
     eliteAssetsRetained: previousMetrics.eliteAssetsRetained + retainedEliteCount,
@@ -593,7 +641,9 @@ export async function recordCompletedGame(
     await award(GAME_CREDIT_REWARDS.finalGambleSuccess, "final-gamble", "ENDGAME");
     if (isWin) await award(GAME_CREDIT_REWARDS.winAfterFinalGamble, "win-after-final-gamble", "ENDGAME");
   }
-  if (acquiredUniqueIds.length > 0 && lostAssetIds.length === 0) await award(GAME_CREDIT_REWARDS.lossFree, "loss-free", "ENDGAME");
+  if (GAME_CREDIT_REWARDS.lossFree > 0 && acquiredUniqueIds.length > 0 && lostAssetIds.length === 0) {
+    await award(GAME_CREDIT_REWARDS.lossFree, "loss-free", "ENDGAME");
+  }
   for (const achievement of [...achievementCatalog, ...secretAchievementCatalog]) {
     // Only pay on the completion that first unlocks it; never backfill older milestones.
     if (!unlockedIds.includes(achievement.id)) continue;
@@ -657,6 +707,7 @@ export async function recordCompletedGame(
     boardId: match.boardId,
     mode: match.mode,
     placement,
+    boardFinishOrder: match.finishOrder.indexOf(playerIndex) + 1 || null,
     finalValue,
     portfolioValue,
     characterId: player.characterId,
@@ -671,6 +722,23 @@ export async function recordCompletedGame(
     acquiredAssetIds,
     lostAssetIds,
     retainedAssets,
+    assetDispositions,
+    endgameResult: player.endgame ? {
+      choice: player.endgame.choice ?? null,
+      baseValue: player.endgame.baseValue ?? null,
+      finalValue: player.endgame.finalGameValue ?? null,
+      multiplier: player.endgame.multiplier ?? null,
+      effectiveRoll: player.endgame.effectiveRoll ?? null,
+      dice: player.endgame.dice
+        ? { die1: player.endgame.dice.die1, die2: player.endgame.dice.die2, total: player.endgame.dice.total }
+        : null,
+      gambleCardId: player.endgame.gambleCardId ?? null,
+      gambleWon: player.endgame.gambleStake?.won ?? null,
+      stakedWealth: player.endgame.gambleStake?.wealth ?? 0,
+      stakedAssetValue: player.endgame.gambleStake?.assetValue ?? 0,
+      stakedTokens: player.endgame.gambleStake?.tokens ?? 0,
+    } : null,
+    creditRewardReceipt: player.creditRewardReceipt ?? null,
     unlockedAchievementIds: unlockedIds,
     completedAt,
   }).onConflictDoNothing();

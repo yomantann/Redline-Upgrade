@@ -394,6 +394,72 @@ export interface RetainedAssetRecord {
   level: number;
 }
 
+export type AssetDispositionRecordStatus = typeof AssetDispositionRecordStatus[keyof typeof AssetDispositionRecordStatus];
+
+
+export const AssetDispositionRecordStatus = {
+  RETAINED: 'RETAINED',
+  LOST: 'LOST',
+  UNEXPLAINED: 'UNEXPLAINED',
+} as const;
+
+export type AssetDispositionRecordReason = typeof AssetDispositionRecordReason[keyof typeof AssetDispositionRecordReason];
+
+
+export const AssetDispositionRecordReason = {
+  ENDGAME_RETAINED: 'ENDGAME_RETAINED',
+  FINAL_GAMBLE_LOSS: 'FINAL_GAMBLE_LOSS',
+  GAMBLE_CARD_FORFEITURE: 'GAMBLE_CARD_FORFEITURE',
+  TRANSFERRED_OUT: 'TRANSFERRED_OUT',
+  NO_DISPOSITION_EVENT: 'NO_DISPOSITION_EVENT',
+} as const;
+
+export interface AssetDispositionRecord {
+  assetId: string;
+  status: AssetDispositionRecordStatus;
+  reason: AssetDispositionRecordReason;
+  sourceName?: string;
+  level?: number;
+}
+
+/**
+ * @nullable
+ */
+export type EndgameResultRecordDice = {
+  die1: number;
+  die2: number;
+  total: number;
+} | null;
+
+export interface EndgameResultRecord {
+  /** @nullable */
+  choice: string | null;
+  /** @nullable */
+  baseValue: number | null;
+  /** @nullable */
+  finalValue: number | null;
+  /** @nullable */
+  multiplier: number | null;
+  /** @nullable */
+  effectiveRoll: number | null;
+  /** @nullable */
+  dice: EndgameResultRecordDice;
+  /** @nullable */
+  gambleCardId: string | null;
+  /** @nullable */
+  gambleWon: boolean | null;
+  stakedWealth: number;
+  stakedAssetValue: number;
+  stakedTokens: number;
+}
+
+export interface CreditRewardReceipt {
+  total: number;
+  game: number;
+  endgame: number;
+  milestones: number;
+}
+
 export type CompletedGameRecordFinalStats = {[key: string]: number};
 
 export interface CompletedGameRecord {
@@ -404,6 +470,8 @@ export interface CompletedGameRecord {
   boardId: string;
   mode: string;
   placement: number;
+  /** @nullable */
+  boardFinishOrder?: number | null;
   finalValue: number;
   portfolioValue: number;
   characterId: string;
@@ -413,6 +481,10 @@ export interface CompletedGameRecord {
   acquiredAssetIds: string[];
   lostAssetIds: string[];
   retainedAssets: RetainedAssetRecord[];
+  /** @nullable */
+  assetDispositions?: AssetDispositionRecord[] | null;
+  endgameResult?: EndgameResultRecord | null;
+  creditRewardReceipt?: CreditRewardReceipt | null;
   unlockedAchievementIds: string[];
   completedAt: string;
 }

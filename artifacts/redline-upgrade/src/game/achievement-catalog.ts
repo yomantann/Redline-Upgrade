@@ -1,3 +1,5 @@
+import { ACHIEVEMENT_TIER_CREDITS } from './credit-rewards';
+
 export type AchievementCategory =
   | 'ASSET_COLLECTION'
   | 'ENDGAME_RETENTION'
@@ -61,14 +63,14 @@ const assetCollection: AchievementRow[] = [
 ];
 
 const retention: AchievementRow[] = [
-  ['diamond-hands', 'Diamond Hands', 'Finish a completed game holding at least one asset.', 'assetsRetained', 1, 'BRONZE', 'shield-check'],
+  ['diamond-hands', 'Diamond Hands', 'Finish three completed games holding at least one asset.', 'gamesHeldAssets', 3, 'BRONZE', 'shield-check'],
   ['asset-guardian', 'Asset Guardian', 'Finish a completed game holding three assets.', 'maxRetainedInOneGame', 3, 'SILVER', 'shield-check'],
-  ['portfolio-king', 'Portfolio Keeper', 'Finish a completed game holding all four available asset slots.', 'maxRetainedInOneGame', 4, 'GOLD', 'crown'],
-  ['untouchable', 'Untouchable', 'Acquire and retain at least one asset in the same completed game.', 'retainedAcquiredAssets', 1, 'SILVER', 'lock-keyhole'],
+  ['portfolio-king', 'Portfolio Keeper', 'Finish five completed games holding all four available asset slots.', 'fullPortfolioGames', 5, 'GOLD', 'crown'],
+  ['untouchable', 'Untouchable', 'Acquire and retain an asset in three different completed games.', 'gamesAcquiredAndRetained', 3, 'SILVER', 'lock-keyhole'],
   ['lifetime-holder', 'Lifetime Holder', 'Finish ten completed games holding at least one asset.', 'gamesHeldAssets', 10, 'GOLD', 'calendar-check'],
   ['the-collector', 'The Collector', 'Finish completed games holding twenty-five assets cumulatively.', 'assetsRetained', 25, 'GOLD', 'archive'],
   ['legacy-portfolio', 'Legacy Portfolio', 'Finish completed games holding one hundred assets cumulatively.', 'assetsRetained', 100, 'LEGENDARY', 'landmark'],
-  ['perfect-portfolio', 'Perfect Portfolio', 'Finish a game holding an acquired asset without losing an asset during that game.', 'perfectRetentionGames', 1, 'GOLD', 'badge-check'],
+  ['perfect-portfolio', 'Perfect Portfolio', 'Finish five games holding an acquired asset without losing an asset during each game.', 'perfectRetentionGames', 5, 'GOLD', 'badge-check'],
   ['first-retained', 'Held to the End', 'Retain an asset through the finish for the first time.', 'assetsRetained', 1, 'BRONZE', 'hand-coins'],
   ['ten-retained', 'Steady Hands', 'Retain ten assets cumulatively.', 'assetsRetained', 10, 'SILVER', 'hand-coins'],
   ['fifty-retained', 'Long-Term Holder', 'Retain fifty assets cumulatively.', 'assetsRetained', 50, 'PLATINUM', 'hand-coins'],
@@ -153,18 +155,9 @@ const gameplay: AchievementRow[] = [
   ['first-asset-transfer', 'Deal-Maker', 'Complete an asset transfer in a finished game.', 'assetTransfers', 1, 'SILVER', 'arrow-left-right'],
 ];
 
-const tierCredits: Record<AchievementTier, number> = {
-  BRONZE: 50,
-  SILVER: 125,
-  GOLD: 300,
-  PLATINUM: 600,
-  LEGENDARY: 1_500,
-  MYTHIC: 4_000,
-};
-
 function categoryRows(category: AchievementCategory, rows: AchievementRow[]): AchievementDefinition[] {
   return rows.map(([id, name, description, metric, target, rarity, icon, creditReward]) => ({
-    id, name, description, category, metric, target, rarity, icon, creditReward: creditReward ?? tierCredits[rarity],
+    id, name, description, category, metric, target, rarity, icon, creditReward: creditReward ?? ACHIEVEMENT_TIER_CREDITS[rarity],
   }));
 }
 

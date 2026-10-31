@@ -1,4 +1,5 @@
 import { achievementCatalog, type AchievementTier } from "../../../redline-upgrade/src/game/achievement-catalog";
+import { ACHIEVEMENT_TIER_CREDITS } from "../../../redline-upgrade/src/game/credit-rewards";
 
 export interface SecretAchievementDefinition {
   id: string;
@@ -122,7 +123,7 @@ export const secretAchievementCatalog: readonly SecretAchievementDefinition[] = 
       ? achievementCatalog.length + records.filter((record) => record[2] !== "secretBeyondTheRedline").length
       : target,
     rarity: rarity as AchievementTier & ("LEGENDARY" | "MYTHIC"),
-    creditReward: rarity === "MYTHIC" ? 4_000 : 1_500,
+    creditReward: ACHIEVEMENT_TIER_CREDITS[rarity as "MYTHIC" | "LEGENDARY"],
     artwork: artwork(index),
   }),
 );

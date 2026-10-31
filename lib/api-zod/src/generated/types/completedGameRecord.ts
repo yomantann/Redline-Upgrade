@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AssetDispositionRecord } from './assetDispositionRecord';
 import type { CompletedGameRecordFinalStats } from './completedGameRecordFinalStats';
 import type { CompletedGameRecordSource } from './completedGameRecordSource';
+import type { CreditRewardReceipt } from './creditRewardReceipt';
+import type { EndgameResultRecord } from './endgameResultRecord';
 import type { RetainedAssetRecord } from './retainedAssetRecord';
 
 export interface CompletedGameRecord {
@@ -17,6 +20,8 @@ export interface CompletedGameRecord {
   boardId: string;
   mode: string;
   placement: number;
+  /** @nullable */
+  boardFinishOrder?: number | null;
   finalValue: number;
   portfolioValue: number;
   characterId: string;
@@ -26,6 +31,10 @@ export interface CompletedGameRecord {
   acquiredAssetIds: string[];
   lostAssetIds: string[];
   retainedAssets: RetainedAssetRecord[];
+  /** @nullable */
+  assetDispositions?: AssetDispositionRecord[] | null;
+  endgameResult?: EndgameResultRecord | null;
+  creditRewardReceipt?: CreditRewardReceipt | null;
   unlockedAchievementIds: string[];
   completedAt: Date;
 }

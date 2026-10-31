@@ -24,6 +24,7 @@ export type GameEventType =
   | 'ATTRIBUTE_GAINED'
   | 'ASSET_ACQUIRED'
   | 'ASSET_TRANSFERRED'
+  | 'ASSET_DISPOSED'
   | 'CAREER_SWAP_RESOLVED'
   | 'CAREER_SWAPPED'
   | 'SECOND_CAREER_ACQUIRED'
@@ -161,8 +162,10 @@ export interface AssetEventLogEntry {
   eventId: string;
   playerId: string;
   playerIndex: number;
-  type: Extract<GameEventType, 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_UPGRADED'>;
+  type: Extract<GameEventType, 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_DISPOSED' | 'ASSET_UPGRADED'>;
   assetId: string;
   targetPlayerId?: string;
   assetLevel?: number;
+  effectId?: string;
+  reason?: string;
 }

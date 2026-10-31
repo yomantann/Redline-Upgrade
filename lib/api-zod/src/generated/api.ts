@@ -179,6 +179,7 @@ export const GetAchievementProfileResponse = zod.object({
   "boardId": zod.string(),
   "mode": zod.string(),
   "placement": zod.number().int(),
+  "boardFinishOrder": zod.number().int().nullish(),
   "finalValue": zod.number().int(),
   "portfolioValue": zod.number().int(),
   "characterId": zod.string(),
@@ -190,6 +191,36 @@ export const GetAchievementProfileResponse = zod.object({
   "assetId": zod.string(),
   "level": zod.number().int()
 })),
+  "assetDispositions": zod.array(zod.object({
+  "assetId": zod.string(),
+  "status": zod.enum(['RETAINED', 'LOST', 'UNEXPLAINED']),
+  "reason": zod.enum(['ENDGAME_RETAINED', 'FINAL_GAMBLE_LOSS', 'GAMBLE_CARD_FORFEITURE', 'TRANSFERRED_OUT', 'NO_DISPOSITION_EVENT']),
+  "sourceName": zod.string().optional(),
+  "level": zod.number().int().optional()
+})).nullish(),
+  "endgameResult": zod.union([zod.object({
+  "choice": zod.string().nullable(),
+  "baseValue": zod.number().int().nullable(),
+  "finalValue": zod.number().int().nullable(),
+  "multiplier": zod.number().nullable(),
+  "effectiveRoll": zod.number().int().nullable(),
+  "dice": zod.object({
+  "die1": zod.number().int(),
+  "die2": zod.number().int(),
+  "total": zod.number().int()
+}).nullable(),
+  "gambleCardId": zod.string().nullable(),
+  "gambleWon": zod.boolean().nullable(),
+  "stakedWealth": zod.number().int(),
+  "stakedAssetValue": zod.number().int(),
+  "stakedTokens": zod.number().int()
+}),zod.null()]).optional(),
+  "creditRewardReceipt": zod.union([zod.object({
+  "total": zod.number().int(),
+  "game": zod.number().int(),
+  "endgame": zod.number().int(),
+  "milestones": zod.number().int()
+}),zod.null()]).optional(),
   "unlockedAchievementIds": zod.array(zod.string()),
   "completedAt": zod.coerce.date()
 }))

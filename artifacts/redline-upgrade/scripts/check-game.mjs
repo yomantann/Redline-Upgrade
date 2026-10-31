@@ -33,7 +33,8 @@ const vite = await createServer({
   appType: 'custom',
 });
 try {
-  const { createMatch, advanceMatch } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { createMatch, advanceMatch, getFinalPlacementOrder } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { applySoloPlayerAction, applySoloAutomationStep, actingPlayerIndex } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
   const { getBoardSpaces } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
   const { cards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
@@ -280,6 +281,19 @@ try {
   function startWithoutProtection(position, slot = 0, wealth = 900000) {
     return { ...start(position, slot, wealth), effectProtections: {} };
   }
+  const soloStart = createMatch(id);
+  const humanRoll = applySoloPlayerAction(soloStart, { type: 'ROLL_DICE' });
+  assert.equal(humanRoll?.match.phase, 'rolling', 'a solo human action advances one phase instead of running CPU turns');
+  assert.equal(humanRoll?.match.turnIndex, 0, 'the human keeps control during their roll animation');
+  const phaseVisibleCpuTurnStart = { ...createMatch(id), phase: 'landed', turnIndex: 0 };
+  const cpuTurnHandoff = applySoloPlayerAction(phaseVisibleCpuTurnStart, { type: 'END_TURN' });
+  assert.equal(cpuTurnHandoff?.match.turnIndex, 1, 'ending the human turn hands control to the first CPU');
+  assert.equal(cpuTurnHandoff?.match.phase, 'ready', 'CPU movement begins in its own visible phase');
+  const cpuRollStep = cpuTurnHandoff && applySoloAutomationStep(cpuTurnHandoff.match);
+  assert.equal(cpuRollStep?.match.phase, 'rolling', 'one CPU step performs only the roll phase');
+  assert.equal(cpuRollStep?.match.turnIndex, 1, 'the CPU remains the active player through its scheduled phases');
+  const cpuRevealStep = cpuRollStep && applySoloAutomationStep(cpuRollStep.match);
+  assert.equal(cpuRevealStep?.match.phase, 'reveal', 'the next CPU step reveals the roll instead of skipping movement');
   function move(match, total) {
     match = advanceMatch(match, { type: 'ROLL', result: { die1: 1, die2: total - 1, total, doubles: total === 2 } });
     match = advanceMatch(match, { type: 'REVEAL' });
@@ -819,7 +833,7 @@ try {
   const careerTags = new Set(careers.flatMap(career => career.tags));
   const validStats = new Set(['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence']);
   const validDecks = new Set(decks.map(deck => deck.id));
-  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'ROLL_OF_2_OR_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'ASSET_ACQUIRED', 'ASSET_TRANSFERRED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'CAREER_SWAP_RESOLVED', 'CAREER_SWAPPED', 'SECOND_CAREER_ACQUIRED', 'TURN_SKIPPED', 'ATTRIBUTE_GAINED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
+  const validEventTypes = new Set(['TURN_START', 'TURN_END', 'DICE_ROLL', 'DOUBLES_ROLLED', 'ROLL_OF_2', 'ROLL_OF_8', 'ROLL_OF_2_OR_8', 'PLAYER_MOVED', 'PASS_SPACE', 'LAND_ON_SPACE', 'PASS_PLAYER', 'LAND_ON_PLAYER', 'SALARY_GATE', 'CAREER_CHANGE', 'MILESTONE', 'BOARD_EFFECT_RESOLVED', 'CARD_DRAW', 'CARD_RESOLVED', 'UPGRADE_TOKEN_GAINED', 'UPGRADE_TOKEN_SPENT', 'UPGRADE_TOKEN_HELD', 'ASSET_UPGRADED', 'ASSET_ACQUIRED', 'ASSET_TRANSFERRED', 'ASSET_DISPOSED', 'MILESTONE_RECOVERED', 'ASSET_PURCHASED', 'CAR_PURCHASED', 'LIFESTYLE_PURCHASED', 'PET_PURCHASED', 'INVESTMENT_PURCHASED', 'PROPERTY_PURCHASED', 'CAREER_SWAP_RESOLVED', 'CAREER_SWAPPED', 'SECOND_CAREER_ACQUIRED', 'TURN_SKIPPED', 'ATTRIBUTE_GAINED', 'WEALTH_CHANGED', 'AI_SKILL_CHANGED', 'FAME_CHANGED', 'LIFESTYLE_CHANGED', 'INFLUENCE_CHANGED', 'PLAYER_AFFECTED']);
   const validEffectTypes = new Set(['ADD_WEALTH', 'REMOVE_WEALTH', 'ADD_AI_SKILL', 'REMOVE_AI_SKILL', 'ADD_FAME', 'REMOVE_FAME', 'ADD_LIFESTYLE', 'REMOVE_LIFESTYLE', 'ADD_INFLUENCE', 'REMOVE_INFLUENCE', 'MOVE_PLAYER', 'DRAW_CARD', 'AFFECT_OTHER_PLAYER', 'PROTECT_FROM_EFFECT', 'MODIFY_REWARD', 'MODIFY_SALARY', 'TRIGGER_EVENT', 'ASSET_INTERACTION', 'SWAP_CAREER', 'TRANSFER_WEALTH_FROM_EVENT_ACTOR', 'SKIP_NEXT_TURN', 'UPGRADE_ACQUIRED_ASSET', 'CHOOSE_STAT_DESTINATION', 'ACQUIRE_SECOND_CAREER']);
   const validConditions = new Set(['ANY', 'EVENT_ACTOR_IS_SELF', 'EVENT_ACTOR_IS_OTHER', 'EVENT_OWNER_IS_EVENT_TARGET', 'EVENT_DELTA_IS_NEGATIVE', 'EVENT_DELTA_IS_POSITIVE', 'EVENT_STAGE_IS', 'EVENT_CAREER_SWITCHED', 'EVENT_HAS_TARGET_PLAYER', 'EVENT_CATEGORY_IS', 'EVENT_DECK_IS', 'EVENT_SPACE_IS', 'EVENT_STAT_IS', 'PLAYER_CAREER_TAG', 'TARGET_IS_OTHER_PLAYER', 'EVENT_TARGET_HAS_ASSET', 'EVENT_SPACE_HAS_OTHER_PLAYERS', 'PLAYER_HAS_NO_SECOND_CAREER']);
   const abilityById = new Map(abilities.map(ability => [ability.id, ability]));
@@ -1412,14 +1426,25 @@ try {
   let recovered;
   try {
     Math.random = () => 0;
-    recovered = advanceMatch(recoverBase, { type: 'RECOVER_MILESTONE' });
+    recovered = advanceMatch(recoverBase, { type: 'RECOVER_MILESTONE', space: 10 });
   } finally {
     Math.random = previousRandom;
   }
-  assert.equal(recovered.phase, 'ready', 'milestone recovery does not open an asset-choice screen');
-  assert.equal(recovered.players[0].equipment.car, assets.find(asset => asset.category === 'car').id, 'recovery chooses a random eligible milestone asset');
+  assert.equal(recovered.phase, 'ready', 'confirming a selected milestone does not open a second asset-choice screen');
+  assert(recovered.eventLog.find(event => event.eventType === 'MILESTONE_RECOVERED')?.detail.includes('space 10'), 'the explicitly selected missed milestone is the one recovered');
+  assert.equal(recovered.players[0].equipment.car, assets.find(asset => asset.category === 'car').id, 'the exact asset remains random within the selected milestone');
   assert.equal(recovered.players[0].assetLevels[recovered.players[0].equipment.car], 1);
   assert.equal(recovered.players[0].upgradeTokens, 0);
+  assert(recovered.players[0].history.milestoneSpacesCompleted.includes(10), 'recovery records the milestone as claimed');
+  const lostRecoveredMilestone = readyWithPlayer(recovered, 0, {
+    position: 31,
+    equipment: emptyEquipment,
+    assetLevels: {},
+    upgradeTokens: 1,
+    heldUpgradeTokens: 0,
+  });
+  assert.deepEqual(getEligibleRecoveryMilestones(lostRecoveredMilestone.players[0]).map(milestone => milestone.space), [30], 'a claimed milestone cannot be recovered again after its asset is lost');
+  assert.equal(advanceMatch(lostRecoveredMilestone, { type: 'RECOVER_MILESTONE', space: 10 }), lostRecoveredMilestone, 'duplicate recovery is rejected');
   assert.equal(eventTypes(recovered).includes('MILESTONE_RECOVERED'), true);
   assert.equal(eventTypes(recovered).includes('UPGRADE_TOKEN_SPENT'), true);
   const notPassed = readyWithPlayer(recoverBase, 0, { position: 9 });
@@ -1860,7 +1885,19 @@ try {
   assert(eventTypes(doubleResult).includes('ENDGAME_COMPLETED'));
   assert.equal(doubleResult.players[0].history.doubleDowns, 1, 'resolved Double Downs are retained in match history');
 
-  const gambleStartBase = withoutAbilities(start(73), 0);
+  const wagerAsset = assets.find(asset => asset.category === 'car');
+  const gambleStartFixture = withoutAbilities(start(73), 0);
+  const gambleStartBase = {
+    ...gambleStartFixture,
+    players: gambleStartFixture.players.map((player, index) => index === 0
+      ? {
+        ...player,
+        equipment: { ...player.equipment, car: wagerAsset.id },
+        assetLevels: { ...player.assetLevels, [wagerAsset.id]: 2 },
+        upgradeTokens: 2,
+      }
+      : player),
+  };
   const gambleDeck = gambleStartBase.cardPiles.gamble;
   const gambleCardId = 'gamble-edge';
   const gambleStart = {
@@ -1874,7 +1911,9 @@ try {
     },
   };
   const gamblePending = move(gambleStart, 2);
-  const gambleResult = advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' });
+  const gambleResult = withRandomValue(0.999, () =>
+    advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
+  );
   assert.equal(gambleResult.players[0].endgame.status, 'RESOLVED');
   assert.equal(gambleResult.players[0].endgame.choice, 'FINAL_GAMBLE');
   assert.equal(gambleResult.players[0].endgame.gambleCardId, gambleCardId);
@@ -1889,7 +1928,45 @@ try {
   assert(eventTypes(gambleResult).includes('ENDGAME_COMPLETED'));
   assert.equal(gambleResult.players[0].history.gambleCardsDrawn, 1, 'Final Gamble card draws are retained in match history');
   assert.equal(gambleResult.players[0].history.finalGambles, 1, 'Final Gamble choices are counted for title evaluation');
+  assert.equal(gambleResult.players[0].upgradeTokens, 0, 'Final Gamble consumes every staked Upgrade Token');
+  assert.equal(gambleResult.players[0].endgame.gambleStake?.won, false, 'the loss case is deterministic');
+  const gambleAssetDisposition = gambleResult.assetEventLog.find(event => event.type === 'ASSET_DISPOSED' && event.assetId === wagerAsset.id);
+  assert.equal(gambleAssetDisposition?.effectId, 'FINAL_GAMBLE_LOSS', 'final-gamble asset forfeiture is recorded per asset');
+  assert.equal(gambleAssetDisposition?.reason, 'Final Gamble');
+  assert.equal(gambleResult.players[0].wealth, 0, 'a failed Final Gamble forfeits remaining Wealth');
+  assert.deepEqual(gambleResult.players[0].equipment, { car: null, lifestyle: null, companion: null, property: null }, 'a failed Final Gamble removes all staked assets');
+  const gambleWinResult = withRandomValue(0, () =>
+    advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
+  );
+  assert.equal(gambleWinResult.players[0].endgame.gambleStake?.won, true, 'the win case is deterministic');
+  assert.equal(gambleWinResult.players[0].equipment.car, wagerAsset.id, 'a winning Final Gamble retains its staked asset');
+  assert.equal(gambleWinResult.players[0].upgradeTokens, 0, 'a winning Final Gamble also spends the staked tokens');
   assertCompleteCardPiles(gambleResult.cardPiles);
+
+  let gambleCardForfeit = null;
+  for (let attempt = 0; attempt < 80 && !gambleCardForfeit; attempt += 1) {
+    const base = createMatch(characters[0].id);
+    const cardMatch = readyWithPlayer({ ...base, matchId: `gamble-forfeit-${attempt}` }, 0, {
+      equipment: { car: wagerAsset.id, lifestyle: null, companion: null, property: null },
+      assetLevels: { [wagerAsset.id]: 2 },
+    });
+    const resolved = resolveEventQueue(cardMatch, [{
+      type: 'CARD_RESOLVED',
+      playerIndex: 0,
+      deck: 'gamble',
+      cardId: 'gamble-call',
+      spaceNumber: 1,
+    }]);
+    const disposition = resolved.assetEventLog.find(event =>
+      event.type === 'ASSET_DISPOSED' && event.assetId === wagerAsset.id,
+    );
+    if (disposition) gambleCardForfeit = { resolved, disposition };
+  }
+  assert(gambleCardForfeit, 'a failed Double Or Nothing card emits an individual asset loss event');
+  assert.equal(gambleCardForfeit.disposition.effectId, 'GAMBLE_CARD_FORFEITURE');
+  assert.equal(gambleCardForfeit.disposition.reason, 'Double Or Nothing');
+  assert.equal(gambleCardForfeit.disposition.assetLevel, 2, 'the lost asset level is preserved for reconciliation');
+  assert.equal(gambleCardForfeit.resolved.players[0].equipment.car, null);
 
   const titleFixture = createMatch(id);
   const titleCompletionStart = {
@@ -1966,7 +2043,16 @@ try {
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
   assert(resultsMarkup.includes('UPGRADE TOKENS / FINAL GAMBLE') && resultsMarkup.includes('Unused tokens remain available for the final gamble'), 'final records show unused tokens carrying through to the final gamble');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
-  assert(resultsMarkup.includes('1ST TO FINISH') && resultsMarkup.includes('FINISH BONUS'), 'final records distinguish arrival order from final-value placement');
+  assert(resultsMarkup.includes('BOARD FINISH / 1ST') && resultsMarkup.includes('WEALTH BONUS'), 'final records distinguish arrival order from final-value placement');
+  const rankedPlayers = titledCompleteMatch.players.map((player, index) => ({
+    ...player,
+    endgame: { ...player.endgame, finalGameValue: [250, 900, 250, 500][index] },
+  }));
+  assert.deepEqual(
+    getFinalPlacementOrder(rankedPlayers, [2, 0, 3, 1]),
+    [1, 3, 2, 0],
+    'final placement follows final value, with arrival order breaking value ties',
+  );
 
   const lastFinisher = finishOrderFixture.players[3];
   const finishPanelMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
@@ -2266,6 +2352,64 @@ try {
       assert.equal(allCpuState.match.phase, 'complete', 'CPU-controlled original seats can finish the match');
       assert.ok(allCpuState.cpuTurns.u0 >= 4 && allCpuState.cpuTurns.u1 >= 4, 'CPU turn counters advance independently for both seats');
     }
+  }
+  // Run the actual single-player client/CPU action path end-to-end on both boards.
+  for (const boardId of ['REDLINE_UPGRADE', 'BIO_UPGRADE']) {
+    let soloMatch = createMatch(characters[0].id, boardId);
+    for (let step = 0; step < 8000 && soloMatch.phase !== 'complete'; step += 1) {
+      const actorIndex = actingPlayerIndex(soloMatch);
+      if (actorIndex !== 0) {
+        const automated = applySoloAutomationStep(soloMatch);
+        assert(automated, `${boardId} CPU phase ${soloMatch.phase} should advance one scheduled step`);
+        soloMatch = automated.match;
+        continue;
+      }
+
+      const m = soloMatch;
+      let action;
+      if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+      else if (m.phase === 'rolling') action = { type: 'REVEAL' };
+      else if (m.phase === 'reveal') action = { type: 'MOVE' };
+      else if (m.phase === 'moving') action = { type: 'STEP' };
+      else if (m.phase === 'landed') action = { type: 'END_TURN' };
+      else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
+      else if (m.pending?.kind === 'CARD') {
+        const card = getCard(m.pending.cardId);
+        if (m.pending.stage === 'choice') action = { type: 'CHOOSE_GAMBLE_CARD', cardId: m.pending.offeredCardIds[0] };
+        else if (m.pending.stage === 'draw') action = { type: 'DRAW_CARD' };
+        else if (card?.partyChallenge) {
+          const count = card.partyChallenge.target === 'SELECTED_PLAYER' || card.partyChallenge.target === 'SELF_AND_SELECTED' ? 1 : card.partyChallenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
+          const eligible = m.players.filter((_, index) => index !== m.turnIndex);
+          const passed = eligible.length < count;
+          const participantIds = passed ? [] : eligible.slice(0, count).map(player => player.playerId);
+          action = {
+            type: 'RESOLVE_PARTY_CHALLENGE',
+            participantIds,
+            passed,
+            ...(!passed && card.partyChallenge.flow !== 'CONFIRM' ? { resolution: card.partyChallenge.choices?.[0]?.label ?? 'Players recorded a choice or group vote' } : {}),
+          };
+        } else action = { type: 'ACKNOWLEDGE_CARD' };
+      } else if (m.pending?.kind === 'SALARY_GATE') action = { type: 'TAKE_PAYDAY' };
+      else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
+      else if (m.pending?.kind === 'CAREER') action = { type: 'CHANGE_CAREER', step: m.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
+      else if (m.pending?.kind === 'ABILITY') {
+        const decision = m.pending.decision;
+        action = {
+          type: 'USE_ABILITY',
+          resolution: decision === 'STAT_DESTINATION'
+            ? { kind: decision, stat: m.pending.sourceStat }
+            : decision === 'ASSET_INTERACTION'
+              ? { kind: decision, choice: 'DECLINE' }
+              : { kind: 'CAREER_SWAP', accept: false },
+        };
+      } else assert.fail(`stuck in solo ${boardId} ${m.phase}`);
+
+      const result = applySoloPlayerAction(m, action);
+      assert(result, `${boardId} solo action ${JSON.stringify(action)} should be accepted in ${m.phase}`);
+      soloMatch = result.match;
+    }
+    assert.equal(soloMatch.phase, 'complete', `a full ${boardId} solo game completes with visible CPU steps`);
+    assert(soloMatch.players.every(player => player.status === 'FINISHED' && player.endgame?.status === 'RESOLVED'), `${boardId} records all final decisions`);
   }
   assert.equal(cards.length, 111, 'the six production decks include all 15 added cards');
   for (const deck of decks) {

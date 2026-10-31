@@ -77,6 +77,7 @@ export function ProfilePage() {
   const [nameStatus, setNameStatus] = useState('');
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
   const [profileInventory, setProfileInventory] = useState<ProfileInventory | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -199,6 +200,12 @@ export function ProfilePage() {
     }
     return levels;
   }, [completedGames]);
+  const selectedAsset = selectedAssetId ? assets.find(asset => asset.id === selectedAssetId) : undefined;
+  const selectedAssetRecord = selectedAssetId ? collectionByAssetId.get(selectedAssetId) : undefined;
+  const selectedAssetRetained = (selectedAssetRecord?.retainedCount ?? 0) > 0;
+  const selectedAssetLevel = selectedAssetId ? highestRetainedLevelByAsset.get(selectedAssetId) ?? 1 : 1;
+  const selectedAssetGames = selectedAssetId ? completedGames.filter(game => game.acquiredAssetIds.includes(selectedAssetId)) : [];
+  const selectedAssetRetentionGames = selectedAssetId ? completedGames.filter(game => game.retainedAssets.some(asset => asset.assetId === selectedAssetId)) : [];
   const latestGame = useMemo(() => [...completedGames].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0], [completedGames]);
   const latestAwards = useMemo(() => {
     const unlockedIds = new Set(latestGame?.unlockedAchievementIds ?? []);
@@ -238,6 +245,7 @@ export function ProfilePage() {
         <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
         <div className="red-asset-level-info"><span className="mono">HIGHEST RETAINED LEVEL</span><strong>{highestRetainedLevel ? `LEVEL ${highestRetainedLevel}` : '—'}</strong></div>
         <dl className="red-asset-dates"><div><dt>Games acquired / retained</dt><dd>{record?.gamesAcquired ?? 0} / {record?.gamesRetained ?? 0}</dd></div><div><dt>First acquired / retained</dt><dd>{dateLabel(record?.firstAcquiredAt)} / {dateLabel(record?.firstRetainedAt)}</dd></div><div><dt>Last acquired / retained</dt><dd>{dateLabel(record?.lastAcquiredAt)} / {dateLabel(record?.lastRetainedAt)}</dd></div></dl>
+        <button className="red-asset-preview-button" type="button" onClick={() => setSelectedAssetId(definition.id)} aria-label={`View ${isEverRetained ? definition.name : 'unknown asset'} record`}>VIEW ASSET RECORD ↗</button>
       </div>
     </article>;
   }
@@ -407,7 +415,7 @@ export function ProfilePage() {
                         return <article className="red-game-card">
                           <div className="red-game-summary">
                             <div className="red-game-date"><span className="mono">{dateLabel(game.completedAt)}</span><strong>{game.placement === 1 ? 'VICTORY' : `PLACE ${game.placement}`}</strong></div>
-                            <div className="red-game-main"><span className="mono">{titleCase(game.boardId)} / {titleCase(game.mode)} / {game.source}</span><h3>{character?.name ?? titleCase(game.characterId)}</h3><span className="mono">CAREER · {game.careerId ? titleCase(game.careerId) : 'NONE RECORDED'} · GAME {game.gameId}</span></div>
+                             <div className="red-game-main"><span className="mono">{titleCase(game.boardId)} / {titleCase(game.mode)} / {game.source}</span><h3>{character?.name ?? titleCase(game.characterId)}</h3><span className="mono">BOARD FINISH {game.boardFinishOrder ? `#${game.boardFinishOrder}` : 'NOT RECORDED'} · FINAL PLACE #{game.placement} · CAREER {game.careerId ? titleCase(game.careerId) : 'NONE RECORDED'} · GAME {game.gameId}</span></div>
                             <div className="red-game-values"><span className="mono">FINAL VALUE</span><strong>{money(game.finalValue)}</strong><span className="mono">PORTFOLIO {money(game.portfolioValue)}</span></div>
                             <button className="red-expand" type="button" aria-expanded={expandedGame === key} onClick={() => setExpandedGame(expandedGame === key ? null : key)}>{expandedGame === key ? 'Close details' : 'View details'}</button>
                           </div>
@@ -469,7 +477,7 @@ export function ProfilePage() {
                       return <article className="red-game-card" key={game.id}>
                         <div className="red-game-summary">
                           <div className="red-game-date"><span className="mono">RUN {String(completedGames.length - index).padStart(3, '0')}</span><strong>{game.placement === 1 ? 'VICTORY' : `PLACE ${game.placement}`}</strong></div>
-                          <div className="red-game-main"><span className="mono">{dateLabel(game.completedAt)} / {game.source} / {titleCase(game.boardId)}</span><h3>{character?.name ?? titleCase(game.characterId)}</h3><span className="mono">{titleCase(game.mode)} · GAME {game.gameId} · BOARD {game.boardId}</span></div>
+                         <div className="red-game-main"><span className="mono">{dateLabel(game.completedAt)} / {game.source} / {titleCase(game.boardId)}</span><h3>{character?.name ?? titleCase(game.characterId)}</h3><span className="mono">{titleCase(game.mode)} · BOARD FINISH {game.boardFinishOrder ? `#${game.boardFinishOrder}` : 'NOT RECORDED'} · FINAL PLACE #${game.placement} · GAME {game.gameId}</span></div>
                           <div className="red-game-values"><span className="mono">FINAL VALUE</span><strong>{money(game.finalValue)}</strong><span className="mono">PORTFOLIO {money(game.portfolioValue)}</span></div>
                           <button className="red-expand" type="button" aria-expanded={expandedGame === key} onClick={() => setExpandedGame(expandedGame === key ? null : key)}>{expandedGame === key ? 'Close details' : 'Match details'}</button>
                         </div>
@@ -482,6 +490,34 @@ export function ProfilePage() {
             )}
           </>
         )}
+        {selectedAsset && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedAssetId(null); }}>
+          <section className={`market-modal red-asset-preview-modal profile-tier-${getProfileAssetTier(selectedAsset).toLowerCase()}`} role="dialog" aria-modal="true" aria-labelledby="profile-asset-preview-title">
+            <button className="market-modal-close" type="button" onClick={() => setSelectedAssetId(null)} aria-label="Close asset record">×</button>
+            <div className="red-asset-preview-art">{selectedAssetRetained
+              ? <AssetArtwork assetId={selectedAsset.id} level={selectedAssetLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${selectedAsset.name}, level ${selectedAssetLevel}`} />
+              : <div className="red-asset-mystery"><span aria-hidden="true">?</span></div>}</div>
+            <span className="market-kicker">{selectedAssetRetained ? `${titleCase(selectedAsset.category)} · ${getProfileAssetTier(selectedAsset)}` : 'CLASSIFIED ASSET · LOCKED'}</span>
+            <h2 id="profile-asset-preview-title">{selectedAssetRetained ? selectedAsset.name : '?'}</h2>
+            {selectedAssetRetained ? <>
+              <p>{selectedAsset.description}</p>
+              <div className="market-confirm-price"><span>BASE COST</span><strong>{money(selectedAsset.cost)}</strong><span>HIGHEST RETAINED</span><strong>LEVEL {selectedAssetLevel}</strong></div>
+              <dl className="red-asset-preview-stats">
+                <div><dt>Acquired</dt><dd>{selectedAssetRecord?.acquiredCount ?? 0} times · {selectedAssetRecord?.gamesAcquired ?? 0} games</dd></div>
+                <div><dt>Retained</dt><dd>{selectedAssetRecord?.retainedCount ?? 0} times · {selectedAssetRecord?.gamesRetained ?? 0} games</dd></div>
+                <div><dt>Lost</dt><dd>{selectedAssetRecord?.lostCount ?? 0} times</dd></div>
+                <div><dt>Listed effects</dt><dd>{Object.entries(selectedAsset.effects).length
+                  ? Object.entries(selectedAsset.effects).map(([stat, amount]) => `${amount > 0 ? '+' : ''}${amount} ${metricLabel(stat)}`).join(' · ')
+                  : selectedAsset.passiveEffect ?? 'No direct stat effect'}</dd></div>
+                <div><dt>Acquired in</dt><dd>{selectedAssetGames.length ? selectedAssetGames.map(game => `${dateLabel(game.completedAt)} · ${titleCase(game.boardId)}`).join(' / ') : 'No game history available'}</dd></div>
+                <div><dt>Retained in</dt><dd>{selectedAssetRetentionGames.length ? selectedAssetRetentionGames.map(game => {
+                  const held = game.retainedAssets.find(asset => asset.assetId === selectedAsset.id);
+                  return `${dateLabel(game.completedAt)} · LEVEL ${held?.level ?? 1}`;
+                }).join(' / ') : 'No retention game available'}</dd></div>
+              </dl>
+            </> : <p>Identity and artwork unlock after you retain this asset through a completed game. It has been acquired {selectedAssetRecord?.acquiredCount ?? 0} times.</p>}
+            <button className="market-cancel" type="button" onClick={() => setSelectedAssetId(null)}>CLOSE RECORD</button>
+          </section>
+        </div>}
       </main>
     </AppShell>
   );
@@ -496,12 +532,18 @@ function GameDetails({ game, achievements }: { game: CompletedGameRecord; achiev
   const acquired = game.acquiredAssetIds.map(id => getAsset(id)).filter((item): item is NonNullable<typeof item> => !!item);
   const lost = game.lostAssetIds.map(id => getAsset(id)).filter((item): item is NonNullable<typeof item> => !!item);
   const unlocked = game.unlockedAchievementIds.map(id => achievements.find(item => item.id === id)).filter((item): item is AchievementDisplay => !!item && !!item.unlockedAt);
+  const dispositions = game.assetDispositions ?? [];
   return <div className="red-game-details">
     <div className="red-game-detail-grid">
+      <div><span className="mono">FINAL RESULT</span><p>Final place #{game.placement} · Board finish {game.boardFinishOrder ? `#${game.boardFinishOrder}` : 'not recorded'} · Score {money(game.finalValue)}</p>{game.endgameResult && <p>{titleCase(game.endgameResult.choice ?? 'unknown')} · {typeof game.endgameResult.multiplier === 'number' ? `${game.endgameResult.multiplier}×` : 'no multiplier'}{game.endgameResult.gambleWon === null ? '' : game.endgameResult.gambleWon ? ' · Final Gamble won' : ' · Final Gamble lost'}</p>}</div>
       <div><span className="mono">FINAL STATS</span>{stats.length ? <dl className="red-stat-list">{stats.map(([key, value]) => <div key={key}><dt>{metricLabel(key)}</dt><dd>{value.toLocaleString()}</dd></div>)}</dl> : <p>No final stats recorded.</p>}</div>
       <div><span className="mono">ASSETS ACQUIRED</span><p>{acquired.length ? acquired.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
       <div><span className="mono">ASSETS LOST</span><p>{lost.length ? lost.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
+       <div><span className="mono">ASSET DISPOSITION</span>{dispositions.length ? <ul className="red-disposition-list">{dispositions.map((item, index) => <li key={`${item.assetId}-${index}`} className={item.status === 'UNEXPLAINED' ? 'unexplained' : ''}><strong>{getAsset(item.assetId)?.name ?? item.assetId}</strong><span>{titleCase(item.status)} · {titleCase(item.reason)}{item.sourceName ? ` · ${item.sourceName}` : ''}{item.level ? ` · Level ${item.level}` : ''}</span></li>)}</ul> : <p>Not stored for this historical record.</p>}
+        {dispositions.some(item => item.status === 'UNEXPLAINED') && <p className="red-disposition-warning" role="alert">An acquired asset has no recorded retention or loss event. It is flagged for reconciliation and is not counted as lost.</p>}
+      </div>
       <div><span className="mono">MILESTONES RECORDED</span><p>{unlocked.length ? unlocked.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
+      <div><span className="mono">CREDITS EARNED</span><p>{game.creditRewardReceipt ? `${game.creditRewardReceipt.total} total · ${game.creditRewardReceipt.game} game · ${game.creditRewardReceipt.endgame} endgame · ${game.creditRewardReceipt.milestones} milestone` : 'Not stored for this historical record'}</p></div>
     </div>
     <div className="red-snapshot-head"><span className="mono">ENDGAME SNAPSHOT / HELD AT FINISH</span><span className="mono">{game.retainedAssets.length} ASSETS</span></div>
     {game.retainedAssets.length ? <div className="red-snapshot-grid">{game.retainedAssets.map(item => {

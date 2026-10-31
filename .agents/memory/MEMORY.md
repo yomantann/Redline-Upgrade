@@ -1,6 +1,7 @@
 - [Browser preview limits](redline-webgl-preview.md) — screenshot browser may lack WebGL; automated browser testing may fail independently of the app.
 - [Game harness setup](game-harness.md) — run the Vite SSR harness from the artifact directory and make fixtures explicit around randomized careers.
 - [Asset progression evidence](asset-progression.md) — distinct hashes do not prove meaningful upgrade art; inspect representative renders for each category and level.
+- [Asset disposition records](asset-disposition-ledger.md) — every equipment removal needs a per-asset event and cause; never infer a loss from absence alone.
 - [Deferred ability decisions](ability-decision-ownership.md) — resolve prompts for `pending.playerIndex`; it can differ from the active turn.
 - [Player stat feedback](player-stat-feedback.md) — keep transient changes on the affected value; do not add a separate effects panel or log.
 - [Build-output asset durability](build-output-assets.md) — treat files found only in `dist` as disposable; preserve user assets in source folders before rebuilding.

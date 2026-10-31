@@ -132,6 +132,7 @@ function eventLabel(event: AnyGameEvent): string {
     case 'ASSET_UPGRADED': return 'ASSET UPGRADED';
     case 'ASSET_ACQUIRED': return 'ASSET ACQUIRED';
     case 'ASSET_TRANSFERRED': return 'ASSET TRANSFERRED';
+    case 'ASSET_DISPOSED': return 'ASSET LOST';
     case 'MILESTONE_RECOVERED': return 'MILESTONE RECOVERED';
     case 'ASSET_PURCHASED': return 'ASSET PURCHASED';
     case 'CAR_PURCHASED': return 'CAR PURCHASED';
@@ -284,6 +285,7 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     event.type === 'ASSET_ACQUIRED'
     || event.type === 'ASSET_PURCHASED'
     || event.type === 'ASSET_TRANSFERRED'
+    || event.type === 'ASSET_DISPOSED'
     || event.type === 'ASSET_UPGRADED'
   )
     ? [...(match.assetEventLog ?? []), {
@@ -294,6 +296,8 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
       assetId: event.assetId,
       targetPlayerId: event.targetPlayerId,
       assetLevel: event.assetLevel,
+      effectId: event.effectId,
+      reason: event.reason,
     }]
     : match.assetEventLog ?? [];
   return { ...match, assetEventLog, eventLog: [...match.eventLog, entry].slice(-MAX_LOG_ENTRIES) };
@@ -1398,6 +1402,26 @@ function applyCardEffects(
         }
         const lost = state.players[actorIndex];
         if (Object.values(lost.equipment).some(Boolean)) {
+          for (const assetId of Object.values(lost.equipment).filter((id): id is string => Boolean(id))) {
+            const asset = getAsset(assetId);
+            if (!asset) continue;
+            const level = lost.assetLevels[assetId] ?? 1;
+            const detail = `${lost.displayName} forfeited ${asset.name} at Level ${level} when ${card.title} failed.`;
+            state = pushLog(state, {
+              ...event,
+              id: `${event.id}:asset-forfeit:${effectSalt}:${assetId}`,
+              type: 'ASSET_DISPOSED',
+              playerIndex: actorIndex,
+              assetId,
+              assetName: asset.name,
+              assetLevel: level,
+              category: asset.category,
+              effectId: 'GAMBLE_CARD_FORFEITURE',
+              reason: card.title,
+              sourceEventId: event.id,
+              description: detail,
+            }, 'ASSET LOST', detail);
+          }
           state = {
             ...state,
             players: state.players.map((player, index) => index === actorIndex

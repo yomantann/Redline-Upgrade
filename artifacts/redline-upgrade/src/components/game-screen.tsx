@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@workspace/replit-auth-web';
 import { characters, getCharacter } from '@/game/characters';
 import { getCard } from '@/game/cards';
 import { getAsset, type AssetSlot } from '@/game/assets';
 import { CARD_READ_MINIMUM_MS, CPU_CARD_DRAW_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
-import { createMatch, type Match, type MatchAction, type PendingDecision, type WealthEvent } from '@/game/match';
+import { createMatch, type Match, type MatchAction, type MatchPlayer, type PendingDecision, type WealthEvent } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
@@ -79,6 +80,48 @@ function AutoScrollToggle({ enabled, onToggle }: { enabled: boolean; onToggle: (
   );
 }
 
+function DecisionInspectionToolbar({
+  view,
+  onView,
+}: {
+  view: 'choice' | 'board' | 'players';
+  onView: (view: 'choice' | 'board' | 'players') => void;
+}) {
+  return <nav className="decision-inspection-toolbar" aria-label="Inspect before deciding">
+    <span className="mono">DECISION INSPECTION</span>
+    <button type="button" aria-pressed={view === 'board'} onClick={() => onView(view === 'board' ? 'choice' : 'board')}>VIEW BOARD</button>
+    <button type="button" aria-pressed={view === 'players'} onClick={() => onView(view === 'players' ? 'choice' : 'players')}>VIEW PLAYERS</button>
+    <button type="button" aria-pressed={view === 'choice'} onClick={() => onView('choice')}>RETURN TO CHOICE</button>
+  </nav>;
+}
+
+function DecisionPlayerInspection({ players, boardId }: { players: MatchPlayer[]; boardId: BoardId }) {
+  return <section className="decision-inspection-players" aria-label="Player details during endgame decision">
+    <h2 className="mono">PLAYER DETAILS / FINAL SNAPSHOTS</h2>
+    <div className="decision-inspection-player-grid">
+      {players.map((player, index) => {
+        const character = getCharacter(player.characterId);
+        const career = player.careerId ? getCareer(player.careerId) : undefined;
+        return <article key={player.playerId}>
+          <div className="decision-inspection-player-heading">
+            {character && <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="decision-inspection-portrait" />}
+            <div><span className="mono">PLAYER {index + 1} / {player.isCPU ? `CPU ${player.slot}` : player.displayName}</span><h3>{character?.name ?? player.displayName}</h3><p>{career?.name ?? 'Unassigned'} · {formatMoney(effectiveSalaryAmount(player))} per payday</p></div>
+          </div>
+          <div className="decision-inspection-stats">
+            <span>WEALTH <strong>{formatMoney(player.wealth)}</strong></span>
+            <span>AI SKILL <strong>{player.aiSkill}</strong></span>
+            <span>FAME <strong>{player.fame}</strong></span>
+            <span>LIFESTYLE <strong>{player.lifestyle}</strong></span>
+            <span>INFLUENCE <strong>{player.influence}</strong></span>
+          </div>
+          <PlayerAbilityDetails character={character} career={career} />
+          <PlayerAssets equipment={player.equipment} assetLevels={player.assetLevels} upgradeTokens={player.upgradeTokens} playerIndex={index} />
+        </article>;
+      })}
+    </div>
+  </section>;
+}
+
 function summarizeCardResolution(events: EventLogEntry[], playerId: string): string | undefined {
   let drawIndex = -1;
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -138,7 +181,8 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
 
 export function GameScreen() {
   const [, navigate] = useLocation();
-  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId, selectBoard } = useGame();
+  const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId, selectBoard, returnHome, newAchievementIds } = useGame();
+  const { user } = useAuth(import.meta.env.BASE_URL);
   const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
   const previewPlayers = useMemo(
     () => createMatch(characters[0].id, selectedBoardId).players.map((player, index) => ({
@@ -153,6 +197,7 @@ export function GameScreen() {
   const seatName = (player: { slot: number; displayName: string; isCPU: boolean }) => remote ? player.displayName.toUpperCase() : `CPU ${player.slot}`;
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
+  const [decisionInspection, setDecisionInspection] = useState<'choice' | 'board' | 'players'>('choice');
   const phase = match?.phase;
   const turnIndex = match?.turnIndex;
   const remaining = match?.stepsRemaining;
@@ -475,7 +520,15 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         {isBioBoard && <AgeRestrictionBadge />}
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
-        <MatchResultsPanel players={match.players} finishOrder={match.finishOrder} boardId={match.boardId} />
+        <MatchResultsPanel
+          players={match.players}
+          finishOrder={match.finishOrder}
+          assetEvents={match.assetEventLog}
+          boardId={match.boardId}
+          unlockedAchievementIds={newAchievementIds}
+          onHome={() => { returnHome(); navigate('/'); }}
+          onProfile={user ? () => navigate('/profile') : undefined}
+        />
       </main>
     );
   }
@@ -493,6 +546,16 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       <main className="game-screen game-screen-finish-line">
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         {isBioBoard && <AgeRestrictionBadge />}
+        <DecisionInspectionToolbar
+          view={decisionInspection}
+          onView={view => {
+            setDecisionInspection(view);
+            const target = view === 'choice' ? '.finish-line-panel'
+              : view === 'board' ? '.decision-inspection-board'
+                : '.decision-inspection-players';
+            document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        />
         <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <FinishLinePanel
           player={active}
@@ -517,6 +580,10 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             onAcknowledge={() => dispatchMatch({ type: 'NEXT_TURN' })}
           />
         )}
+        {decisionInspection === 'board' && <section className="decision-inspection-board" aria-label="Board inspection">
+          <GameBoard players={match.players} activePlayerId={active.playerId} landingPosition={null} movingPlayerId={null} finishOrder={match.finishOrder} boardId={match.boardId} />
+        </section>}
+        {decisionInspection === 'players' && <DecisionPlayerInspection players={match.players} boardId={match.boardId} />}
       </main>
     );
   }
@@ -531,6 +598,20 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           WAITING FOR EVERY PLAYER TO CONFIRM THEIR CAREER
         </div>
       )}
+      {match.phase === 'decision' && pending && <DecisionInspectionToolbar
+        view={decisionInspection}
+        onView={view => {
+          setDecisionInspection(view);
+          if (view === 'players') {
+            setPlayerCardDisclosure(Object.fromEntries(match.players.map(player => [player.playerId, { layout: compactPlayerLayout ? 'compact' : 'wide', open: true }])));
+            document.querySelector('.game-players')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else if (view === 'board') {
+            document.querySelector('.game-tabletop-board')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (view === 'choice') {
+            document.querySelector(pending.kind === 'CARD' ? '.game-tabletop' : '.milestone-choice')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />}
       {needsRemoteCareerConfirmation && remoteCareerPlayer && remoteCareer && (
         <MultiplayerCareerReveal
           player={remoteCareerPlayer}
@@ -700,7 +781,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         })}
       </section>
 
-       {(match.phase !== 'decision' || pending?.kind === 'CARD') && <div className="game-tabletop">
+       {(match.phase !== 'decision' || pending?.kind === 'CARD' || decisionInspection === 'board') && <div className="game-tabletop">
        <div className="game-tabletop-board"><GameBoard
         players={match.players}
         activePlayerId={active.playerId}
@@ -750,7 +831,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
        />
        </div>}
 
-      {match.phase === 'ready' && !active.isCPU && <UpgradeTokenControls player={active} onAction={(action: MatchAction) => dispatchMatch(action)} />}
+      {match.phase === 'ready' && !active.isCPU && <UpgradeTokenControls player={active} boardId={match.boardId} onAction={(action: MatchAction) => dispatchMatch(action)} />}
 
       {match.phase !== 'decision' && <section className="game-console">
         <div className="game-readout">

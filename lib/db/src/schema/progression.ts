@@ -99,6 +99,7 @@ export const completedGameHistoryTable = pgTable(
     boardId: varchar("board_id", { length: 80 }).notNull(),
     mode: varchar("mode", { length: 40 }).notNull(),
     placement: integer("placement").notNull(),
+    boardFinishOrder: integer("board_finish_order"),
     finalValue: integer("final_value").notNull(),
     portfolioValue: integer("portfolio_value").notNull(),
     characterId: varchar("character_id", { length: 80 }).notNull(),
@@ -107,6 +108,32 @@ export const completedGameHistoryTable = pgTable(
     acquiredAssetIds: jsonb("acquired_asset_ids").$type<string[]>().notNull().default([]),
     lostAssetIds: jsonb("lost_asset_ids").$type<string[]>().notNull().default([]),
     retainedAssets: jsonb("retained_assets").$type<Array<{ assetId: string; level: number }>>().notNull().default([]),
+    assetDispositions: jsonb("asset_dispositions").$type<Array<{
+      assetId: string;
+      status: "RETAINED" | "LOST" | "UNEXPLAINED";
+      reason: "ENDGAME_RETAINED" | "FINAL_GAMBLE_LOSS" | "GAMBLE_CARD_FORFEITURE" | "TRANSFERRED_OUT" | "NO_DISPOSITION_EVENT";
+      sourceName?: string;
+      level?: number;
+    }>>(),
+    endgameResult: jsonb("endgame_result").$type<{
+      choice: string | null;
+      baseValue: number | null;
+      finalValue: number | null;
+      multiplier: number | null;
+      effectiveRoll: number | null;
+      dice: { die1: number; die2: number; total: number } | null;
+      gambleCardId: string | null;
+      gambleWon: boolean | null;
+      stakedWealth: number;
+      stakedAssetValue: number;
+      stakedTokens: number;
+    }>(),
+    creditRewardReceipt: jsonb("credit_reward_receipt").$type<{
+      total: number;
+      game: number;
+      endgame: number;
+      milestones: number;
+    }>(),
     unlockedAchievementIds: jsonb("unlocked_achievement_ids").$type<string[]>().notNull().default([]),
     completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
   },

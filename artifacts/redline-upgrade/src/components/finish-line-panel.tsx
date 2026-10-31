@@ -4,10 +4,14 @@ import { formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import { effectiveSalaryAmount } from '@/game/player';
 import type { EndgameChoice, EndgameState } from '@/game/endgame';
-import type { MatchPlayer } from '@/game/match';
+import { getFinalPlacementOrder, type MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { assetValueAtLevel } from '@/game/upgrade-tokens';
+import { calculateAssetValue } from '@/game/endgame';
+import { achievementCatalog } from '@/game/achievement-catalog';
+import type { AssetEventLogEntry } from '@/game/events/types';
+import { useState } from 'react';
 import { CharacterPortrait } from './character-portrait';
 import { AssetArtwork } from './asset-artwork';
 import './finish-line-panel.css';
@@ -54,7 +58,7 @@ const choices: readonly {
     id: 'FINAL_GAMBLE',
     number: '03',
     title: 'FINAL GAMBLE',
-    description: 'Draw a Gamble card, then risk your Wealth, assets and Upgrade Tokens on a 50/50 flip: double the stake or lose it all.',
+    description: 'Reveal a Gamble card for the record. A fixed 50/50 flip doubles your stake or loses it all.',
     accent: 'gamble',
   },
 ];
@@ -66,32 +70,6 @@ function formatSignedMoney(value: number) {
 function finishOrdinal(place: number) {
   const suffix = place === 1 ? 'ST' : place === 2 ? 'ND' : place === 3 ? 'RD' : 'TH';
   return `${place}${suffix}`;
-}
-
-function ChoiceButton({
-  choice,
-  onChoose,
-}: {
-  choice: (typeof choices)[number];
-  onChoose: (choice: EndgameChoice) => void;
-}) {
-  return (
-    <button
-      className={`finish-line-choice finish-line-choice-${choice.accent}`}
-      type="button"
-      onClick={() => onChoose(choice.id)}
-      aria-label={`Choose ${choice.title}`}
-      data-testid={`button-finish-choice-${choice.id.toLowerCase()}`}
-    >
-      <span className="finish-line-choice-top">
-        <span className="mono">{choice.number} / DECISION</span>
-        <span className="finish-line-choice-mark" aria-hidden="true">↗</span>
-      </span>
-      <strong>{choice.title}</strong>
-      <span>{choice.description}</span>
-      <span className="mono finish-line-choice-cta">SELECT <span aria-hidden="true">→</span></span>
-    </button>
-  );
 }
 
 function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
@@ -170,44 +148,6 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   );
 }
 
-function PendingDecision({
-  endgame,
-  onChoose,
-}: {
-  endgame: EndgameState;
-  onChoose: (choice: EndgameChoice) => void;
-}) {
-  if (endgame.snapshot.isCPU) {
-    return (
-      <section className="finish-line-decision finish-line-awaiting" aria-live="polite" aria-labelledby="finish-line-decision-heading">
-        <div className="finish-line-section-heading">
-          <span className="eyebrow">CLOSING DECISION // CPU</span>
-          <span className="mono">ENGINE CONTROL</span>
-        </div>
-        <h2 id="finish-line-decision-heading" className="display">Decision<br /><span>processing.</span></h2>
-        <p>The engine is selecting the final line for {endgame.snapshot.displayName}. No player input is required.</p>
-        <div className="finish-line-processing" aria-hidden="true"><i /><i /><i /></div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="finish-line-decision" aria-labelledby="finish-line-decision-heading">
-      <div className="finish-line-section-heading">
-        <span className="eyebrow">CLOSING DECISION // YOUR MOVE</span>
-        <span className="mono">SELECT ONE / NO AUTO-RESOLVE</span>
-      </div>
-      <div className="finish-line-decision-heading-row">
-        <h2 id="finish-line-decision-heading" className="display">The last<br /><span>line is yours.</span></h2>
-        <p>Everything above is locked. Choose how the recorded run closes.</p>
-      </div>
-      <div className="finish-line-choice-grid" aria-label="Endgame choices">
-        {choices.map((choice) => <ChoiceButton key={choice.id} choice={choice} onChoose={onChoose} />)}
-      </div>
-    </section>
-  );
-}
-
 function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onContinue: () => void }) {
   const choice = choices.find((entry) => entry.id === endgame.choice);
   const card = endgame.gambleCardId ? getCard(endgame.gambleCardId) : undefined;
@@ -260,6 +200,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
             <strong>{card?.title ?? (endgame.gambleCardId ? `CARD ${endgame.gambleCardId}` : 'CARD NOT SUPPLIED')}</strong>
             {typeof endgame.gambleAdjustedDelta === 'number' && <small>OUTCOME / {formatSignedMoney(endgame.gambleAdjustedDelta)}</small>}
             {card && <small>{card.effect}</small>}
+            <small>The revealed card is informational; it does not change the fixed 50/50 stake rules.</small>
             {endgame.gambleStake && (
               <>
                 <small data-testid="finish-gamble-stake">ALL-IN FLIP / {endgame.gambleStake.won ? 'WON' : 'LOST'} — STAKE {formatMoney(endgame.gambleStake.wealth)} WEALTH + {formatMoney(endgame.gambleStake.assetValue)} ASSETS{endgame.gambleStake.tokens ? ` + ${endgame.gambleStake.tokens} UPGRADE TOKEN${endgame.gambleStake.tokens === 1 ? '' : 'S'}` : ''}</small>
@@ -280,6 +221,11 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
 export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
   const character = getCharacter(endgame.snapshot.characterId);
   const isResolved = endgame.status === 'RESOLVED';
+  const [selectedChoice, setSelectedChoice] = useState<EndgameChoice | null>(null);
+  const selected = choices.find((choice) => choice.id === selectedChoice);
+  const assetValue = calculateAssetValue(endgame.snapshot);
+  const assetCount = Object.values(endgame.snapshot.equipment).filter(Boolean).length;
+  const doubleDownMultipliers = [0.25, 0.5, 0.85, 1.25, 1.9, 2.75];
 
   return (
     <main className="finish-line-panel" data-player-id={player.playerId} data-status={endgame.status}>
@@ -319,19 +265,73 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
         </section>
       )}
       <SnapshotLedger endgame={endgame} />
-      {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : <PendingDecision endgame={endgame} onChoose={onChoose} />}
+      {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : endgame.snapshot.isCPU ? (
+        <section className="finish-line-decision finish-line-awaiting" aria-live="polite">
+          <span className="eyebrow">CLOSING DECISION // CPU</span>
+          <h2 className="display">Decision<br /><span>processing.</span></h2>
+          <p>The engine is selecting the final line for {endgame.snapshot.displayName}. No player input is required.</p>
+          <div className="finish-line-processing" aria-hidden="true"><i /><i /><i /></div>
+        </section>
+      ) : (
+        <section className="finish-line-choice-review" aria-label="Choose how to settle your final value">
+          <div className="finish-line-choice-grid">
+            {choices.map((choice) => (
+              <button
+                className={`finish-line-choice finish-line-choice-${choice.accent} ${selectedChoice === choice.id ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setSelectedChoice(choice.id)}
+                aria-pressed={selectedChoice === choice.id}
+                key={choice.id}
+                data-testid={`button-finish-choice-${choice.id.toLowerCase()}`}
+              >
+                <span className="finish-line-choice-top"><span className="mono">{choice.number} / DECISION</span><span aria-hidden="true">↗</span></span>
+                <strong>{choice.title}</strong>
+                <span>{choice.description}</span>
+                <span className="mono finish-line-choice-cta">{selectedChoice === choice.id ? 'SELECTED' : 'REVIEW'}</span>
+              </button>
+            ))}
+          </div>
+          {selected && (
+            <div className="finish-line-consequence-preview" aria-live="polite">
+              <span className="eyebrow">BEFORE YOU CONFIRM // {selected.title}</span>
+              {selectedChoice === 'CASH_OUT' && <p><strong>Secure {formatMoney(endgame.baseValue)}.</strong> Your Wealth, {assetCount} assets ({formatMoney(assetValue)}), and attributes remain unchanged.</p>}
+              {selectedChoice === 'DOUBLE_DOWN' && <p><strong>Risk the final score, not your assets.</strong> The 2d4 multiplier range is {formatMoney(endgame.baseValue * Math.min(...doubleDownMultipliers))}–{formatMoney(endgame.baseValue * Math.max(...doubleDownMultipliers))}; Wealth and all {assetCount} assets remain owned regardless of the roll.</p>}
+              {selectedChoice === 'FINAL_GAMBLE' && <p><strong>Stake all current Wealth, {assetCount} assets ({formatMoney(assetValue)}), and {endgame.snapshot.upgradeTokens} Upgrade Tokens.</strong> A 50/50 flip either adds the stake to final value or forfeits the staked Wealth, assets, and tokens. The drawn Gamble card is shown in the result.</p>}
+              <div className="finish-line-choice-review-actions">
+                <button type="button" className="action secondary" onClick={() => setSelectedChoice(null)}>CANCEL</button>
+                <button type="button" className="action lime-action" onClick={() => selectedChoice && onChoose(selectedChoice)} data-testid="button-confirm-finish-choice">CONFIRM {selected.title}</button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }
 
-export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLINE_UPGRADE' }: { players: MatchPlayer[]; finishOrder?: number[]; boardId?: BoardId }) {
-  const resolvedPlayers = players
-    .filter((player) => player.endgame?.status === 'RESOLVED')
-    .sort((a, b) => {
-      const valueA = a.endgame?.finalGameValue ?? Number.NEGATIVE_INFINITY;
-      const valueB = b.endgame?.finalGameValue ?? Number.NEGATIVE_INFINITY;
-      return valueB - valueA || a.slot - b.slot;
-    });
+export function MatchResultsPanel({
+  players,
+  finishOrder = [],
+  assetEvents = [],
+  boardId = 'REDLINE_UPGRADE',
+  unlockedAchievementIds = [],
+  onHome,
+  onProfile,
+}: {
+  players: MatchPlayer[];
+  finishOrder?: number[];
+  assetEvents?: AssetEventLogEntry[];
+  boardId?: BoardId;
+  unlockedAchievementIds?: string[];
+  onHome?: () => void;
+  onProfile?: () => void;
+}) {
+  const resolvedPlayers = getFinalPlacementOrder(players, finishOrder)
+    .map((playerIndex) => players[playerIndex])
+    .filter((player): player is MatchPlayer => player?.endgame?.status === 'RESOLVED');
+  const achievementNames = unlockedAchievementIds.map((id) =>
+    achievementCatalog.find((achievement) => achievement.id === id)?.name ?? 'Secret milestone unlocked',
+  );
 
   return (
     <main className="finish-line-panel finish-line-match-results" data-testid="panel-match-results">
@@ -358,15 +358,48 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
         <section className="finish-line-results-list" aria-label="Final match standings">
           {resolvedPlayers.map((player, index) => {
             const endgame = player.endgame!;
+            const snapshotAssets = calculateAssetValue(endgame.snapshot);
+            const finalAssets = new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)));
+            const gambleLostAssets = endgame.choice === 'FINAL_GAMBLE' && endgame.gambleStake?.won === false
+              ? new Set(Object.values(endgame.snapshot.equipment).filter((assetId): assetId is string => Boolean(assetId)))
+              : new Set<string>();
+            const transferredOutAssets = new Set(assetEvents
+              .filter((event) => event.type === 'ASSET_TRANSFERRED' && event.targetPlayerId === player.playerId)
+              .map((event) => event.assetId));
+            const disposedEventsByAsset = new Map(assetEvents
+              .filter((event) => event.type === 'ASSET_DISPOSED' && event.playerIndex === player.slot)
+              .map((event) => [event.assetId, event]));
+            const disposedAssets = new Set(disposedEventsByAsset.keys());
+            const acquiredAssets = assetEvents
+              .filter((event) => event.playerIndex === player.slot && (event.type === 'ASSET_ACQUIRED' || event.type === 'ASSET_PURCHASED'))
+              .map((event) => event.assetId);
+            const reconciledAssetIds = [...new Set([...acquiredAssets, ...finalAssets, ...gambleLostAssets, ...disposedAssets, ...transferredOutAssets])];
+            const reconciliation = reconciledAssetIds.map((assetId) => ({
+              assetId,
+              status: finalAssets.has(assetId) ? 'RETAINED' as const
+                : gambleLostAssets.has(assetId) ? 'LOST' as const
+                  : disposedAssets.has(assetId) || transferredOutAssets.has(assetId) ? 'LOST' as const
+                    : 'UNEXPLAINED' as const,
+              reason: finalAssets.has(assetId) ? 'Retained after endgame'
+                : gambleLostAssets.has(assetId) ? 'Forfeited in Final Gamble'
+                  : disposedEventsByAsset.has(assetId) ? `Forfeited by ${disposedEventsByAsset.get(assetId)?.reason ?? 'a Gamble card'}`
+                  : transferredOutAssets.has(assetId) ? 'Transferred out'
+                    : 'No recorded loss event',
+              level: player.assetLevels[assetId] ?? endgame.snapshot.assetLevels[assetId] ?? disposedEventsByAsset.get(assetId)?.assetLevel ?? 1,
+            }));
+            const finishStatsValue = endgame.snapshot.aiSkill * 15_000
+              + endgame.snapshot.fame * 8_000
+              + endgame.snapshot.lifestyle * 10_000
+              + endgame.snapshot.influence * 7_500;
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
             const finishPlace = finishOrder.indexOf(player.slot) + 1;
             const finishBonus = finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0;
             return (
               <article className={`finish-line-result-row ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
-                <div className="finish-line-result-placement" aria-label={`Placement ${index + 1}`}>
-                  <span className="mono">PLACE</span>
-                  <strong>{String(index + 1).padStart(2, '0')}</strong>
+                <div className={`finish-line-result-placement placement-${index + 1}`} aria-label={`Final placement ${index + 1}`}>
+                  <span className="mono">{index === 0 ? 'WINNER' : 'FINAL PLACE'}</span>
+                  <strong>{finishOrdinal(index + 1)}</strong>
                 </div>
                 <div className="finish-line-result-player">
                    <div className="finish-line-result-avatar" aria-hidden="true">
@@ -394,11 +427,12 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                   <strong>{typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'VALUE PENDING'}</strong>
                 </div>
                  <div className="finish-line-result-ledger" aria-label={`${character?.name ?? player.displayName} final ledger`}>
-                   <div><span className="mono">FINAL WEALTH</span><strong>{formatMoney(endgame.snapshot.wealth)}</strong></div>
-                   <div><span className="mono">AI SKILL</span><strong>{endgame.snapshot.aiSkill.toLocaleString()}</strong></div>
-                   <div><span className="mono">FAME</span><strong>{endgame.snapshot.fame.toLocaleString()}</strong></div>
-                   <div><span className="mono">LIFESTYLE</span><strong>{endgame.snapshot.lifestyle.toLocaleString()}</strong></div>
-                   <div><span className="mono">INFLUENCE</span><strong>{endgame.snapshot.influence.toLocaleString()}</strong></div>
+                    <div><span className="mono">FINAL WEALTH</span><strong>{formatMoney(player.wealth)}</strong></div>
+                    <div><span className="mono">AI SKILL / VALUE</span><strong>{endgame.snapshot.aiSkill.toLocaleString()} / {formatMoney(endgame.snapshot.aiSkill * 15_000)}</strong></div>
+                    <div><span className="mono">FAME / VALUE</span><strong>{endgame.snapshot.fame.toLocaleString()} / {formatMoney(endgame.snapshot.fame * 8_000)}</strong></div>
+                    <div><span className="mono">LIFESTYLE / VALUE</span><strong>{endgame.snapshot.lifestyle.toLocaleString()} / {formatMoney(endgame.snapshot.lifestyle * 10_000)}</strong></div>
+                    <div><span className="mono">INFLUENCE / VALUE</span><strong>{endgame.snapshot.influence.toLocaleString()} / {formatMoney(endgame.snapshot.influence * 7_500)}</strong></div>
+                    <div><span className="mono">BASE VALUE BREAKDOWN</span><strong>{formatMoney(endgame.snapshot.wealth)} WEALTH + {formatMoney(snapshotAssets)} ASSETS + {formatMoney(finishStatsValue)} ATTRIBUTES</strong></div>
                    <div><span className="mono">FINAL CHOICE</span><strong>{endgame.choice === 'CASH_OUT' ? 'CASH OUT' : endgame.choice === 'DOUBLE_DOWN' ? 'DOUBLE DOWN' : endgame.choice === 'FINAL_GAMBLE' ? 'FINAL GAMBLE' : 'NONE'}</strong>{endgame.choice === 'DOUBLE_DOWN' && endgame.multiplier !== undefined && <small>x{endgame.multiplier} multiplier</small>}</div>
                    <div><span className="mono">FINAL GAMBLE</span><strong>{typeof endgame.gambleAdjustedDelta === 'number' ? `${endgame.gambleAdjustedDelta >= 0 ? '+' : '-'}${formatMoney(Math.abs(endgame.gambleAdjustedDelta))}` : 'NOT TAKEN'}</strong></div>
                  </div>
@@ -407,7 +441,11 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                      <span className="mono">FINAL SIGNAL</span>
                      <strong>{endgame.endGameTitle ?? 'FINISH RECORDED'}</strong>
                      {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
-                     {finishPlace > 0 && <small className="finish-order-result mono">{finishOrdinal(finishPlace)} TO FINISH / +{formatMoney(finishBonus)} FINISH BONUS</small>}
+                      {finishPlace > 0 && <small className="finish-order-result mono">BOARD FINISH / {finishOrdinal(finishPlace)} · +{formatMoney(finishBonus)} WEALTH BONUS</small>}
+                      {endgame.choice === 'FINAL_GAMBLE' && <p>{endgame.gambleStake?.won
+                        ? `Final Gamble won: the stake added ${formatMoney(endgame.gambleStake.wealth + endgame.gambleStake.assetValue + endgame.gambleStake.tokenValue)} to final value; assets remain owned.`
+                        : `Final Gamble lost: ${formatMoney(endgame.gambleStake?.wealth ?? 0)} Wealth, ${formatMoney(endgame.gambleStake?.assetValue ?? 0)} in assets, and ${endgame.gambleStake?.tokens ?? 0} Upgrade Tokens were forfeited.`}</p>}
+                      <small className="finish-order-result mono">ENDGAME OUTCOME / {endgame.choice === 'CASH_OUT' ? 'BASE VALUE LOCKED AT 1×' : endgame.choice === 'DOUBLE_DOWN' ? `2D4 ROLL · ${endgame.effectiveRoll} · ${endgame.multiplier}×` : endgame.choice === 'FINAL_GAMBLE' ? (endgame.gambleStake?.won ? '50/50 STAKE WON' : '50/50 STAKE LOST') : 'NOT RECORDED'}</small>
                    </div>
                     {player.creditRewardReceipt && <div className="finish-line-credit-receipt" data-testid={`credit-receipt-${player.playerId}`}>
                       <span className="mono">REDLINE CREDITS EARNED</span>
@@ -416,9 +454,9 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                     </div>}
                    <div className="finish-line-result-assets" role="group" aria-label={`${character?.name ?? player.displayName} final assets`}>
                      {assetSlots.map(({ slot, label }) => {
-                       const assetId = endgame.snapshot.equipment[slot];
+                        const assetId = player.equipment[slot];
                        const asset = assetId ? getAsset(assetId) : undefined;
-                       const level = asset ? endgame.snapshot.assetLevels[asset.id] ?? 1 : null;
+                        const level = asset ? player.assetLevels[asset.id] ?? 1 : null;
                         const endgameValue = asset ? assetValueAtLevel(asset, level! as AssetLevel) : 0;
                        const categoryLabel = asset?.category === 'pet'
                          ? 'PET'
@@ -436,7 +474,18 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
                          </div>
                        );
                      })}
-                   </div>
+                    </div>
+                    <section className="finish-line-asset-reconciliation" aria-label={`${character?.name ?? player.displayName} asset reconciliation`}>
+                      <span className="mono">ASSET RECONCILIATION / AFTER ENDGAME</span>
+                      {reconciliation.length ? <ul>{reconciliation.map((entry) => (
+                        <li className={`disposition-${entry.status.toLowerCase()}`} key={entry.assetId}>
+                          <strong>{getAsset(entry.assetId)?.name ?? entry.assetId}</strong>
+                          <span>LEVEL {entry.level} · {entry.status === 'RETAINED' ? 'RETAINED AT FINISH' : entry.status}</span>
+                          <small>{entry.reason}</small>
+                        </li>
+                      ))}</ul> : <p>No assets were acquired or held in this game.</p>}
+                      {reconciliation.some((entry) => entry.status === 'UNEXPLAINED') && <p className="finish-line-asset-reconciliation-warning" role="alert">An asset was acquired but has no recorded retention or loss event. It is flagged for reconciliation and is not counted as lost.</p>}
+                    </section>
                  </div>
               </article>
             );
@@ -448,6 +497,14 @@ export function MatchResultsPanel({ players, finishOrder = [], boardId = 'REDLIN
           <p>No resolved finish values have been supplied.</p>
         </section>
       )}
+      {achievementNames.length > 0 && <section className="finish-line-unlocked-milestones" aria-label="New profile milestones">
+        <span className="mono">NEW PROFILE MILESTONES</span>
+        <ul>{achievementNames.map((name, awardIndex) => <li key={`${awardIndex}-${name}`}>{name}</li>)}</ul>
+      </section>}
+      {(onHome || onProfile) && <nav className="finish-line-result-actions" aria-label="After-match navigation">
+        {onHome && <button type="button" className="action lime-action" onClick={onHome}>BACK TO HOME</button>}
+        {onProfile && <button type="button" className="action secondary" onClick={onProfile}>VIEW PROFILE</button>}
+      </nav>}
     </main>
   );
 }

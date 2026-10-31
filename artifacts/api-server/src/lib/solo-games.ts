@@ -6,6 +6,7 @@ import {
 } from "@workspace/db";
 import {
   applySoloPlayerAction,
+  applySoloAutomationStep,
   type ClientAction,
   type MatchAssetEvent,
 } from "../../../redline-upgrade/src/game/multiplayer";
@@ -127,7 +128,9 @@ export async function submitSoloGameAction(
       lastName: usersTable.lastName,
     }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     const current = withPlayerDisplayName(game.state as SoloGameState, accountDisplayName(user));
-    const result = applySoloPlayerAction(current.match, action as ClientAction);
+    const result = (action as { type?: string })?.type === "ADVANCE_CPU"
+      ? applySoloAutomationStep(current.match)
+      : applySoloPlayerAction(current.match, action as ClientAction);
     if (!result) return { kind: "conflict", message: "That action is not allowed right now." };
     const nextState: SoloGameState = {
       match: result.match,

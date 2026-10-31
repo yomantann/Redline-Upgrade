@@ -10,7 +10,7 @@ import {
   type SoloGameSnapshot,
 } from '@workspace/api-client-react';
 import { AUTH_USER_UPDATED_EVENT } from '@workspace/replit-auth-web';
-import { toClientAction } from './multiplayer';
+import { actingPlayerIndex, toClientAction } from './multiplayer';
 import type { Player } from './player';
 import { createPlayer } from './player';
 import { advanceMatch, createMatch, rollD4, type Match, type MatchAction } from './match';
@@ -26,6 +26,7 @@ interface GameStateValue {
   careerRevealed: boolean;
   acknowledgeCareer: () => void;
   startNewGame: () => void;
+  returnHome: () => void;
   confirmCharacter: (characterId: string) => void;
   beginGame: () => Promise<boolean>;
   dispatchMatch: (action: MatchAction) => void;
@@ -127,6 +128,21 @@ export function GameProvider({
     setSoloSnapshot(null);
     setNewAchievementIds([]);
     setSelectedGameMode('SINGLE_PLAYER');
+  }, []);
+  const returnHome = useCallback(() => {
+    setPlayer(null);
+    setMatch(null);
+    setCareerRevealed(false);
+    setSelectedGameMode(null);
+    soloSnapshotRef.current = null;
+    setSoloSnapshot(null);
+    setNewAchievementIds([]);
+    snapshotRef.current = null;
+    setSnapshot(null);
+    setRemoteError(null);
+    setRemoteConnected(true);
+    soloSendChain.current = Promise.resolve();
+    sendChain.current = Promise.resolve();
   }, []);
   const confirmCharacter = useCallback((characterId: string) => {
     setPlayer(createPlayer(characterId, 'You'));
@@ -269,7 +285,16 @@ export function GameProvider({
     }
     const currentSolo = soloSnapshotRef.current;
     if (currentSolo) {
-      const clientAction = toClientAction(action);
+      const soloMatch = currentSolo.match as unknown as Match;
+      const currentSoloPlayer = soloMatch.players[actingPlayerIndex(soloMatch)];
+      const cpuAutomationAction = currentSoloPlayer?.isCPU
+        && ['ROLL', 'REVEAL', 'MOVE', 'STEP', 'AUTO_DECIDE', 'NEXT_TURN'].includes(action.type);
+      const soloPhaseAction = action.type === 'REVEAL' || action.type === 'STEP'
+        ? { type: action.type }
+        : null;
+      const clientAction = cpuAutomationAction
+        ? { type: 'ADVANCE_CPU' }
+        : soloPhaseAction ?? toClientAction(action);
       if (!clientAction) return;
       soloSendChain.current = soloSendChain.current.then(async () => {
         const latest = soloSnapshotRef.current;
@@ -297,8 +322,8 @@ export function GameProvider({
   }, [dispatchMatch]);
   const shownMatch = remoteMatch ?? match;
   const value = useMemo(
-    () => ({ player, match: shownMatch, remote, remoteError, remoteConnected, newAchievementIds, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice }),
-    [player, shownMatch, remote, remoteError, remoteConnected, newAchievementIds, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, confirmCharacter, beginGame, dispatchMatch, rollDice],
+    () => ({ player, match: shownMatch, remote, remoteError, remoteConnected, newAchievementIds, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, returnHome, confirmCharacter, beginGame, dispatchMatch, rollDice }),
+    [player, shownMatch, remote, remoteError, remoteConnected, newAchievementIds, setRemoteConnected, setRemoteSnapshot, selectedBoardId, selectedGameMode, selectBoard, selectGameMode, careerRevealed, acknowledgeCareer, startNewGame, returnHome, confirmCharacter, beginGame, dispatchMatch, rollDice],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

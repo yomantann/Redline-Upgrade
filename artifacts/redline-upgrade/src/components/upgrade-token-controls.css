@@ -23,13 +23,27 @@
 .upgrade-token-choice-copy strong { overflow:hidden; color:#f0eee4; font:700 15px/1 'Barlow Condensed',sans-serif; text-overflow:ellipsis; text-transform:uppercase; }
 .upgrade-token-choice-copy span,.upgrade-token-choice-copy small { color:#c1cbbd; font:700 8px/1.25 'Space Mono',monospace; }
 .upgrade-token-choice-copy small { color:#9cae9e; }
-.upgrade-token-action { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; text-align:left; color:#f0eee4; cursor:pointer; }
-.upgrade-token-action:hover:not(:disabled),.upgrade-token-action:focus-visible:not(:disabled) { border-color:#75d8c8; background:#27352e; outline:none; }
-.upgrade-token-action:disabled { opacity:.56; cursor:not-allowed; }
+.upgrade-token-action { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; text-align:left; color:#f0eee4; }
 .upgrade-token-action strong { margin-bottom:6px; font:700 18px/1 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .upgrade-token-action small,.upgrade-token-unavailable,.upgrade-token-note { color:#aab6a9; font-size:10px; line-height:1.45; }
 .upgrade-token-unavailable { margin:0; }
 .upgrade-token-note { margin:10px 2px 0; }
+.upgrade-token-recovery-open,.upgrade-token-recovery-confirm { margin-top:10px; padding:8px 10px; border:1px solid #75d8c8; background:#23342d; color:#d9edda; font:700 9px 'Space Mono',monospace; letter-spacing:.04em; cursor:pointer; }
+.upgrade-token-recovery-open:hover:not(:disabled),.upgrade-token-recovery-confirm:hover:not(:disabled) { background:#31463a; }
+.upgrade-token-recovery-open:disabled,.upgrade-token-recovery-confirm:disabled { opacity:.5; cursor:not-allowed; }
+.upgrade-token-recovery-choices { display:grid; gap:8px; width:100%; margin-top:12px; padding-top:10px; border-top:1px solid #3d4c46; }
+.upgrade-token-recovery-choice { padding:8px; border:1px solid #45544b; background:#18211c; }
+.upgrade-token-recovery-choice.selected { border-color:#d4e981; box-shadow:inset 3px 0 #d4e981; }
+.upgrade-token-recovery-choice > button { display:grid; gap:4px; width:100%; padding:0; border:0; background:transparent; color:#e4e7dc; text-align:left; cursor:pointer; }
+.upgrade-token-recovery-choice > button strong { font:700 14px 'Barlow Condensed',sans-serif; }
+.upgrade-token-recovery-choice > button span,.upgrade-token-recovery-choice > button small { color:#aab6a9; font:8px/1.45 'Space Mono',monospace; }
+.upgrade-token-recovery-choice > button small { color:#cfdbbd; }
+.upgrade-token-recovery-choice details { margin-top:7px; color:#aab6a9; font:8px 'Space Mono',monospace; }
+.upgrade-token-recovery-choice summary { cursor:pointer; color:#75d8c8; }
+.upgrade-token-recovery-choice ul { display:grid; gap:4px; max-height:160px; overflow:auto; padding-left:18px; line-height:1.45; }
+.upgrade-token-recovery-choice li strong { color:#e4e7dc; }
+.upgrade-token-recovery-disclaimer { margin:0; color:#aab6a9; font-size:9px; line-height:1.45; }
+.upgrade-token-recovery-confirm { width:100%; margin-top:0; background:#d4e981; color:#182019; }
 @media (max-width: 920px) {
   .upgrade-token-options { grid-template-columns:1fr 1fr; }
   .upgrade-token-upgrade { grid-column:1 / -1; }
@@ -39,4 +53,5 @@
   .upgrade-token-options,.upgrade-token-assets { grid-template-columns:1fr; }
   .upgrade-token-upgrade { grid-column:auto; }
   .upgrade-token-heading strong { font-size:19px; }
+  .upgrade-token-recovery-choice ul { max-height:120px; }
 }

@@ -1,21 +1,21 @@
 export const GAME_CREDIT_REWARDS = {
-  completion: 50,
-  placement: [200, 100, 50, 20],
-  firstGame: 100,
-  firstCareerWin: 75,
-  firstCharacterWin: 75,
-  firstWin: 250,
-  retention: [{ minimum: 5, credits: 100 }, { minimum: 3, credits: 50 }, { minimum: 1, credits: 25 }],
-  levelFourRetained: 75,
-  doubleDownSuccess: 100,
-  finalGambleSuccess: 150,
-  winAfterDoubleDown: 150,
-  winAfterFinalGamble: 250,
-  lossFree: 50,
+  completion: 25,
+  placement: [75, 40, 20, 10],
+  firstGame: 50,
+  firstCareerWin: 25,
+  firstCharacterWin: 25,
+  firstWin: 100,
+  retention: [{ minimum: 5, credits: 50 }, { minimum: 3, credits: 25 }, { minimum: 1, credits: 10 }],
+  levelFourRetained: 25,
+  doubleDownSuccess: 50,
+  finalGambleSuccess: 75,
+  winAfterDoubleDown: 50,
+  winAfterFinalGamble: 100,
+  lossFree: 0,
 } as const;
 
 export const ACHIEVEMENT_TIER_CREDITS = {
-  BRONZE: 50, SILVER: 125, GOLD: 300, PLATINUM: 600, LEGENDARY: 1_500, MYTHIC: 4_000,
+  BRONZE: 25, SILVER: 50, GOLD: 100, PLATINUM: 200, LEGENDARY: 500, MYTHIC: 1_000,
 } as const;
 
 export const CREDIT_EARNING_GUIDE: { title: string; value: string }[] = [
@@ -31,6 +31,5 @@ export const CREDIT_EARNING_GUIDE: { title: string; value: string }[] = [
   { title: "Win after a successful Double Down", value: `+${GAME_CREDIT_REWARDS.winAfterDoubleDown}` },
   { title: "Successful Final Gamble", value: `+${GAME_CREDIT_REWARDS.finalGambleSuccess}` },
   { title: "Win after a successful Final Gamble", value: `+${GAME_CREDIT_REWARDS.winAfterFinalGamble}` },
-  { title: "Acquire assets and finish without losses", value: `+${GAME_CREDIT_REWARDS.lossFree}` },
   { title: "Milestone unlock", value: "Reward varies" },
 ];

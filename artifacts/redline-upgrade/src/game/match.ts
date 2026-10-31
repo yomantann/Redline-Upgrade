@@ -43,6 +43,24 @@ export interface EndgameAttributeBonus {
   amount: 50_000;
 }
 
+export function getFinalPlacementOrder(
+  players: readonly MatchPlayer[],
+  finishOrder: readonly number[],
+): number[] {
+  return players
+    .map((player, playerIndex) => ({ playerIndex, finalValue: player.endgame?.finalGameValue ?? Number.NEGATIVE_INFINITY }))
+    .sort((a, b) => {
+      const valueDifference = b.finalValue - a.finalValue;
+      if (valueDifference) return valueDifference;
+      const aFinish = finishOrder.indexOf(a.playerIndex);
+      const bFinish = finishOrder.indexOf(b.playerIndex);
+      return (aFinish < 0 ? Number.MAX_SAFE_INTEGER : aFinish)
+        - (bFinish < 0 ? Number.MAX_SAFE_INTEGER : bFinish)
+        || a.playerIndex - b.playerIndex;
+    })
+    .map(({ playerIndex }) => playerIndex);
+}
+
 const ENDGAME_ATTRIBUTES: readonly { attribute: EndgameAttribute; label: EndgameAttributeBonus['label'] }[] = [
   { attribute: 'aiSkill', label: 'AI SKILL' },
   { attribute: 'fame', label: 'FAME' },
@@ -421,7 +439,7 @@ export type MatchAction =
   | { type: 'CHOOSE_ASSET_CATEGORY'; category: 'pet' | 'investment' }
   | { type: 'BUY_ASSET'; assetId: string }
   | { type: 'UPGRADE_ASSET'; assetId: string }
-  | { type: 'RECOVER_MILESTONE' }
+  | { type: 'RECOVER_MILESTONE'; space?: number }
   | { type: 'SKIP_ASSET' }
   | { type: 'KEEP_CAREER' }
   | { type: 'SWITCH_CAREER' }
@@ -894,14 +912,24 @@ function upgradeOwnedAsset(match: Match, assetId: string): Match {
   ]);
 }
 
-function recoverMissedMilestone(match: Match, random: () => number = Math.random): Match {
+function recoverMissedMilestone(match: Match, space?: number, random: () => number = Math.random): Match {
   if (match.phase !== 'ready') return match;
   const player = match.players[match.turnIndex];
   if (availableUpgradeTokens(player) < 1 || !getEligibleRecoveryMilestones(player).length) return match;
-  const recovery = chooseRecoveredMilestoneAsset(player, random);
+  const recovery = chooseRecoveredMilestoneAsset(player, random, space);
   if (!recovery) return match;
   const [updated, statDrafts] = applyAssetStats(match, match.turnIndex, recovery.asset.id, false);
-  const nextPlayer = { ...updated.players[match.turnIndex], upgradeTokens: player.upgradeTokens - 1 };
+  const nextPlayer = {
+    ...updated.players[match.turnIndex],
+    upgradeTokens: player.upgradeTokens - 1,
+    history: {
+      ...updated.players[match.turnIndex].history,
+      milestoneSpacesCompleted: [...new Set([
+        ...(updated.players[match.turnIndex].history.milestoneSpacesCompleted ?? []),
+        recovery.milestone.space,
+      ])],
+    },
+  };
   const milestoneType = recovery.milestone.slot;
   return emit({
     ...updated,
@@ -925,7 +953,7 @@ function recoverMissedMilestone(match: Match, random: () => number = Math.random
       assetName: recovery.asset.name,
       category: recovery.category,
       assetLevel: 1,
-      description: `${player.displayName} randomly recovered ${recovery.asset.name} (${recovery.category}) from the missed milestone at space ${recovery.milestone.space}.`,
+      description: `${player.displayName} recovered ${recovery.asset.name} (${recovery.category}) from the selected missed milestone at space ${recovery.milestone.space}.`,
     },
     ...statDrafts,
   ]);
@@ -1012,6 +1040,7 @@ function resolvedEndgamePlayer(
   match: Match,
   playerIndex: number,
   endgame: EndgameState,
+  finalGambleWon?: boolean,
 ): Match {
   return {
     ...match,
@@ -1019,9 +1048,21 @@ function resolvedEndgamePlayer(
     phase: 'landed',
     stepsRemaining: 0,
     pending: null,
-    players: match.players.map((player, index) =>
-      index === playerIndex ? { ...player, status: 'FINISHED', endgame } : player,
-    ),
+    players: match.players.map((player, index) => {
+      if (index !== playerIndex) return player;
+      const stakedTokens = endgame.choice === 'FINAL_GAMBLE';
+      const lostStake = endgame.choice === 'FINAL_GAMBLE' && finalGambleWon === false;
+      return {
+        ...player,
+        status: 'FINISHED',
+        ...(stakedTokens ? { upgradeTokens: 0, heldUpgradeTokens: 0 } : {}),
+        ...(lostStake ? {
+          wealth: 0,
+          equipment: { car: null, lifestyle: null, companion: null, property: null },
+        } : {}),
+        endgame,
+      };
+    }),
   };
 }
 
@@ -1147,8 +1188,27 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     gambleStake: stake,
     multiplier: outcome.multiplier,
     finalGameValue: outcome.finalGameValue,
-  });
+  }, stake.won);
   return emit(completed, [
+    ...(!stake.won
+      ? Object.values(selectedEndgame.snapshot.equipment)
+          .filter((assetId): assetId is string => Boolean(assetId))
+          .map((assetId) => {
+            const asset = getAsset(assetId);
+            const level = selectedEndgame.snapshot.assetLevels[assetId] ?? 1;
+            return {
+              type: 'ASSET_DISPOSED' as const,
+              playerIndex,
+              assetId,
+              assetName: asset?.name ?? assetId,
+              assetLevel: level,
+              category: asset?.category,
+              effectId: 'FINAL_GAMBLE_LOSS',
+              reason: 'Final Gamble',
+              description: `${player.displayName} forfeited ${asset?.name ?? assetId} at Level ${level} after losing the Final Gamble.`,
+            };
+          })
+      : []),
     {
       type: 'FINAL_GAMBLE_RESOLVED',
       playerIndex,
@@ -1427,7 +1487,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'UPGRADE_ASSET':
       return upgradeOwnedAsset(match, action.assetId);
     case 'RECOVER_MILESTONE':
-      return recoverMissedMilestone(match);
+      return recoverMissedMilestone(match, action.space);
     case 'SKIP_ASSET':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' ? resume(match) : match;
     case 'KEEP_CAREER':

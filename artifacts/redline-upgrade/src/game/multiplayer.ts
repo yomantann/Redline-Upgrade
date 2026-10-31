@@ -44,16 +44,19 @@ export interface MatchAssetEvent {
   eventId: string;
   playerIndex: number;
   playerId: string;
-  type: 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_UPGRADED';
+  type: 'ASSET_ACQUIRED' | 'ASSET_PURCHASED' | 'ASSET_TRANSFERRED' | 'ASSET_DISPOSED' | 'ASSET_UPGRADED';
   assetId: string;
   targetPlayerId: string | null;
   assetLevel: number | null;
+  effectId?: string;
+  reason?: string;
 }
 
 const ASSET_EVENT_TYPES = new Set<MatchAssetEvent['type']>([
   'ASSET_ACQUIRED',
   'ASSET_PURCHASED',
   'ASSET_TRANSFERRED',
+  'ASSET_DISPOSED',
   'ASSET_UPGRADED',
 ]);
 
@@ -71,6 +74,8 @@ function collectAssetEvents(previous: Match, next: Match): MatchAssetEvent[] {
       assetId: event.assetId,
       targetPlayerId: event.targetPlayerId ?? null,
       assetLevel: event.assetLevel ?? null,
+      effectId: event.effectId,
+      reason: event.reason,
     }];
   });
 }
@@ -83,6 +88,7 @@ const CPU_VISIBLE_STEP_MS = 650;
 export const MAX_MISSED_TURNS = 3;
 
 export type ClientAction =
+  | { type: 'ADVANCE_CPU' }
   | { type: 'ROLL_DICE' }
   | { type: 'REVEAL' }
   | { type: 'MOVE' }
@@ -98,7 +104,7 @@ export type ClientAction =
   | { type: 'BUY_ASSET'; assetId: string }
   | { type: 'SKIP_ASSET' }
   | { type: 'USE_UPGRADE_TOKEN'; mode: 'UPGRADE_ASSET'; assetId: string }
-  | { type: 'USE_UPGRADE_TOKEN'; mode: 'RECOVER_MILESTONE' }
+  | { type: 'USE_UPGRADE_TOKEN'; mode: 'RECOVER_MILESTONE'; milestoneSpace?: number }
   | { type: 'GAMBLE'; choice: EndgameChoice }
   | { type: 'CHANGE_CAREER'; step: 'KEEP' | 'SWITCH' | 'ACKNOWLEDGE' }
   | { type: 'CHANGE_CAREER'; step: 'SELECT'; careerId: string }
@@ -115,7 +121,6 @@ export type ActionResult =
   | { ok: true; state: MultiplayerMatchState }
   | { ok: false; reason: ActionRejection; message: string };
 
-const MAX_AUTO_STEPS = 100;
 const ENDGAME_CHOICES: readonly string[] = ['CASH_OUT', 'DOUBLE_DOWN', 'FINAL_GAMBLE'];
 
 export function seatForUser(state: MultiplayerMatchState, userId: string): MultiplayerSeat | undefined {
@@ -158,7 +163,7 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'BUY_ASSET': return { type: 'BUY_ASSET', assetId: action.assetId };
     case 'SKIP_ASSET': return { type: 'SKIP_ASSET' };
     case 'UPGRADE_ASSET': return { type: 'USE_UPGRADE_TOKEN', mode: 'UPGRADE_ASSET', assetId: action.assetId };
-    case 'RECOVER_MILESTONE': return { type: 'USE_UPGRADE_TOKEN', mode: 'RECOVER_MILESTONE' };
+    case 'RECOVER_MILESTONE': return { type: 'USE_UPGRADE_TOKEN', mode: 'RECOVER_MILESTONE', ...(action.space === undefined ? {} : { milestoneSpace: action.space }) };
     case 'KEEP_CAREER': return { type: 'CHANGE_CAREER', step: 'KEEP' };
     case 'SWITCH_CAREER': return { type: 'CHANGE_CAREER', step: 'SWITCH' };
     case 'SELECT_CAREER': return { type: 'CHANGE_CAREER', step: 'SELECT', careerId: action.careerId };
@@ -214,7 +219,7 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'SKIP_ASSET': return [{ type: 'SKIP_ASSET' }];
     case 'USE_UPGRADE_TOKEN':
       if (action.mode === 'UPGRADE_ASSET') return isString(action.assetId) ? [{ type: 'UPGRADE_ASSET', assetId: action.assetId }] : null;
-      if (action.mode === 'RECOVER_MILESTONE') return [{ type: 'RECOVER_MILESTONE' }];
+      if (action.mode === 'RECOVER_MILESTONE') return [{ type: 'RECOVER_MILESTONE', ...(action.milestoneSpace === undefined ? {} : { space: action.milestoneSpace }) }];
       return null;
     case 'GAMBLE':
       return ENDGAME_CHOICES.includes(action.choice) ? [{ type: 'CHOOSE_ENDGAME', choice: action.choice }] : null;
@@ -227,17 +232,6 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'END_TURN': return [{ type: 'NEXT_TURN' }];
     default: return null;
   }
-}
-
-/** Walks the reducer through the purely mechanical movement phases once the mover has committed. */
-function settleMovement(match: Match): Match {
-  let current = match;
-  for (let i = 0; i < MAX_AUTO_STEPS && current.phase === 'moving'; i += 1) {
-    const next = advanceMatch(current, { type: 'STEP' });
-    if (next === current) break;
-    current = next;
-  }
-  return current;
 }
 
 /**
@@ -308,19 +302,23 @@ export function applySoloPlayerAction(
       if (advanced === next) return null;
       next = advanced;
     }
-    next = settleMovement(next);
-    for (let guard = 0; guard < 2_000 && next.phase !== 'complete'; guard += 1) {
-      const index = actingPlayerIndex(next);
-      if (index === 0 || !next.players[index]?.isCPU) break;
-      const advanced = autopilotStep(next, index);
-      if (advanced === next) break;
-      next = advanced;
-    }
   } catch {
     return null;
   }
   // The solo-game service persists these alongside state so event-log truncation cannot erase history.
   return { match: next, assetEvents: collectAssetEvents(original, next) };
+}
+
+/** Advances exactly one scheduled CPU phase in an authenticated single-player game. */
+export function applySoloAutomationStep(
+  match: Match,
+): { match: Match; assetEvents: MatchAssetEvent[] } | null {
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete') return null;
+  const index = actingPlayerIndex(match);
+  if (index === 0 || !match.players[index]?.isCPU) return null;
+  const next = autopilotStep(match, index);
+  if (next === match) return null;
+  return { match: next, assetEvents: collectAssetEvents(match, next) };
 }
 
 /** Public view for a client: the canonical match plus who is acting. */
