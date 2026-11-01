@@ -4,7 +4,13 @@ import type { AssetLevel, AssetSlot } from './assets';
 export interface Player {
   playerId: string;
   /** Server-authoritative completion rewards, present after a saved account game. */
-  creditRewardReceipt?: { total: number; game: number; endgame: number; milestones: number } | null;
+  creditRewardReceipt?: {
+    total: number;
+    game: number;
+    endgame: number;
+    milestones: number;
+    tokenConversion?: { tokens: number; creditsPerToken: number; credits: number };
+  } | null;
   /** Public category labels for new authenticated records; detailed values are viewer-private. */
   personalBestCategories?: string[];
   personalBestDetails?: PersonalBestDetail[];

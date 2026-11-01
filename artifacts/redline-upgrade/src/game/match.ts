@@ -290,41 +290,35 @@ function finishPlayersAtLine(match: Match): Match {
     }
     if (player.endgame?.status === 'RESOLVED' && player.endgame.finalGameValue !== undefined && player.endgame.choice) {
       const endgame = player.endgame;
-      const score = endgame.choice === 'DOUBLE_DOWN' && endgame.dice
-        ? doubleDownValue(
-            calculateEndgameBaseValue(
-              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
-              ENDGAME_BALANCE.assetValueMultipliers.doubleDown,
-            ),
-            endgame.dice.total,
-          )
-        : endgame.choice === 'FINAL_GAMBLE'
-          ? calculateEndgameBaseValue(
-              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
-              endgame.gambleStake?.won
-                ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
-                : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss,
-            )
-          : cashOutValue(calculateEndgameBaseValue(
-              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
-              ENDGAME_BALANCE.assetValueMultipliers.cashOut,
-            ));
-      const finalValue = score.finalGameValue;
+      const choice = endgame.choice!;
       const updatedSnapshot = { ...endgame.snapshot, wealth: awardedPlayer.wealth };
+      const assetMultiplier = choice === 'DOUBLE_DOWN'
+        ? ENDGAME_BALANCE.assetValueMultipliers.doubleDown
+        : choice === 'FINAL_GAMBLE'
+          ? endgame.gambleStake?.won
+            ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+            : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss
+          : ENDGAME_BALANCE.assetValueMultipliers.cashOut;
+      const choiceBaseValue = calculateEndgameBaseValue(updatedSnapshot, assetMultiplier);
+      const finalValue = choice === 'DOUBLE_DOWN' && endgame.dice
+        ? doubleDownValue(choiceBaseValue, endgame.dice.total).finalGameValue
+        : choice === 'FINAL_GAMBLE'
+          ? choiceBaseValue
+          : cashOutValue(choiceBaseValue).finalGameValue;
       return {
         ...awardedPlayer,
         endgame: {
           ...endgame,
           attributeLeaderBonus: amount,
           snapshot: updatedSnapshot,
-          baseValue: calculateEndgameBaseValue(awardedPlayer),
+          baseValue: choiceBaseValue,
           finalGameValue: finalValue,
           scoreBreakdown: createEndgameScoreBreakdown(
             updatedSnapshot,
-            endgame.choice,
+            choice,
             amount,
             finalValue,
-            finalValue - endgame.baseValue,
+            choice === 'DOUBLE_DOWN' ? finalValue - choiceBaseValue : 0,
             endgame.gambleStake?.won,
           ),
         },
@@ -1312,6 +1306,8 @@ function autoDecide(match: Match): Match {
     const choice = chooseCpuEndgameChoice(
       player.wealth,
       player.endgame.baseValue,
+      Math.random,
+      Object.values(player.endgame.snapshot.equipment).some(Boolean) || player.endgame.snapshot.upgradeTokens > 0,
     );
     return resolveEndgameChoice(match, choice);
   }

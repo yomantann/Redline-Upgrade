@@ -58,7 +58,7 @@ try {
   const { PlayerAbilityDetails } = await vite.ssrLoadModule('/src/components/player-ability-details.tsx');
   const { PlayerAssets } = await vite.ssrLoadModule('/src/components/player-assets.tsx');
   const { MilestoneChoice } = await vite.ssrLoadModule('/src/components/milestone-choice.tsx');
-  const { CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
+  const { CardPreviewModal, CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
   const { RedlineCard } = await vite.ssrLoadModule('/src/components/redline-card.tsx');
   const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
   const { AbilityActivationBanner, PlayerStatChangeOverlay, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerStatChange, formatSpaceFeedbackOutcome, getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
@@ -69,12 +69,14 @@ try {
   const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
+    calculateAdjustedAssetValue,
     calculateEndgameBaseValue,
     cashOutValue,
     doubleDownValue,
-    finalGambleValue,
     resolveFinalGambleStake,
     createFinishSnapshot,
+    createEndgameScoreBreakdown,
+    chooseCpuEndgameChoice,
   } = await vite.ssrLoadModule('/src/game/endgame.ts');
   const { availableUpgradeTokens, getEligibleRecoveryMilestones } = await vite.ssrLoadModule('/src/game/upgrade-tokens.ts');
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
@@ -233,8 +235,9 @@ try {
       assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
       assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${deck.name} draw card loads the artwork mapped to ${card.id}`);
       assert(cardMarkup.includes(`data-testid="deck-bay-${deck.id}"`), `${deck.name} stays visible in the non-interactive deck bay`);
-      assert(!cardMarkup.includes(`button-preview-deck-${deck.id}`), `${deck.name} deck card is not a preview button`);
-      assert(!cardMarkup.includes('PREVIEW NEXT CARD') && !cardMarkup.includes('tabletop-preview'), 'card previews and next-card controls are absent');
+      assert(cardMarkup.includes(`button-preview-card-${card.id}`), `${deck.name} card exposes an independent full-card preview button`);
+      assert(cardMarkup.includes('OPEN FULL CARD'), `${deck.name} card preview action is visible`);
+      assert(!cardMarkup.includes('PREVIEW NEXT CARD'), 'card preview does not offer a next-card action');
       assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
       assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CPU_CARD_DRAW_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
       if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);
@@ -242,6 +245,13 @@ try {
         ? cardMarkup.includes('card is revealed to the table')
         : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
     }
+  }
+  for (const card of cards) {
+    const previewMarkup = renderToStaticMarkup(React.createElement(CardPreviewModal, { card, onClose: () => {} }));
+    assert(previewMarkup.includes(card.title) && previewMarkup.includes(card.description), `${card.id} preview shows its title and full description`);
+    assert(previewMarkup.includes(card.effect) && previewMarkup.includes(`${card.rarity}`), `${card.id} preview shows gameplay effect and rarity`);
+    assert(previewMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${card.id} preview uses the matching card artwork`);
+    assert(previewMarkup.includes('button-close-card-preview'), `${card.id} preview has an accessible close action`);
   }
   for (const card of cards) {
     const artworkPath = getCardArtworkFilePath(card.id);
@@ -256,6 +266,7 @@ try {
     assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${card.id} front renders its own artwork`);
     assert(cardMarkup.includes(`data-card-id="${card.id}"`), `${card.id} artwork is identifiable in the DOM`);
     assert(cardMarkup.includes('loading="eager"'), `${card.id} artwork is not deferred by lazy loading`);
+    assert(!cardMarkup.includes('redline-card-effect'), `${card.id} artwork omits the redundant tiny effect label`);
   }
 
   for (let i = 0; i < 50; i++) {
@@ -1340,7 +1351,7 @@ try {
     const asset = assets.find(entry => entry.category === category);
     assert(playerAssetsMarkup.includes(asset.name) && playerAssetsMarkup.includes('LEVEL 4'), `${category} Level 4 artwork appears on the player card`);
   }
-  assert(playerAssetsMarkup.includes('ENDGAME +$'), 'the player card labels asset contribution as endgame value');
+  assert(playerAssetsMarkup.includes('CASH OUT +$'), 'the player card labels its 50% cash-out asset estimate');
   const investment = assets.find(asset => asset.category === 'investment');
   const investmentAssetsMarkup = renderToStaticMarkup(React.createElement(PlayerAssets, {
     equipment: { ...playerAssetFixture, companion: investment.id },
@@ -1693,7 +1704,7 @@ try {
   };
   match = move(finishLineFixture, 2);
   assert.equal(match.players[0].position, 75);
-  assert.equal(match.phase, 'endgame');
+  assert.equal(match.phase, 'landed', 'a finisher returns to the turn flow while other players still need to reach the line');
   assert.equal(match.players[0].status, 'FINISHED');
   assert.equal(match.players[0].endgame.status, 'PENDING');
   assert.equal(match.players[0].endgame.choice, undefined, 'the endgame requires an explicit player choice');
@@ -1715,6 +1726,11 @@ try {
     advanceMatch(match, { type: 'ROLL', result: { die1: 1, die2: 1, total: 2, doubles: true } }),
     match,
     'a finished player cannot roll while choosing an endgame path',
+  );
+  assert.equal(
+    advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }),
+    match,
+    'endgame choices stay locked until all players have finished and attribute awards are known',
   );
 
   // Finish rewards use arrival order, not Wealth, and are included in the
@@ -1790,22 +1806,47 @@ try {
     'the final attribute bonuses cannot be awarded twice',
   );
 
-  assert.equal(advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' }).players[0].endgame.status, 'RESOLVED');
+  function endgameChoiceFixture(base, playerIndex, updates = {}) {
+    return {
+      ...base,
+      phase: 'endgame',
+      turnIndex: playerIndex,
+      pending: null,
+      players: base.players.map((player, index) => {
+        if (index !== playerIndex) return player;
+        const updated = { ...player, ...updates };
+        const snapshot = { ...player.endgame.snapshot, ...updates };
+        return {
+          ...updated,
+          endgame: {
+            ...player.endgame,
+            snapshot,
+            baseValue: calculateEndgameBaseValue(snapshot),
+          },
+        };
+      }),
+    };
+  }
+
   assert.equal(cashOutValue(100000).multiplier, 1);
   assert.equal(cashOutValue(100000).finalGameValue, 100000, 'Cash Out preserves the locked base value');
-  assert.equal(doubleDownValue(100000, 2).effectiveRoll, 2);
-  assert.equal(doubleDownValue(100000, 2).multiplier, 0.25);
-  assert.equal(doubleDownValue(100000, 8).effectiveRoll, 8);
-  assert.equal(doubleDownValue(100000, 8).multiplier, 2.75);
-  assert.equal(finalGambleValue(100000, 10000).adjustedDelta, 10000);
-  assert.equal(finalGambleValue(100000, -10000).adjustedDelta, -10000);
-  assert.equal(finalGambleValue(100000, 10000, 50000).adjustedDelta, 60000, 'the all-in stake adds to the card delta');
+  for (const [total, multiplier] of [[2, 0.25], [3, 0.25], [4, 0.5], [5, 0.85], [6, 1.25], [7, 1.9], [8, 2.75]]) {
+    assert.equal(doubleDownValue(100000, total).effectiveRoll, total);
+    assert.equal(doubleDownValue(100000, total).multiplier, multiplier, `Double Down total ${total} keeps its established multiplier`);
+  }
   {
-    const stakePlayer = { wealth: 100000, equipment: { car: null }, assetLevels: {}, upgradeTokens: 2 };
+    const stakePlayer = {
+      equipment: { car: 'budget-racer', lifestyle: null, companion: null, property: null },
+      assetLevels: { 'budget-racer': 2 },
+      upgradeTokens: 2,
+    };
+    const assetBase = calculateAdjustedAssetValue(stakePlayer, 1);
     const stakeWin = resolveFinalGambleStake(stakePlayer, () => 0.1);
-    assert(stakeWin.won && stakeWin.delta === 100000 + 2 * 20000, 'winning doubles staked Wealth and pays out held Upgrade Tokens');
+    assert(stakeWin.won && stakeWin.adjustedAssetValue === Math.round(assetBase * 1.4), 'winning assets score at 140%');
+    assert.equal(stakeWin.credits, 800, 'a winning Final Gamble converts each token to 400 Credits');
     const stakeLoss = resolveFinalGambleStake(stakePlayer, () => 0.9);
-    assert(!stakeLoss.won && stakeLoss.delta === -100000, 'losing forfeits the staked Wealth');
+    assert(!stakeLoss.won && stakeLoss.adjustedAssetValue === 0, 'losing assets score zero');
+    assert.equal(stakeLoss.credits, 0, 'a losing Final Gamble converts no tokens to Credits');
   }
   {
     const don = createMatch(characters[0].id);
@@ -1820,16 +1861,25 @@ try {
     }
     assert(outcomes.has('win') && outcomes.has('lose'), 'Double Or Nothing resolves both ways');
   }
-  const cashResult = advanceMatch(match, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' });
+  const wagerAsset = assets.find(asset => asset.category === 'car');
+  const endgameCar = wagerAsset?.id ?? 'budget-racer';
+  const cashStart = endgameChoiceFixture(finishOrderFixture, 0, {
+    equipment: { car: endgameCar, lifestyle: null, companion: null, property: null },
+    assetLevels: { [endgameCar]: 3 },
+    upgradeTokens: 5,
+    heldUpgradeTokens: 3,
+  });
+  const cashResult = advanceMatch(cashStart, { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' });
   assert.equal(cashResult.phase, 'landed');
   assert.equal(cashResult.players[0].endgame.status, 'RESOLVED');
   assert.equal(cashResult.players[0].endgame.choice, 'CASH_OUT');
-  assert.equal(
-    cashResult.players[0].endgame.finalGameValue,
-    cashOutValue(cashResult.players[0].endgame.baseValue).finalGameValue,
-  );
-  assert.equal(cashResult.players[0].heldUpgradeTokens, 3, 'endgame modifiers do not spend held tokens');
-  assert.equal(cashResult.players[0].upgradeTokens, 5, 'endgame resolution does not mutate the unheld token pool');
+  assert.equal(cashResult.players[0].endgame.scoreBreakdown.assetMultiplier, 0.5, 'Cash Out scores assets at 50% of nominal value');
+  assert.equal(cashResult.players[0].endgame.scoreBreakdown.adjustedAssetValue, Math.round(cashResult.players[0].endgame.scoreBreakdown.assetBaseValue * 0.5));
+  assert.equal(cashResult.players[0].endgame.finalGameValue, cashResult.players[0].endgame.scoreBreakdown.finalScore);
+  assert.equal(cashResult.players[0].heldUpgradeTokens, 0, 'settlement consumes held tokens');
+  assert.equal(cashResult.players[0].upgradeTokens, 0, 'settlement consumes the complete token pool');
+  assert.equal(cashResult.players[0].endgame.tokenConversion.credits, 1000, 'Cash Out converts five tokens at 200 Credits each');
+  assert.equal(cashResult.players[0].equipment.car, endgameCar, 'Cash Out retains owned assets');
   assert(eventTypes(cashResult).includes('ENDGAME_CHOICE_SELECTED'));
   assert(eventTypes(cashResult).includes('CASH_OUT_RESOLVED'));
   assert(eventTypes(cashResult).includes('ENDGAME_COMPLETED'));
@@ -1840,14 +1890,13 @@ try {
   );
   const continued = advanceMatch(cashResult, { type: 'NEXT_TURN' });
   assert.equal(continued.turnIndex, 1);
-  assert.equal(continued.phase, 'ready');
+  assert.equal(continued.phase, 'endgame', 'after everyone finishes, pending endgame choices resolve in order');
   assert.equal(continued.players[0].status, 'FINISHED');
-  assert.equal(continued.players[1].status, 'ACTIVE', 'the remaining players continue after a finisher resolves');
-  assert.equal(continued.turnCounter, 2, 'the finishing player’s last normal turn is counted exactly once');
-  assert.equal(continued.round, 1);
+  assert.equal(continued.players[1].endgame.status, 'PENDING');
   const queuedEndgame = {
     ...cashResult,
     players: cashResult.players.map((player, index) => {
+      if (index === 1 || index === 2) return { ...player, status: 'ACTIVE', position: 30, endgame: null };
       if (index !== 3) return player;
       const finishedPlayer = { ...player, position: 75, status: 'FINISHED' };
       return {
@@ -1865,14 +1914,12 @@ try {
   assert.equal(nextScheduledPlayer.phase, 'ready');
   assert.equal(nextScheduledPlayer.players[3].endgame.status, 'PENDING');
 
-  const doubleStartBase = withoutAbilities(start(73), 0);
-  const doubleStart = {
-    ...doubleStartBase,
-    players: doubleStartBase.players.map((player, index) => index === 0
-      ? { ...player, heldUpgradeTokens: 4, upgradeTokens: 4 }
-      : player),
-  };
-  const doublePending = move(doubleStart, 2);
+  const doublePending = endgameChoiceFixture(finishOrderFixture, 0, {
+    equipment: { car: endgameCar, lifestyle: null, companion: null, property: null },
+    assetLevels: { [endgameCar]: 3 },
+    heldUpgradeTokens: 4,
+    upgradeTokens: 4,
+  });
   const doubleResult = withRandomValue(0.999, () =>
     advanceMatch(doublePending, { type: 'CHOOSE_ENDGAME', choice: 'DOUBLE_DOWN' }),
   );
@@ -1881,66 +1928,83 @@ try {
   assert.equal(doubleResult.players[0].endgame.effectiveRoll, 8);
   assert.equal(doubleResult.players[0].endgame.multiplier, 2.75);
   assert.equal(doubleResult.players[0].endgame.finalGameValue, Math.round(doubleResult.players[0].endgame.baseValue * 2.75));
+  assert.equal(doubleResult.players[0].endgame.scoreBreakdown.assetMultiplier, 0.7, 'Double Down scores assets at 70% before the dice multiplier');
+  assert.equal(doubleResult.players[0].endgame.tokenConversion.credits, 800, 'Double Down converts tokens at 200 Credits each');
+  assert.equal(doubleResult.players[0].upgradeTokens, 0, 'Double Down consumes tokens after conversion');
+  assert.equal(doubleResult.players[0].equipment.car, endgameCar, 'Double Down does not risk owned assets');
   assert(eventTypes(doubleResult).includes('DOUBLE_DOWN_RESOLVED'));
   assert(eventTypes(doubleResult).includes('ENDGAME_COMPLETED'));
   assert.equal(doubleResult.players[0].history.doubleDowns, 1, 'resolved Double Downs are retained in match history');
 
-  const wagerAsset = assets.find(asset => asset.category === 'car');
-  const gambleStartFixture = withoutAbilities(start(73), 0);
-  const gambleStartBase = {
-    ...gambleStartFixture,
-    players: gambleStartFixture.players.map((player, index) => index === 0
-      ? {
-        ...player,
-        equipment: { ...player.equipment, car: wagerAsset.id },
-        assetLevels: { ...player.assetLevels, [wagerAsset.id]: 2 },
-        upgradeTokens: 2,
-      }
-      : player),
-  };
-  const gambleDeck = gambleStartBase.cardPiles.gamble;
-  const gambleCardId = 'gamble-edge';
-  const gambleStart = {
-    ...gambleStartBase,
-    cardPiles: {
-      ...gambleStartBase.cardPiles,
-      gamble: {
-        ...gambleDeck,
-        drawPile: [gambleCardId, ...gambleDeck.drawPile.filter(cardId => cardId !== gambleCardId)],
-      },
-    },
-  };
-  const gamblePending = move(gambleStart, 2);
+  const gamblePending = endgameChoiceFixture(finishOrderFixture, 0, {
+    equipment: { car: endgameCar, lifestyle: null, companion: null, property: null },
+    assetLevels: { [endgameCar]: 2 },
+    upgradeTokens: 2,
+    heldUpgradeTokens: 2,
+  });
+  const gambleWealth = gamblePending.players[0].wealth;
+  const gambleAttributes = [gamblePending.players[0].aiSkill, gamblePending.players[0].fame, gamblePending.players[0].lifestyle, gamblePending.players[0].influence];
+  const gamblePilesBefore = gamblePending.cardPiles;
   const gambleResult = withRandomValue(0.999, () =>
     advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
   );
   assert.equal(gambleResult.players[0].endgame.status, 'RESOLVED');
   assert.equal(gambleResult.players[0].endgame.choice, 'FINAL_GAMBLE');
-  assert.equal(gambleResult.players[0].endgame.gambleCardId, gambleCardId);
   assert(Number.isFinite(gambleResult.players[0].endgame.gambleRawDelta));
   assert(Number.isFinite(gambleResult.players[0].endgame.gambleAdjustedDelta));
   assert(gambleResult.players[0].endgame.finalGameValue >= 0);
-  assert(gambleResult.cardPiles.gamble.discardPile.includes(gambleCardId));
-  assert.equal(gambleResult.cardPiles.gamble.inFlight.length, 0);
-  assert(eventTypes(gambleResult).includes('CARD_DRAW'));
-  assert(eventTypes(gambleResult).includes('CARD_RESOLVED'));
+  assert.deepEqual(gambleResult.cardPiles, gamblePilesBefore, 'Final Gamble resolves without drawing or discarding a card');
+  assert(!eventTypes(gambleResult).includes('CARD_DRAW'));
+  assert(!eventTypes(gambleResult).includes('CARD_RESOLVED'));
   assert(eventTypes(gambleResult).includes('FINAL_GAMBLE_RESOLVED'));
   assert(eventTypes(gambleResult).includes('ENDGAME_COMPLETED'));
-  assert.equal(gambleResult.players[0].history.gambleCardsDrawn, 1, 'Final Gamble card draws are retained in match history');
-  assert.equal(gambleResult.players[0].history.finalGambles, 1, 'Final Gamble choices are counted for title evaluation');
-  assert.equal(gambleResult.players[0].upgradeTokens, 0, 'Final Gamble consumes every staked Upgrade Token');
+  assert.equal(gambleResult.players[0].history.gambleCardsDrawn, gamblePending.players[0].history.gambleCardsDrawn, 'Final Gamble does not count as a card draw');
+  assert.equal(gambleResult.players[0].history.finalGambles, gamblePending.players[0].history.finalGambles + 1, 'Final Gamble choices are counted for title evaluation');
+  assert.equal(gambleResult.players[0].upgradeTokens, 0, 'Final Gamble consumes tokens after settlement');
   assert.equal(gambleResult.players[0].endgame.gambleStake?.won, false, 'the loss case is deterministic');
   const gambleAssetDisposition = gambleResult.assetEventLog.find(event => event.type === 'ASSET_DISPOSED' && event.assetId === wagerAsset.id);
   assert.equal(gambleAssetDisposition?.effectId, 'FINAL_GAMBLE_LOSS', 'final-gamble asset forfeiture is recorded per asset');
   assert.equal(gambleAssetDisposition?.reason, 'Final Gamble');
-  assert.equal(gambleResult.players[0].wealth, 0, 'a failed Final Gamble forfeits remaining Wealth');
+  assert.equal(gambleResult.players[0].wealth, gambleWealth, 'a failed Final Gamble does not forfeit Wealth');
+  assert.deepEqual([gambleResult.players[0].aiSkill, gambleResult.players[0].fame, gambleResult.players[0].lifestyle, gambleResult.players[0].influence], gambleAttributes, 'a failed Final Gamble preserves attributes');
+  assert.equal(gambleResult.players[0].endgame.scoreBreakdown.assetMultiplier, 0);
+  assert.equal(gambleResult.players[0].endgame.tokenConversion.credits, 0, 'a loss converts no tokens');
   assert.deepEqual(gambleResult.players[0].equipment, { car: null, lifestyle: null, companion: null, property: null }, 'a failed Final Gamble removes all staked assets');
   const gambleWinResult = withRandomValue(0, () =>
     advanceMatch(gamblePending, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
   );
   assert.equal(gambleWinResult.players[0].endgame.gambleStake?.won, true, 'the win case is deterministic');
   assert.equal(gambleWinResult.players[0].equipment.car, wagerAsset.id, 'a winning Final Gamble retains its staked asset');
-  assert.equal(gambleWinResult.players[0].upgradeTokens, 0, 'a winning Final Gamble also spends the staked tokens');
+  assert.equal(gambleWinResult.players[0].wealth, gambleWealth, 'a Final Gamble win does not change Wealth');
+  assert.deepEqual([gambleWinResult.players[0].aiSkill, gambleWinResult.players[0].fame, gambleWinResult.players[0].lifestyle, gambleWinResult.players[0].influence], gambleAttributes, 'a Final Gamble win preserves attributes');
+  assert.equal(gambleWinResult.players[0].endgame.scoreBreakdown.assetMultiplier, 1.4);
+  assert.equal(gambleWinResult.players[0].endgame.tokenConversion.credits, 800, 'a win converts tokens at 400 Credits each');
+  assert.equal(gambleWinResult.players[0].upgradeTokens, 0, 'a winning Final Gamble consumes tokens after conversion');
+
+  const tokenOnlyStart = endgameChoiceFixture(finishOrderFixture, 0, {
+    equipment: { car: null, lifestyle: null, companion: null, property: null },
+    assetLevels: {},
+    upgradeTokens: 1,
+    heldUpgradeTokens: 1,
+  });
+  const tokenOnlyResult = withRandomValue(0, () =>
+    advanceMatch(tokenOnlyStart, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
+  );
+  assert.equal(tokenOnlyResult.players[0].endgame.status, 'RESOLVED', 'a token alone enables Final Gamble');
+  assert.equal(tokenOnlyResult.players[0].endgame.scoreBreakdown.assetBaseValue, 0);
+  assert.equal(tokenOnlyResult.players[0].endgame.tokenConversion.credits, 400);
+  assert.equal(chooseCpuEndgameChoice(0, 100000, () => 0.99, false), 'DOUBLE_DOWN', 'CPU cannot choose an unavailable Final Gamble');
+  const noGambleStart = endgameChoiceFixture(finishOrderFixture, 0, {
+    equipment: { car: null, lifestyle: null, companion: null, property: null },
+    assetLevels: {},
+    upgradeTokens: 0,
+    heldUpgradeTokens: 0,
+  });
+  assert.equal(
+    advanceMatch(noGambleStart, { type: 'CHOOSE_ENDGAME', choice: 'FINAL_GAMBLE' }),
+    noGambleStart,
+    'Final Gamble is rejected when the player has no asset or token',
+  );
   assertCompleteCardPiles(gambleResult.cardPiles);
 
   let gambleCardForfeit = null;
@@ -1999,14 +2063,29 @@ try {
         },
       };
       const choice = index === 3 ? 'FINAL_GAMBLE' : 'CASH_OUT';
+      const snapshot = createFinishSnapshot(titledPlayer, player.slot, player.isCPU, 3, 1);
+      const tokenConversion = {
+        tokens: titledPlayer.upgradeTokens,
+        creditsPerToken: choice === 'FINAL_GAMBLE' ? 400 : 200,
+        credits: titledPlayer.upgradeTokens * (choice === 'FINAL_GAMBLE' ? 400 : 200),
+      };
       const endgame = {
         status: 'RESOLVED',
-        snapshot: createFinishSnapshot(titledPlayer, player.slot, player.isCPU, 3, 1),
+        snapshot,
         baseValue: 300000,
         choice,
         finalGameValue: 350000,
+        scoreBreakdown: createEndgameScoreBreakdown(snapshot, choice, 0, 350000, 0, choice === 'FINAL_GAMBLE'),
+        tokenConversion,
       };
-      return { ...titledPlayer, status: 'FINISHED', endgame };
+      const creditRewardReceipt = {
+        total: tokenConversion.credits,
+        game: 0,
+        endgame: tokenConversion.credits,
+        milestones: 0,
+        tokenConversion,
+      };
+      return { ...titledPlayer, status: 'FINISHED', endgame, creditRewardReceipt };
     }),
   };
   assert.equal(
@@ -2036,12 +2115,23 @@ try {
     'equivalent player histories receive the same title regardless of human or CPU control',
   );
   const { FinishLinePanel, MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
+  const noGambleMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
+    player: noGambleStart.players[0],
+    endgame: noGambleStart.players[0].endgame,
+    boardId: noGambleStart.boardId,
+    finishPlace: 1,
+    finishBonus: FINISH_ORDER_WEALTH_REWARDS[0],
+    onChoose: () => {},
+    onContinue: () => {},
+  }));
+  assert.match(noGambleMarkup, /<button[^>]*disabled=""[^>]*data-testid="button-finish-choice-final_gamble"/, 'Final Gamble is visibly disabled without assets or tokens');
   const resultsMarkup = renderToStaticMarkup(
     React.createElement(MatchResultsPanel, { players: titledCompleteMatch.players, finishOrder: [2, 3, 0, 1] }),
   );
   assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
-  assert(resultsMarkup.includes('UPGRADE TOKENS / FINAL GAMBLE') && resultsMarkup.includes('Unused tokens remain available for the final gamble'), 'final records show unused tokens carrying through to the final gamble');
+  assert(resultsMarkup.includes('TOKEN CONVERSION') && resultsMarkup.includes('CREDITS'), 'final records report the separate token-to-Credits settlement');
+  assert(resultsMarkup.includes('Final score breakdown'), 'final records show the score components');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('BOARD FINISH / 1ST') && resultsMarkup.includes('WEALTH BONUS'), 'final records distinguish arrival order from final-value placement');
   const rankedPlayers = titledCompleteMatch.players.map((player, index) => ({
@@ -2064,10 +2154,9 @@ try {
     onContinue: () => {},
   }));
   assert(finishPanelMarkup.includes('4TH TO FINISH!') && finishPanelMarkup.includes('FINISH BONUS'), 'finish screen announces arrival place and the Wealth bonus');
-  assert(finishPanelMarkup.includes('UPGRADE TOKENS / FINAL GAMBLE'), 'the finish screen shows unused tokens carrying into the final gamble');
+  assert(finishPanelMarkup.includes('UPGRADE TOKENS / NOT SCORE VALUE') && finishPanelMarkup.includes('Cash Out or Double Down'), 'the finish screen explains token conversion separately from score');
 
-  const cpuFinishStart = withoutAbilities(start(73, 1), 1);
-  const cpuPending = move(cpuFinishStart, 2);
+  const cpuPending = { ...finishOrderFixture, phase: 'endgame', turnIndex: 1 };
   assert.equal(cpuPending.phase, 'endgame');
   assert.equal(cpuPending.players[1].endgame.status, 'PENDING');
   const cpuResult = advanceMatch(cpuPending, { type: 'AUTO_DECIDE' });
@@ -2075,13 +2164,23 @@ try {
   assert.equal(cpuResult.players[1].endgame.status, 'RESOLVED');
   assert(['CASH_OUT', 'DOUBLE_DOWN', 'FINAL_GAMBLE'].includes(cpuResult.players[1].endgame.choice));
   assert(eventTypes(cpuResult).includes('ENDGAME_COMPLETED'), 'CPU endgame choices resolve and log without human input');
-  const lastSlotPending = move(withoutAbilities(start(73, 3), 3), 2);
+  const lastSlotPending = {
+    ...finishOrderFixture,
+    phase: 'endgame',
+    turnIndex: 3,
+    players: finishOrderFixture.players.map((player, index) => index === 3 ? { ...player, isCPU: true } : player),
+  };
+  const turnEndsBeforeEndgameResolution = eventTypes(lastSlotPending).filter(type => type === 'TURN_END').length;
   const lastSlotResolved = advanceMatch(lastSlotPending, { type: 'AUTO_DECIDE' });
   const nextRound = advanceMatch(lastSlotResolved, { type: 'NEXT_TURN' });
   assert.equal(nextRound.turnIndex, 0);
   assert.equal(nextRound.round, 2, 'finishing in the final player slot advances the round');
   assert.equal(nextRound.turnCounter, 2);
-  assert.equal(eventTypes(lastSlotResolved).filter(type => type === 'TURN_END').length, 1, 'finish resolution does not emit a duplicate turn end');
+  assert.equal(
+    eventTypes(lastSlotResolved).filter(type => type === 'TURN_END').length,
+    turnEndsBeforeEndgameResolution,
+    'endgame resolution does not emit a duplicate turn end',
+  );
   const lastSlotFinishedEarlier = {
     ...lastSlotResolved,
     turnCounter: 2,

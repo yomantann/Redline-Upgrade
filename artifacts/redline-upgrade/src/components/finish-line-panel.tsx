@@ -5,7 +5,6 @@ import { effectiveSalaryAmount } from '@/game/player';
 import {
   ENDGAME_BALANCE,
   calculateAssetValue,
-  calculateAttributePointValue,
   calculateEndgameBaseValue,
   type EndgameChoice,
   type EndgameScoreBreakdown,
@@ -22,6 +21,8 @@ import { useState } from 'react';
 import { CharacterPortrait } from './character-portrait';
 import { AssetArtwork } from './asset-artwork';
 import './finish-line-panel.css';
+
+const formatCredits = (amount: number) => Math.max(0, Math.round(amount)).toLocaleString();
 
 export interface FinishLinePanelProps {
   player: MatchPlayer;
@@ -104,11 +105,12 @@ function ScoreBreakdownDetails({
 }) {
   return (
     <details className="finish-line-score-breakdown">
-      <summary>Scoring breakdown</summary>
+      <summary>Final score breakdown</summary>
       <dl>
         <div><dt>Wealth before finish bonus</dt><dd>{formatMoney(breakdown.wealthBeforeFinishBonus)}</dd></div>
         <div><dt>Finish-order wealth bonus</dt><dd>+{formatMoney(breakdown.finishOrderBonus)}</dd></div>
-        <div><dt>Attribute-leader bonus</dt><dd>+{formatMoney(breakdown.attributeLeaderBonus)}</dd></div>
+        <div><dt>Attribute-leader bonus included above</dt><dd>+{formatMoney(breakdown.attributeLeaderBonus)}</dd></div>
+        <div><dt>Scored Wealth after bonuses</dt><dd>{formatMoney(breakdown.wealth)}</dd></div>
         <div><dt>Assets · {Math.round(breakdown.assetMultiplier * 100)}% of {formatMoney(breakdown.assetBaseValue)}</dt><dd>{formatMoney(breakdown.adjustedAssetValue)}</dd></div>
         <div><dt>Attribute point value</dt><dd>{formatMoney(breakdown.attributePointValue)}</dd></div>
         <div><dt>Score before endgame adjustment</dt><dd>{formatMoney(breakdown.preAdjustmentScore)}</dd></div>
@@ -174,8 +176,8 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           <span className="mono">UPGRADE TOKENS / NOT SCORE VALUE</span>
           <strong>{snapshot.upgradeTokens} TO CONVERT</strong>
           <small>
-            Cash Out or Double Down: {formatMoney(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.
-            Final Gamble: {formatMoney(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} on a win, $0 on a loss.
+            Cash Out or Double Down: {formatCredits(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.
+            Final Gamble: {formatCredits(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} on a win, 0 on a loss.
             {` ${snapshot.history.upgradeTokensSpent} spent during the match.`}
           </small>
         </div>
@@ -268,7 +270,7 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
             {endgame.gambleStake && (
               <>
                 <small data-testid="finish-gamble-stake">
-                  TOKENS / {endgame.gambleStake.tokens} × {formatMoney(endgame.gambleStake.creditsPerToken)} = {formatMoney(endgame.gambleStake.credits)} CREDITS
+                  TOKENS / {endgame.gambleStake.tokens} × {formatCredits(endgame.gambleStake.creditsPerToken)} = {formatCredits(endgame.gambleStake.credits)} CREDITS
                 </small>
               </>
             )}
@@ -381,8 +383,8 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
                 <strong>{choice.title}</strong>
                 <span>{choice.description}</span>
                 <span className="mono finish-line-choice-value">
-                  {choice.id === 'CASH_OUT' && `SCORE ${formatMoney(cashOutScore)} · ${endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut} CREDITS`}
-                  {choice.id === 'DOUBLE_DOWN' && `2d4 · SCORE ${formatMoney(doubleDownOutcomes[0].finalGameValue)}–${formatMoney(doubleDownOutcomes[doubleDownOutcomes.length - 1].finalGameValue)} · ${endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown} CREDITS`}
+                  {choice.id === 'CASH_OUT' && `SCORE ${formatMoney(cashOutScore)} · ${formatCredits(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} CREDITS`}
+                  {choice.id === 'DOUBLE_DOWN' && `2d4 · SCORE ${formatMoney(doubleDownOutcomes[0].finalGameValue)}–${formatMoney(doubleDownOutcomes[doubleDownOutcomes.length - 1].finalGameValue)} · ${formatCredits(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown)} CREDITS`}
                   {choice.id === 'FINAL_GAMBLE' && (canFinalGamble
                     ? `WIN ${formatMoney(finalGambleWinScore)} / LOSE ${formatMoney(finalGambleLossScore)}`
                     : 'UNAVAILABLE · NEED AN ASSET OR TOKEN')}
@@ -396,12 +398,12 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
               <span className="eyebrow">BEFORE YOU CONFIRM // {selected.title}</span>
               {selectedChoice === 'CASH_OUT' && (
                 <>
-                  <p><strong>Final score: {formatMoney(cashOutScore)}.</strong> Assets score at 50% of their {formatMoney(assetValue)} level value. Wealth, stats, and all {assetCount} assets remain unchanged. {endgame.snapshot.upgradeTokens} tokens convert to {formatMoney(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.</p>
+                  <p><strong>Final score: {formatMoney(cashOutScore)}.</strong> Assets score at 50% of their {formatMoney(assetValue)} level value. Wealth, stats, and all {assetCount} assets remain unchanged. {endgame.snapshot.upgradeTokens} tokens convert to {formatCredits(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.</p>
                 </>
               )}
               {selectedChoice === 'DOUBLE_DOWN' && (
                 <>
-                  <p><strong>Assets score at 70% before the 2d4 multiplier.</strong> Wealth, stats, and all {assetCount} assets remain unchanged. Tokens convert at {formatMoney(ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown)} Credits each.</p>
+                  <p><strong>Assets score at 70% before the 2d4 multiplier.</strong> Wealth, stats, and all {assetCount} assets remain unchanged. Tokens convert at {formatCredits(ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown)} Credits each.</p>
                   <div className="finish-line-dice-outcomes" aria-label="Double Down 2d4 outcomes">
                     {doubleDownOutcomes.map((outcome) => (
                       <span key={outcome.total}>2d4 {outcome.total} · {outcome.multiplier}× · {formatMoney(outcome.finalGameValue)}</span>
@@ -410,7 +412,7 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
                 </>
               )}
               {selectedChoice === 'FINAL_GAMBLE' && (
-                <p><strong>One 50/50 result.</strong> Win: assets score at 140%, all assets stay owned, and tokens convert to {formatMoney(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} Credits. Loss: assets score $0 and are forfeited; tokens convert to $0 Credits. Wealth and stats are never risked. Potential scores: win {formatMoney(finalGambleWinScore)}, loss {formatMoney(finalGambleLossScore)}.</p>
+                <p><strong>One 50/50 result.</strong> Win: assets score at 140%, all assets stay owned, and tokens convert to {formatCredits(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} Credits. Loss: assets score $0 and are forfeited; tokens convert to 0 Credits. Wealth and stats are never risked. Potential scores: win {formatMoney(finalGambleWinScore)}, loss {formatMoney(finalGambleLossScore)}.</p>
               )}
               <div className="finish-line-choice-review-actions">
                 <button type="button" className="action secondary" onClick={() => setSelectedChoice(null)}>CANCEL</button>
@@ -473,7 +475,14 @@ export function MatchResultsPanel({
         <section className="finish-line-results-list" aria-label="Final match standings">
           {resolvedPlayers.map((player, index) => {
             const endgame = player.endgame!;
-            const snapshotAssets = calculateAssetValue(endgame.snapshot);
+            const assetScoreMultiplier = endgame.scoreBreakdown?.assetMultiplier
+              ?? (endgame.choice === 'CASH_OUT'
+                ? ENDGAME_BALANCE.assetValueMultipliers.cashOut
+                : endgame.choice === 'DOUBLE_DOWN'
+                  ? ENDGAME_BALANCE.assetValueMultipliers.doubleDown
+                  : endgame.gambleStake?.won
+                    ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+                    : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss);
             const finalAssets = new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)));
             const gambleLostAssets = endgame.choice === 'FINAL_GAMBLE' && endgame.gambleStake?.won === false
               ? new Set(Object.values(endgame.snapshot.equipment).filter((assetId): assetId is string => Boolean(assetId)))
@@ -489,27 +498,39 @@ export function MatchResultsPanel({
               .filter((event) => event.playerIndex === player.slot && (event.type === 'ASSET_ACQUIRED' || event.type === 'ASSET_PURCHASED'))
               .map((event) => event.assetId);
             const reconciledAssetIds = [...new Set([...acquiredAssets, ...finalAssets, ...gambleLostAssets, ...disposedAssets, ...transferredOutAssets])];
-            const reconciliation = reconciledAssetIds.map((assetId) => ({
-              assetId,
-              status: finalAssets.has(assetId) ? 'RETAINED' as const
-                : gambleLostAssets.has(assetId) ? 'LOST' as const
-                  : disposedAssets.has(assetId) || transferredOutAssets.has(assetId) ? 'LOST' as const
-                    : 'UNEXPLAINED' as const,
-              reason: finalAssets.has(assetId) ? 'Retained after endgame'
-                : gambleLostAssets.has(assetId) ? 'Forfeited in Final Gamble'
-                  : disposedEventsByAsset.has(assetId) ? `Forfeited by ${disposedEventsByAsset.get(assetId)?.reason ?? 'a Gamble card'}`
-                  : transferredOutAssets.has(assetId) ? 'Transferred out'
-                    : 'No recorded loss event',
-              level: player.assetLevels[assetId] ?? endgame.snapshot.assetLevels[assetId] ?? disposedEventsByAsset.get(assetId)?.assetLevel ?? 1,
-            }));
-            const finishStatsValue = endgame.snapshot.aiSkill * 15_000
-              + endgame.snapshot.fame * 8_000
-              + endgame.snapshot.lifestyle * 10_000
-              + endgame.snapshot.influence * 7_500;
+            const reconciliation = reconciledAssetIds.map((assetId) => {
+              const disposal = disposedEventsByAsset.get(assetId);
+              const sold = disposal?.effectId === 'ASSET_SOLD' || disposal?.reason?.toLowerCase().includes('sold');
+              const status = finalAssets.has(assetId) ? 'RETAINED' as const
+                : gambleLostAssets.has(assetId) ? 'FORFEITED' as const
+                  : sold ? 'SOLD' as const
+                    : disposedAssets.has(assetId) || transferredOutAssets.has(assetId) ? 'LOST' as const
+                      : 'UNEXPLAINED' as const;
+              const level = player.assetLevels[assetId]
+                ?? endgame.snapshot.assetLevels[assetId]
+                ?? disposal?.assetLevel
+                ?? 1;
+              const asset = getAsset(assetId);
+              const nominalValue = asset ? assetValueAtLevel(asset, level as AssetLevel) : 0;
+              return {
+                assetId,
+                status,
+                reason: status === 'RETAINED' ? 'Still owned after all endgame decisions'
+                  : status === 'FORFEITED' ? 'Forfeited after the Final Gamble loss'
+                    : status === 'SOLD' ? `Sold during the match${disposal?.reason ? `: ${disposal.reason}` : ''}`
+                      : disposedEventsByAsset.has(assetId) ? `Lost: ${disposal?.reason ?? 'disposition event recorded'}`
+                        : transferredOutAssets.has(assetId) ? 'Transferred out'
+                          : 'No recorded loss event',
+                level,
+                adjustedValue: status === 'RETAINED' ? Math.round(nominalValue * assetScoreMultiplier) : 0,
+                nominalValue,
+              };
+            });
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
             const finishPlace = finishOrder.indexOf(player.slot) + 1;
-            const finishBonus = finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0;
+            const finishBonus = endgame.snapshot.finishOrderBonus
+              ?? (finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0);
             return (
               <article className={`finish-line-result-row ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
                 <div className={`finish-line-result-placement placement-${index + 1}`} aria-label={`Final placement ${index + 1}`}>
@@ -533,9 +554,15 @@ export function MatchResultsPanel({
                   <strong>{career?.name ?? 'UNASSIGNED'}</strong>
                 </div>
                 <div className="finish-line-result-token">
-                   <span className="mono">UPGRADE TOKENS / FINAL GAMBLE</span>
-                  <strong>{endgame.snapshot.upgradeTokens} CARRY OVER</strong>
-                  <small>Unused tokens remain available for the final gamble · {endgame.snapshot.history.upgradeTokensSpent} spent during the match</small>
+                  <span className="mono">TOKEN CONVERSION</span>
+                  <strong>{endgame.tokenConversion
+                    ? `${endgame.tokenConversion.tokens} × ${formatCredits(endgame.tokenConversion.creditsPerToken)} = ${formatCredits(endgame.tokenConversion.credits)} CREDITS`
+                    : 'NO TOKENS CONVERTED'}</strong>
+                  <small>
+                    {player.creditRewardReceipt
+                      ? 'Included in the account wallet receipt below. Tokens do not affect dollar score.'
+                      : 'No account wallet receipt is attached to this seat. Tokens do not affect dollar score.'}
+                  </small>
                 </div>
                 <div className="finish-line-result-value">
                   <span className="mono">FINAL GAME VALUE</span>
@@ -547,9 +574,15 @@ export function MatchResultsPanel({
                     <div><span className="mono">FAME / VALUE</span><strong>{endgame.snapshot.fame.toLocaleString()} / {formatMoney(endgame.snapshot.fame * 8_000)}</strong></div>
                     <div><span className="mono">LIFESTYLE / VALUE</span><strong>{endgame.snapshot.lifestyle.toLocaleString()} / {formatMoney(endgame.snapshot.lifestyle * 10_000)}</strong></div>
                     <div><span className="mono">INFLUENCE / VALUE</span><strong>{endgame.snapshot.influence.toLocaleString()} / {formatMoney(endgame.snapshot.influence * 7_500)}</strong></div>
-                    <div><span className="mono">BASE VALUE BREAKDOWN</span><strong>{formatMoney(endgame.snapshot.wealth)} WEALTH + {formatMoney(snapshotAssets)} ASSETS + {formatMoney(finishStatsValue)} ATTRIBUTES</strong></div>
                    <div><span className="mono">FINAL CHOICE</span><strong>{endgame.choice === 'CASH_OUT' ? 'CASH OUT' : endgame.choice === 'DOUBLE_DOWN' ? 'DOUBLE DOWN' : endgame.choice === 'FINAL_GAMBLE' ? 'FINAL GAMBLE' : 'NONE'}</strong>{endgame.choice === 'DOUBLE_DOWN' && endgame.multiplier !== undefined && <small>x{endgame.multiplier} multiplier</small>}</div>
-                   <div><span className="mono">FINAL GAMBLE</span><strong>{typeof endgame.gambleAdjustedDelta === 'number' ? `${endgame.gambleAdjustedDelta >= 0 ? '+' : '-'}${formatMoney(Math.abs(endgame.gambleAdjustedDelta))}` : 'NOT TAKEN'}</strong></div>
+                   {endgame.scoreBreakdown && endgame.choice && (
+                     <ScoreBreakdownDetails
+                       breakdown={endgame.scoreBreakdown}
+                       choice={endgame.choice}
+                       multiplier={endgame.multiplier}
+                       dice={endgame.dice}
+                     />
+                   )}
                  </div>
                  <div className="finish-line-result-extra">
                    <div className="finish-line-result-verdict">
@@ -558,9 +591,9 @@ export function MatchResultsPanel({
                      {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
                       {finishPlace > 0 && <small className="finish-order-result mono">BOARD FINISH / {finishOrdinal(finishPlace)} · +{formatMoney(finishBonus)} WEALTH BONUS</small>}
                       {endgame.choice === 'FINAL_GAMBLE' && <p>{endgame.gambleStake?.won
-                        ? `Final Gamble won: the stake added ${formatMoney(endgame.gambleStake.wealth + endgame.gambleStake.assetValue + endgame.gambleStake.tokenValue)} to final value; assets remain owned.`
-                        : `Final Gamble lost: ${formatMoney(endgame.gambleStake?.wealth ?? 0)} Wealth, ${formatMoney(endgame.gambleStake?.assetValue ?? 0)} in assets, and ${endgame.gambleStake?.tokens ?? 0} Upgrade Tokens were forfeited.`}</p>}
-                      <small className="finish-order-result mono">ENDGAME OUTCOME / {endgame.choice === 'CASH_OUT' ? 'BASE VALUE LOCKED AT 1×' : endgame.choice === 'DOUBLE_DOWN' ? `2D4 ROLL · ${endgame.effectiveRoll} · ${endgame.multiplier}×` : endgame.choice === 'FINAL_GAMBLE' ? (endgame.gambleStake?.won ? '50/50 STAKE WON' : '50/50 STAKE LOST') : 'NOT RECORDED'}</small>
+                        ? `Final Gamble won: retained assets score at 140% (${formatMoney(endgame.gambleStake.adjustedAssetValue)}). Wealth and attributes remain unchanged.`
+                        : `Final Gamble lost: assets score $0 and are forfeited. Wealth and attributes remain unchanged.`}</p>}
+                      <small className="finish-order-result mono">ENDGAME OUTCOME / {endgame.choice === 'CASH_OUT' ? '50% ASSET VALUE · NO ROLL' : endgame.choice === 'DOUBLE_DOWN' ? `70% ASSET BASE · 2D4 ${endgame.effectiveRoll} · ${endgame.multiplier}×` : endgame.choice === 'FINAL_GAMBLE' ? (endgame.gambleStake?.won ? '50/50 WIN · 140% ASSET VALUE' : '50/50 LOSS · ASSETS FORFEITED') : 'NOT RECORDED'}</small>
                       {!!player.personalBestCategories?.length && <div className="finish-line-personal-best-badges" aria-label="New Personal Best categories">
                         {player.personalBestCategories.map(category => <span key={category}>NEW PERSONAL BEST · {personalBestCategoryLabel(category)}</span>)}
                       </div>}
@@ -580,13 +613,17 @@ export function MatchResultsPanel({
                       <span className="mono">REDLINE CREDITS EARNED</span>
                       <strong>+{player.creditRewardReceipt.total.toLocaleString()} ◈</strong>
                       <small>GAME {player.creditRewardReceipt.game.toLocaleString()} · ENDGAME {player.creditRewardReceipt.endgame.toLocaleString()} · MILESTONES {player.creditRewardReceipt.milestones.toLocaleString()}</small>
+                      {player.creditRewardReceipt.tokenConversion && <small>
+                        TOKENS {player.creditRewardReceipt.tokenConversion.tokens.toLocaleString()} × {formatCredits(player.creditRewardReceipt.tokenConversion.creditsPerToken)} = {formatCredits(player.creditRewardReceipt.tokenConversion.credits)} CREDITS
+                      </small>}
                     </div>}
                    <div className="finish-line-result-assets" role="group" aria-label={`${character?.name ?? player.displayName} final assets`}>
                      {assetSlots.map(({ slot, label }) => {
                         const assetId = player.equipment[slot];
                        const asset = assetId ? getAsset(assetId) : undefined;
                         const level = asset ? player.assetLevels[asset.id] ?? 1 : null;
-                        const endgameValue = asset ? assetValueAtLevel(asset, level! as AssetLevel) : 0;
+                        const nominalValue = asset ? assetValueAtLevel(asset, level! as AssetLevel) : 0;
+                        const endgameValue = Math.round(nominalValue * assetScoreMultiplier);
                        const categoryLabel = asset?.category === 'pet'
                          ? 'PET'
                          : asset?.category === 'investment'
@@ -599,7 +636,7 @@ export function MatchResultsPanel({
                              {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-result-asset-image" /> : <span>+</span>}
                            </div>
                            <strong>{asset?.name ?? 'OPEN'}</strong>
-                            <small>{asset ? `LV ${level} / ENDGAME +${formatMoney(endgameValue)}` : 'EMPTY'}</small>
+                            <small>{asset ? `LV ${level} / SCORE ${formatMoney(endgameValue)}` : 'EMPTY'}</small>
                          </div>
                        );
                      })}
@@ -609,7 +646,7 @@ export function MatchResultsPanel({
                       {reconciliation.length ? <ul>{reconciliation.map((entry) => (
                         <li className={`disposition-${entry.status.toLowerCase()}`} key={entry.assetId}>
                           <strong>{getAsset(entry.assetId)?.name ?? entry.assetId}</strong>
-                          <span>LEVEL {entry.level} · {entry.status === 'RETAINED' ? 'RETAINED AT FINISH' : entry.status}</span>
+                          <span>LEVEL {entry.level} · {entry.status === 'RETAINED' ? 'HELD AT FINISH' : entry.status} · SCORE {formatMoney(entry.adjustedValue)}</span>
                           <small>{entry.reason}</small>
                         </li>
                       ))}</ul> : <p>No assets were acquired or held in this game.</p>}

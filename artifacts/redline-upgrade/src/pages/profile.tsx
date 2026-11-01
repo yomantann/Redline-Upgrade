@@ -546,9 +546,15 @@ function GameDetails({ game, achievements }: { game: CompletedGameRecord; achiev
   const lost = game.lostAssetIds.map(id => getAsset(id)).filter((item): item is NonNullable<typeof item> => !!item);
   const unlocked = game.unlockedAchievementIds.map(id => achievements.find(item => item.id === id)).filter((item): item is AchievementDisplay => !!item && !!item.unlockedAt);
   const dispositions = game.assetDispositions ?? [];
+  const scoreBreakdown = game.endgameResult?.scoreBreakdown;
+  const tokenConversion = game.endgameResult?.tokenConversion;
   return <div className="red-game-details">
     <div className="red-game-detail-grid">
       <div><span className="mono">FINAL RESULT</span><p>Final place #{game.placement} · Board finish {game.boardFinishOrder ? `#${game.boardFinishOrder}` : 'not recorded'} · Score {money(game.finalValue)}</p>{game.endgameResult && <p>{titleCase(game.endgameResult.choice ?? 'unknown')} · {typeof game.endgameResult.multiplier === 'number' ? `${game.endgameResult.multiplier}×` : 'no multiplier'}{game.endgameResult.gambleWon === null ? '' : game.endgameResult.gambleWon ? ' · Final Gamble won' : ' · Final Gamble lost'}</p>}</div>
+      {scoreBreakdown && <div><span className="mono">FINAL SCORE BREAKDOWN</span><p>
+        Wealth before finish bonus {money(scoreBreakdown.wealthBeforeFinishBonus)} · finish bonus {money(scoreBreakdown.finishOrderBonus)} · attribute-leader bonus {money(scoreBreakdown.attributeLeaderBonus)} · scored Wealth {money(scoreBreakdown.wealth)} + assets {money(scoreBreakdown.adjustedAssetValue)} ({Math.round(scoreBreakdown.assetMultiplier * 100)}% of {money(scoreBreakdown.assetBaseValue)}) + attribute points {money(scoreBreakdown.attributePointValue)}
+        {scoreBreakdown.diceAdjustment ? ` + 2d4 adjustment ${money(scoreBreakdown.diceAdjustment)}` : ''} = {money(scoreBreakdown.finalScore)}
+      </p></div>}
       <div><span className="mono">FINAL STATS</span>{stats.length ? <dl className="red-stat-list">{stats.map(([key, value]) => <div key={key}><dt>{metricLabel(key)}</dt><dd>{value.toLocaleString()}</dd></div>)}</dl> : <p>No final stats recorded.</p>}</div>
       <div><span className="mono">ASSETS ACQUIRED</span><p>{acquired.length ? acquired.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
       <div><span className="mono">ASSETS LOST</span><p>{lost.length ? lost.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
@@ -556,7 +562,7 @@ function GameDetails({ game, achievements }: { game: CompletedGameRecord; achiev
         {dispositions.some(item => item.status === 'UNEXPLAINED') && <p className="red-disposition-warning" role="alert">An acquired asset has no recorded retention or loss event. It is flagged for reconciliation and is not counted as lost.</p>}
       </div>
       <div><span className="mono">MILESTONES RECORDED</span><p>{unlocked.length ? unlocked.map(item => item.name).join(' / ') : 'None recorded'}</p></div>
-      <div><span className="mono">CREDITS EARNED</span><p>{game.creditRewardReceipt ? `${game.creditRewardReceipt.total} total · ${game.creditRewardReceipt.game} game · ${game.creditRewardReceipt.endgame} endgame · ${game.creditRewardReceipt.milestones} milestone` : 'Not stored for this historical record'}</p></div>
+      <div><span className="mono">CREDITS EARNED</span><p>{game.creditRewardReceipt ? `${game.creditRewardReceipt.total.toLocaleString()} total · ${game.creditRewardReceipt.game.toLocaleString()} game · ${game.creditRewardReceipt.endgame.toLocaleString()} endgame · ${game.creditRewardReceipt.milestones.toLocaleString()} milestone` : 'Not stored for this historical record'}</p>{tokenConversion && <p>Tokens converted: {tokenConversion.tokens.toLocaleString()} × {tokenConversion.creditsPerToken.toLocaleString()} = {tokenConversion.credits.toLocaleString()} Credits.</p>}</div>
     </div>
     <div className="red-snapshot-head"><span className="mono">ENDGAME SNAPSHOT / HELD AT FINISH</span><span className="mono">{game.retainedAssets.length} ASSETS</span></div>
     {game.retainedAssets.length ? <div className="red-snapshot-grid">{game.retainedAssets.map(item => {

@@ -11,6 +11,7 @@ export type AssetDispositionRecordReason = typeof AssetDispositionRecordReason[k
 
 export const AssetDispositionRecordReason = {
   ENDGAME_RETAINED: 'ENDGAME_RETAINED',
+  ASSET_SOLD: 'ASSET_SOLD',
   FINAL_GAMBLE_LOSS: 'FINAL_GAMBLE_LOSS',
   GAMBLE_CARD_FORFEITURE: 'GAMBLE_CARD_FORFEITURE',
   TRANSFERRED_OUT: 'TRANSFERRED_OUT',

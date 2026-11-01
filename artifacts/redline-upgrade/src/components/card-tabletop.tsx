@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { CardDefinition } from '@/game/cards';
-import type { PartyChallenge } from '@/game/cards';
+import { useEffect, useRef, useState } from 'react';
+import type { CardDefinition, CardEffect, PartyChallenge } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
 import type { MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
@@ -11,6 +10,119 @@ import { RedlineCard } from './redline-card';
 import { getPartyParticipantIds } from '@/game/bio-party-targets';
 import { PlayerTargetOption } from './player-target-option';
 import { ExpandableText } from './expandable-text';
+import './card-tabletop.css';
+
+function targetLabel(target?: string) {
+  if (!target) return 'the current player';
+  return ({
+    SELF: 'the current player',
+    RANDOM_OPPONENT: 'a random opponent',
+    WEALTH_LEADER: 'the Wealth leader',
+    WEALTH_TRAILER: 'the Wealth trailer',
+    ALL_OPPONENTS: 'all opponents',
+    SELECTED_PLAYER: 'the selected player',
+    SELF_AND_SELECTED: 'the current player and selected player',
+    TWO_SELECTED_PLAYERS: 'two selected players',
+    ALL_PLAYERS: 'all players',
+    ALL_EXCEPT_SELF: 'all other players',
+    SELF_OR_ALL_PLAYERS: 'the current player or all players',
+  } as Record<string, string>)[target] ?? target.toLowerCase().replaceAll('_', ' ');
+}
+
+function effectInstructions(effect: CardEffect): string[] {
+  const careerTag = 'careerTag' in effect ? effect.careerTag : undefined;
+  const condition = careerTag ? ` (only ${careerTag.toLowerCase().replaceAll('_', ' ')} careers)` : '';
+  const reason = effect.reason ? ` — ${effect.reason}` : '';
+  switch (effect.kind) {
+    case 'STAT':
+      return [`${effect.amount >= 0 ? '+' : '−'}${Math.abs(effect.amount)} ${effect.stat} for ${targetLabel(effect.target)}${condition}${reason}`];
+    case 'TRANSFER_WEALTH':
+      return [`Transfer ${Math.abs(effect.amount).toLocaleString()} Wealth to ${targetLabel(effect.target)}${reason}`];
+    case 'UPGRADE_TOKEN':
+      return [`${effect.amount >= 0 ? '+' : '−'}${Math.abs(effect.amount)} Upgrade Token${Math.abs(effect.amount) === 1 ? '' : 's'}${reason}`];
+    case 'MODIFY_SALARY':
+      return [`${effect.amount >= 0 ? '+' : '−'}${Math.abs(effect.amount).toLocaleString()} salary for ${targetLabel(effect.target)}${condition}${reason}`];
+    case 'PROTECT':
+      return [`Protect ${targetLabel(effect.target)}${effect.amount ? ` for ${effect.amount} effect${effect.amount === 1 ? '' : 's'}` : ''}${effect.blockedEffectTypes?.length ? ` from ${effect.blockedEffectTypes.join(', ')}` : ''}${reason}`];
+    case 'REWARD_MODIFIER':
+      return [`${effect.amount >= 0 ? '+' : '−'}${Math.abs(effect.amount)} ${effect.stat} reward modifier for ${targetLabel(effect.target)}${condition}${reason}`];
+    case 'DOUBLE_OR_NOTHING':
+      return [`Double-or-nothing chance: ${Math.round(effect.chance * 100)}%${reason}`];
+    case 'RISK':
+      return [
+        `Risk chance: ${Math.round(effect.chance * 100)}%${reason}`,
+        ...effect.win.flatMap((entry) => effectInstructions(entry).map((line) => `On win: ${line}`)),
+        ...effect.loss.flatMap((entry) => effectInstructions(entry).map((line) => `On loss: ${line}`)),
+      ];
+  }
+}
+
+export function CardPreviewModal({ card, onClose }: { card: CardDefinition; onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const deck = getDeck(card.deck);
+  const instructions = card.effects.flatMap(effectInstructions);
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+  return (
+    <div
+      className="card-preview-backdrop"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      data-testid="card-preview-backdrop"
+    >
+      <section
+        ref={dialogRef}
+        className="card-preview-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="card-preview-title"
+        tabIndex={-1}
+        data-testid="card-preview-dialog"
+      >
+        <header className="card-preview-header">
+          <div>
+            <span className="eyebrow">{deck.name} / {card.rarity}</span>
+            <h2 id="card-preview-title">{card.title}</h2>
+          </div>
+          <button type="button" className="card-preview-close" onClick={onClose} aria-label="Close card preview" data-testid="button-close-card-preview">×</button>
+        </header>
+        <div className="card-preview-content">
+          <div className="card-preview-art">
+            <RedlineCard deck={card.deck} face="front" card={card} className="card-preview-face" />
+          </div>
+          <div className="card-preview-rules">
+            <p className="mono card-preview-category">{deck.name.toUpperCase()} / {card.rarity}</p>
+            <h3>{card.title}</h3>
+            <section>
+              <h4>DESCRIPTION</h4>
+              <p>{card.description}</p>
+            </section>
+            <section className="card-preview-primary-effect">
+              <h4>GAMEPLAY EFFECT</h4>
+              <p>{card.effect}</p>
+              {card.value && card.value !== '—' && <strong>{card.value}</strong>}
+            </section>
+            {instructions.length > 0 && (
+              <section>
+                <h4>RULES AND CONDITIONS</h4>
+                <ul>{instructions.map((instruction, index) => <li key={`${index}-${instruction}`}>{instruction}</li>)}</ul>
+              </section>
+            )}
+            {card.partyChallenge && (
+              <section className="card-preview-party">
+                <h4>CHALLENGE INSTRUCTIONS</h4>
+                <p>{card.partyChallenge.prompt}</p>
+                <p><b>Participants:</b> {targetLabel(card.partyChallenge.target)} · <b>Flow:</b> {card.partyChallenge.flow.toLowerCase()}</p>
+                <p><b>Safety:</b> {card.partyChallenge.safetyNote}</p>
+                {!!card.partyChallenge.choices?.length && <ul>{card.partyChallenge.choices.map((choice) => <li key={choice.label}>{choice.label}: {targetLabel(choice.target)}</li>)}</ul>}
+              </section>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function BioPartyCardFace({ card, compact = false }: { card: CardDefinition; compact?: boolean }) {
   const artworkUrl = getCardArtworkUrl(card.id);
@@ -72,6 +184,8 @@ export function CardTabletop({
   const [minimumReadTimeComplete, setMinimumReadTimeComplete] = useState(false);
   const [partyParticipantIds, setPartyParticipantIds] = useState<string[]>([]);
   const [partyOutcome, setPartyOutcome] = useState('');
+  const [previewCard, setPreviewCard] = useState<CardDefinition | null>(null);
+  const previewTriggerRef = useRef<HTMLElement | null>(null);
   const drawReadTimeMs = isCPU ? CPU_CARD_DRAW_MS : CARD_READ_MINIMUM_MS;
   const drawReadTimeSeconds = isCPU ? CPU_CARD_DRAW_SECONDS : CARD_READ_MINIMUM_SECONDS;
 
@@ -85,6 +199,26 @@ export function CardTabletop({
     setPartyParticipantIds([]);
     setPartyOutcome('');
   }, [activeCard?.id]);
+  useEffect(() => {
+    if (!previewCard) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewCard(null);
+        requestAnimationFrame(() => previewTriggerRef.current?.focus());
+      }
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [previewCard]);
+
+  const openPreview = (card: CardDefinition, trigger: HTMLElement) => {
+    previewTriggerRef.current = trigger;
+    setPreviewCard(card);
+  };
+  const closePreview = () => {
+    setPreviewCard(null);
+    requestAnimationFrame(() => previewTriggerRef.current?.focus());
+  };
 
   const activeCardResolved = cardStage === 'resolved' && activeCard;
   const partyChallenge: PartyChallenge | undefined = activeCard?.partyChallenge;
@@ -130,18 +264,49 @@ export function CardTabletop({
           </div>
           {cardStage === 'choice' && offeredCards?.length ? (
             <div className="card-choice-grid" data-testid="gamble-card-choices">
-              {offeredCards.map((card) => isCPU ? (
-                <div className="card-choice-option" key={card.id}>{card.partyChallenge ? <BioPartyCardFace card={card} compact /> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span></div>
-              ) : (
-                <button className="card-choice-option" type="button" key={card.id} disabled={!minimumReadTimeComplete || !partyCanAct} onClick={() => onChooseGambleCard?.(card.id)} data-testid={`choose-gamble-${card.id}`}>
-                  {card.partyChallenge ? <BioPartyCardFace card={card} compact /> : <RedlineCard deck="gamble" face="front" card={card} />}<span>{card.title}</span><b>CHOOSE THIS CARD</b>
-                </button>
+              {offeredCards.map((card) => (
+                <article className="card-choice-option" key={card.id}>
+                  <button
+                    className="card-choice-preview"
+                    type="button"
+                    aria-label={`Preview ${card.title}`}
+                    onClick={(event) => openPreview(card, event.currentTarget)}
+                    data-testid={`button-preview-card-${card.id}`}
+                  >
+                    {card.partyChallenge ? <BioPartyCardFace card={card} compact /> : <RedlineCard deck={card.deck} face="front" card={card} />}
+                    <span>{card.title}</span>
+                    <small>OPEN FULL CARD</small>
+                  </button>
+                  {!isCPU && (
+                    <button
+                      className="action card-choice-confirm"
+                      type="button"
+                      disabled={!minimumReadTimeComplete || !partyCanAct}
+                      onClick={() => onChooseGambleCard?.(card.id)}
+                      data-testid={`choose-gamble-${card.id}`}
+                    >
+                      CHOOSE THIS CARD
+                    </button>
+                  )}
+                </article>
               ))}
             </div>
           ) : (
             partyChallenge
-              ? activeCard ? <BioPartyCardFace card={activeCard} /> : null
-              : <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}><RedlineCard deck={activeDeck} face={activeCard ? 'front' : 'back'} card={activeCard} /></div>
+              ? activeCard ? (
+                <button className="card-draw-preview-trigger" type="button" onClick={(event) => openPreview(activeCard, event.currentTarget)} aria-label={`Open full preview of ${activeCard.title}`} data-testid={`button-preview-card-${activeCard.id}`}>
+                  <BioPartyCardFace card={activeCard} />
+                  <span>OPEN FULL CARD</span>
+                </button>
+              ) : null
+              : <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}>
+                {activeCard ? (
+                  <button className="card-draw-preview-trigger" type="button" onClick={(event) => openPreview(activeCard, event.currentTarget)} aria-label={`Open full preview of ${activeCard.title}`} data-testid={`button-preview-card-${activeCard.id}`}>
+                    <RedlineCard deck={activeDeck} face="front" card={activeCard} />
+                    <span>OPEN FULL CARD</span>
+                  </button>
+                ) : <RedlineCard deck={activeDeck} face="back" />}
+              </div>
           )}
           <div className="card-draw-action">
               {isCPU ? (
@@ -203,6 +368,7 @@ export function CardTabletop({
           ))}
         </div>
       </aside>}
+      {previewCard && <CardPreviewModal card={previewCard} onClose={closePreview} />}
     </>
   );
 }

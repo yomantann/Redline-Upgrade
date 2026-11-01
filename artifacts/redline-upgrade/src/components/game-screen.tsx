@@ -535,13 +535,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   if (match.phase === 'endgame' || (match.phase === 'landed' && active.endgame?.status === 'RESOLVED')) {
     if (!active.endgame) return null;
-    const endgameCard = active.endgame.gambleCardId ? getCard(active.endgame.gambleCardId) : undefined;
-    const gambleEvent = endgameCard
-      ? match.eventLog.slice().reverse().find((event) => event.eventType === 'FINAL_GAMBLE_RESOLVED')
-      : undefined;
-    const gambleResult = gambleEvent
-      ? gambleEvent.detail
-      : undefined;
     return (
       <main className="game-screen game-screen-finish-line">
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
@@ -566,20 +559,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           onChoose={(choice: EndgameChoice) => dispatchMatch({ type: 'CHOOSE_ENDGAME', choice })}
           onContinue={() => dispatchMatch({ type: 'NEXT_TURN' })}
         />
-        {endgameCard && (
-          <CardTabletop
-            activeDeck="gamble"
-            activeCard={endgameCard}
-            cardStage={gambleCardStage}
-            cardPiles={match.cardPiles}
-            isCPU={active.isCPU}
-            actorName={currentCharacter?.name ?? active.displayName}
-            actorLabel={active.isCPU ? seatName(active) : 'YOU'}
-            resultSummary={gambleResult}
-            showDeckBay={false}
-            onAcknowledge={() => dispatchMatch({ type: 'NEXT_TURN' })}
-          />
-        )}
         {decisionInspection === 'board' && <section className="decision-inspection-board" aria-label="Board inspection">
           <GameBoard players={match.players} activePlayerId={active.playerId} landingPosition={null} movingPlayerId={null} finishOrder={match.finishOrder} boardId={match.boardId} />
         </section>}
@@ -795,7 +774,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
             <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
             <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
-            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO WIN / Highest final value wins: Wealth + assets + attributes. Each attribute leader adds $50,000; ties go to the earlier finisher. Finish rewards are $100,000 / $75,000 / $50,000 / $25,000. Better attributes improve opportunities. Press ROLL to move with two D4s.</small>}
+            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <small className="how-to-roll" data-testid="text-how-to-roll">HOW TO WIN / Highest final score wins: Wealth + choice-adjusted assets + attribute points, plus finish and attribute-leader bonuses. Each attribute leader adds $50,000; ties go to the earlier finisher. Finish rewards are $100,000 / $75,000 / $50,000 / $25,000. Tokens convert separately to Credits. Press ROLL to move with two D4s.</small>}
             {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
           </div>
           <DiceRoller

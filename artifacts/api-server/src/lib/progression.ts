@@ -386,14 +386,16 @@ export async function recordCompletedGame(
   const assetDispositions = assetDispositionIds.map((assetId) => {
     const level = player.assetLevels[assetId] ?? 1;
     if (retainedSet.has(assetId)) return { assetId, status: "RETAINED" as const, reason: "ENDGAME_RETAINED" as const, level };
-    if (finalGambleLostSet.has(assetId)) return { assetId, status: "LOST" as const, reason: "FINAL_GAMBLE_LOSS" as const, sourceName: "Final Gamble" };
+    if (finalGambleLostSet.has(assetId)) return { assetId, status: "FORFEITED" as const, reason: "FINAL_GAMBLE_LOSS" as const, sourceName: "Final Gamble", level };
     const disposedEvent = disposedEventsByAsset.get(assetId);
     if (disposedEvent) {
+      const sold = disposedEvent.effectId === "ASSET_SOLD" || disposedEvent.reason?.toLowerCase().includes("sold");
       return {
         assetId,
-        status: "LOST" as const,
-        reason: disposedEvent.effectId === "FINAL_GAMBLE_LOSS" ? "FINAL_GAMBLE_LOSS" as const : "GAMBLE_CARD_FORFEITURE" as const,
-        sourceName: disposedEvent.reason ?? "Gamble card",
+        status: sold ? "SOLD" as const : "LOST" as const,
+        reason: sold ? "ASSET_SOLD" as const : disposedEvent.effectId === "FINAL_GAMBLE_LOSS" ? "FINAL_GAMBLE_LOSS" as const : "GAMBLE_CARD_FORFEITURE" as const,
+        sourceName: disposedEvent.reason ?? (sold ? "Asset sale" : "Gamble card"),
+        level: disposedEvent.assetLevel ?? level,
       };
     }
     if (transferredOutSet.has(assetId)) {
@@ -748,7 +750,21 @@ export async function recordCompletedGame(
   }
 
   const rewardSourceId = `${source}:${gameId}`;
-  const creditRewardReceipt = { total: 0, game: 0, endgame: 0, milestones: 0 };
+  const tokenConversion = player.endgame?.tokenConversion ?? (() => {
+    const tokens = Math.max(0, player.endgame?.snapshot.upgradeTokens ?? 0);
+    const gambleWon = player.endgame?.choice === "FINAL_GAMBLE" && player.endgame.gambleStake?.won;
+    const creditsPerToken = player.endgame?.choice === "FINAL_GAMBLE"
+      ? gambleWon ? 400 : 0
+      : player.endgame?.choice === "DOUBLE_DOWN" || player.endgame?.choice === "CASH_OUT" ? 200 : 0;
+    return { tokens, creditsPerToken, credits: tokens * creditsPerToken };
+  })();
+  const creditRewardReceipt = {
+    total: 0,
+    game: 0,
+    endgame: 0,
+    milestones: 0,
+    tokenConversion: { ...tokenConversion },
+  };
   const award = async (amount: number, suffix: string, type: "GAME" | "ENDGAME" | "ACHIEVEMENT") => {
     const granted = await grantCredits(tx, userId, amount, type, rewardSourceId, `${type.toLowerCase()}:${rewardSourceId}:${suffix}`);
     if (!granted) return;
@@ -773,6 +789,20 @@ export async function recordCompletedGame(
   if (endgame?.status === "RESOLVED" && endgame.choice === "FINAL_GAMBLE" && endgame.gambleStake?.won) {
     await award(GAME_CREDIT_REWARDS.finalGambleSuccess, "final-gamble", "ENDGAME");
     if (isWin) await award(GAME_CREDIT_REWARDS.winAfterFinalGamble, "win-after-final-gamble", "ENDGAME");
+  }
+  if (tokenConversion.credits > 0) {
+    const granted = await grantCredits(
+      tx,
+      userId,
+      tokenConversion.credits,
+      "ENDGAME",
+      `${rewardSourceId}:TOKEN_CONVERSION`,
+      `endgame:${rewardSourceId}:token-conversion`,
+    );
+    if (granted) {
+      creditRewardReceipt.total += tokenConversion.credits;
+      creditRewardReceipt.endgame += tokenConversion.credits;
+    }
   }
   if (GAME_CREDIT_REWARDS.lossFree > 0 && acquiredUniqueIds.length > 0 && lostAssetIds.length === 0) {
     await award(GAME_CREDIT_REWARDS.lossFree, "loss-free", "ENDGAME");
@@ -867,9 +897,11 @@ export async function recordCompletedGame(
         : null,
       gambleCardId: player.endgame.gambleCardId ?? null,
       gambleWon: player.endgame.gambleStake?.won ?? null,
-      stakedWealth: player.endgame.gambleStake?.wealth ?? 0,
+      stakedWealth: 0,
       stakedAssetValue: player.endgame.gambleStake?.assetValue ?? 0,
       stakedTokens: player.endgame.gambleStake?.tokens ?? 0,
+      scoreBreakdown: player.endgame.scoreBreakdown ?? null,
+      tokenConversion: player.endgame.tokenConversion ?? null,
     } : null,
     creditRewardReceipt: player.creditRewardReceipt ?? null,
     unlockedAchievementIds: unlockedIds,

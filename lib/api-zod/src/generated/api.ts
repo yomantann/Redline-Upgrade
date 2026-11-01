@@ -193,8 +193,8 @@ export const GetAchievementProfileResponse = zod.object({
 })),
   "assetDispositions": zod.array(zod.object({
   "assetId": zod.string(),
-  "status": zod.enum(['RETAINED', 'LOST', 'UNEXPLAINED']),
-  "reason": zod.enum(['ENDGAME_RETAINED', 'FINAL_GAMBLE_LOSS', 'GAMBLE_CARD_FORFEITURE', 'TRANSFERRED_OUT', 'NO_DISPOSITION_EVENT']),
+  "status": zod.enum(['RETAINED', 'SOLD', 'LOST', 'FORFEITED', 'UNEXPLAINED']),
+  "reason": zod.enum(['ENDGAME_RETAINED', 'ASSET_SOLD', 'FINAL_GAMBLE_LOSS', 'GAMBLE_CARD_FORFEITURE', 'TRANSFERRED_OUT', 'NO_DISPOSITION_EVENT']),
   "sourceName": zod.string().optional(),
   "level": zod.number().int().optional()
 })).nullish(),
@@ -213,13 +213,42 @@ export const GetAchievementProfileResponse = zod.object({
   "gambleWon": zod.boolean().nullable(),
   "stakedWealth": zod.number().int(),
   "stakedAssetValue": zod.number().int(),
-  "stakedTokens": zod.number().int()
+  "stakedTokens": zod.number().int(),
+  "scoreBreakdown": zod.union([zod.object({
+  "wealthBeforeFinishBonus": zod.number().int(),
+  "finishOrderBonus": zod.number().int(),
+  "wealth": zod.number().int(),
+  "assetBaseValue": zod.number().int(),
+  "assetMultiplier": zod.number(),
+  "adjustedAssetValue": zod.number().int(),
+  "attributeValues": zod.object({
+  "aiSkill": zod.number().int(),
+  "fame": zod.number().int(),
+  "lifestyle": zod.number().int(),
+  "influence": zod.number().int()
+}),
+  "attributePointValue": zod.number().int(),
+  "attributeLeaderBonus": zod.number().int(),
+  "preAdjustmentScore": zod.number().int(),
+  "diceAdjustment": zod.number().int(),
+  "finalScore": zod.number().int()
+}),zod.null()]).optional(),
+  "tokenConversion": zod.union([zod.object({
+  "tokens": zod.number().int(),
+  "creditsPerToken": zod.number().int(),
+  "credits": zod.number().int()
+}),zod.null()]).optional()
 }),zod.null()]).optional(),
   "creditRewardReceipt": zod.union([zod.object({
   "total": zod.number().int(),
   "game": zod.number().int(),
   "endgame": zod.number().int(),
-  "milestones": zod.number().int()
+  "milestones": zod.number().int(),
+  "tokenConversion": zod.object({
+  "tokens": zod.number().int(),
+  "creditsPerToken": zod.number().int(),
+  "credits": zod.number().int()
+}).optional()
 }),zod.null()]).optional(),
   "unlockedAchievementIds": zod.array(zod.string()),
   "completedAt": zod.coerce.date()

@@ -11,6 +11,8 @@ export type AssetDispositionRecordStatus = typeof AssetDispositionRecordStatus[k
 
 export const AssetDispositionRecordStatus = {
   RETAINED: 'RETAINED',
+  SOLD: 'SOLD',
   LOST: 'LOST',
+  FORFEITED: 'FORFEITED',
   UNEXPLAINED: 'UNEXPLAINED',
 } as const;

@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TokenConversionRecord } from './tokenConversionRecord';
 
 export interface CreditRewardReceipt {
   total: number;
   game: number;
   endgame: number;
   milestones: number;
+  tokenConversion?: TokenConversionRecord;
 }

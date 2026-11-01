@@ -1260,10 +1260,10 @@ components:
           type: string
         status:
           type: string
-          enum: [RETAINED, LOST, UNEXPLAINED]
+          enum: [RETAINED, SOLD, LOST, FORFEITED, UNEXPLAINED]
         reason:
           type: string
-          enum: [ENDGAME_RETAINED, FINAL_GAMBLE_LOSS, GAMBLE_CARD_FORFEITURE, TRANSFERRED_OUT, NO_DISPOSITION_EVENT]
+          enum: [ENDGAME_RETAINED, ASSET_SOLD, FINAL_GAMBLE_LOSS, GAMBLE_CARD_FORFEITURE, TRANSFERRED_OUT, NO_DISPOSITION_EVENT]
         sourceName:
           type: string
         level:
@@ -1302,6 +1302,62 @@ components:
           type: integer
         stakedTokens:
           type: integer
+        scoreBreakdown:
+          oneOf:
+            - $ref: "#/components/schemas/EndgameScoreBreakdownRecord"
+            - type: "null"
+        tokenConversion:
+          oneOf:
+            - $ref: "#/components/schemas/TokenConversionRecord"
+            - type: "null"
+    EndgameScoreBreakdownRecord:
+      type: object
+      required: [wealthBeforeFinishBonus, finishOrderBonus, wealth, assetBaseValue, assetMultiplier, adjustedAssetValue, attributeValues, attributePointValue, attributeLeaderBonus, preAdjustmentScore, diceAdjustment, finalScore]
+      properties:
+        wealthBeforeFinishBonus:
+          type: integer
+        finishOrderBonus:
+          type: integer
+        wealth:
+          type: integer
+        assetBaseValue:
+          type: integer
+        assetMultiplier:
+          type: number
+        adjustedAssetValue:
+          type: integer
+        attributeValues:
+          type: object
+          required: [aiSkill, fame, lifestyle, influence]
+          properties:
+            aiSkill:
+              type: integer
+            fame:
+              type: integer
+            lifestyle:
+              type: integer
+            influence:
+              type: integer
+        attributePointValue:
+          type: integer
+        attributeLeaderBonus:
+          type: integer
+        preAdjustmentScore:
+          type: integer
+        diceAdjustment:
+          type: integer
+        finalScore:
+          type: integer
+    TokenConversionRecord:
+      type: object
+      required: [tokens, creditsPerToken, credits]
+      properties:
+        tokens:
+          type: integer
+        creditsPerToken:
+          type: integer
+        credits:
+          type: integer
     CreditRewardReceipt:
       type: object
       required: [total, game, endgame, milestones]
@@ -1314,6 +1370,8 @@ components:
           type: integer
         milestones:
           type: integer
+        tokenConversion:
+          $ref: "#/components/schemas/TokenConversionRecord"
     CompletedGameRecord:
       type: object
       required: [id, userId, source, gameId, boardId, mode, placement, finalValue, portfolioValue, characterId, careerId, finalStats, acquiredAssetIds, lostAssetIds, retainedAssets, unlockedAchievementIds, completedAt]

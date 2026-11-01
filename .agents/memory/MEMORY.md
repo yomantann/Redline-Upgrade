@@ -14,3 +14,4 @@
 - [Cosmetic catalog IDs](cosmetic-catalog-ids.md) — keep item IDs stable across asset renames so existing unlocks and equips remain linked.
 - [Production shop assets](shop-production-assets.md) — generate a filename-only cosmetics manifest inside API output; the API runtime lacks frontend asset folders.
 - [Personal Best baselines](personal-best-baselines.md) — seed comparable records from authenticated legacy games; do not infer categories older snapshots never stored.
+- [Endgame settlement rules](endgame-settlement-rules.md) — Wealth and attributes are never gambled; only asset scoring changes, while Upgrade Tokens convert separately to Credits.

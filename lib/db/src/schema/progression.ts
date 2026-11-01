@@ -110,8 +110,8 @@ export const completedGameHistoryTable = pgTable(
     retainedAssets: jsonb("retained_assets").$type<Array<{ assetId: string; level: number }>>().notNull().default([]),
     assetDispositions: jsonb("asset_dispositions").$type<Array<{
       assetId: string;
-      status: "RETAINED" | "LOST" | "UNEXPLAINED";
-      reason: "ENDGAME_RETAINED" | "FINAL_GAMBLE_LOSS" | "GAMBLE_CARD_FORFEITURE" | "TRANSFERRED_OUT" | "NO_DISPOSITION_EVENT";
+      status: "RETAINED" | "SOLD" | "LOST" | "FORFEITED" | "UNEXPLAINED";
+      reason: "ENDGAME_RETAINED" | "ASSET_SOLD" | "FINAL_GAMBLE_LOSS" | "GAMBLE_CARD_FORFEITURE" | "TRANSFERRED_OUT" | "NO_DISPOSITION_EVENT";
       sourceName?: string;
       level?: number;
     }>>(),
@@ -127,12 +127,28 @@ export const completedGameHistoryTable = pgTable(
       stakedWealth: number;
       stakedAssetValue: number;
       stakedTokens: number;
+      scoreBreakdown?: {
+        wealthBeforeFinishBonus: number;
+        finishOrderBonus: number;
+        wealth: number;
+        assetBaseValue: number;
+        assetMultiplier: number;
+        adjustedAssetValue: number;
+        attributeValues: { aiSkill: number; fame: number; lifestyle: number; influence: number };
+        attributePointValue: number;
+        attributeLeaderBonus: number;
+        preAdjustmentScore: number;
+        diceAdjustment: number;
+        finalScore: number;
+      } | null;
+      tokenConversion?: { tokens: number; creditsPerToken: number; credits: number } | null;
     }>(),
     creditRewardReceipt: jsonb("credit_reward_receipt").$type<{
       total: number;
       game: number;
       endgame: number;
       milestones: number;
+      tokenConversion?: { tokens: number; creditsPerToken: number; credits: number };
     }>(),
     unlockedAchievementIds: jsonb("unlocked_achievement_ids").$type<string[]>().notNull().default([]),
     completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),

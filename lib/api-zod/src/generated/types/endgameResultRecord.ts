@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EndgameResultRecordDice } from './endgameResultRecordDice';
+import type { EndgameScoreBreakdownRecord } from './endgameScoreBreakdownRecord';
+import type { TokenConversionRecord } from './tokenConversionRecord';
 
 export interface EndgameResultRecord {
   /** @nullable */
@@ -27,4 +29,6 @@ export interface EndgameResultRecord {
   stakedWealth: number;
   stakedAssetValue: number;
   stakedTokens: number;
+  scoreBreakdown?: EndgameScoreBreakdownRecord | null;
+  tokenConversion?: TokenConversionRecord | null;
 }

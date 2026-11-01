@@ -399,7 +399,9 @@ export type AssetDispositionRecordStatus = typeof AssetDispositionRecordStatus[k
 
 export const AssetDispositionRecordStatus = {
   RETAINED: 'RETAINED',
+  SOLD: 'SOLD',
   LOST: 'LOST',
+  FORFEITED: 'FORFEITED',
   UNEXPLAINED: 'UNEXPLAINED',
 } as const;
 
@@ -408,6 +410,7 @@ export type AssetDispositionRecordReason = typeof AssetDispositionRecordReason[k
 
 export const AssetDispositionRecordReason = {
   ENDGAME_RETAINED: 'ENDGAME_RETAINED',
+  ASSET_SOLD: 'ASSET_SOLD',
   FINAL_GAMBLE_LOSS: 'FINAL_GAMBLE_LOSS',
   GAMBLE_CARD_FORFEITURE: 'GAMBLE_CARD_FORFEITURE',
   TRANSFERRED_OUT: 'TRANSFERRED_OUT',
@@ -420,6 +423,34 @@ export interface AssetDispositionRecord {
   reason: AssetDispositionRecordReason;
   sourceName?: string;
   level?: number;
+}
+
+export type EndgameScoreBreakdownRecordAttributeValues = {
+  aiSkill: number;
+  fame: number;
+  lifestyle: number;
+  influence: number;
+};
+
+export interface EndgameScoreBreakdownRecord {
+  wealthBeforeFinishBonus: number;
+  finishOrderBonus: number;
+  wealth: number;
+  assetBaseValue: number;
+  assetMultiplier: number;
+  adjustedAssetValue: number;
+  attributeValues: EndgameScoreBreakdownRecordAttributeValues;
+  attributePointValue: number;
+  attributeLeaderBonus: number;
+  preAdjustmentScore: number;
+  diceAdjustment: number;
+  finalScore: number;
+}
+
+export interface TokenConversionRecord {
+  tokens: number;
+  creditsPerToken: number;
+  credits: number;
 }
 
 /**
@@ -451,6 +482,8 @@ export interface EndgameResultRecord {
   stakedWealth: number;
   stakedAssetValue: number;
   stakedTokens: number;
+  scoreBreakdown?: EndgameScoreBreakdownRecord | null;
+  tokenConversion?: TokenConversionRecord | null;
 }
 
 export interface CreditRewardReceipt {
@@ -458,6 +491,7 @@ export interface CreditRewardReceipt {
   game: number;
   endgame: number;
   milestones: number;
+  tokenConversion?: TokenConversionRecord;
 }
 
 export type CompletedGameRecordFinalStats = {[key: string]: number};

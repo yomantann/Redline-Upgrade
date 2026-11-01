@@ -17,7 +17,7 @@ export interface FinishSnapshot {
   careerId: string | null;
   salaryTier: number;
   salaryAmount: number;
-  finishOrderBonus: number;
+  finishOrderBonus?: number;
   secondCareer: Player['secondCareer'];
   wealth: number;
   aiSkill: number;
@@ -156,7 +156,7 @@ export function calculateAttributePointValue(
 
 export function calculateEndgameBaseValue(
   player: Pick<Player, 'wealth' | 'equipment' | 'assetLevels' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence'>,
-  assetMultiplier = ENDGAME_BALANCE.assetValueMultipliers.cashOut,
+  assetMultiplier: number = ENDGAME_BALANCE.assetValueMultipliers.cashOut,
   attributeLeaderBonus = 0,
 ): number {
   const assetValue = calculateAdjustedAssetValue(player, assetMultiplier);
@@ -188,18 +188,15 @@ export function createEndgameScoreBreakdown(
     influence: snapshot.influence,
   };
   const attributePointValue = calculateAttributePointValue(snapshot);
-  const wealth = Math.max(0, snapshot.wealth - attributeLeaderBonus);
-  const wealthBeforeFinishBonus = Math.max(0, wealth - snapshot.finishOrderBonus);
+  const wealth = Math.max(0, snapshot.wealth);
+  const finishOrderBonus = snapshot.finishOrderBonus ?? 0;
+  const wealthBeforeFinishBonus = snapshot.wealth - finishOrderBonus - attributeLeaderBonus;
   const preAdjustmentScore = Math.max(0, Math.round(
-    wealthBeforeFinishBonus
-      + snapshot.finishOrderBonus
-      + attributeLeaderBonus
-      + adjustedAssetValue
-      + attributePointValue,
+    wealth + adjustedAssetValue + attributePointValue,
   ));
   return {
     wealthBeforeFinishBonus,
-    finishOrderBonus: snapshot.finishOrderBonus,
+    finishOrderBonus,
     wealth,
     assetBaseValue,
     assetMultiplier,
@@ -275,24 +272,9 @@ export function doubleDownValue(
   };
 }
 
-export function finalGambleValue(
-  baseValue: number,
-  rawDelta: number,
-  stakeDelta = 0,
-): { adjustedDelta: number; multiplier: number; finalGameValue: number } {
-  const multiplier = 1;
-  const adjustedDelta = Math.round(rawDelta + stakeDelta);
-  return {
-    adjustedDelta,
-    multiplier,
-    finalGameValue: Math.max(0, baseValue + adjustedDelta),
-  };
-}
-
 /**
- * The Final Gamble puts Wealth, owned assets and any Upgrade Tokens on the table.
- * Win: the staked Wealth and assets are doubled and each token pays its value.
- * Lose: the staked Wealth and assets are forfeited and the tokens are lost.
+ * Final Gamble changes only asset scoring; token credits settle separately.
+ * Wealth and attributes are never part of the wager.
  */
 export function resolveFinalGambleStake(
   player: Pick<Player, 'equipment' | 'assetLevels' | 'upgradeTokens'>,
@@ -324,10 +306,11 @@ export function chooseCpuEndgameChoice(
   wealth: number,
   baseValue: number,
   random: () => number = Math.random,
+  canFinalGamble = true,
 ): EndgameChoice {
   const wealthShare = baseValue > 0 ? wealth / baseValue : 0;
   if (baseValue >= 1_000_000 && wealthShare >= 0.55 && random() < 0.62) {
     return 'CASH_OUT';
   }
-  return random() < 0.68 ? 'DOUBLE_DOWN' : 'FINAL_GAMBLE';
+  return canFinalGamble && random() >= 0.68 ? 'FINAL_GAMBLE' : 'DOUBLE_DOWN';
 }
