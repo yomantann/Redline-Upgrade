@@ -17,6 +17,7 @@ export interface FinishSnapshot {
   careerId: string | null;
   salaryTier: number;
   salaryAmount: number;
+  finishOrderBonus: number;
   secondCareer: Player['secondCareer'];
   wealth: number;
   aiSkill: number;
@@ -39,12 +40,39 @@ export interface EndgameDice {
 }
 
 export interface FinalGambleStake {
-  wealth: number;
   assetValue: number;
+  adjustedAssetValue: number;
   tokens: number;
-  tokenValue: number;
+  creditsPerToken: number;
+  credits: number;
   won: boolean;
   delta: number;
+}
+
+export interface EndgameScoreBreakdown {
+  wealthBeforeFinishBonus: number;
+  finishOrderBonus: number;
+  wealth: number;
+  assetBaseValue: number;
+  assetMultiplier: number;
+  adjustedAssetValue: number;
+  attributeValues: {
+    aiSkill: number;
+    fame: number;
+    lifestyle: number;
+    influence: number;
+  };
+  attributePointValue: number;
+  attributeLeaderBonus: number;
+  preAdjustmentScore: number;
+  diceAdjustment: number;
+  finalScore: number;
+}
+
+export interface TokenConversion {
+  tokens: number;
+  creditsPerToken: number;
+  credits: number;
 }
 
 export interface EndgameState {
@@ -52,6 +80,9 @@ export interface EndgameState {
   snapshot: FinishSnapshot;
   baseValue: number;
   choice?: EndgameChoice;
+  attributeLeaderBonus?: number;
+  scoreBreakdown?: EndgameScoreBreakdown;
+  tokenConversion?: TokenConversion;
   finalGameValue?: number;
   multiplier?: number;
   dice?: EndgameDice;
@@ -72,7 +103,18 @@ export const ENDGAME_BALANCE = {
     lifestyle: 10_000,
     influence: 7_500,
   },
-  finalGambleTokenValue: 20_000,
+  assetValueMultipliers: {
+    cashOut: 0.5,
+    doubleDown: 0.7,
+    finalGambleWin: 1.4,
+    finalGambleLoss: 0,
+  },
+  tokenCreditsPerOutcome: {
+    cashOut: 200,
+    doubleDown: 200,
+    finalGambleWin: 400,
+    finalGambleLoss: 0,
+  },
   finalGambleWinChance: 0.5,
   doubleDownBands: [
     { maxRoll: 3, multiplier: 0.25 },
@@ -94,14 +136,81 @@ export function calculateAssetValue(player: Pick<Player, 'equipment' | 'assetLev
   }, 0);
 }
 
-export function calculateEndgameBaseValue(player: Player): number {
-  const assetValue = calculateAssetValue(player);
-  const statValue =
+export function calculateAdjustedAssetValue(
+  player: Pick<Player, 'equipment' | 'assetLevels'>,
+  multiplier: number,
+): number {
+  return Math.round(calculateAssetValue(player) * multiplier);
+}
+
+export function calculateAttributePointValue(
+  player: Pick<Player, 'aiSkill' | 'fame' | 'lifestyle' | 'influence'>,
+): number {
+  return Math.round(
     player.aiSkill * ENDGAME_BALANCE.statValues.aiSkill +
     player.fame * ENDGAME_BALANCE.statValues.fame +
     player.lifestyle * ENDGAME_BALANCE.statValues.lifestyle +
-    player.influence * ENDGAME_BALANCE.statValues.influence;
-  return Math.max(0, Math.round(Math.max(0, player.wealth) + assetValue + statValue));
+    player.influence * ENDGAME_BALANCE.statValues.influence,
+  );
+}
+
+export function calculateEndgameBaseValue(
+  player: Pick<Player, 'wealth' | 'equipment' | 'assetLevels' | 'aiSkill' | 'fame' | 'lifestyle' | 'influence'>,
+  assetMultiplier = ENDGAME_BALANCE.assetValueMultipliers.cashOut,
+  attributeLeaderBonus = 0,
+): number {
+  const assetValue = calculateAdjustedAssetValue(player, assetMultiplier);
+  const statValue = calculateAttributePointValue(player);
+  return Math.max(0, Math.round(Math.max(0, player.wealth) + assetValue + statValue + attributeLeaderBonus));
+}
+
+export function createEndgameScoreBreakdown(
+  snapshot: FinishSnapshot,
+  choice: EndgameChoice,
+  attributeLeaderBonus: number,
+  finalScore: number,
+  diceAdjustment = 0,
+  finalGambleWon?: boolean,
+): EndgameScoreBreakdown {
+  const assetMultiplier = choice === 'CASH_OUT'
+    ? ENDGAME_BALANCE.assetValueMultipliers.cashOut
+    : choice === 'DOUBLE_DOWN'
+      ? ENDGAME_BALANCE.assetValueMultipliers.doubleDown
+      : finalGambleWon
+        ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+        : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss;
+  const assetBaseValue = calculateAssetValue(snapshot);
+  const adjustedAssetValue = Math.round(assetBaseValue * assetMultiplier);
+  const attributeValues = {
+    aiSkill: snapshot.aiSkill,
+    fame: snapshot.fame,
+    lifestyle: snapshot.lifestyle,
+    influence: snapshot.influence,
+  };
+  const attributePointValue = calculateAttributePointValue(snapshot);
+  const wealth = Math.max(0, snapshot.wealth - attributeLeaderBonus);
+  const wealthBeforeFinishBonus = Math.max(0, wealth - snapshot.finishOrderBonus);
+  const preAdjustmentScore = Math.max(0, Math.round(
+    wealthBeforeFinishBonus
+      + snapshot.finishOrderBonus
+      + attributeLeaderBonus
+      + adjustedAssetValue
+      + attributePointValue,
+  ));
+  return {
+    wealthBeforeFinishBonus,
+    finishOrderBonus: snapshot.finishOrderBonus,
+    wealth,
+    assetBaseValue,
+    assetMultiplier,
+    adjustedAssetValue,
+    attributeValues,
+    attributePointValue,
+    attributeLeaderBonus,
+    preAdjustmentScore,
+    diceAdjustment,
+    finalScore: Math.max(0, Math.round(finalScore)),
+  };
 }
 
 export function createFinishSnapshot(
@@ -110,6 +219,7 @@ export function createFinishSnapshot(
   isCPU: boolean,
   round: number,
   turnCounter: number,
+  finishOrderBonus = 0,
 ): FinishSnapshot {
   return {
     playerId: player.playerId,
@@ -123,6 +233,7 @@ export function createFinishSnapshot(
     careerId: player.careerId,
     salaryTier: player.salaryTier,
     salaryAmount: player.salaryAmount,
+    finishOrderBonus,
     secondCareer: player.secondCareer ? { ...player.secondCareer } : null,
     wealth: player.wealth,
     aiSkill: player.aiSkill,
@@ -184,21 +295,28 @@ export function finalGambleValue(
  * Lose: the staked Wealth and assets are forfeited and the tokens are lost.
  */
 export function resolveFinalGambleStake(
-  player: Pick<Player, 'wealth' | 'equipment' | 'assetLevels' | 'upgradeTokens'>,
+  player: Pick<Player, 'equipment' | 'assetLevels' | 'upgradeTokens'>,
   random: () => number = Math.random,
 ): FinalGambleStake {
-  const wealth = Math.max(0, Math.round(player.wealth));
   const assetValue = calculateAssetValue(player);
   const tokens = Math.max(0, player.upgradeTokens);
-  const tokenValue = tokens * ENDGAME_BALANCE.finalGambleTokenValue;
   const won = random() < ENDGAME_BALANCE.finalGambleWinChance;
+  const adjustedAssetValue = Math.round(
+    assetValue * (won
+      ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+      : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss),
+  );
+  const creditsPerToken = won
+    ? ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin
+    : ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleLoss;
   return {
-    wealth,
     assetValue,
+    adjustedAssetValue,
     tokens,
-    tokenValue,
+    creditsPerToken,
+    credits: tokens * creditsPerToken,
     won,
-    delta: won ? wealth + assetValue + tokenValue : -(wealth + assetValue),
+    delta: adjustedAssetValue - assetValue,
   };
 }
 

@@ -12,12 +12,13 @@ import { createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinct
 import { getCard } from './cards';
 import { getPartyParticipantIds } from './bio-party-targets';
 import {
+  ENDGAME_BALANCE,
   calculateEndgameBaseValue,
   cashOutValue,
   chooseCpuEndgameChoice,
   createFinishSnapshot,
+  createEndgameScoreBreakdown,
   doubleDownValue,
-  finalGambleValue,
   resolveFinalGambleStake,
   type EndgameChoice,
   type EndgameState,
@@ -215,7 +216,14 @@ function finishPlayersAtLine(match: Match): Match {
         `Finish reward (${rank + 1}${rank === 0 ? 'st' : rank === 1 ? 'nd' : rank === 2 ? 'rd' : 'th'} place)`,
       );
     }
-    const snapshot = createFinishSnapshot(rewardedPlayer, player.slot, player.isCPU, match.round, match.turnCounter);
+    const snapshot = createFinishSnapshot(
+      rewardedPlayer,
+      player.slot,
+      player.isCPU,
+      match.round,
+      match.turnCounter,
+      finishReward,
+    );
     const baseValue = calculateEndgameBaseValue(rewardedPlayer);
     drafts.push(
       {
@@ -248,7 +256,7 @@ function finishPlayersAtLine(match: Match): Match {
     finishOrder,
     wealthEvents,
     ...(currentPlayerFinished ? {
-      phase: 'endgame' as const,
+      phase: players.every((player) => player.status === 'FINISHED') ? 'endgame' as const : 'landed' as const,
       stepsRemaining: 0,
       pending: null,
       lastLanding: currentSpace ? { playerIndex: match.turnIndex, space: currentSpace } : match.lastLanding,
@@ -268,25 +276,63 @@ function finishPlayersAtLine(match: Match): Match {
   }
   const playersWithBonuses = resolved.players.map((player, playerIndex) => {
     const amount = bonusByPlayer.get(playerIndex) ?? 0;
-    if (!amount) return player;
-    const awardedPlayer = { ...player, wealth: player.wealth + amount };
+    const awardedPlayer = amount ? { ...player, wealth: player.wealth + amount } : player;
     if (player.endgame?.status === 'PENDING') {
       return {
         ...awardedPlayer,
         endgame: {
           ...player.endgame,
+          attributeLeaderBonus: amount,
           baseValue: calculateEndgameBaseValue(awardedPlayer),
           snapshot: { ...player.endgame.snapshot, wealth: awardedPlayer.wealth },
         },
       };
     }
-    if (player.endgame?.status === 'RESOLVED' && player.endgame.finalGameValue !== undefined) {
+    if (player.endgame?.status === 'RESOLVED' && player.endgame.finalGameValue !== undefined && player.endgame.choice) {
+      const endgame = player.endgame;
+      const score = endgame.choice === 'DOUBLE_DOWN' && endgame.dice
+        ? doubleDownValue(
+            calculateEndgameBaseValue(
+              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
+              ENDGAME_BALANCE.assetValueMultipliers.doubleDown,
+            ),
+            endgame.dice.total,
+          )
+        : endgame.choice === 'FINAL_GAMBLE'
+          ? calculateEndgameBaseValue(
+              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
+              endgame.gambleStake?.won
+                ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+                : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss,
+            )
+          : cashOutValue(calculateEndgameBaseValue(
+              { ...endgame.snapshot, wealth: awardedPlayer.wealth },
+              ENDGAME_BALANCE.assetValueMultipliers.cashOut,
+            ));
+      const finalValue = score.finalGameValue;
+      const updatedSnapshot = { ...endgame.snapshot, wealth: awardedPlayer.wealth };
       return {
         ...awardedPlayer,
-        endgame: { ...player.endgame, finalGameValue: player.endgame.finalGameValue + amount },
+        endgame: {
+          ...endgame,
+          attributeLeaderBonus: amount,
+          snapshot: updatedSnapshot,
+          baseValue: calculateEndgameBaseValue(awardedPlayer),
+          finalGameValue: finalValue,
+          scoreBreakdown: createEndgameScoreBreakdown(
+            updatedSnapshot,
+            endgame.choice,
+            amount,
+            finalValue,
+            finalValue - endgame.baseValue,
+            endgame.gambleStake?.won,
+          ),
+        },
       };
     }
-    return awardedPlayer;
+    return player.endgame
+      ? { ...awardedPlayer, endgame: { ...player.endgame, attributeLeaderBonus: amount } }
+      : awardedPlayer;
   });
   return {
     ...resolved,
@@ -1050,14 +1096,13 @@ function resolvedEndgamePlayer(
     pending: null,
     players: match.players.map((player, index) => {
       if (index !== playerIndex) return player;
-      const stakedTokens = endgame.choice === 'FINAL_GAMBLE';
       const lostStake = endgame.choice === 'FINAL_GAMBLE' && finalGambleWon === false;
       return {
         ...player,
         status: 'FINISHED',
-        ...(stakedTokens ? { upgradeTokens: 0, heldUpgradeTokens: 0 } : {}),
+        upgradeTokens: 0,
+        heldUpgradeTokens: 0,
         ...(lostStake ? {
-          wealth: 0,
           equipment: { car: null, lifestyle: null, companion: null, property: null },
         } : {}),
         endgame,
@@ -1082,22 +1127,39 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
   }]);
   const selectedPlayer = selected.players[playerIndex];
   const selectedEndgame = selectedPlayer.endgame ?? endgame;
+  const snapshot = selectedEndgame.snapshot;
+  const attributeLeaderBonus = selectedEndgame.attributeLeaderBonus ?? 0;
 
   if (choice === 'CASH_OUT') {
-    const outcome = cashOutValue(selectedEndgame.baseValue);
+    const baseValue = calculateEndgameBaseValue(snapshot, ENDGAME_BALANCE.assetValueMultipliers.cashOut);
+    const outcome = cashOutValue(baseValue);
+    const tokenConversion = {
+      tokens: snapshot.upgradeTokens,
+      creditsPerToken: ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut,
+      credits: snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut,
+    };
+    const scoreBreakdown = createEndgameScoreBreakdown(
+      snapshot,
+      choice,
+      attributeLeaderBonus,
+      outcome.finalGameValue,
+    );
     const completed = resolvedEndgamePlayer(selected, playerIndex, {
       ...selectedEndgame,
       status: 'RESOLVED',
       choice,
+      baseValue,
       multiplier: outcome.multiplier,
       finalGameValue: outcome.finalGameValue,
+      scoreBreakdown,
+      tokenConversion,
     });
     return emit(completed, [
       {
         type: 'CASH_OUT_RESOLVED',
         playerIndex,
         endgameChoice: choice,
-        baseValue: selectedEndgame.baseValue,
+        baseValue,
         finalGameValue: outcome.finalGameValue,
         multiplier: outcome.multiplier,
         description: `${player.displayName} cashed out at ${outcome.multiplier}× for ${formatAssetValue(outcome.finalGameValue)}.`,
@@ -1116,15 +1178,31 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     const dice = { die1: rollD4(), die2: rollD4() };
     const total = dice.die1 + dice.die2;
     const roll = { ...dice, total, doubles: dice.die1 === dice.die2 };
-    const outcome = doubleDownValue(selectedEndgame.baseValue, total);
+    const baseValue = calculateEndgameBaseValue(snapshot, ENDGAME_BALANCE.assetValueMultipliers.doubleDown);
+    const outcome = doubleDownValue(baseValue, total);
+    const tokenConversion = {
+      tokens: snapshot.upgradeTokens,
+      creditsPerToken: ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown,
+      credits: snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown,
+    };
+    const scoreBreakdown = createEndgameScoreBreakdown(
+      snapshot,
+      choice,
+      attributeLeaderBonus,
+      outcome.finalGameValue,
+      outcome.finalGameValue - baseValue,
+    );
     const completed = resolvedEndgamePlayer({ ...selected, roll }, playerIndex, {
       ...selectedEndgame,
       status: 'RESOLVED',
       choice,
+      baseValue,
       dice: roll,
       effectiveRoll: outcome.effectiveRoll,
       multiplier: outcome.multiplier,
       finalGameValue: outcome.finalGameValue,
+      scoreBreakdown,
+      tokenConversion,
     });
     return emit(completed, [
       {
@@ -1135,7 +1213,7 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
         die2: roll.die2,
         total: roll.total,
         doubles: roll.doubles,
-        baseValue: selectedEndgame.baseValue,
+        baseValue,
         finalGameValue: outcome.finalGameValue,
         multiplier: outcome.multiplier,
         effectiveRoll: outcome.effectiveRoll,
@@ -1151,43 +1229,39 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
     ]);
   }
 
-  const draw = drawCardFromPiles(selected.cardPiles, 'gamble');
-  const card = getCard(draw.cardId);
-  if (!card || card.deck !== 'gamble') throw new Error(`Invalid Final Gamble card ${draw.cardId}`);
-  let gambled = emit({ ...selected, cardPiles: draw.cardPiles }, [{
-    type: 'CARD_DRAW',
-    playerIndex,
-    spaceNumber: 75,
-    deck: 'gamble',
-    cardId: draw.cardId,
-    description: `${player.displayName} drew ${card.title} for Final Gamble.`,
-  }]);
-  gambled = {
-    ...gambled,
-    cardPiles: discardCardToPiles(gambled.cardPiles, 'gamble', draw.cardId),
+  const hasAssets = Object.values(snapshot.equipment).some(Boolean);
+  if (!hasAssets && snapshot.upgradeTokens <= 0) return match;
+  const stake = resolveFinalGambleStake(snapshot);
+  const assetMultiplier = stake.won
+    ? ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin
+    : ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss;
+  const baseValue = calculateEndgameBaseValue(snapshot, assetMultiplier);
+  const outcome = { finalGameValue: baseValue, multiplier: 1 };
+  const tokenConversion = {
+    tokens: snapshot.upgradeTokens,
+    creditsPerToken: stake.creditsPerToken,
+    credits: stake.credits,
   };
-  gambled = emit(gambled, [{
-    type: 'CARD_RESOLVED',
-    playerIndex,
-    deck: 'gamble',
-    spaceNumber: 75,
-    cardId: draw.cardId,
-    description: `${card.title}: ${card.effect}`,
-  }]);
-  const finalPlayer = gambled.players[playerIndex];
-  const rawDelta = calculateEndgameBaseValue(finalPlayer) - selectedEndgame.baseValue;
-  const stake = resolveFinalGambleStake(finalPlayer);
-  const outcome = finalGambleValue(selectedEndgame.baseValue, rawDelta, stake.delta);
-  const completed = resolvedEndgamePlayer(gambled, playerIndex, {
+  const scoreBreakdown = createEndgameScoreBreakdown(
+    snapshot,
+    choice,
+    attributeLeaderBonus,
+    outcome.finalGameValue,
+    0,
+    stake.won,
+  );
+  const completed = resolvedEndgamePlayer(selected, playerIndex, {
     ...selectedEndgame,
     status: 'RESOLVED',
     choice,
-    gambleCardId: draw.cardId,
-    gambleRawDelta: rawDelta,
-    gambleAdjustedDelta: outcome.adjustedDelta,
+    baseValue,
+    gambleRawDelta: stake.assetValue,
+    gambleAdjustedDelta: stake.delta,
     gambleStake: stake,
     multiplier: outcome.multiplier,
     finalGameValue: outcome.finalGameValue,
+    scoreBreakdown,
+    tokenConversion,
   }, stake.won);
   return emit(completed, [
     ...(!stake.won
@@ -1213,19 +1287,17 @@ function resolveEndgameChoice(match: Match, choice: EndgameChoice): Match {
       type: 'FINAL_GAMBLE_RESOLVED',
       playerIndex,
       endgameChoice: choice,
-      deck: 'gamble',
-      cardId: draw.cardId,
-      baseValue: selectedEndgame.baseValue,
+      baseValue,
       finalGameValue: outcome.finalGameValue,
-      delta: outcome.adjustedDelta,
+      delta: stake.delta,
       multiplier: outcome.multiplier,
-      description: `${player.displayName} put their Wealth, assets${stake.tokens ? ' and Upgrade Tokens' : ''} on the line and ${stake.won ? 'WON' : 'LOST'}. ${card.title}: ${outcome.adjustedDelta >= 0 ? '+' : ''}${formatAssetValue(outcome.adjustedDelta)} adjusted value.`,
+      description: `${player.displayName} ${stake.won ? 'won' : 'lost'} the 50/50 Final Gamble. Wealth and attributes stayed unchanged; assets ${stake.won ? 'score at 140% and remain owned' : 'score $0 and were forfeited'}. ${stake.tokens} token${stake.tokens === 1 ? '' : 's'} convert to ${stake.credits} Credits.`,
     },
     {
       type: 'ENDGAME_COMPLETED',
       playerIndex,
       endgameChoice: choice,
-      baseValue: selectedEndgame.baseValue,
+      baseValue,
       finalGameValue: outcome.finalGameValue,
     },
   ]);
@@ -1606,11 +1678,6 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       for (let offset = 1; offset <= playerCount; offset += 1) {
         const candidateIndex = (previousTurnIndex + offset) % playerCount;
         const candidate = endedTurn.players[candidateIndex];
-        if (candidate.endgame?.status === 'PENDING') {
-          nextIndex = candidateIndex;
-          nextIsEndgame = true;
-          break;
-        }
         if (candidate.status === 'ACTIVE') {
           if (candidate.skipTurns > 0) {
             endedTurn = emit({
@@ -1640,6 +1707,16 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
           const candidateIndex = (previousTurnIndex + offset) % playerCount;
           if (endedTurn.players[candidateIndex].status === 'ACTIVE') {
             nextIndex = candidateIndex;
+            break;
+          }
+        }
+      }
+      if (nextIndex < 0) {
+        for (let offset = 1; offset <= playerCount; offset += 1) {
+          const candidateIndex = (previousTurnIndex + offset) % playerCount;
+          if (endedTurn.players[candidateIndex].endgame?.status === 'PENDING') {
+            nextIndex = candidateIndex;
+            nextIsEndgame = true;
             break;
           }
         }

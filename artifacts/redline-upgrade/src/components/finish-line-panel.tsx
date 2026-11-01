@@ -1,14 +1,21 @@
 import { getAsset, type AssetLevel, type AssetSlot } from '@/game/assets';
-import { getCard } from '@/game/cards';
 import { formatMoney, getCareer, SALARY_TIERS } from '@/game/careers';
 import { getCharacter } from '@/game/characters';
 import { effectiveSalaryAmount } from '@/game/player';
-import type { EndgameChoice, EndgameState } from '@/game/endgame';
+import {
+  ENDGAME_BALANCE,
+  calculateAssetValue,
+  calculateAttributePointValue,
+  calculateEndgameBaseValue,
+  type EndgameChoice,
+  type EndgameScoreBreakdown,
+  type EndgameState,
+} from '@/game/endgame';
 import { getFinalPlacementOrder, type MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { assetValueAtLevel } from '@/game/upgrade-tokens';
-import { calculateAssetValue } from '@/game/endgame';
+import { doubleDownValue } from '@/game/endgame';
 import { achievementCatalog } from '@/game/achievement-catalog';
 import type { AssetEventLogEntry } from '@/game/events/types';
 import { useState } from 'react';
@@ -44,21 +51,21 @@ const choices: readonly {
     id: 'CASH_OUT',
     number: '01',
     title: 'CASH OUT',
-    description: 'Lock the base value at 1× and close the run.',
+    description: 'Score assets at 50%. Keep Wealth, stats, and assets.',
     accent: 'cash',
   },
   {
     id: 'DOUBLE_DOWN',
     number: '02',
     title: 'DOUBLE DOWN',
-    description: 'Roll 2d4 for a 0.25×–2.75× multiplier on the base value.',
+    description: 'Score assets at 70%, then apply the 2d4 multiplier.',
     accent: 'double',
   },
   {
     id: 'FINAL_GAMBLE',
     number: '03',
     title: 'FINAL GAMBLE',
-    description: 'Reveal a Gamble card for the record. A fixed 50/50 flip doubles your stake or loses it all.',
+    description: 'A 50/50 result scores assets at 140% or forfeits them.',
     accent: 'gamble',
   },
 ];
@@ -84,8 +91,43 @@ function personalBestCategoryLabel(category: string) {
   return category.replaceAll('_', ' ');
 }
 
+function ScoreBreakdownDetails({
+  breakdown,
+  choice,
+  multiplier,
+  dice,
+}: {
+  breakdown: EndgameScoreBreakdown;
+  choice: EndgameChoice;
+  multiplier?: number;
+  dice?: EndgameState['dice'];
+}) {
+  return (
+    <details className="finish-line-score-breakdown">
+      <summary>Scoring breakdown</summary>
+      <dl>
+        <div><dt>Wealth before finish bonus</dt><dd>{formatMoney(breakdown.wealthBeforeFinishBonus)}</dd></div>
+        <div><dt>Finish-order wealth bonus</dt><dd>+{formatMoney(breakdown.finishOrderBonus)}</dd></div>
+        <div><dt>Attribute-leader bonus</dt><dd>+{formatMoney(breakdown.attributeLeaderBonus)}</dd></div>
+        <div><dt>Assets · {Math.round(breakdown.assetMultiplier * 100)}% of {formatMoney(breakdown.assetBaseValue)}</dt><dd>{formatMoney(breakdown.adjustedAssetValue)}</dd></div>
+        <div><dt>Attribute point value</dt><dd>{formatMoney(breakdown.attributePointValue)}</dd></div>
+        <div><dt>Score before endgame adjustment</dt><dd>{formatMoney(breakdown.preAdjustmentScore)}</dd></div>
+        {choice === 'DOUBLE_DOWN' && dice && (
+          <>
+            <div><dt>2d4 result</dt><dd>{dice.die1} + {dice.die2} = {dice.total}</dd></div>
+            <div><dt>2d4 multiplier</dt><dd>{multiplier?.toFixed(2) ?? '—'}×</dd></div>
+            <div><dt>Dice adjustment</dt><dd>{formatSignedMoney(breakdown.diceAdjustment)}</dd></div>
+          </>
+        )}
+        <div className="finish-line-score-total"><dt>Final dollar score</dt><dd>{formatMoney(breakdown.finalScore)}</dd></div>
+      </dl>
+    </details>
+  );
+}
+
 function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   const { snapshot } = endgame;
+  const nominalAssetValue = calculateAssetValue(snapshot);
   const career = snapshot.careerId ? getCareer(snapshot.careerId) : undefined;
   const secondCareer = snapshot.secondCareer ? getCareer(snapshot.secondCareer.careerId) : undefined;
   const salaryTier = snapshot.secondCareer && snapshot.secondCareer.salaryAmount > snapshot.salaryAmount
@@ -104,13 +146,13 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
       </h2>
       <div className="finish-line-ledger-grid">
         <div className="finish-line-ledger-cell finish-line-ledger-wealth">
-          <span className="mono">RECORDED WEALTH</span>
+          <span className="mono">WEALTH AT FINISH</span>
           <strong>{formatMoney(snapshot.wealth)}</strong>
         </div>
         <div className="finish-line-ledger-cell">
-          <span className="mono">BASE VALUE</span>
+          <span className="mono">CASH OUT SCORE BASE</span>
           <strong>{formatMoney(endgame.baseValue)}</strong>
-          <small>ENGINE CALCULATION</small>
+          <small>50% ASSET VALUE · BEFORE ANY DOUBLE-DOWN ROLL</small>
         </div>
         <div className="finish-line-ledger-cell">
           <span className="mono">CAREER / SALARY</span>
@@ -129,9 +171,13 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
           </div>
         </div>
         <div className="finish-line-token-readout">
-          <span className="mono">UPGRADE TOKENS / FINAL GAMBLE</span>
-          <strong>{snapshot.upgradeTokens} CARRY OVER</strong>
-          <small>Unused tokens remain available for the final gamble · {snapshot.history.upgradeTokensSpent} spent during the match</small>
+          <span className="mono">UPGRADE TOKENS / NOT SCORE VALUE</span>
+          <strong>{snapshot.upgradeTokens} TO CONVERT</strong>
+          <small>
+            Cash Out or Double Down: {formatMoney(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.
+            Final Gamble: {formatMoney(snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} on a win, $0 on a loss.
+            {` ${snapshot.history.upgradeTokensSpent} spent during the match.`}
+          </small>
         </div>
       </div>
       <div className="finish-line-assets" aria-label="Captured assets">
@@ -151,18 +197,22 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
                  {asset ? <AssetArtwork assetId={asset.id} level={level! as 1 | 2 | 3 | 4} className="finish-line-asset-image" /> : <span>+</span>}
                </div>
               <strong>{asset?.name ?? 'OPEN SLOT'}</strong>
-                <small>{asset ? `LEVEL ${level} / ENDGAME +${formatMoney(assetValueAtLevel(asset, level! as AssetLevel))}` : 'NOT ACQUIRED'}</small>
+                <small>{asset
+                  ? `LV ${level} / NOMINAL ${formatMoney(assetValueAtLevel(asset, level! as AssetLevel))} / CASH OUT ${formatMoney(assetValueAtLevel(asset, level! as AssetLevel) * ENDGAME_BALANCE.assetValueMultipliers.cashOut)}`
+                  : 'NOT ACQUIRED'}</small>
             </div>
           );
         })}
       </div>
+      <p className="finish-line-asset-value-note">
+        Asset baseline: {formatMoney(nominalAssetValue)}. Tokens convert to Credits after settlement; they never add to Wealth or dollar score.
+      </p>
     </section>
   );
 }
 
 function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onContinue: () => void }) {
   const choice = choices.find((entry) => entry.id === endgame.choice);
-  const card = endgame.gambleCardId ? getCard(endgame.gambleCardId) : undefined;
   const hasFinalValue = typeof endgame.finalGameValue === 'number';
   return (
     <section className="finish-line-result" aria-labelledby="finish-line-result-heading" aria-live="polite">
@@ -208,21 +258,32 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
         )}
         {endgame.choice === 'FINAL_GAMBLE' && (
           <div className="finish-line-outcome finish-line-gamble-outcome">
-            <span className="mono">FINAL CARD</span>
-            <strong>{card?.title ?? (endgame.gambleCardId ? `CARD ${endgame.gambleCardId}` : 'CARD NOT SUPPLIED')}</strong>
-            {typeof endgame.gambleAdjustedDelta === 'number' && <small>OUTCOME / {formatSignedMoney(endgame.gambleAdjustedDelta)}</small>}
-            {card && <small>{card.effect}</small>}
-            <small>The revealed card is informational; it does not change the fixed 50/50 stake rules.</small>
+            <span className="mono">50/50 FINAL GAMBLE</span>
+            <strong>{endgame.gambleStake?.won ? 'WON' : 'LOST'}</strong>
+            <small>
+              Wealth and attributes stay unchanged. Assets {endgame.gambleStake?.won
+                ? `score at 140% (${formatMoney(endgame.gambleStake.adjustedAssetValue)}) and remain owned.`
+                : 'score $0 and are forfeited.'}
+            </small>
             {endgame.gambleStake && (
               <>
-                <small data-testid="finish-gamble-stake">ALL-IN FLIP / {endgame.gambleStake.won ? 'WON' : 'LOST'} — STAKE {formatMoney(endgame.gambleStake.wealth)} WEALTH + {formatMoney(endgame.gambleStake.assetValue)} ASSETS{endgame.gambleStake.tokens ? ` + ${endgame.gambleStake.tokens} UPGRADE TOKEN${endgame.gambleStake.tokens === 1 ? '' : 'S'}` : ''}</small>
-                <small>STAKE RESULT / {formatSignedMoney(endgame.gambleStake.delta)}</small>
+                <small data-testid="finish-gamble-stake">
+                  TOKENS / {endgame.gambleStake.tokens} × {formatMoney(endgame.gambleStake.creditsPerToken)} = {formatMoney(endgame.gambleStake.credits)} CREDITS
+                </small>
               </>
             )}
           </div>
         )}
         {!endgame.choice && <p className="finish-line-result-missing">The engine resolved this finish without a named choice.</p>}
       </div>
+      {endgame.scoreBreakdown && endgame.choice && (
+        <ScoreBreakdownDetails
+          breakdown={endgame.scoreBreakdown}
+          choice={endgame.choice}
+          multiplier={endgame.multiplier}
+          dice={endgame.dice}
+        />
+      )}
       <button className="action finish-line-continue" type="button" onClick={onContinue} data-testid="button-finish-continue">
         Continue to final record <span aria-hidden="true">↗</span>
       </button>
@@ -237,7 +298,26 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
   const selected = choices.find((choice) => choice.id === selectedChoice);
   const assetValue = calculateAssetValue(endgame.snapshot);
   const assetCount = Object.values(endgame.snapshot.equipment).filter(Boolean).length;
-  const doubleDownMultipliers = [0.25, 0.5, 0.85, 1.25, 1.9, 2.75];
+  const canFinalGamble = assetCount > 0 || endgame.snapshot.upgradeTokens > 0;
+  const doubleDownOutcomes = [2, 3, 4, 5, 6, 7, 8].map((total) => ({
+    total,
+    ...doubleDownValue(
+      calculateEndgameBaseValue(endgame.snapshot, ENDGAME_BALANCE.assetValueMultipliers.doubleDown),
+      total,
+    ),
+  }));
+  const cashOutScore = calculateEndgameBaseValue(
+    endgame.snapshot,
+    ENDGAME_BALANCE.assetValueMultipliers.cashOut,
+  );
+  const finalGambleWinScore = calculateEndgameBaseValue(
+    endgame.snapshot,
+    ENDGAME_BALANCE.assetValueMultipliers.finalGambleWin,
+  );
+  const finalGambleLossScore = calculateEndgameBaseValue(
+    endgame.snapshot,
+    ENDGAME_BALANCE.assetValueMultipliers.finalGambleLoss,
+  );
 
   return (
     <main className="finish-line-panel" data-player-id={player.playerId} data-status={endgame.status}>
@@ -292,6 +372,7 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
                 className={`finish-line-choice finish-line-choice-${choice.accent} ${selectedChoice === choice.id ? 'selected' : ''}`}
                 type="button"
                 onClick={() => setSelectedChoice(choice.id)}
+                disabled={choice.id === 'FINAL_GAMBLE' && !canFinalGamble}
                 aria-pressed={selectedChoice === choice.id}
                 key={choice.id}
                 data-testid={`button-finish-choice-${choice.id.toLowerCase()}`}
@@ -299,6 +380,13 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
                 <span className="finish-line-choice-top"><span className="mono">{choice.number} / DECISION</span><span aria-hidden="true">↗</span></span>
                 <strong>{choice.title}</strong>
                 <span>{choice.description}</span>
+                <span className="mono finish-line-choice-value">
+                  {choice.id === 'CASH_OUT' && `SCORE ${formatMoney(cashOutScore)} · ${endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut} CREDITS`}
+                  {choice.id === 'DOUBLE_DOWN' && `2d4 · SCORE ${formatMoney(doubleDownOutcomes[0].finalGameValue)}–${formatMoney(doubleDownOutcomes[doubleDownOutcomes.length - 1].finalGameValue)} · ${endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown} CREDITS`}
+                  {choice.id === 'FINAL_GAMBLE' && (canFinalGamble
+                    ? `WIN ${formatMoney(finalGambleWinScore)} / LOSE ${formatMoney(finalGambleLossScore)}`
+                    : 'UNAVAILABLE · NEED AN ASSET OR TOKEN')}
+                </span>
                 <span className="mono finish-line-choice-cta">{selectedChoice === choice.id ? 'SELECTED' : 'REVIEW'}</span>
               </button>
             ))}
@@ -306,9 +394,24 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
           {selected && (
             <div className="finish-line-consequence-preview" aria-live="polite">
               <span className="eyebrow">BEFORE YOU CONFIRM // {selected.title}</span>
-              {selectedChoice === 'CASH_OUT' && <p><strong>Secure {formatMoney(endgame.baseValue)}.</strong> Your Wealth, {assetCount} assets ({formatMoney(assetValue)}), and attributes remain unchanged.</p>}
-              {selectedChoice === 'DOUBLE_DOWN' && <p><strong>Risk the final score, not your assets.</strong> The 2d4 multiplier range is {formatMoney(endgame.baseValue * Math.min(...doubleDownMultipliers))}–{formatMoney(endgame.baseValue * Math.max(...doubleDownMultipliers))}; Wealth and all {assetCount} assets remain owned regardless of the roll.</p>}
-              {selectedChoice === 'FINAL_GAMBLE' && <p><strong>Stake all current Wealth, {assetCount} assets ({formatMoney(assetValue)}), and {endgame.snapshot.upgradeTokens} Upgrade Tokens.</strong> A 50/50 flip either adds the stake to final value or forfeits the staked Wealth, assets, and tokens. The drawn Gamble card is shown in the result.</p>}
+              {selectedChoice === 'CASH_OUT' && (
+                <>
+                  <p><strong>Final score: {formatMoney(cashOutScore)}.</strong> Assets score at 50% of their {formatMoney(assetValue)} level value. Wealth, stats, and all {assetCount} assets remain unchanged. {endgame.snapshot.upgradeTokens} tokens convert to {formatMoney(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.cashOut)} Credits.</p>
+                </>
+              )}
+              {selectedChoice === 'DOUBLE_DOWN' && (
+                <>
+                  <p><strong>Assets score at 70% before the 2d4 multiplier.</strong> Wealth, stats, and all {assetCount} assets remain unchanged. Tokens convert at {formatMoney(ENDGAME_BALANCE.tokenCreditsPerOutcome.doubleDown)} Credits each.</p>
+                  <div className="finish-line-dice-outcomes" aria-label="Double Down 2d4 outcomes">
+                    {doubleDownOutcomes.map((outcome) => (
+                      <span key={outcome.total}>2d4 {outcome.total} · {outcome.multiplier}× · {formatMoney(outcome.finalGameValue)}</span>
+                    ))}
+                  </div>
+                </>
+              )}
+              {selectedChoice === 'FINAL_GAMBLE' && (
+                <p><strong>One 50/50 result.</strong> Win: assets score at 140%, all assets stay owned, and tokens convert to {formatMoney(endgame.snapshot.upgradeTokens * ENDGAME_BALANCE.tokenCreditsPerOutcome.finalGambleWin)} Credits. Loss: assets score $0 and are forfeited; tokens convert to $0 Credits. Wealth and stats are never risked. Potential scores: win {formatMoney(finalGambleWinScore)}, loss {formatMoney(finalGambleLossScore)}.</p>
+              )}
               <div className="finish-line-choice-review-actions">
                 <button type="button" className="action secondary" onClick={() => setSelectedChoice(null)}>CANCEL</button>
                 <button type="button" className="action lime-action" onClick={() => selectedChoice && onChoose(selectedChoice)} data-testid="button-confirm-finish-choice">CONFIRM {selected.title}</button>
