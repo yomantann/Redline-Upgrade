@@ -1,4 +1,4 @@
-import { assetOptions, getAsset, getAssetAttributeContributionTransition, ASSET_ATTRIBUTE_STATS, type AssetCategory, type AssetSlot } from './assets';
+import { assetOptions, getAsset, getAssetAttributeAwardTransition, ASSET_ATTRIBUTE_STATS, type AssetCategory, type AssetSlot } from './assets';
 import { careerAbilityId, getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
 import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
@@ -1099,7 +1099,7 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       const currentLevel = player.assetLevels[asset.id] ?? 1;
       if (currentLevel >= 2) return match;
       const assetLevels = { ...player.assetLevels, [asset.id]: effect.level };
-      const transition = getAssetAttributeContributionTransition(player, player.equipment, assetLevels);
+      const transition = getAssetAttributeAwardTransition(player, player.equipment, assetLevels);
       let updated = updatePlayer(match, event.playerIndex, (current) => ({
         ...current,
         assetLevels,
@@ -1435,7 +1435,7 @@ function applyCardEffects(
             players: state.players.map((player, index) => index === actorIndex
               ? (() => {
                 const equipment = Object.fromEntries(Object.keys(player.equipment).map(slot => [slot, null])) as typeof player.equipment;
-                const transition = getAssetAttributeContributionTransition(player, equipment, {});
+                const transition = getAssetAttributeAwardTransition(player, equipment, {});
                 const nextPlayer = {
                   ...player,
                   equipment,

@@ -2,7 +2,7 @@ import { characters } from './characters';
 import { createPlayer, effectiveSalaryAmount, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
-import { assetOptions, getAsset, getAssetAttributeContributionTransition, ASSET_ATTRIBUTE_STATS, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
+import { assetOptions, getAsset, getAssetAttributeAwardTransition, ASSET_ATTRIBUTE_STATS, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
@@ -777,8 +777,8 @@ function resolveAbilityAssetInteraction(
   actorLevels[pending.targetAssetId] = targetLevel;
   const actorEquipment = { ...actor.equipment, [pending.category]: pending.targetAssetId };
   const targetEquipment = { ...target.equipment, [pending.category]: pending.ownAssetId };
-  const actorTransition = getAssetAttributeContributionTransition(actor, actorEquipment, actorLevels);
-  const targetTransition = getAssetAttributeContributionTransition(target, targetEquipment, targetLevels);
+  const actorTransition = getAssetAttributeAwardTransition(actor, actorEquipment, actorLevels);
+  const targetTransition = getAssetAttributeAwardTransition(target, targetEquipment, targetLevels);
   const nextActor = {
     ...actor,
     equipment: actorEquipment,
@@ -848,7 +848,7 @@ function applyAssetStats(match: Match, playerIndex: number, assetId: string, cha
   const equipment = { ...player.equipment };
   equipment[(asset.category === 'pet' || asset.category === 'investment') ? 'companion' : asset.category] = asset.id;
   const assetLevels = { ...player.assetLevels, [asset.id]: 1 as AssetLevel };
-  const transition = getAssetAttributeContributionTransition(player, equipment, assetLevels);
+  const transition = getAssetAttributeAwardTransition(player, equipment, assetLevels);
   const next = {
     ...player,
     equipment,
@@ -908,7 +908,7 @@ function applyAssetLevelEffects(match: Match, playerIndex: number, assetId: stri
   if (!asset) return [match, []];
   const player = match.players[playerIndex];
   const assetLevels = { ...player.assetLevels, [assetId]: level };
-  const transition = getAssetAttributeContributionTransition(player, player.equipment, assetLevels);
+  const transition = getAssetAttributeAwardTransition(player, player.equipment, assetLevels);
   const next = { ...player, assetLevels, assetAttributeContributions: transition.contributions };
   const drafts: EventDraft[] = [];
   for (const stat of ASSET_ATTRIBUTE_STATS) {

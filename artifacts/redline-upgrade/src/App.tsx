@@ -272,23 +272,10 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
   const isHauntedBoard = boardId === 'HAUNTED_UPGRADE';
   const isPreviewOnlyBoard = isHauntedBoard;
   const [motion, setMotion] = useState<PawnMotion>('idle');
-  const timers = useRef<number[]>([]);
 
   useEffect(() => {
     setMotion('idle');
-    return () => {
-      timers.current.forEach(window.clearTimeout);
-      timers.current = [];
-    };
   }, [character.id]);
-
-  const previewMove = () => {
-    timers.current.forEach(window.clearTimeout);
-    timers.current = [];
-    setMotion('moving');
-    timers.current.push(window.setTimeout(() => setMotion('landing'), 700));
-    timers.current.push(window.setTimeout(() => setMotion('idle'), 1500));
-  };
 
   const confirm = () => {
     confirmCharacter(character.id);
@@ -321,12 +308,6 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
             <h3 className="ability-title">{character.abilityName}</h3>
             <p className="ability-description">{character.abilityDescription}</p>
           </div>}
-          {!isPreviewOnlyBoard && <div className="preview-actions">
-            <button className="action secondary" type="button" onClick={previewMove} data-testid="button-preview-move">
-              Test move <span aria-hidden="true">↗</span>
-            </button>
-          </div>}
-          <p className="preview-note mono">{isHauntedBoard ? 'HAUNTED BOARD AND RULES ARE STILL IN DEVELOPMENT' : 'CAREER AND SALARY ARE ASSIGNED WHEN YOU START THE GAME'}</p>
         </div>
       </div>
     </aside>

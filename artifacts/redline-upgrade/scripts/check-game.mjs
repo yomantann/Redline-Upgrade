@@ -61,7 +61,7 @@ try {
   const { CardPreviewModal, CardTabletop } = await vite.ssrLoadModule('/src/components/card-tabletop.tsx');
   const { RedlineCard } = await vite.ssrLoadModule('/src/components/redline-card.tsx');
   const { EndgameAttributeBonusSummary } = await vite.ssrLoadModule('/src/components/endgame-attribute-bonus-summary.tsx');
-  const { AbilityActivationBanner, PlayerStatChangeOverlay, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerStatChange, formatSpaceFeedbackOutcome, getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
+  const { AbilityActivationBanner, PlayerStatChangeOverlay, PLAYER_CHANGE_FEEDBACK_MS, SpaceRewardBanner, formatPlayerStatChange, formatSpaceFeedbackOutcome, groupPlayerStatChangesByPlayer } = await vite.ssrLoadModule('/src/components/game-event-feedback.tsx');
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
@@ -70,9 +70,9 @@ try {
     assets,
     MAX_ASSET_LEVEL,
     ASSET_ATTRIBUTE_STATS,
-    MAX_ASSET_ATTRIBUTE_CONTRIBUTION,
-    calculateEquippedAssetAttributeContributions,
-    getAssetAttributeContributionTransition,
+    MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET,
+    calculateAssetAttributeAward,
+    getAssetAttributeAwardTransition,
   } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
@@ -99,47 +99,57 @@ try {
   );
   for (const asset of assets) {
     for (let level = 1; level <= MAX_ASSET_LEVEL; level += 1) {
-      const equipment = { ...assetTestEmptyEquipment, [slotForAsset(asset)]: asset.id };
-      const contributions = calculateEquippedAssetAttributeContributions(equipment, { [asset.id]: level });
-      for (const stat of ASSET_ATTRIBUTE_STATS) {
-        assert(contributions[stat] <= MAX_ASSET_ATTRIBUTE_CONTRIBUTION, `${asset.id} level ${level} stays within the ${MAX_ASSET_ATTRIBUTE_CONTRIBUTION}-point ${stat} asset cap`);
-        assert(asset.effects[stat] === undefined || Math.abs(asset.effects[stat]) <= 3, `${asset.id} base ${stat} bonus is rebalanced`);
-      }
+      const award = calculateAssetAttributeAward(asset.id, level);
+      const totalAward = ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + award[stat], 0);
+      assert(totalAward <= MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET, `${asset.id} level ${level} stays within the ${MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET}-point per-asset lifetime cap`);
+      assert(asset.effects.aiSkill === undefined || Math.abs(asset.effects.aiSkill) <= 3, `${asset.id} base AI bonus is rebalanced`);
+      assert(asset.effects.fame === undefined || Math.abs(asset.effects.fame) <= 3, `${asset.id} base fame bonus is rebalanced`);
+      assert(asset.effects.lifestyle === undefined || Math.abs(asset.effects.lifestyle) <= 3, `${asset.id} base lifestyle bonus is rebalanced`);
+      assert(asset.effects.influence === undefined || Math.abs(asset.effects.influence) <= 3, `${asset.id} base influence bonus is rebalanced`);
     }
   }
-  for (const stat of ASSET_ATTRIBUTE_STATS) {
-    const equipment = { ...assetTestEmptyEquipment };
-    const levels = {};
-    for (const category of ['car', 'lifestyle', 'companion', 'property']) {
-      const categoryAssets = assets
-        .filter((asset) => slotForAsset(asset) === category)
-        .sort((a, b) => (b.effects[stat] ?? 0) - (a.effects[stat] ?? 0));
-      const asset = categoryAssets[0];
-      if (!asset) continue;
-      equipment[category] = asset.id;
-      levels[asset.id] = MAX_ASSET_LEVEL;
-    }
-    const combined = calculateEquippedAssetAttributeContributions(equipment, levels);
-    assert(combined[stat] <= MAX_ASSET_ATTRIBUTE_CONTRIBUTION, `combined equipped assets stay within the ${stat} cap`);
+  const maxAwardEquipment = { ...assetTestEmptyEquipment };
+  const maxAwardLevels = {};
+  for (const category of ['car', 'lifestyle', 'companion', 'property']) {
+    const asset = assets
+      .filter((candidate) => slotForAsset(candidate) === category)
+      .sort((a, b) => ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + (b.effects[stat] ?? 0) - (a.effects[stat] ?? 0), 0))[0];
+    if (!asset) continue;
+    maxAwardEquipment[category] = asset.id;
+    maxAwardLevels[asset.id] = MAX_ASSET_LEVEL;
   }
+  const combinedAssetAwards = getAssetAttributeAwardTransition({
+    equipment: assetTestEmptyEquipment,
+    assetLevels: {},
+    assetAttributeContributions: { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 },
+  }, maxAwardEquipment, maxAwardLevels).contributions;
+  assert(
+    ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + combinedAssetAwards[stat], 0) > MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET,
+    'buying multiple assets can award more than ten total lifetime attribute points',
+  );
   const retainedAsset = getAsset('supercar');
   assert(retainedAsset, 'legacy active-game fixture asset exists');
   const retainedEquipment = { ...assetTestEmptyEquipment, car: retainedAsset.id };
   const retainedLevels = { [retainedAsset.id]: 1 };
-  const currentAssetContribution = calculateEquippedAssetAttributeContributions(retainedEquipment, retainedLevels);
+  const purchaseTransition = getAssetAttributeAwardTransition({
+    equipment: assetTestEmptyEquipment,
+    assetLevels: {},
+    assetAttributeContributions: { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 },
+  }, retainedEquipment, retainedLevels);
   const assetBackedPlayer = {
     equipment: retainedEquipment,
     assetLevels: retainedLevels,
-    assetAttributeContributions: currentAssetContribution,
+    assetAttributeContributions: purchaseTransition.contributions,
     aiSkill: 8,
     fame: 7,
     lifestyle: 5,
     influence: 8,
   };
-  const removal = getAssetAttributeContributionTransition(assetBackedPlayer, assetTestEmptyEquipment, {});
-  assert.equal(assetBackedPlayer.fame + removal.deltas.fame, 4, 'removing an asset preserves fame from non-asset sources');
-  assert.equal(assetBackedPlayer.influence + removal.deltas.influence, 6, 'removing an asset preserves influence from non-asset sources');
-  const legacyRemoval = getAssetAttributeContributionTransition({
+  const removal = getAssetAttributeAwardTransition(assetBackedPlayer, assetTestEmptyEquipment, {});
+  assert.equal(assetBackedPlayer.fame + removal.deltas.fame, 7, 'asset loss never removes awarded fame points');
+  assert.equal(assetBackedPlayer.influence + removal.deltas.influence, 8, 'asset loss never removes awarded influence points');
+  assert.equal(removal.contributions.fame, purchaseTransition.contributions.fame, 'lifetime asset awards remain in the contribution ledger after removal');
+  const legacyRemoval = getAssetAttributeAwardTransition({
     equipment: retainedEquipment,
     assetLevels: retainedLevels,
     aiSkill: 0,
@@ -147,8 +157,8 @@ try {
     lifestyle: 0,
     influence: retainedAsset.effects.influence ?? 0,
   }, assetTestEmptyEquipment, {});
-  assert.equal(20 + legacyRemoval.deltas.fame, 0, 'legacy active-game fame bonuses are migrated without phantom points');
-  assert.equal(10 + legacyRemoval.deltas.influence, 0, 'legacy active-game influence bonuses are migrated without phantom points');
+  assert.equal(20 + legacyRemoval.deltas.fame, 20, 'legacy active-game fame remains after asset loss');
+  assert.equal(10 + legacyRemoval.deltas.influence, 10, 'legacy active-game influence remains after asset loss');
 
   assert.deepEqual(Object.keys(BIO_PAWN_COLORS).sort(), characters.map(character => character.id).sort(), 'every roster character has a Bio pawn palette');
   assert.equal(new Set(Object.values(BIO_PAWN_COLORS)).size, 21, 'every Bio character has a unique pawn color');
@@ -244,9 +254,20 @@ try {
   assert.equal(wealthImpact?.sourceLabel, 'WEALTH CARD · CAREER BONUS', 'card source and career reward modifier remain identifiable');
   assert.equal(targetedFameImpact?.amountText, '−2', 'negative attribute feedback uses a signed negative delta');
   assert.equal(targetedFameImpact?.sourceLabel, 'CAREER ABILITY', 'ability-driven changes name their source family');
-  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 30000, 'Wealth and attribute feedback shares a 30-second display window');
-  assert.equal(getPlayerStatChangePulseDuration(31000, [31000, 31000, 31000, 31000], 1000), 6000, 'same-player changes receive sequential time within the shared display window');
-  assert.equal(getPlayerStatChangePulseDuration(31000, [], 1000), 30000, 'a single Wealth or attribute change remains visible for the full 30 seconds');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 30000, 'each Wealth and attribute feedback pulse lasts 30 seconds');
+  const simultaneousChanges = [wealthImpact, influenceImpact, targetedFameImpact].map((change, index) => ({
+    ...change,
+    id: `stacked-feedback-${index}`,
+    durationMs: PLAYER_CHANGE_FEEDBACK_MS,
+  }));
+  const stackedFeedbackMarkup = renderToStaticMarkup(React.createElement('div', null, simultaneousChanges.map(change => React.createElement(PlayerStatChangeOverlay, {
+    key: change.id,
+    change,
+    playerIndex: 1,
+    surface: 'summary',
+  }))));
+  assert.equal((stackedFeedbackMarkup.match(/class="player-stat-change-pulse/g) ?? []).length, 3, 'three same-turn stat changes can render together for one player');
+  assert.equal((stackedFeedbackMarkup.match(/animation-duration:30000ms/g) ?? []).length, 3, 'each stacked stat change receives its own 30-second duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
     assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
@@ -306,12 +327,13 @@ try {
       assert(cardMarkup.includes(`button-preview-card-${card.id}`), `${deck.name} card exposes an independent full-card preview button`);
       assert(cardMarkup.includes('OPEN FULL CARD'), `${deck.name} card preview action is visible`);
       assert(!cardMarkup.includes('PREVIEW NEXT CARD'), 'card preview does not offer a next-card action');
-      assert(cardMarkup.includes('CPU 1') && cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} draw identifies its player`);
+      assert(cardMarkup.includes('CPU 1') && !cardMarkup.includes('Frostbyte drew this card.'), `${deck.name} card panel omits redundant draw narration`);
+      assert(!cardMarkup.includes('The card is revealed to the table. Its effect is ready to resolve.'), `${deck.name} card panel omits redundant ready-to-resolve narration`);
       assert(cardMarkup.includes(cardStage === 'draw' ? `CARD READ / ${CPU_CARD_DRAW_SECONDS} SEC` : `AUTO-CONTINUE / ${CPU_CARD_RESULT_SECONDS} SEC`), `${deck.name} CPU progress shows the active timed stage`);
       if (cardStage === 'resolved') assert(cardMarkup.includes('RESULT RECORDED // CPU CONTINUES AUTOMATICALLY'), `${deck.name} CPU result stage explains automatic continuation`);
-      assert(cardStage === 'draw'
-        ? cardMarkup.includes('card is revealed to the table')
-        : cardMarkup.includes('Frostbyte received the recorded card result.'), `${deck.name} draw and result are visible to the local table`);
+      assert(cardStage === 'resolved'
+        ? cardMarkup.includes('Frostbyte received the recorded card result.')
+        : cardMarkup.includes(card.description), `${deck.name} card description or result is visible to the local table`);
     }
   }
   for (const card of cards) {

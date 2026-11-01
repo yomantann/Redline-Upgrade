@@ -4,7 +4,7 @@ import { getGetAchievementProfileQueryKey, useGetAchievementProfile, useUpdateCu
 import type { CompletedGameRecord } from '@workspace/api-client-react';
 import type { AchievementCategory, AchievementDefinition } from '@/game/achievement-catalog';
 import { achievementCatalog, achievementCategoryLabels } from '@/game/achievement-catalog';
-import { assets, getAsset, type AssetDefinition } from '@/game/assets';
+import { assets, calculateAssetAttributeAward, getAsset, type AssetDefinition } from '@/game/assets';
 import { characters } from '@/game/characters';
 import { AssetArtwork } from '@/components/asset-artwork';
 import { AppShell } from '@/components/app-shell';
@@ -78,6 +78,7 @@ export function ProfilePage() {
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
   const [profileInventory, setProfileInventory] = useState<ProfileInventory | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [expandedAssetImageId, setExpandedAssetImageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -225,6 +226,8 @@ export function ProfilePage() {
   const selectedAssetRecord = selectedAssetId ? collectionByAssetId.get(selectedAssetId) : undefined;
   const selectedAssetRetained = (selectedAssetRecord?.retainedCount ?? 0) > 0;
   const selectedAssetLevel = selectedAssetId ? highestRetainedLevelByAsset.get(selectedAssetId) ?? 1 : 1;
+  const expandedAssetImage = expandedAssetImageId ? assets.find(asset => asset.id === expandedAssetImageId) : undefined;
+  const expandedAssetImageLevel = expandedAssetImageId ? highestRetainedLevelByAsset.get(expandedAssetImageId) ?? 1 : 1;
   const selectedAssetGames = selectedAssetId ? completedGames.filter(game => game.acquiredAssetIds.includes(selectedAssetId)) : [];
   const selectedAssetRetentionGames = selectedAssetId ? completedGames.filter(game => game.retainedAssets.some(asset => asset.assetId === selectedAssetId)) : [];
   async function saveDisplayName(event: FormEvent<HTMLFormElement>) {
@@ -254,6 +257,7 @@ export function ProfilePage() {
       <div className="red-asset-art">{isEverRetained
         ? <AssetArtwork assetId={definition.id} level={highestRetainedLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${definition.name}, level ${highestRetainedLevel}`} />
         : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
+        {isEverRetained && <button className="red-asset-expand-image" type="button" onClick={() => setExpandedAssetImageId(definition.id)} aria-label={`Expand ${definition.name} image`} title="Expand image">⤢</button>}
         <span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
       <div className="red-asset-copy"><div className="red-asset-copy-heading"><span className="mono">{titleCase(definition.category)}</span><span className={`red-rarity rarity-${profileTier.toLowerCase()}`}>{profileTier}</span></div><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
         {isEverRetained && <div className="red-asset-pricing"><span className="mono">BASE COST</span><strong>{money(definition.cost)}</strong></div>}
@@ -528,7 +532,10 @@ export function ProfilePage() {
           <section className={`market-modal red-asset-preview-modal profile-tier-${getProfileAssetTier(selectedAsset).toLowerCase()}`} role="dialog" aria-modal="true" aria-labelledby="profile-asset-preview-title">
             <button className="market-modal-close" type="button" onClick={() => setSelectedAssetId(null)} aria-label="Close asset record">×</button>
             <div className="red-asset-preview-art">{selectedAssetRetained
-              ? <AssetArtwork assetId={selectedAsset.id} level={selectedAssetLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${selectedAsset.name}, level ${selectedAssetLevel}`} />
+              ? <>
+                  <AssetArtwork assetId={selectedAsset.id} level={selectedAssetLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${selectedAsset.name}, level ${selectedAssetLevel}`} />
+                  <button className="red-asset-expand-image" type="button" onClick={() => setExpandedAssetImageId(selectedAsset.id)} aria-label={`Expand ${selectedAsset.name} image`} title="Expand image">⤢</button>
+                </>
               : <div className="red-asset-mystery"><span aria-hidden="true">?</span></div>}</div>
             <div className="red-asset-preview-copy">
               <span className="market-kicker">{selectedAssetRetained ? `${titleCase(selectedAsset.category)} · ${getProfileAssetTier(selectedAsset)}` : 'CLASSIFIED ASSET · LOCKED'}</span>
@@ -540,14 +547,17 @@ export function ProfilePage() {
                   <div><dt>Acquired</dt><dd>{selectedAssetRecord?.acquiredCount ?? 0} times · {selectedAssetRecord?.gamesAcquired ?? 0} games</dd></div>
                   <div><dt>Retained</dt><dd>{selectedAssetRecord?.retainedCount ?? 0} times · {selectedAssetRecord?.gamesRetained ?? 0} games</dd></div>
                   <div><dt>Lost</dt><dd>{selectedAssetRecord?.lostCount ?? 0} times</dd></div>
-                  <div><dt>Effects at retained level</dt><dd>{Object.entries(selectedAsset.effects).length
-                    ? Object.entries(selectedAsset.effects).map(([stat, amount]) => {
-                      const effectiveAmount = stat === 'wealth'
-                        ? amount * selectedAssetLevel
-                        : Math.min(10, amount * selectedAssetLevel);
-                      return `${effectiveAmount > 0 ? '+' : ''}${effectiveAmount} ${metricLabel(stat)}`;
-                    }).join(' · ')
-                    : selectedAsset.passiveEffect ?? 'No direct stat effect'}</dd></div>
+                  <div><dt>Points awarded at retained level</dt><dd>{(() => {
+                    const attributeAwards = calculateAssetAttributeAward(selectedAsset.id, selectedAssetLevel as 1 | 2 | 3 | 4);
+                    const awards = Object.entries(attributeAwards)
+                      .filter(([, amount]) => amount > 0)
+                      .map(([stat, amount]) => `+${amount} ${metricLabel(stat)}`);
+                    const wealthAmount = (selectedAsset.effects.wealth ?? 0) * selectedAssetLevel;
+                    if (wealthAmount) awards.push(`${wealthAmount > 0 ? '+' : ''}${wealthAmount} ${metricLabel('wealth')}`);
+                    return awards.length
+                      ? awards.join(' · ')
+                      : selectedAsset.passiveEffect ?? 'No direct stat effect';
+                  })()}</dd></div>
                   <div><dt>Acquired in</dt><dd>{selectedAssetGames.length ? selectedAssetGames.map(game => `${dateLabel(game.completedAt)} · ${titleCase(game.boardId)}`).join(' / ') : 'No game history available'}</dd></div>
                   <div><dt>Retained in</dt><dd>{selectedAssetRetentionGames.length ? selectedAssetRetentionGames.map(game => {
                     const held = game.retainedAssets.find(asset => asset.assetId === selectedAsset.id);
@@ -557,6 +567,12 @@ export function ProfilePage() {
               </> : <p>Identity and artwork unlock after you retain this asset through a completed game. It has been acquired {selectedAssetRecord?.acquiredCount ?? 0} times.</p>}
               <button className="market-cancel" type="button" onClick={() => setSelectedAssetId(null)}>CLOSE RECORD</button>
             </div>
+          </section>
+        </div>}
+        {expandedAssetImage && <div className="market-modal-backdrop red-asset-image-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setExpandedAssetImageId(null); }}>
+          <section className="red-asset-image-modal" role="dialog" aria-modal="true" aria-label={`${expandedAssetImage.name}, expanded artwork`}>
+            <button className="market-modal-close" type="button" onClick={() => setExpandedAssetImageId(null)} aria-label="Close expanded asset image">×</button>
+            <AssetArtwork assetId={expandedAssetImage.id} level={expandedAssetImageLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${expandedAssetImage.name}, level ${expandedAssetImageLevel}`} />
           </section>
         </div>}
       </main>

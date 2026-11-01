@@ -121,7 +121,7 @@
 .game-player-stats > div:nth-child(n+3) { border-bottom:0; }
 .game-player-stats .mono { grid-column:1; grid-row:1; font-size:8px; color:#9eac9b; letter-spacing:0; white-space:nowrap; }
 .game-player-stats b { grid-column:2; grid-row:1 / span 2; align-self:center; color:#e5e9d8; font:700 19px 'Barlow Condensed',sans-serif; }
-.game-player-stats .player-stat-change-pulse { grid-column:1; grid-row:2; justify-self:start; }
+.game-player-stats .player-stat-change-stack { grid-column:1; grid-row:2; justify-self:start; }
 .game-player-stats [data-stat="ai-skill"] b { color:#88c6c2; }
 .game-player-stats [data-stat="fame"] b { color:#f5c96f; }
 .game-player-stats [data-stat="lifestyle"] b { color:#dbbbdc; }
@@ -235,13 +235,16 @@
 .game-player-summary-values > span { display:flex; flex-direction:column; min-width:0; }
 .game-player-summary-values small { display:block; color:#8fa392; font-size:10px; line-height:1.1; letter-spacing:.03em; white-space:normal; min-height:12px; }
 .game-player-summary-values b { display:block; margin-top:4px; color:#d4e981; font:700 clamp(13px,1.35vw,20px)/1 'Barlow Condensed',sans-serif; overflow-wrap:anywhere; }
+.player-stat-change-stack { display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-width:0; max-width:100%; }
 .player-stat-change-pulse { display:inline-flex; align-items:center; gap:2px 5px; width:max-content; max-width:100%; padding:2px 4px; border-left:2px solid currentColor; font:800 9px/1.15 'Space Mono',monospace; white-space:nowrap; }
 .player-stat-change-pulse > b { margin:0; color:inherit; font:inherit; }
 .player-stat-change-pulse.positive { color:#e4f1a9; background:rgba(48,77,41,.88); }
 .player-stat-change-pulse.negative { color:#ff9a88; background:rgba(77,28,22,.92); }
 .player-stat-change-pulse small { display:block; min-height:0; color:inherit; font-size:10px; font-weight:700; line-height:1.1; white-space:normal; }
-.game-player-summary-values .player-stat-change-pulse { flex-direction:column; align-items:flex-start; gap:1px; margin-top:3px; white-space:normal; }
-.game-player-wealth-heading .player-stat-change-pulse { flex-direction:column; align-items:flex-end; gap:1px; max-width:58%; text-align:right; white-space:normal; }
+.game-player-summary-values .player-stat-change-stack { margin-top:3px; }
+.game-player-summary-values .player-stat-change-pulse { flex-direction:column; align-items:flex-start; gap:1px; white-space:normal; }
+.game-player-wealth-heading .player-stat-change-stack { align-items:flex-end; max-width:58%; text-align:right; }
+.game-player-wealth-heading .player-stat-change-pulse { flex-direction:column; align-items:flex-end; gap:1px; white-space:normal; }
 .player-stat-changing { position:relative; }
 .game-player-summary-toggle { align-self:end; color:#aebfac; font-size:10px; text-align:right; white-space:nowrap; }
 .game-player-expanded { display:flex; flex-direction:column; gap:7px; border-top:1px solid #405045; padding-bottom:5px; }

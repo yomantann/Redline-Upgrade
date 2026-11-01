@@ -46,12 +46,6 @@ export function formatEventTransition(event: EventLogEntry): string | null {
 }
 
 export const PLAYER_CHANGE_FEEDBACK_MS = 30000;
-export const PLAYER_CHANGE_PULSE_MAX_MS = 30000;
-
-export function getPlayerStatChangePulseDuration(expiresAt: number, queuedExpirations: number[], now: number): number {
-  const sameDeadlineCount = 1 + queuedExpirations.filter(expiration => expiration <= expiresAt).length;
-  return Math.max(450, Math.min(PLAYER_CHANGE_PULSE_MAX_MS, Math.floor((expiresAt - now) / sameDeadlineCount)));
-}
 
 export type PlayerStatChange = {
   id: string;
@@ -175,7 +169,7 @@ export function PlayerStatChangeOverlay({
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      data-testid={`player-stat-change-${playerIndex}-${change.stat}-${surface}`}
+      data-testid={`player-stat-change-${playerIndex}-${change.stat}-${surface}-${change.id}`}
       style={{ animationDuration: `${change.durationMs}ms` }}
     >
       <b>{change.amountText}</b>

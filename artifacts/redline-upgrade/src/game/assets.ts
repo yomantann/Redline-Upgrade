@@ -159,10 +159,10 @@ export function getAssetAttributeAwardTransition(
   const nowEquipped = new Set(Object.values(nextEquipment).filter((assetId): assetId is string => Boolean(assetId)));
 
   for (const assetId of nowEquipped) {
-    const previousLevel = previouslyEquipped.has(assetId) ? player.assetLevels[assetId] ?? 1 : 0;
+    const previousLevel = previouslyEquipped.has(assetId) ? player.assetLevels[assetId] ?? 1 : null;
     const nextLevel = nextAssetLevels[assetId] ?? 1;
-    if (nextLevel <= previousLevel) continue;
-    const previousAward = previousLevel > 0 ? calculateAssetAttributeAward(assetId, previousLevel) : null;
+    if (previousLevel !== null && nextLevel <= previousLevel) continue;
+    const previousAward = previousLevel !== null ? calculateAssetAttributeAward(assetId, previousLevel) : null;
     const nextAward = calculateAssetAttributeAward(assetId, nextLevel);
     for (const stat of ASSET_ATTRIBUTE_STATS) {
       contributions[stat] += Math.max(0, nextAward[stat] - (previousAward?.[stat] ?? 0));

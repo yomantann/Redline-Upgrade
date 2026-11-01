@@ -21,7 +21,7 @@ import { DiceRoller } from './dice-roller';
 import { MilestoneChoice } from './milestone-choice';
 import { PlayerAssets } from './player-assets';
 import { PlayerAbilityDetails } from './player-ability-details';
-import { getPlayerStatChangePulseDuration, groupPlayerStatChangesByPlayer, PLAYER_CHANGE_FEEDBACK_MS, PlayerStatChangeOverlay, type PlayerStatChange, type PlayerStatChangePulse } from './game-event-feedback';
+import { groupPlayerStatChangesByPlayer, PLAYER_CHANGE_FEEDBACK_MS, PlayerStatChangeOverlay, type PlayerStatChangePulse } from './game-event-feedback';
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
@@ -216,10 +216,8 @@ export function GameScreen() {
   const isCardLanding = match?.pending?.kind === 'CARD'
     || match?.lastLanding?.space.type === 'CARD'
     || match?.lastLanding?.space.type === 'GAMBLE';
-  const [playerStatPulses, setPlayerStatPulses] = useState<Record<string, PlayerStatChangePulse>>({});
+  const [playerStatPulses, setPlayerStatPulses] = useState<Record<string, PlayerStatChangePulse[]>>({});
   const lastSeenStatChangeEventId = useRef(latestLogEventId);
-  const pendingPlayerStatChanges = useRef(new Map<string, Array<PlayerStatChange & { expiresAt: number }>>());
-  const activeStatChangePlayers = useRef(new Set<string>());
   const playerStatChangeTimers = useRef(new Map<string, number>());
   const statFeedbackLifecycle = useRef(0);
   const previousEquipment = useRef(match?.players.map(player => ({ ...player.equipment })) ?? []);
@@ -240,37 +238,16 @@ export function GameScreen() {
     return () => window.clearInterval(timer);
   }, [match, isBioBoard]);
 
-  function showNextPlayerStatChange(playerId: string) {
-    const queue = pendingPlayerStatChanges.current.get(playerId) ?? [];
-    const now = Date.now();
-    while (queue.length && queue[0].expiresAt <= now) queue.shift();
-    const next = queue.shift();
-    if (!next) {
-      pendingPlayerStatChanges.current.delete(playerId);
-      activeStatChangePlayers.current.delete(playerId);
-      setPlayerStatPulses(current => {
-        if (!current[playerId]) return current;
-        const remaining = { ...current };
-        delete remaining[playerId];
-        return remaining;
-      });
-      return;
-    }
-
-    pendingPlayerStatChanges.current.set(playerId, queue);
-    activeStatChangePlayers.current.add(playerId);
-    const durationMs = getPlayerStatChangePulseDuration(
-      next.expiresAt,
-      queue.map(change => change.expiresAt),
-      now,
-    );
-    setPlayerStatPulses(current => ({ ...current, [playerId]: { ...next, durationMs } }));
-
-    const timer = window.setTimeout(() => {
-      playerStatChangeTimers.current.delete(playerId);
-      showNextPlayerStatChange(playerId);
-    }, durationMs);
-    playerStatChangeTimers.current.set(playerId, timer);
+  function expirePlayerStatChange(playerId: string, changeId: string) {
+    playerStatChangeTimers.current.delete(`${playerId}:${changeId}`);
+    setPlayerStatPulses(current => {
+      const remaining = (current[playerId] ?? []).filter(change => change.id !== changeId);
+      if (remaining.length === (current[playerId] ?? []).length) return current;
+      const updated = { ...current };
+      if (remaining.length) updated[playerId] = remaining;
+      else delete updated[playerId];
+      return updated;
+    });
   }
 
   useEffect(() => {
@@ -290,14 +267,28 @@ export function GameScreen() {
       playerIds,
     );
 
-    const expiresAt = Date.now() + PLAYER_CHANGE_FEEDBACK_MS;
     for (const [playerId, changes] of changesByPlayer) {
-      const queue = pendingPlayerStatChanges.current.get(playerId) ?? [];
-      queue.push(...changes.map(change => ({ ...change, expiresAt })));
-      pendingPlayerStatChanges.current.set(playerId, queue);
-      if (!activeStatChangePlayers.current.has(playerId)) showNextPlayerStatChange(playerId);
+      const activeIds = new Set((playerStatPulses[playerId] ?? []).map(change => change.id));
+      const additions = changes
+        .filter(change => !activeIds.has(change.id))
+        .map(change => ({ ...change, durationMs: PLAYER_CHANGE_FEEDBACK_MS }));
+      if (!additions.length) continue;
+
+      setPlayerStatPulses(current => {
+        const currentIds = new Set((current[playerId] ?? []).map(change => change.id));
+        const fresh = additions.filter(change => !currentIds.has(change.id));
+        return fresh.length ? { ...current, [playerId]: [...(current[playerId] ?? []), ...fresh] } : current;
+      });
+      for (const change of additions) {
+        const timerKey = `${playerId}:${change.id}`;
+        const timer = window.setTimeout(
+          () => expirePlayerStatChange(playerId, change.id),
+          PLAYER_CHANGE_FEEDBACK_MS,
+        );
+        playerStatChangeTimers.current.set(timerKey, timer);
+      }
     }
-  }, [match]);
+  }, [match, playerStatPulses]);
 
   useEffect(() => {
     const lifecycle = ++statFeedbackLifecycle.current;
@@ -306,8 +297,6 @@ export function GameScreen() {
         if (statFeedbackLifecycle.current !== lifecycle) return;
         playerStatChangeTimers.current.forEach(timer => window.clearTimeout(timer));
         playerStatChangeTimers.current.clear();
-        pendingPlayerStatChanges.current.clear();
-        activeStatChangePlayers.current.clear();
       });
     };
   }, []);
@@ -657,8 +646,14 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             { label: 'UPGRADE TOKENS', value: String(contestant.upgradeTokens) },
             ...playerStats.slice(1).map(stat => ({ ...stat, value: stat.value.toLocaleString() })),
           ];
-          const activeStatChange = playerStatPulses[contestant.playerId];
-          const wealthPulse = activeStatChange?.stat === 'wealth' ? activeStatChange : undefined;
+           const activeStatChanges = playerStatPulses[contestant.playerId] ?? [];
+           const changesForStat = (stat: PlayerStat) => activeStatChanges.filter(change => change.stat === stat);
+           const wealthChanges = changesForStat('wealth');
+           const pulseStack = (changes: PlayerStatChangePulse[], surface: 'summary' | 'detail') => changes.length
+             ? <div className={`player-stat-change-stack ${surface}`}>{changes.map(change => (
+               <PlayerStatChangeOverlay key={change.id} change={change} playerIndex={index} surface={surface} />
+             ))}</div>
+             : null;
           const statAttribute = (stat: PlayerStat) => stat === 'aiSkill' ? 'ai-skill' : stat;
           const cardLayout: PlayerCardLayout = compactPlayerLayout ? 'compact' : 'wide';
           const savedDisclosure = playerCardDisclosure[contestant.playerId];
@@ -689,17 +684,18 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                    </div>
                    <div className="game-player-summary-values">
                       {summaryStats.map(({ label, stat, value }) => {
-                        const change = stat && activeStatChange?.stat === stat ? activeStatChange : undefined;
+                       const changes = stat ? changesForStat(stat) : [];
+                       const hasChanges = changes.length > 0;
                         return (
                           <span
                             key={label}
                             data-stat={stat ? statAttribute(stat) : undefined}
-                            className={change ? `player-stat-changing ${change.positive ? 'positive' : 'negative'}` : undefined}
-                            style={change ? { animationDuration: `${change.durationMs}ms` } : undefined}
+                           className={hasChanges ? 'player-stat-changing' : undefined}
+                           style={hasChanges ? { animationDuration: `${PLAYER_CHANGE_FEEDBACK_MS}ms` } : undefined}
                           >
                             <small className="mono">{label}{stat && rewardModifier(stat) !== 0 && <em className="player-card-next-reward">{rewardModifierLabel(stat)}</em>}</small>
                             <b>{value}</b>
-                            {change && <PlayerStatChangeOverlay key={change.id} change={change} playerIndex={index} surface="summary" />}
+                            {pulseStack(changes, 'summary')}
                           </span>
                         );
                       })}
@@ -736,29 +732,30 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
               <PlayerAbilityDetails career={career} character={character} />
                <div className={`game-player-salary salary-tier-${contestant.salaryTier}`}><span className="mono">PAYDAY TIER / {paydayTier}</span><b data-testid={`text-player-salary-${index}`}>{formatMoney(paydaySalary)}<small> / PAYDAY</small></b></div>
                <div
-                 className={`game-player-wealth ${wealthPulse ? `player-stat-changing ${wealthPulse.positive ? 'positive' : 'negative'}` : ''}`}
+                 className={`game-player-wealth ${wealthChanges.length ? 'player-stat-changing' : ''}`}
                  data-stat="wealth"
-                 style={wealthPulse ? { animationDuration: `${wealthPulse.durationMs}ms` } : undefined}
+                 style={wealthChanges.length ? { animationDuration: `${PLAYER_CHANGE_FEEDBACK_MS}ms` } : undefined}
                >
                  <div className="game-player-wealth-heading">
                     <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH{rewardModifier('wealth') !== 0 && <em className="player-card-next-reward">{rewardModifierLabel('wealth')}</em>}</span>
-                   {wealthPulse && <PlayerStatChangeOverlay key={wealthPulse.id} change={wealthPulse} playerIndex={index} surface="detail" />}
+                    {pulseStack(wealthChanges, 'detail')}
                  </div>
                  <WealthCounter amount={contestant.wealth} />
                </div>
               <div className="game-player-stats">
                  {playerStats.slice(1).map(({ label, stat, value }) => {
-                   const change = activeStatChange?.stat === stat ? activeStatChange : undefined;
+                    const changes = changesForStat(stat);
+                    const hasChanges = changes.length > 0;
                    return (
                      <div
                        key={stat}
                        data-stat={statAttribute(stat)}
-                       className={change ? `player-stat-changing ${change.positive ? 'positive' : 'negative'}` : undefined}
-                       style={change ? { animationDuration: `${change.durationMs}ms` } : undefined}
+                        className={hasChanges ? 'player-stat-changing' : undefined}
+                        style={hasChanges ? { animationDuration: `${PLAYER_CHANGE_FEEDBACK_MS}ms` } : undefined}
                      >
                     <span className="mono"><SpaceIcon name={stat === 'aiSkill' ? 'ai' : label.toLowerCase()} size={11} /> {label}{rewardModifier(stat) !== 0 && <em className="player-card-next-reward">{rewardModifierLabel(stat)}</em>}</span>
                        <b>{value.toLocaleString()}</b>
-                       {change && <PlayerStatChangeOverlay key={change.id} change={change} playerIndex={index} surface="detail" />}
+                        {pulseStack(changes, 'detail')}
                      </div>
                    );
                  })}

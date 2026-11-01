@@ -234,6 +234,11 @@ export function CardTabletop({
     return current.length < requiredParticipants ? [...current, playerId] : current;
   });
   const presentationStep = activeCardResolved ? 3 : cardStage === 'choice' ? 1 : activeCard ? 2 : 0;
+  const cardDescription = cardStage === 'choice'
+    ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.'
+    : partyChallenge?.prompt ?? (activeCardResolved
+      ? resultSummary || activeCard?.description
+      : activeCard?.description) ?? '';
   return (
     <>
       {activeDeck && (
@@ -254,13 +259,7 @@ export function CardTabletop({
           <div className="card-draw-copy">
             <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
             <h2>{cardStage === 'choice' ? 'Choose your Gamble card.' : activeCard?.title ?? 'Draw your card.'}</h2>
-            <p><b>{actorLabel}</b> / {actorName} drew this card.</p>
-            <ExpandableText
-              className="card-draw-description"
-              text={cardStage === 'choice'
-                ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.'
-                : partyChallenge?.prompt ?? (activeCardResolved ? (resultSummary || activeCard?.description) : 'The card is revealed to the table. Its effect is ready to resolve.') ?? ''}
-            />
+             {cardDescription && <ExpandableText className="card-draw-description" text={cardDescription} />}
           </div>
           {cardStage === 'choice' && offeredCards?.length ? (
             <div className="card-choice-grid" data-testid="gamble-card-choices">
