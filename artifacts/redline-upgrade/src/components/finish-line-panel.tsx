@@ -10,7 +10,7 @@ import {
   type EndgameScoreBreakdown,
   type EndgameState,
 } from '@/game/endgame';
-import { getFinalPlacementOrder, type MatchPlayer } from '@/game/match';
+import { getFinalPlacementOrder, type EndgameAttributeBonus, type MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { FINISH_ORDER_WEALTH_REWARDS } from '@/game/careers';
 import { assetValueAtLevel } from '@/game/upgrade-tokens';
@@ -432,6 +432,7 @@ export function MatchResultsPanel({
   assetEvents = [],
   boardId = 'REDLINE_UPGRADE',
   unlockedAchievementIds = [],
+  attributeLeaderAwards = [],
   onHome,
   onProfile,
 }: {
@@ -440,6 +441,7 @@ export function MatchResultsPanel({
   assetEvents?: AssetEventLogEntry[];
   boardId?: BoardId;
   unlockedAchievementIds?: string[];
+  attributeLeaderAwards?: readonly EndgameAttributeBonus[];
   onHome?: () => void;
   onProfile?: () => void;
 }) {
@@ -528,27 +530,38 @@ export function MatchResultsPanel({
             });
             const character = getCharacter(player.characterId);
             const career = player.careerId ? getCareer(player.careerId) : undefined;
+            const playerMatchIndex = players.findIndex((candidate) => candidate.playerId === player.playerId);
+            const playerAttributeAwards = attributeLeaderAwards.filter((award) => award.playerIndex === playerMatchIndex);
             const finishPlace = finishOrder.indexOf(player.slot) + 1;
             const finishBonus = endgame.snapshot.finishOrderBonus
               ?? (finishPlace > 0 ? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0 : 0);
             return (
-              <article className={`finish-line-result-row ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
-                <div className={`finish-line-result-placement placement-${index + 1}`} aria-label={`Final placement ${index + 1}`}>
-                  <span className="mono">{index === 0 ? 'WINNER' : 'FINAL PLACE'}</span>
-                  <strong>{finishOrdinal(index + 1)}</strong>
-                </div>
-                <div className="finish-line-result-player">
-                   <div className="finish-line-result-avatar" aria-hidden="true">
-                     {character
-                        ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-result-avatar-image" />
-                       : player.displayName.slice(0, 1)}
-                   </div>
-                  <div>
-                    <span className="mono">{player.isCPU ? `CPU ${player.slot}` : 'LOCAL PLAYER'}</span>
+              <details className={`finish-line-result-disclosure ${index === 0 ? 'winner' : ''}`} key={player.playerId} data-testid={`match-result-${player.playerId}`}>
+                <summary className="finish-line-result-summary" aria-label={`Final place ${index + 1}, ${character?.name ?? player.displayName}, ${typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'value pending'}. Expand for full results.`}>
+                  <span className={`finish-line-result-summary-place placement-${index + 1}`}>
+                    <span className="mono">{index === 0 ? 'WINNER' : 'FINAL PLACE'}</span>
+                    <strong>{finishOrdinal(index + 1)}</strong>
+                  </span>
+                  <span className="finish-line-result-summary-player">
                     <strong>{character?.name ?? player.displayName}</strong>
-                    <small>{player.displayName}</small>
+                    <small>{player.isCPU ? `CPU ${player.slot}` : player.displayName} · {career?.name ?? 'UNASSIGNED'}</small>
+                  </span>
+                  <strong className="finish-line-result-summary-score">{typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'VALUE PENDING'}</strong>
+                  <span className="finish-line-result-summary-toggle mono">DETAILS</span>
+                </summary>
+                <article className="finish-line-result-row" aria-label={`${character?.name ?? player.displayName} expanded final record`}>
+                  <div className="finish-line-result-player">
+                    <div className="finish-line-result-avatar" aria-hidden="true">
+                      {character
+                        ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-result-avatar-image" />
+                        : player.displayName.slice(0, 1)}
+                    </div>
+                    <div>
+                      <span className="mono">{player.isCPU ? `CPU ${player.slot}` : 'LOCAL PLAYER'}</span>
+                      <strong>{character?.name ?? player.displayName}</strong>
+                      <small>{player.displayName}</small>
+                    </div>
                   </div>
-                </div>
                 <div className="finish-line-result-career">
                   <span className="mono">CAREER</span>
                   <strong>{career?.name ?? 'UNASSIGNED'}</strong>
@@ -563,10 +576,6 @@ export function MatchResultsPanel({
                       ? 'Included in the account wallet receipt below. Tokens do not affect dollar score.'
                       : 'No account wallet receipt is attached to this seat. Tokens do not affect dollar score.'}
                   </small>
-                </div>
-                <div className="finish-line-result-value">
-                  <span className="mono">FINAL GAME VALUE</span>
-                  <strong>{typeof endgame.finalGameValue === 'number' ? formatMoney(endgame.finalGameValue) : 'VALUE PENDING'}</strong>
                 </div>
                  <div className="finish-line-result-ledger" aria-label={`${character?.name ?? player.displayName} final ledger`}>
                     <div><span className="mono">FINAL WEALTH</span><strong>{formatMoney(player.wealth)}</strong></div>
@@ -584,6 +593,18 @@ export function MatchResultsPanel({
                      />
                    )}
                  </div>
+                  <section className="finish-line-result-leaders" aria-label={`${character?.name ?? player.displayName} attribute leader awards`}>
+                    <span className="mono">ATTRIBUTE LEADERSHIP</span>
+                    {playerAttributeAwards.length ? (
+                      <ul>{playerAttributeAwards.map((award) => (
+                        <li key={award.attribute}>
+                          <strong>{award.label} LEADER</strong>
+                          <span>VALUE {award.value.toLocaleString()} · +{formatMoney(award.amount)} WEALTH</span>
+                        </li>
+                      ))}</ul>
+                    ) : <p>No attribute-leader awards.</p>}
+                    <small>Ties go to the earlier finisher.</small>
+                  </section>
                  <div className="finish-line-result-extra">
                    <div className="finish-line-result-verdict">
                      <span className="mono">FINAL SIGNAL</span>
@@ -653,7 +674,8 @@ export function MatchResultsPanel({
                       {reconciliation.some((entry) => entry.status === 'UNEXPLAINED') && <p className="finish-line-asset-reconciliation-warning" role="alert">An asset was acquired but has no recorded retention or loss event. It is flagged for reconciliation and is not counted as lost.</p>}
                     </section>
                  </div>
-              </article>
+                </article>
+              </details>
             );
           })}
         </section>

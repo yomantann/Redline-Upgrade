@@ -39,6 +39,7 @@ export function RedlineCard({ deck, face = 'back', card, artwork, action, classN
             <span className="mono" style={{ color: config.color, fontSize: 7 }}>{card ? `${config.name.toUpperCase()} / ${card.rarity}` : 'DECK PROFILE'}</span>
             <h3>{card?.title ?? config.name}</h3>
             <p>{card?.description ?? config.description}</p>
+            {card?.value && card.value !== '—' && <p className="redline-card-effect-summary" data-testid={`card-effect-summary-${card.id}`} aria-label={`Card effect: ${card.value}`}><span className="mono">EFFECT</span> {card.value}</p>}
             {action}
           </div>
         </>

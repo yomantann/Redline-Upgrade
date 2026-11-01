@@ -519,13 +519,13 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       <main className="game-screen game-screen-finish-line">
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         {isBioBoard && <AgeRestrictionBadge />}
-        <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />
         <MatchResultsPanel
           players={match.players}
           finishOrder={match.finishOrder}
           assetEvents={match.assetEventLog}
           boardId={match.boardId}
           unlockedAchievementIds={newAchievementIds}
+          attributeLeaderAwards={match.endgameAttributeBonuses ?? []}
           onHome={() => { returnHome(); navigate('/'); }}
           onProfile={user ? () => navigate('/profile') : undefined}
         />
@@ -635,6 +635,17 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             { label: 'INFLUENCE', stat: 'influence', value: contestant.influence },
           ];
           const assetCount = Object.values(contestant.equipment).filter(Boolean).length;
+          const protections = match.effectProtections[contestant.playerId] ?? [];
+          const protectionCount = protections.reduce((total, protection) => total + Math.max(0, protection.remaining), 0);
+          const protectedEffects = [...new Set(protections.flatMap(protection => protection.blockedEffectTypes ?? []))];
+          const protectionTitle = protectedEffects.length ? `Blocks: ${protectedEffects.join(', ')}` : 'Blocks the next negative effect';
+          const rewardModifier = (stat: PlayerStat) => match.rewardModifiers[`${contestant.playerId}:${stat}`]?.amount ?? 0;
+          const rewardModifierLabel = (stat: PlayerStat) => {
+            const amount = rewardModifier(stat);
+            if (!amount) return '';
+            const formatted = stat === 'wealth' ? formatMoney(Math.abs(amount)) : Math.abs(amount).toLocaleString();
+            return `NEXT ${amount > 0 ? '+' : '−'}${formatted}`;
+          };
           const coreSummaryStats: { label: string; stat?: PlayerStat; value: string }[] = [
             { label: 'WEALTH', stat: 'wealth', value: formatMoney(contestant.wealth) },
             { label: 'ASSETS', value: String(assetCount) },
@@ -674,7 +685,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                     </div>
                    <div className="game-player-summary-identity">
                       {character && <CharacterPortrait character={character} imagePath={contestant.portraitImagePath ?? undefined} logoPath={contestant.playerLogoPath} boardId={match.boardId} className="game-player-summary-portrait" />}
-                     <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong>{remote && <small>{contestant.displayName}{index === remote.youIndex ? ' · YOU' : ''}</small>}<small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small></div>
+                      <div><span className="mono">CHARACTER</span><strong>{character?.name ?? contestant.displayName}</strong>{remote && <small>{contestant.displayName}{index === remote.youIndex ? ' · YOU' : ''}</small>}<small>{career?.name ?? 'Unassigned'}{secondCareer ? ` + ${secondCareer.name}` : ''}</small>{protectionCount > 0 && <small className="game-player-protection-badge mono" title={protectionTitle}>SHIELD / {protectionCount} EFFECT{protectionCount === 1 ? '' : 'S'}</small>}</div>
                    </div>
                    <div className="game-player-summary-values">
                       {summaryStats.map(({ label, stat, value }) => {
@@ -686,7 +697,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                             className={change ? `player-stat-changing ${change.positive ? 'positive' : 'negative'}` : undefined}
                             style={change ? { animationDuration: `${change.durationMs}ms` } : undefined}
                           >
-                            <small className="mono">{label}</small>
+                            <small className="mono">{label}{stat && rewardModifier(stat) !== 0 && <em className="player-card-next-reward">{rewardModifierLabel(stat)}</em>}</small>
                             <b>{value}</b>
                             {change && <PlayerStatChangeOverlay key={change.id} change={change} playerIndex={index} surface="summary" />}
                           </span>
@@ -703,7 +714,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                {index === match.turnIndex && <div className="game-player-active-signal" aria-label="Active turn"><i aria-hidden="true" /> ACTIVE TURN</div>}
                <div className="game-player-identity">
                   {character && <CharacterPortrait character={character} imagePath={contestant.portraitImagePath ?? undefined} logoPath={contestant.playerLogoPath} boardId={match.boardId} className="game-player-portrait" />}
-                  <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{remote ? ` // ${remote.seats[index]?.fastCpu ? 'FAST CPU' : remote.seats[index]?.cpuControlled ? 'CPU CONTROLLING' : remote.seats[index]?.connected ? 'CONNECTED' : 'DISCONNECTED'}` : ''}</small></div>
+                   <div className="game-player-identity-copy"><span className="mono">CHARACTER / {String(index + 1).padStart(2, '0')}</span><strong className="game-player-name" data-testid={`text-player-character-${index}`}>{character?.name ?? contestant.displayName}</strong><small>{contestant.isCPU ? `${remote ? 'PLAYER' : `CPU ${contestant.slot}`} // ` : remote ? 'YOU // ' : 'LOCAL // '}{contestant.status === 'FINISHED' ? 'FINISHED' : 'IN PLAY'}{remote ? ` // ${remote.seats[index]?.fastCpu ? 'FAST CPU' : remote.seats[index]?.cpuControlled ? 'CPU CONTROLLING' : remote.seats[index]?.connected ? 'CONNECTED' : 'DISCONNECTED'}` : ''}</small>{protectionCount > 0 && <small className="game-player-protection-badge mono" title={protectionTitle}>SHIELD / {protectionCount} EFFECT{protectionCount === 1 ? '' : 'S'}</small>}</div>
                </div>
               <div className="game-player-career">
                 <CareerGlyph icon={career?.icon || career?.name || 'career'} />
@@ -730,7 +741,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                  style={wealthPulse ? { animationDuration: `${wealthPulse.durationMs}ms` } : undefined}
                >
                  <div className="game-player-wealth-heading">
-                   <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH</span>
+                    <span className="mono"><SpaceIcon name="wealth" size={12} /> WEALTH{rewardModifier('wealth') !== 0 && <em className="player-card-next-reward">{rewardModifierLabel('wealth')}</em>}</span>
                    {wealthPulse && <PlayerStatChangeOverlay key={wealthPulse.id} change={wealthPulse} playerIndex={index} surface="detail" />}
                  </div>
                  <WealthCounter amount={contestant.wealth} />
@@ -745,7 +756,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                        className={change ? `player-stat-changing ${change.positive ? 'positive' : 'negative'}` : undefined}
                        style={change ? { animationDuration: `${change.durationMs}ms` } : undefined}
                      >
-                       <span className="mono"><SpaceIcon name={stat === 'aiSkill' ? 'ai' : label.toLowerCase()} size={11} /> {label}</span>
+                    <span className="mono"><SpaceIcon name={stat === 'aiSkill' ? 'ai' : label.toLowerCase()} size={11} /> {label}{rewardModifier(stat) !== 0 && <em className="player-card-next-reward">{rewardModifierLabel(stat)}</em>}</span>
                        <b>{value.toLocaleString()}</b>
                        {change && <PlayerStatChangeOverlay key={change.id} change={change} playerIndex={index} surface="detail" />}
                      </div>

@@ -33,7 +33,7 @@ const vite = await createServer({
   appType: 'custom',
 });
 try {
-  const { createMatch, advanceMatch, getFinalPlacementOrder } = await vite.ssrLoadModule('/src/game/match.ts');
+  const { createMatch, advanceMatch, getFinalPlacementOrder, calculateEndgameAttributeBonuses } = await vite.ssrLoadModule('/src/game/match.ts');
   const { applySoloPlayerAction, applySoloAutomationStep, actingPlayerIndex } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
   const { getBoardSpaces } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
@@ -232,7 +232,8 @@ try {
         resultSummary: 'Frostbyte received the recorded card result.',
       }));
       assert(cardMarkup.includes(`${deck.name} CARD`), `${deck.name} card panel identifies its deck`);
-      assert(cardMarkup.includes(card.title) && cardMarkup.includes(card.effect), `${deck.name} card image, name, and effect are visible`);
+      assert(cardMarkup.includes(card.title) && card.value !== '—' && cardMarkup.includes(card.value) && cardMarkup.includes(`card-effect-summary-${card.id}`), `${deck.name} card image, name, and concise effect are visible on the card`);
+      assert(!cardMarkup.includes(card.effect), `${deck.name} keeps full effect prose in the card preview instead of repeating it in the side copy`);
       assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${deck.name} draw card loads the artwork mapped to ${card.id}`);
       assert(cardMarkup.includes(`data-testid="deck-bay-${deck.id}"`), `${deck.name} stays visible in the non-interactive deck bay`);
       assert(cardMarkup.includes(`button-preview-card-${card.id}`), `${deck.name} card exposes an independent full-card preview button`);
@@ -266,7 +267,7 @@ try {
     assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${card.id} front renders its own artwork`);
     assert(cardMarkup.includes(`data-card-id="${card.id}"`), `${card.id} artwork is identifiable in the DOM`);
     assert(cardMarkup.includes('loading="eager"'), `${card.id} artwork is not deferred by lazy loading`);
-    assert(!cardMarkup.includes('redline-card-effect'), `${card.id} artwork omits the redundant tiny effect label`);
+    assert(cardMarkup.includes(`card-effect-summary-${card.id}`), `${card.id} keeps a concise effect label on the card face`);
   }
 
   for (let i = 0; i < 50; i++) {
@@ -2126,14 +2127,29 @@ try {
   }));
   assert.match(noGambleMarkup, /<button[^>]*disabled=""[^>]*data-testid="button-finish-choice-final_gamble"/, 'Final Gamble is visibly disabled without assets or tokens');
   const resultsMarkup = renderToStaticMarkup(
-    React.createElement(MatchResultsPanel, { players: titledCompleteMatch.players, finishOrder: [2, 3, 0, 1] }),
+    React.createElement(MatchResultsPanel, {
+      players: titledCompleteMatch.players,
+      finishOrder: [2, 3, 0, 1],
+      attributeLeaderAwards: calculateEndgameAttributeBonuses(titledCompleteMatch.players, [2, 3, 0, 1]),
+    }),
   );
   assert.equal((resultsMarkup.match(/class="finish-line-result-row/g) ?? []).length, 4, 'the final record renders all four resolved players');
+  assert.equal((resultsMarkup.match(/class="finish-line-result-disclosure/g) ?? []).length, 4, 'the final record condenses each place into an expandable row');
+  assert.equal((resultsMarkup.match(/class="finish-line-result-summary"/g) ?? []).length, 4, 'each player has one compact summary line');
+  assert(resultsMarkup.includes('ATTRIBUTE LEADERSHIP') && resultsMarkup.includes('AI SKILL LEADER'), 'attribute leader awards are nested in the winning player records');
+  assert(!resultsMarkup.includes('Four leaders. Four $50K awards.'), 'the final record no longer shows a separate global attribute-leader panel');
   assert(resultsMarkup.includes('THE MACHINE'), 'the final record displays each assigned end-game title');
   assert(resultsMarkup.includes('TOKEN CONVERSION') && resultsMarkup.includes('CREDITS'), 'final records report the separate token-to-Credits settlement');
   assert(resultsMarkup.includes('Final score breakdown'), 'final records show the score components');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('BOARD FINISH / 1ST') && resultsMarkup.includes('WEALTH BONUS'), 'final records distinguish arrival order from final-value placement');
+  const { cards: previewCards } = await vite.ssrLoadModule('/src/game/cards.ts');
+  for (const card of previewCards) {
+    if (!card.value || card.value === '—') continue;
+    const faceMarkup = renderToStaticMarkup(React.createElement(RedlineCard, { deck: card.deck, face: 'front', card }));
+    assert(faceMarkup.includes(`card-effect-summary-${card.id}`), `${card.title} shows its concise effect on the card face`);
+    assert(faceMarkup.includes(card.value), `${card.title} passes its concise effect summary onto the card`);
+  }
   const rankedPlayers = titledCompleteMatch.players.map((player, index) => ({
     ...player,
     endgame: { ...player.endgame, finalGameValue: [250, 900, 250, 500][index] },

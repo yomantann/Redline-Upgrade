@@ -351,8 +351,6 @@ export function CardTabletop({
                 ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>
                 : <p className="mono">FINAL GAMBLE // CARD REVEALED, RESULT NEXT</p>}
             {!isCPU && !minimumReadTimeComplete && <small className="card-read-time-reason" id="card-read-time-reason">CARD ON TABLE / TAKE A MOMENT TO READ IT</small>}
-            <p><b>{activeCardResolved ? 'RESULT' : 'CARD EFFECT'}</b></p>
-            <ExpandableText text={activeCard?.effect ?? 'The resolved effect will be recorded in the event log.'} className="card-effect-description" />
           </div>
           </div>
         </section>
