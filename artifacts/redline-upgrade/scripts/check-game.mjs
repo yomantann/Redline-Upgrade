@@ -91,7 +91,7 @@ try {
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
 
-  const emptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
+  const assetTestEmptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
   const slotForAsset = (asset) => (
     asset.category === 'pet' || asset.category === 'investment'
       ? 'companion'
@@ -99,7 +99,7 @@ try {
   );
   for (const asset of assets) {
     for (let level = 1; level <= MAX_ASSET_LEVEL; level += 1) {
-      const equipment = { ...emptyEquipment, [slotForAsset(asset)]: asset.id };
+      const equipment = { ...assetTestEmptyEquipment, [slotForAsset(asset)]: asset.id };
       const contributions = calculateEquippedAssetAttributeContributions(equipment, { [asset.id]: level });
       for (const stat of ASSET_ATTRIBUTE_STATS) {
         assert(contributions[stat] <= MAX_ASSET_ATTRIBUTE_CONTRIBUTION, `${asset.id} level ${level} stays within the ${MAX_ASSET_ATTRIBUTE_CONTRIBUTION}-point ${stat} asset cap`);
@@ -108,7 +108,7 @@ try {
     }
   }
   for (const stat of ASSET_ATTRIBUTE_STATS) {
-    const equipment = { ...emptyEquipment };
+    const equipment = { ...assetTestEmptyEquipment };
     const levels = {};
     for (const category of ['car', 'lifestyle', 'companion', 'property']) {
       const categoryAssets = assets
@@ -124,7 +124,7 @@ try {
   }
   const retainedAsset = getAsset('supercar');
   assert(retainedAsset, 'legacy active-game fixture asset exists');
-  const retainedEquipment = { ...emptyEquipment, car: retainedAsset.id };
+  const retainedEquipment = { ...assetTestEmptyEquipment, car: retainedAsset.id };
   const retainedLevels = { [retainedAsset.id]: 1 };
   const currentAssetContribution = calculateEquippedAssetAttributeContributions(retainedEquipment, retainedLevels);
   const assetBackedPlayer = {
@@ -136,7 +136,7 @@ try {
     lifestyle: 5,
     influence: 8,
   };
-  const removal = getAssetAttributeContributionTransition(assetBackedPlayer, emptyEquipment, {});
+  const removal = getAssetAttributeContributionTransition(assetBackedPlayer, assetTestEmptyEquipment, {});
   assert.equal(assetBackedPlayer.fame + removal.deltas.fame, 4, 'removing an asset preserves fame from non-asset sources');
   assert.equal(assetBackedPlayer.influence + removal.deltas.influence, 6, 'removing an asset preserves influence from non-asset sources');
   const legacyRemoval = getAssetAttributeContributionTransition({
@@ -146,7 +146,7 @@ try {
     fame: retainedAsset.effects.fame ?? 0,
     lifestyle: 0,
     influence: retainedAsset.effects.influence ?? 0,
-  }, emptyEquipment, {});
+  }, assetTestEmptyEquipment, {});
   assert.equal(20 + legacyRemoval.deltas.fame, 0, 'legacy active-game fame bonuses are migrated without phantom points');
   assert.equal(10 + legacyRemoval.deltas.influence, 0, 'legacy active-game influence bonuses are migrated without phantom points');
 
@@ -244,9 +244,9 @@ try {
   assert.equal(wealthImpact?.sourceLabel, 'WEALTH CARD · CAREER BONUS', 'card source and career reward modifier remain identifiable');
   assert.equal(targetedFameImpact?.amountText, '−2', 'negative attribute feedback uses a signed negative delta');
   assert.equal(targetedFameImpact?.sourceLabel, 'CAREER ABILITY', 'ability-driven changes name their source family');
-  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 60000, 'Wealth and attribute feedback shares a 60-second display window');
+  assert.equal(PLAYER_CHANGE_FEEDBACK_MS, 30000, 'Wealth and attribute feedback shares a 30-second display window');
   assert.equal(getPlayerStatChangePulseDuration(31000, [31000, 31000, 31000, 31000], 1000), 6000, 'same-player changes receive sequential time within the shared display window');
-  assert.equal(getPlayerStatChangePulseDuration(61000, [], 1000), 60000, 'a single Wealth or attribute change remains visible for the full 60 seconds');
+  assert.equal(getPlayerStatChangePulseDuration(31000, [], 1000), 30000, 'a single Wealth or attribute change remains visible for the full 30 seconds');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
     assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
