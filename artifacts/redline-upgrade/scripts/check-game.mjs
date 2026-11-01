@@ -270,7 +270,8 @@ try {
   assert.equal((stackedFeedbackMarkup.match(/animation-duration:30000ms/g) ?? []).length, 3, 'each stacked stat change receives its own 30-second duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
-    assert.match(affinityCard?.effect ?? '', /CAREER BONUS \+1 LIFESTYLE/i, `${cardId} uses the consistent career-bonus attribute wording`);
+    assert.match(affinityCard?.effect ?? '', /eligible careers gain \+1 Lifestyle/i, `${cardId} uses the consistent career-bonus attribute wording`);
+    assert.match(affinityCard?.value ?? '', /CAREER BONUS \+1 LIFESTYLE/i);
     assert.doesNotMatch(affinityCard?.effect ?? '', /Performance careers|Lifestyle affinity/i);
     assert(affinityCard?.effects.some(effect => effect.kind === 'STAT' && effect.careerTag === 'performance'), `${cardId} keeps its existing eligible careers`);
   }
@@ -2251,10 +2252,14 @@ try {
     assert(faceMarkup.includes(`card-effect-summary-${card.id}`), `${card.title} shows its concise effect on the card face`);
     assert(faceMarkup.includes(card.value), `${card.title} passes its concise effect summary onto the card`);
   }
-  for (const cardId of ['fame-brand-deal', 'ai-agent-fleet', 'ai-algorithmic-breakthrough', 'ai-deepfake-leak', 'ai-licensing-deal', 'ai-zero-day', 'lifestyle-biohack', 'lifestyle-home-gym']) {
+  for (const cardId of ['wealth-patent-payout', 'ai-agent-fleet', 'ai-algorithmic-breakthrough', 'ai-deepfake-leak', 'ai-licensing-deal', 'ai-zero-day', 'fame-brand-deal', 'lifestyle-biohack', 'lifestyle-home-gym', 'gamble-prediction-market']) {
     const card = previewCards.find(candidate => candidate.id === cardId);
-    assert.match(card?.description ?? '', /eligible careers gain \+\d+ (Fame|AI Skill|Lifestyle)/i, `${cardId} uses a common attribute-and-career description`);
-    assert.match(card?.effect ?? '', /CAREER BONUS \+\d+ (FAME|AI SKILL|LIFESTYLE)/i, `${cardId} uses the same concise attribute wording on its card`);
+    assert.match(card?.effect ?? '', /eligible careers gain \+\d+ (Fame|AI Skill|Lifestyle)/i, `${cardId} uses a common attribute-and-career description`);
+    assert.match(card?.value ?? '', /CAREER BONUS \+\d+ (FAME|AI SKILL|LIFESTYLE)/i, `${cardId} uses the same concise attribute wording on its card`);
+  }
+  for (const cardId of ['ai-robot-tax', 'ai-disruption-wave', 'ai-zero-day', 'fame-press-cycle', 'influence-veto-vote']) {
+    const card = previewCards.find(candidate => candidate.id === cardId);
+    assert.doesNotMatch(card?.effect ?? '', /Media\s*\/\s*Fame|Digital\s*\/\s*Risk|media rivals|digital rivals|business rivals/i, `${cardId} avoids career-category shorthand in its effect copy`);
   }
   const rankedPlayers = titledCompleteMatch.players.map((player, index) => ({
     ...player,
@@ -2275,8 +2280,8 @@ try {
     onChoose: () => {},
     onContinue: () => {},
   }));
-  assert(finishPanelMarkup.includes('4TH TO FINISH!') && finishPanelMarkup.includes('FINISH BONUS'), 'finish screen announces arrival place and the Wealth bonus');
-  assert(finishPanelMarkup.includes('UPGRADE TOKENS / NOT SCORE VALUE') && finishPanelMarkup.includes('Cash Out or Double Down'), 'the finish screen explains token conversion separately from score');
+  assert(!finishPanelMarkup.includes('4TH TO FINISH!') && !finishPanelMarkup.includes('FINISH BONUS'), 'the compact final choice screen keeps the arrival bonus banner out of the three options');
+  assert(!finishPanelMarkup.includes('UPGRADE TOKENS / NOT SCORE VALUE'), 'the compact final choice screen omits the snapshot ledger');
 
   const cpuPending = { ...finishOrderFixture, phase: 'endgame', turnIndex: 1 };
   assert.equal(cpuPending.phase, 'endgame');

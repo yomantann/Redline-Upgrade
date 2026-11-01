@@ -277,6 +277,7 @@
 .finish-line-choice-only .finish-line-header-decision { margin-bottom: 20px; }
 .finish-line-choice-only .finish-line-header-decision h1 { font-size: clamp(48px, 6vw, 76px); }
 .finish-line-choice-only .finish-line-choice-review { margin-top: 8px; }
+.finish-line-results-intro { grid-template-columns: 1fr; }
 
 .finish-line-opponent-details { margin-top: 14px; border: 1px solid #46534a; background: #131c19; }
 .finish-line-opponent-details > summary { padding: 12px 15px; color: #d4e981; font: 10px 'Space Mono',monospace; text-transform: uppercase; cursor: pointer; }
