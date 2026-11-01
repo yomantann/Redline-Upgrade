@@ -9,7 +9,7 @@ export const MAX_ASSET_LEVEL: AssetLevel = 4;
 export const ASSET_ATTRIBUTE_STATS = ['aiSkill', 'fame', 'lifestyle', 'influence'] as const;
 export type AssetAttributeStat = typeof ASSET_ATTRIBUTE_STATS[number];
 export type AssetAttributeContributions = Record<AssetAttributeStat, number>;
-export const MAX_ASSET_ATTRIBUTE_CONTRIBUTION = 10;
+export const MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET = 10;
 const MAX_BASE_ASSET_ATTRIBUTE_BONUS = 3;
 
 export interface AssetDefinition {
@@ -76,25 +76,51 @@ function rebalanceAssetAttributeEffects(effects: AssetDefinition['effects']): As
   return balanced;
 }
 
-export function calculateEquippedAssetAttributeContributions(
-  equipment: Record<AssetSlot, string | null>,
-  assetLevels: Record<string, AssetLevel>,
+function allocateAssetAttributePoints(
+  weights: AssetAttributeContributions,
+  points: number,
 ): AssetAttributeContributions {
-  const totals: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
-  const equippedIds = new Set(Object.values(equipment).filter((assetId): assetId is string => Boolean(assetId)));
-  for (const assetId of equippedIds) {
-    const asset = getAsset(assetId);
-    if (!asset) continue;
-    const level = assetLevels[assetId] ?? 1;
-    for (const stat of ASSET_ATTRIBUTE_STATS) {
-      const perAsset = (asset.effects[stat] ?? 0) * level;
-      totals[stat] += Math.min(MAX_ASSET_ATTRIBUTE_CONTRIBUTION, perAsset);
-    }
+  const totalWeight = ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + weights[stat], 0);
+  const allocated: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
+  if (totalWeight <= 0 || points <= 0) return allocated;
+
+  const remainders = ASSET_ATTRIBUTE_STATS.map((stat, order) => {
+    const exact = points * weights[stat] / totalWeight;
+    allocated[stat] = Math.floor(exact);
+    return { stat, order, remainder: exact - allocated[stat] };
+  });
+  let left = points - ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + allocated[stat], 0);
+  remainders.sort((a, b) => b.remainder - a.remainder || a.order - b.order);
+  for (let index = 0; left > 0; index = (index + 1) % remainders.length) {
+    allocated[remainders[index].stat] += 1;
+    left -= 1;
   }
+  return allocated;
+}
+
+export function calculateAssetAttributeAward(
+  assetId: string,
+  level: AssetLevel = 1,
+): AssetAttributeContributions {
+  const asset = getAsset(assetId);
+  const weights: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
+  if (!asset) return weights;
+
   for (const stat of ASSET_ATTRIBUTE_STATS) {
-    totals[stat] = Math.min(MAX_ASSET_ATTRIBUTE_CONTRIBUTION, totals[stat]);
+    weights[stat] = Math.max(0, asset.effects[stat] ?? 0);
   }
-  return totals;
+  const totalWeight = ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + weights[stat], 0);
+  const points: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
+  if (totalWeight <= 0) return points;
+
+  for (let currentLevel = 1; currentLevel <= level; currentLevel += 1) {
+    const alreadyAwarded = ASSET_ATTRIBUTE_STATS.reduce((sum, stat) => sum + points[stat], 0);
+    const increment = Math.min(totalWeight, MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET - alreadyAwarded);
+    if (increment <= 0) break;
+    const allocation = allocateAssetAttributePoints(weights, increment);
+    for (const stat of ASSET_ATTRIBUTE_STATS) points[stat] += allocation[stat];
+  }
+  return points;
 }
 
 function calculateLegacyAssetAttributeContributions(
@@ -114,7 +140,7 @@ function calculateLegacyAssetAttributeContributions(
   return totals;
 }
 
-export function getAssetAttributeContributionTransition(
+export function getAssetAttributeAwardTransition(
   player: {
     equipment: Record<AssetSlot, string | null>;
     assetLevels: Record<string, AssetLevel>;
@@ -123,11 +149,26 @@ export function getAssetAttributeContributionTransition(
   nextEquipment: Record<AssetSlot, string | null> = player.equipment,
   nextAssetLevels: Record<string, AssetLevel> = player.assetLevels,
 ): { contributions: AssetAttributeContributions; deltas: AssetAttributeContributions } {
-  // Older active-game snapshots lack the contribution ledger; their attributes
-  // already include the original, uncapped asset bonuses.
+  // Older active-game snapshots already include their original equipped-asset
+  // effects in player stats. Keep those points, then add only new acquisitions
+  // and level increases; asset removal never subtracts an award.
   const previous = player.assetAttributeContributions
     ?? calculateLegacyAssetAttributeContributions(player.equipment, player.assetLevels);
-  const contributions = calculateEquippedAssetAttributeContributions(nextEquipment, nextAssetLevels);
+  const contributions = { ...previous };
+  const previouslyEquipped = new Set(Object.values(player.equipment).filter((assetId): assetId is string => Boolean(assetId)));
+  const nowEquipped = new Set(Object.values(nextEquipment).filter((assetId): assetId is string => Boolean(assetId)));
+
+  for (const assetId of nowEquipped) {
+    const previousLevel = previouslyEquipped.has(assetId) ? player.assetLevels[assetId] ?? 1 : 0;
+    const nextLevel = nextAssetLevels[assetId] ?? 1;
+    if (nextLevel <= previousLevel) continue;
+    const previousAward = previousLevel > 0 ? calculateAssetAttributeAward(assetId, previousLevel) : null;
+    const nextAward = calculateAssetAttributeAward(assetId, nextLevel);
+    for (const stat of ASSET_ATTRIBUTE_STATS) {
+      contributions[stat] += Math.max(0, nextAward[stat] - (previousAward?.[stat] ?? 0));
+    }
+  }
+
   return {
     contributions,
     deltas: {
