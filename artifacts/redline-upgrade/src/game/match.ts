@@ -2,7 +2,7 @@ import { characters } from './characters';
 import { createPlayer, effectiveSalaryAmount, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
 import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
-import { assetOptions, getAsset, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
+import { assetOptions, getAsset, getAssetAttributeContributionTransition, ASSET_ATTRIBUTE_STATS, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
 import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type AbilityUsageState, type EventDraft, type ProtectionState } from './event-engine';
@@ -775,19 +775,29 @@ function resolveAbilityAssetInteraction(
     targetLevels[pending.ownAssetId] = ownLevel ?? 1;
   }
   actorLevels[pending.targetAssetId] = targetLevel;
+  const actorEquipment = { ...actor.equipment, [pending.category]: pending.targetAssetId };
+  const targetEquipment = { ...target.equipment, [pending.category]: pending.ownAssetId };
+  const actorTransition = getAssetAttributeContributionTransition(actor, actorEquipment, actorLevels);
+  const targetTransition = getAssetAttributeContributionTransition(target, targetEquipment, targetLevels);
+  const nextActor = {
+    ...actor,
+    equipment: actorEquipment,
+    assetLevels: actorLevels,
+    assetAttributeContributions: actorTransition.contributions,
+  };
+  const nextTarget = {
+    ...target,
+    equipment: targetEquipment,
+    assetLevels: targetLevels,
+    assetAttributeContributions: targetTransition.contributions,
+  };
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    nextActor[stat] = Math.max(0, actor[stat] + actorTransition.deltas[stat]);
+    nextTarget[stat] = Math.max(0, target[stat] + targetTransition.deltas[stat]);
+  }
   const players = match.players.map((player, index) => index === actorIndex
-    ? {
-      ...player,
-      equipment: { ...player.equipment, [pending.category]: pending.targetAssetId },
-      assetLevels: actorLevels,
-    }
-    : index === targetIndex
-      ? {
-        ...player,
-        equipment: { ...player.equipment, [pending.category]: pending.ownAssetId },
-        assetLevels: targetLevels,
-      }
-      : player);
+    ? nextActor
+    : index === targetIndex ? nextTarget : player);
   const updated = { ...match, players };
   const incoming = [
     { playerIndex: actorIndex, assetId: pending.targetAssetId, assetLevel: targetLevel, from: target },
@@ -823,26 +833,34 @@ function resolveAbilityAssetInteraction(
       },
     ];
   });
-  return resumeAbilityDecision(updated, transferEvents);
+  const statDrafts: EventDraft[] = [];
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    addNativeStatChange(match, statDrafts, actorIndex, stat, actor[stat], nextActor[stat], 'Career asset interaction');
+    addNativeStatChange(match, statDrafts, targetIndex, stat, target[stat], nextTarget[stat], 'Career asset interaction');
+  }
+  return resumeAbilityDecision(updated, [...statDrafts, ...transferEvents]);
 }
 
 function applyAssetStats(match: Match, playerIndex: number, assetId: string, chargeCost = true): [Match, EventDraft[]] {
   const asset = getAsset(assetId);
   if (!asset) return [match, []];
   const player = match.players[playerIndex];
+  const equipment = { ...player.equipment };
+  equipment[(asset.category === 'pet' || asset.category === 'investment') ? 'companion' : asset.category] = asset.id;
+  const assetLevels = { ...player.assetLevels, [asset.id]: 1 as AssetLevel };
+  const transition = getAssetAttributeContributionTransition(player, equipment, assetLevels);
   const next = {
     ...player,
-    equipment: { ...player.equipment },
-    assetLevels: { ...player.assetLevels, [asset.id]: 1 as AssetLevel },
+    equipment,
+    assetLevels,
+    assetAttributeContributions: transition.contributions,
   };
   const drafts: EventDraft[] = [];
-  next.equipment[(asset.category === 'pet' || asset.category === 'investment') ? 'companion' : asset.category] = asset.id;
   const nextWealth = Math.max(0, player.wealth - (chargeCost ? asset.cost : 0) + (asset.effects.wealth ?? 0));
   next.wealth = nextWealth;
   addNativeStatChange(match, drafts, playerIndex, 'wealth', player.wealth, nextWealth, `Purchased ${asset.name}`);
-  for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
-    const delta = asset.effects[stat] ?? 0;
-    next[stat] = player[stat] + delta;
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    next[stat] = Math.max(0, player[stat] + transition.deltas[stat]);
     addNativeStatChange(match, drafts, playerIndex, stat, player[stat], next[stat], `Purchased ${asset.name}`);
   }
   const updated = {
@@ -889,12 +907,20 @@ function applyAssetLevelEffects(match: Match, playerIndex: number, assetId: stri
   const asset = getAsset(assetId);
   if (!asset) return [match, []];
   const player = match.players[playerIndex];
-  const next = { ...player, assetLevels: { ...player.assetLevels, [assetId]: level } };
+  const assetLevels = { ...player.assetLevels, [assetId]: level };
+  const transition = getAssetAttributeContributionTransition(player, player.equipment, assetLevels);
+  const next = { ...player, assetLevels, assetAttributeContributions: transition.contributions };
   const drafts: EventDraft[] = [];
-  for (const stat of ['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    const previousValue = player[stat];
+    const newValue = Math.max(0, previousValue + transition.deltas[stat]);
+    next[stat] = newValue;
+    addNativeStatChange(match, drafts, playerIndex, stat, previousValue, newValue, `Upgraded ${asset.name} to Level ${level}`);
+  }
+  for (const stat of ['wealth'] as const) {
     const delta = asset.effects[stat] ?? 0;
     const previousValue = player[stat];
-    const newValue = stat === 'wealth' ? Math.max(0, previousValue + delta) : previousValue + delta;
+    const newValue = Math.max(0, previousValue + delta);
     next[stat] = newValue;
     addNativeStatChange(match, drafts, playerIndex, stat, previousValue, newValue, `Upgraded ${asset.name} to Level ${level}`);
   }

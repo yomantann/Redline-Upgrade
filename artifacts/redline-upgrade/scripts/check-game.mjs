@@ -65,7 +65,15 @@ try {
   const { BOARD_SPACES, PAYDAY_SPACES, getSpace } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { getSpaceVisual } = await vite.ssrLoadModule('/src/components/board-space-visuals.ts');
   const { BOARD_EFFECTS } = await vite.ssrLoadModule('/src/game/board-effects.ts');
-  const { getAsset, assets, MAX_ASSET_LEVEL } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const {
+    getAsset,
+    assets,
+    MAX_ASSET_LEVEL,
+    ASSET_ATTRIBUTE_STATS,
+    MAX_ASSET_ATTRIBUTE_CONTRIBUTION,
+    calculateEquippedAssetAttributeContributions,
+    getAssetAttributeContributionTransition,
+  } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
@@ -82,6 +90,65 @@ try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
+
+  const emptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
+  const slotForAsset = (asset) => (
+    asset.category === 'pet' || asset.category === 'investment'
+      ? 'companion'
+      : asset.category
+  );
+  for (const asset of assets) {
+    for (let level = 1; level <= MAX_ASSET_LEVEL; level += 1) {
+      const equipment = { ...emptyEquipment, [slotForAsset(asset)]: asset.id };
+      const contributions = calculateEquippedAssetAttributeContributions(equipment, { [asset.id]: level });
+      for (const stat of ASSET_ATTRIBUTE_STATS) {
+        assert(contributions[stat] <= MAX_ASSET_ATTRIBUTE_CONTRIBUTION, `${asset.id} level ${level} stays within the ${MAX_ASSET_ATTRIBUTE_CONTRIBUTION}-point ${stat} asset cap`);
+        assert(asset.effects[stat] === undefined || Math.abs(asset.effects[stat]) <= 3, `${asset.id} base ${stat} bonus is rebalanced`);
+      }
+    }
+  }
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    const equipment = { ...emptyEquipment };
+    const levels = {};
+    for (const category of ['car', 'lifestyle', 'companion', 'property']) {
+      const categoryAssets = assets
+        .filter((asset) => slotForAsset(asset) === category)
+        .sort((a, b) => (b.effects[stat] ?? 0) - (a.effects[stat] ?? 0));
+      const asset = categoryAssets[0];
+      if (!asset) continue;
+      equipment[category] = asset.id;
+      levels[asset.id] = MAX_ASSET_LEVEL;
+    }
+    const combined = calculateEquippedAssetAttributeContributions(equipment, levels);
+    assert(combined[stat] <= MAX_ASSET_ATTRIBUTE_CONTRIBUTION, `combined equipped assets stay within the ${stat} cap`);
+  }
+  const retainedAsset = getAsset('supercar');
+  assert(retainedAsset, 'legacy active-game fixture asset exists');
+  const retainedEquipment = { ...emptyEquipment, car: retainedAsset.id };
+  const retainedLevels = { [retainedAsset.id]: 1 };
+  const currentAssetContribution = calculateEquippedAssetAttributeContributions(retainedEquipment, retainedLevels);
+  const assetBackedPlayer = {
+    equipment: retainedEquipment,
+    assetLevels: retainedLevels,
+    assetAttributeContributions: currentAssetContribution,
+    aiSkill: 8,
+    fame: 7,
+    lifestyle: 5,
+    influence: 8,
+  };
+  const removal = getAssetAttributeContributionTransition(assetBackedPlayer, emptyEquipment, {});
+  assert.equal(assetBackedPlayer.fame + removal.deltas.fame, 4, 'removing an asset preserves fame from non-asset sources');
+  assert.equal(assetBackedPlayer.influence + removal.deltas.influence, 6, 'removing an asset preserves influence from non-asset sources');
+  const legacyRemoval = getAssetAttributeContributionTransition({
+    equipment: retainedEquipment,
+    assetLevels: retainedLevels,
+    aiSkill: 0,
+    fame: retainedAsset.effects.fame ?? 0,
+    lifestyle: 0,
+    influence: retainedAsset.effects.influence ?? 0,
+  }, emptyEquipment, {});
+  assert.equal(20 + legacyRemoval.deltas.fame, 0, 'legacy active-game fame bonuses are migrated without phantom points');
+  assert.equal(10 + legacyRemoval.deltas.influence, 0, 'legacy active-game influence bonuses are migrated without phantom points');
 
   assert.deepEqual(Object.keys(BIO_PAWN_COLORS).sort(), characters.map(character => character.id).sort(), 'every roster character has a Bio pawn palette');
   assert.equal(new Set(Object.values(BIO_PAWN_COLORS)).size, 21, 'every Bio character has a unique pawn color');

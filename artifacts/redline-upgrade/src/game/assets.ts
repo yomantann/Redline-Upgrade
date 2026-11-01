@@ -6,6 +6,11 @@ export type AssetSlot = 'car' | 'lifestyle' | 'companion' | 'property';
 export type AssetStat = CareerStat | 'wealth';
 export type AssetLevel = 1 | 2 | 3 | 4;
 export const MAX_ASSET_LEVEL: AssetLevel = 4;
+export const ASSET_ATTRIBUTE_STATS = ['aiSkill', 'fame', 'lifestyle', 'influence'] as const;
+export type AssetAttributeStat = typeof ASSET_ATTRIBUTE_STATS[number];
+export type AssetAttributeContributions = Record<AssetAttributeStat, number>;
+export const MAX_ASSET_ATTRIBUTE_CONTRIBUTION = 10;
+const MAX_BASE_ASSET_ATTRIBUTE_BONUS = 3;
 
 export interface AssetDefinition {
   id: string;
@@ -48,6 +53,7 @@ const assetRecords: readonly AssetDefinition[] = [
 
 export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({
   ...asset,
+  effects: rebalanceAssetAttributeEffects(asset.effects),
   visualVariants: {
     1: `${asset.id}:level-1`,
     2: `${asset.id}:level-2`,
@@ -58,3 +64,77 @@ export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({
 
 export const getAsset = (id: string): AssetDefinition | undefined => assets.find(asset => asset.id === id);
 export const assetOptions = (category: AssetCategory): readonly AssetDefinition[] => assets.filter(asset => asset.category === category);
+
+function rebalanceAssetAttributeEffects(effects: AssetDefinition['effects']): AssetDefinition['effects'] {
+  const balanced = { ...effects };
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    const value = balanced[stat];
+    if (value === undefined || value === 0) continue;
+    const scaled = Math.max(1, Math.round(Math.abs(value) / 5));
+    balanced[stat] = Math.sign(value) * Math.min(MAX_BASE_ASSET_ATTRIBUTE_BONUS, scaled);
+  }
+  return balanced;
+}
+
+export function calculateEquippedAssetAttributeContributions(
+  equipment: Record<AssetSlot, string | null>,
+  assetLevels: Record<string, AssetLevel>,
+): AssetAttributeContributions {
+  const totals: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
+  const equippedIds = new Set(Object.values(equipment).filter((assetId): assetId is string => Boolean(assetId)));
+  for (const assetId of equippedIds) {
+    const asset = getAsset(assetId);
+    if (!asset) continue;
+    const level = assetLevels[assetId] ?? 1;
+    for (const stat of ASSET_ATTRIBUTE_STATS) {
+      const perAsset = (asset.effects[stat] ?? 0) * level;
+      totals[stat] += Math.min(MAX_ASSET_ATTRIBUTE_CONTRIBUTION, perAsset);
+    }
+  }
+  for (const stat of ASSET_ATTRIBUTE_STATS) {
+    totals[stat] = Math.min(MAX_ASSET_ATTRIBUTE_CONTRIBUTION, totals[stat]);
+  }
+  return totals;
+}
+
+function calculateLegacyAssetAttributeContributions(
+  equipment: Record<AssetSlot, string | null>,
+  assetLevels: Record<string, AssetLevel>,
+): AssetAttributeContributions {
+  const totals: AssetAttributeContributions = { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 };
+  const equippedIds = new Set(Object.values(equipment).filter((assetId): assetId is string => Boolean(assetId)));
+  for (const assetId of equippedIds) {
+    const asset = assetRecords.find((item) => item.id === assetId);
+    if (!asset) continue;
+    const level = assetLevels[assetId] ?? 1;
+    for (const stat of ASSET_ATTRIBUTE_STATS) {
+      totals[stat] += (asset.effects[stat] ?? 0) * level;
+    }
+  }
+  return totals;
+}
+
+export function getAssetAttributeContributionTransition(
+  player: {
+    equipment: Record<AssetSlot, string | null>;
+    assetLevels: Record<string, AssetLevel>;
+    assetAttributeContributions?: AssetAttributeContributions;
+  },
+  nextEquipment: Record<AssetSlot, string | null> = player.equipment,
+  nextAssetLevels: Record<string, AssetLevel> = player.assetLevels,
+): { contributions: AssetAttributeContributions; deltas: AssetAttributeContributions } {
+  // Older active-game snapshots lack the contribution ledger; their attributes
+  // already include the original, uncapped asset bonuses.
+  const previous = player.assetAttributeContributions
+    ?? calculateLegacyAssetAttributeContributions(player.equipment, player.assetLevels);
+  const contributions = calculateEquippedAssetAttributeContributions(nextEquipment, nextAssetLevels);
+  return {
+    contributions,
+    deltas: {
+      aiSkill: contributions.aiSkill - previous.aiSkill,
+      fame: contributions.fame - previous.fame,
+      lifestyle: contributions.lifestyle - previous.lifestyle,
+      influence: contributions.influence - previous.influence,
+    },
+  };
+}

@@ -1,5 +1,5 @@
 import { getCharacter } from './characters';
-import type { AssetLevel, AssetSlot } from './assets';
+import type { AssetAttributeContributions, AssetLevel, AssetSlot } from './assets';
 
 export interface Player {
   playerId: string;
@@ -33,6 +33,8 @@ export interface Player {
   skipTurns: number;
   equipment: Record<AssetSlot, string | null>;
   assetLevels: Record<string, AssetLevel>;
+  /** The capped asset contribution already included in the visible attribute totals. */
+  assetAttributeContributions?: AssetAttributeContributions;
   /** Total match-only Upgrade Tokens, including any reserved for the endgame. */
   upgradeTokens: number;
   /** Tokens reserved for the future endgame; these cannot be spent mid-match. */
@@ -100,6 +102,7 @@ export function createPlayer(characterId: string, displayName = 'Player 1'): Pla
     skipTurns: 0,
     equipment: { car: null, lifestyle: null, companion: null, property: null },
     assetLevels: {},
+    assetAttributeContributions: { aiSkill: 0, fame: 0, lifestyle: 0, influence: 0 },
     upgradeTokens: 0,
     heldUpgradeTokens: 0,
     upgrades: [],

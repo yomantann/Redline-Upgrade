@@ -149,22 +149,41 @@ export function ProfilePage() {
   const collectionByAssetId = useMemo(() => new Map((profile?.collection ?? []).map(entry => [entry.assetId, entry])), [profile?.collection]);
   const allAssets = useMemo(() => assets
     .map(definition => ({ definition, profileTier: getProfileAssetTier(definition), record: collectionByAssetId.get(definition.id) }))
-    .sort((a, b) => Number((b.record?.acquiredCount ?? 0) > 0) - Number((a.record?.acquiredCount ?? 0) > 0)
+    .sort((a, b) => Number((b.record?.retainedCount ?? 0) > 0) - Number((a.record?.retainedCount ?? 0) > 0)
+      || Number((b.record?.acquiredCount ?? 0) > 0) - Number((a.record?.acquiredCount ?? 0) > 0)
       || profileAssetTierRank[a.profileTier] - profileAssetTierRank[b.profileTier]
       || a.definition.name.localeCompare(b.definition.name)), [collectionByAssetId]);
   const collection = useMemo(() => allAssets
     .filter(({ record }) => collectionFilter === 'all' || (collectionFilter === 'held' ? (record?.retainedCount ?? 0) > 0 : (record?.acquiredCount ?? 0) > 0)), [allAssets, collectionFilter]);
   const collectionSections = useMemo(() => {
-    const acquisitionGroups = collectionFilter === 'all'
-      ? [
-        { key: 'acquired', label: 'Acquired', items: collection.filter(({ record }) => (record?.acquiredCount ?? 0) > 0) },
-        { key: 'not-acquired', label: 'Not yet acquired', items: collection.filter(({ record }) => (record?.acquiredCount ?? 0) === 0) },
-      ]
-      : [{
-        key: collectionFilter,
-        label: collectionFilter === 'held' ? 'Held at finish' : 'Acquired',
-        items: collection,
-      }];
+    const acquisitionGroups = [
+      {
+        key: 'retained',
+        label: 'Retained',
+        items: collection.filter(({ record }) => (record?.retainedCount ?? 0) > 0),
+      },
+      ...(collectionFilter === 'held' ? [] : [
+        {
+          key: 'acquired',
+          label: 'Acquired · not retained',
+          items: collection.filter(({ record }) =>
+            (record?.acquiredCount ?? 0) > 0
+            && (record?.retainedCount ?? 0) === 0
+            && (record?.lostCount ?? 0) === 0),
+        },
+        {
+          key: 'disposition',
+          label: 'Sold, lost, or forfeited',
+          items: collection.filter(({ record }) =>
+            (record?.retainedCount ?? 0) === 0 && (record?.lostCount ?? 0) > 0),
+        },
+      ]),
+      ...(collectionFilter === 'all' ? [{
+        key: 'not-acquired',
+        label: 'Not yet acquired',
+        items: collection.filter(({ record }) => (record?.acquiredCount ?? 0) === 0 && (record?.lostCount ?? 0) === 0),
+      }] : []),
+    ];
 
     return acquisitionGroups.map(group => ({
       ...group,
@@ -174,9 +193,11 @@ export function ProfilePage() {
       })).filter(group => group.items.length > 0),
     })).filter(group => group.rarities.length > 0);
   }, [collection, collectionFilter]);
-  const uniqueCollected = allAssets.filter(({ record }) => (record?.acquiredCount ?? 0) > 0).length;
   const uniqueRetained = allAssets.filter(({ record }) => (record?.retainedCount ?? 0) > 0).length;
-  const collectionCompletion = assets.length ? Math.round(uniqueCollected / assets.length * 100) : 0;
+  const totalRetainedFromRecords = allAssets.reduce((total, { record }) => total + (record?.retainedCount ?? 0), 0);
+  const totalRetained = profile?.metrics.assetsRetained ?? totalRetainedFromRecords;
+  const totalAcquired = allAssets.reduce((total, { record }) => total + (record?.acquiredCount ?? 0), 0);
+  const collectionCompletion = assets.length ? Math.round(uniqueRetained / assets.length * 100) : 0;
   const mostAcquired = [...allAssets].filter(({ record }) => (record?.acquiredCount ?? 0) > 0)
     .sort((a, b) => (b.record?.acquiredCount ?? 0) - (a.record?.acquiredCount ?? 0))[0];
   const mostRetained = [...allAssets].filter(({ record }) => (record?.retainedCount ?? 0) > 0)
@@ -233,8 +254,8 @@ export function ProfilePage() {
       <div className="red-asset-art">{isEverRetained
         ? <AssetArtwork assetId={definition.id} level={highestRetainedLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${definition.name}, level ${highestRetainedLevel}`} />
         : <div className="red-asset-mystery" aria-label="Asset image appears after first retention"><span aria-hidden="true">?</span></div>}
-        <span className={`red-rarity rarity-${profileTier.toLowerCase()}`}>{profileTier}</span><span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
-      <div className="red-asset-copy"><span className="mono">{titleCase(definition.category)}</span><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
+        <span className="red-asset-lock-state">{isEverRetained ? 'RETAINED' : isCollected ? 'COLLECTED / NOT RETAINED' : 'LOCKED'}</span></div>
+      <div className="red-asset-copy"><div className="red-asset-copy-heading"><span className="mono">{titleCase(definition.category)}</span><span className={`red-rarity rarity-${profileTier.toLowerCase()}`}>{profileTier}</span></div><h3>{isEverRetained ? definition.name : '?'}</h3><p>{isEverRetained ? definition.description : 'Retain this asset through a completed game to reveal its identity.'}</p>
         {isEverRetained && <div className="red-asset-pricing"><span className="mono">BASE COST</span><strong>{money(definition.cost)}</strong></div>}
         <div className="red-asset-counts"><div><strong>{record?.acquiredCount ?? 0}</strong><span>ACQUIRED</span></div><div><strong>{record?.retainedCount ?? 0}</strong><span>RETAINED</span></div><div><strong>{record?.lostCount ?? 0}</strong><span>LOST</span></div></div>
         <div className="red-asset-level-info"><span className="mono">HIGHEST RETAINED LEVEL</span><strong>{highestRetainedLevel ? `LEVEL ${highestRetainedLevel}` : '—'}</strong></div>
@@ -441,15 +462,15 @@ export function ProfilePage() {
                 )}
                 {tab === 'collection' && (
                   <section className="red-tab-section">
-                    <div className="red-section-bar"><div><span className="eyebrow">YOUR ASSET RECORD</span><h2>Asset archive</h2><p className="red-section-copy">Acquired assets appear first, then sort from the Standard tier up to Elite. Artwork appears after an asset is retained through a completed game.</p></div>
-                      <div className="red-filter-set" role="group" aria-label="Filter asset collection">{([['all', 'Full catalog'], ['ever', 'Acquired'], ['held', 'Held at finish']] as const).map(([value, label]) => <button key={value} type="button" className={collectionFilter === value ? 'selected' : ''} aria-pressed={collectionFilter === value} onClick={() => setCollectionFilter(value)}>{label}</button>)}</div>
+                    <div className="red-section-bar"><div><span className="eyebrow">YOUR ASSET RECORD</span><h2>Asset archive</h2><p className="red-section-copy">Retained assets appear first, followed by acquisition history and recorded losses. Artwork appears after an asset is retained through a completed game.</p></div>
+                      <div className="red-filter-set" role="group" aria-label="Filter asset collection">{([['all', 'Full catalog'], ['ever', 'Acquired'], ['held', 'Retained']] as const).map(([value, label]) => <button key={value} type="button" className={collectionFilter === value ? 'selected' : ''} aria-pressed={collectionFilter === value} onClick={() => setCollectionFilter(value)}>{label}</button>)}</div>
                     </div>
                     <div className="red-collection-summary" aria-label="Lifetime asset collection summary">
-                      <div><span className="mono">TOTAL ACQUIRED</span><strong>{(profile.metrics.assetsAcquired ?? 0).toLocaleString()}</strong></div>
-                      <div><span className="mono">UNIQUE COLLECTED</span><strong>{uniqueCollected} / {assets.length}</strong></div>
-                      <div><span className="mono">UNIQUE HELD AT ENDGAME</span><strong>{profile.metrics.uniqueAssetsRetained ?? uniqueRetained}</strong></div>
+                      <div><span className="mono">TOTAL RETAINED</span><strong>{totalRetained.toLocaleString()}</strong></div>
+                      <div><span className="mono">TOTAL ACQUIRED</span><strong>{totalAcquired.toLocaleString()}</strong></div>
+                      <div><span className="mono">UNIQUELY RETAINED</span><strong>{uniqueRetained} / {assets.length}</strong></div>
                       <div><span className="mono">ASSETS LOST</span><strong>{(profile.metrics.assetsLost ?? 0).toLocaleString()}</strong></div>
-                      <div><span className="mono">COLLECTION COMPLETE</span><strong>{collectionCompletion}%</strong></div>
+                      <div><span className="mono">RETAINED CATALOG</span><strong>{collectionCompletion}%</strong></div>
                       <div><span className="mono">GAMES WITH RETENTION</span><strong>{(profile.metrics.gamesHeldAssets ?? 0).toLocaleString()}</strong></div>
                     </div>
                     <div className="red-collection-highlights">
@@ -509,26 +530,33 @@ export function ProfilePage() {
             <div className="red-asset-preview-art">{selectedAssetRetained
               ? <AssetArtwork assetId={selectedAsset.id} level={selectedAssetLevel as 1 | 2 | 3 | 4} className="red-asset-image" alt={`${selectedAsset.name}, level ${selectedAssetLevel}`} />
               : <div className="red-asset-mystery"><span aria-hidden="true">?</span></div>}</div>
-            <span className="market-kicker">{selectedAssetRetained ? `${titleCase(selectedAsset.category)} · ${getProfileAssetTier(selectedAsset)}` : 'CLASSIFIED ASSET · LOCKED'}</span>
-            <h2 id="profile-asset-preview-title">{selectedAssetRetained ? selectedAsset.name : '?'}</h2>
-            {selectedAssetRetained ? <>
-              <p>{selectedAsset.description}</p>
-              <div className="market-confirm-price"><span>BASE COST</span><strong>{money(selectedAsset.cost)}</strong><span>HIGHEST RETAINED</span><strong>LEVEL {selectedAssetLevel}</strong></div>
-              <dl className="red-asset-preview-stats">
-                <div><dt>Acquired</dt><dd>{selectedAssetRecord?.acquiredCount ?? 0} times · {selectedAssetRecord?.gamesAcquired ?? 0} games</dd></div>
-                <div><dt>Retained</dt><dd>{selectedAssetRecord?.retainedCount ?? 0} times · {selectedAssetRecord?.gamesRetained ?? 0} games</dd></div>
-                <div><dt>Lost</dt><dd>{selectedAssetRecord?.lostCount ?? 0} times</dd></div>
-                <div><dt>Listed effects</dt><dd>{Object.entries(selectedAsset.effects).length
-                  ? Object.entries(selectedAsset.effects).map(([stat, amount]) => `${amount > 0 ? '+' : ''}${amount} ${metricLabel(stat)}`).join(' · ')
-                  : selectedAsset.passiveEffect ?? 'No direct stat effect'}</dd></div>
-                <div><dt>Acquired in</dt><dd>{selectedAssetGames.length ? selectedAssetGames.map(game => `${dateLabel(game.completedAt)} · ${titleCase(game.boardId)}`).join(' / ') : 'No game history available'}</dd></div>
-                <div><dt>Retained in</dt><dd>{selectedAssetRetentionGames.length ? selectedAssetRetentionGames.map(game => {
-                  const held = game.retainedAssets.find(asset => asset.assetId === selectedAsset.id);
-                  return `${dateLabel(game.completedAt)} · LEVEL ${held?.level ?? 1}`;
-                }).join(' / ') : 'No retention game available'}</dd></div>
-              </dl>
-            </> : <p>Identity and artwork unlock after you retain this asset through a completed game. It has been acquired {selectedAssetRecord?.acquiredCount ?? 0} times.</p>}
-            <button className="market-cancel" type="button" onClick={() => setSelectedAssetId(null)}>CLOSE RECORD</button>
+            <div className="red-asset-preview-copy">
+              <span className="market-kicker">{selectedAssetRetained ? `${titleCase(selectedAsset.category)} · ${getProfileAssetTier(selectedAsset)}` : 'CLASSIFIED ASSET · LOCKED'}</span>
+              <h2 id="profile-asset-preview-title">{selectedAssetRetained ? selectedAsset.name : '?'}</h2>
+              {selectedAssetRetained ? <>
+                <p>{selectedAsset.description}</p>
+                <div className="market-confirm-price"><span>BASE COST</span><strong>{money(selectedAsset.cost)}</strong><span>HIGHEST RETAINED</span><strong>LEVEL {selectedAssetLevel}</strong></div>
+                <dl className="red-asset-preview-stats">
+                  <div><dt>Acquired</dt><dd>{selectedAssetRecord?.acquiredCount ?? 0} times · {selectedAssetRecord?.gamesAcquired ?? 0} games</dd></div>
+                  <div><dt>Retained</dt><dd>{selectedAssetRecord?.retainedCount ?? 0} times · {selectedAssetRecord?.gamesRetained ?? 0} games</dd></div>
+                  <div><dt>Lost</dt><dd>{selectedAssetRecord?.lostCount ?? 0} times</dd></div>
+                  <div><dt>Effects at retained level</dt><dd>{Object.entries(selectedAsset.effects).length
+                    ? Object.entries(selectedAsset.effects).map(([stat, amount]) => {
+                      const effectiveAmount = stat === 'wealth'
+                        ? amount * selectedAssetLevel
+                        : Math.min(10, amount * selectedAssetLevel);
+                      return `${effectiveAmount > 0 ? '+' : ''}${effectiveAmount} ${metricLabel(stat)}`;
+                    }).join(' · ')
+                    : selectedAsset.passiveEffect ?? 'No direct stat effect'}</dd></div>
+                  <div><dt>Acquired in</dt><dd>{selectedAssetGames.length ? selectedAssetGames.map(game => `${dateLabel(game.completedAt)} · ${titleCase(game.boardId)}`).join(' / ') : 'No game history available'}</dd></div>
+                  <div><dt>Retained in</dt><dd>{selectedAssetRetentionGames.length ? selectedAssetRetentionGames.map(game => {
+                    const held = game.retainedAssets.find(asset => asset.assetId === selectedAsset.id);
+                    return `${dateLabel(game.completedAt)} · LEVEL ${held?.level ?? 1}`;
+                  }).join(' / ') : 'No retention game available'}</dd></div>
+                </dl>
+              </> : <p>Identity and artwork unlock after you retain this asset through a completed game. It has been acquired {selectedAssetRecord?.acquiredCount ?? 0} times.</p>}
+              <button className="market-cancel" type="button" onClick={() => setSelectedAssetId(null)}>CLOSE RECORD</button>
+            </div>
           </section>
         </div>}
       </main>

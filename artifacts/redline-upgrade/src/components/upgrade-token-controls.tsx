@@ -78,21 +78,11 @@ export function UpgradeTokenControls({
           {recoveryOpen && recoverable.length > 0 && <div className="upgrade-token-recovery-choices" role="radiogroup" aria-label="Eligible missed milestones">
             {recoverable.map((milestone) => {
               const label = getSpace(milestone.space, boardId)?.label ?? `Milestone ${milestone.space}`;
-              const rewardOptions = milestone.categories.flatMap((category) => assetOptions(category));
-              const effects = [...new Set(rewardOptions.flatMap((asset) => {
-                const stats = Object.entries(asset.effects).map(([stat, amount]) => `${amount > 0 ? '+' : ''}${amount} ${stat.replace(/([A-Z])/g, ' $1').toUpperCase()}`);
-                return stats.length ? stats : [asset.passiveEffect ?? 'No immediate stat effect'];
-              }))];
               return <div className={`upgrade-token-recovery-choice ${selectedSpace === milestone.space ? 'selected' : ''}`} key={milestone.space}>
                 <button type="button" role="radio" aria-checked={selectedSpace === milestone.space} onClick={() => setSelectedSpace(milestone.space)}>
                   <strong>SPACE {String(milestone.space).padStart(2, '0')} · {label}</strong>
-                  <span>{milestone.categories.map((category) => category.toUpperCase()).join(' / ')} · {rewardOptions.length} possible assets</span>
-                  <small>Possible effects: {effects.join(' · ')}</small>
+                  <span>REWARD CATEGORY · {milestone.categories.map((category) => category.toUpperCase()).join(' / ')}</span>
                 </button>
-                <details>
-                  <summary>See possible assets</summary>
-                  <ul>{rewardOptions.map((asset) => <li key={asset.id}><strong>{asset.name}</strong> — {asset.description}</li>)}</ul>
-                </details>
               </div>;
             })}
             <p className="upgrade-token-recovery-disclaimer">The milestone is your choice. The asset is still selected at random; companion recovery also randomly selects pet or investment.</p>

@@ -356,6 +356,7 @@ export async function recordCompletedGame(
   const allAssetEvents = eventLedger?.length ? [...eventLedger] : assetEventsFromMatch(match);
   const playerEvents = allAssetEvents.filter((event) => event.playerIndex === playerIndex);
   const acquiredEvents = playerEvents.filter((event) => event.type === "ASSET_ACQUIRED" || event.type === "ASSET_PURCHASED");
+  const acquiredEventAssetIds = acquiredEvents.map((event) => event.assetId);
   const acquiredAssetIds = [...new Set(acquiredEvents.map((event) => event.assetId))];
   const acquiredUniqueIds = acquiredAssetIds;
   const transferredOutAssetIds = allAssetEvents
@@ -623,13 +624,13 @@ export async function recordCompletedGame(
 
   const nextMetrics: Record<string, number> = {
     ...previousMetrics,
-    assetsAcquired: previousMetrics.assetsAcquired + acquiredUniqueIds.length,
+    assetsAcquired: previousMetrics.assetsAcquired + acquiredEvents.length,
     assetsLost: previousMetrics.assetsLost + lostAssetIds.length,
     assetDispositionIssues: previousMetrics.assetDispositionIssues + assetDispositions.filter((entry) => entry.status === "UNEXPLAINED").length,
     uniqueAssets: knownAssets.size,
     uniqueAssetsRetained: everRetainedAssets.size,
     maxSimultaneousAssets: Math.max(previousMetrics.maxSimultaneousAssets, retainedIds.length),
-    rareAcquired: previousMetrics.rareAcquired + acquiredUniqueIds.filter((assetId) => getAsset(assetId)?.rarity === "RARE").length,
+    rareAcquired: previousMetrics.rareAcquired + acquiredEvents.filter((event) => getAsset(event.assetId)?.rarity === "RARE").length,
     eliteAcquired: previousMetrics.eliteAcquired + acquiredEvents.filter((event) => getAsset(event.assetId)?.rarity === "ELITE").length,
     expensiveAcquired: previousMetrics.expensiveAcquired + acquiredEvents.filter((event) => (getAsset(event.assetId)?.cost ?? 0) >= 300_000).length,
     uniqueAssetCategories: categories.size,
@@ -824,7 +825,7 @@ export async function recordCompletedGame(
 
   for (const assetId of new Set([...acquiredAssetIds, ...lostAssetIds, ...retainedIds])) {
     const old = oldAssets.get(assetId);
-    const acquiredCount = acquiredAssetIds.filter((id) => id === assetId).length;
+    const acquiredCount = acquiredEventAssetIds.filter((id) => id === assetId).length;
     const lostCount = lostAssetIds.filter((id) => id === assetId).length;
     const retainedCount = retainedIds.includes(assetId) ? 1 : 0;
     await tx.insert(userAssetCollectionTable).values({

@@ -1,4 +1,4 @@
-import { assetOptions, getAsset, type AssetCategory, type AssetSlot } from './assets';
+import { assetOptions, getAsset, getAssetAttributeContributionTransition, ASSET_ATTRIBUTE_STATS, type AssetCategory, type AssetSlot } from './assets';
 import { careerAbilityId, getAbility, type EffectDefinition, type EffectType } from './abilities';
 import { getSpace } from './board-data';
 import { getBoardEffect, type BoardEffectDefinition, type BoardEffectTarget } from './board-effects';
@@ -1098,9 +1098,12 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
       if (!player || player.equipment[asset.category === 'pet' || asset.category === 'investment' ? 'companion' : asset.category] !== asset.id) return match;
       const currentLevel = player.assetLevels[asset.id] ?? 1;
       if (currentLevel >= 2) return match;
+      const assetLevels = { ...player.assetLevels, [asset.id]: effect.level };
+      const transition = getAssetAttributeContributionTransition(player, player.equipment, assetLevels);
       let updated = updatePlayer(match, event.playerIndex, (current) => ({
         ...current,
-        assetLevels: { ...current.assetLevels, [asset.id]: effect.level },
+        assetLevels,
+        assetAttributeContributions: transition.contributions,
       }));
       queue.push({
         type: 'ASSET_UPGRADED',
@@ -1115,9 +1118,14 @@ function applyEffect(match: Match, queue: EventDraft[], actor: MatchPlayer, even
         reason,
         description: `${player.displayName} received a free Level ${effect.level} ${asset.name} upgrade.`,
       });
-      for (const stat of ['wealth', 'aiSkill', 'fame', 'lifestyle', 'influence'] as const) {
-        const delta = asset.effects[stat] ?? 0;
+      for (const stat of ASSET_ATTRIBUTE_STATS) {
+        const delta = transition.deltas[stat];
         if (delta) updated = applyStatDelta(updated, queue, event, player, stat, delta, effect.type, event.playerIndex, reason);
+      }
+      const wealthDelta = asset.effects.wealth ?? 0;
+      if (wealthDelta) {
+        const stat = 'wealth';
+        updated = applyStatDelta(updated, queue, event, player, stat, wealthDelta, effect.type, event.playerIndex, reason);
       }
       return updated;
     }
@@ -1425,7 +1433,20 @@ function applyCardEffects(
           state = {
             ...state,
             players: state.players.map((player, index) => index === actorIndex
-              ? { ...player, equipment: Object.fromEntries(Object.keys(player.equipment).map(slot => [slot, null])) as typeof player.equipment, assetLevels: {} }
+              ? (() => {
+                const equipment = Object.fromEntries(Object.keys(player.equipment).map(slot => [slot, null])) as typeof player.equipment;
+                const transition = getAssetAttributeContributionTransition(player, equipment, {});
+                const nextPlayer = {
+                  ...player,
+                  equipment,
+                  assetLevels: {},
+                  assetAttributeContributions: transition.contributions,
+                };
+                for (const stat of ASSET_ATTRIBUTE_STATS) {
+                  nextPlayer[stat] = Math.max(0, player[stat] + transition.deltas[stat]);
+                }
+                return nextPlayer;
+              })()
               : player),
           };
           state = pushLog(state, {
