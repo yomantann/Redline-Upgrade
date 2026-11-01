@@ -26,6 +26,7 @@ const formatCredits = (amount: number) => Math.max(0, Math.round(amount)).toLoca
 
 export interface FinishLinePanelProps {
   player: MatchPlayer;
+  otherPlayers?: readonly MatchPlayer[];
   endgame: EndgameState;
   boardId: BoardId;
   onChoose: (choice: EndgameChoice) => void;
@@ -293,9 +294,10 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
   );
 }
 
-export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
+export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, onChoose, onContinue, finishPlace, finishBonus }: FinishLinePanelProps) {
   const character = getCharacter(endgame.snapshot.characterId);
   const isResolved = endgame.status === 'RESOLVED';
+  const choiceOnly = !isResolved && !endgame.snapshot.isCPU;
   const [selectedChoice, setSelectedChoice] = useState<EndgameChoice | null>(null);
   const selected = choices.find((choice) => choice.id === selectedChoice);
   const assetValue = calculateAssetValue(endgame.snapshot);
@@ -322,8 +324,21 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
   );
 
   return (
-    <main className="finish-line-panel" data-player-id={player.playerId} data-status={endgame.status}>
-      <header className="finish-line-header">
+    <main className={`finish-line-panel ${choiceOnly ? 'finish-line-choice-only' : ''}`} data-player-id={player.playerId} data-status={endgame.status}>
+      <header className={`finish-line-header ${choiceOnly ? 'finish-line-header-decision' : ''}`}>
+        {choiceOnly ? (
+          <>
+            <div>
+              <span className="eyebrow">FINAL CHOICE // {endgame.snapshot.displayName}</span>
+              <h1 className="display">Choose your<br /><span>finish.</span></h1>
+            </div>
+            <div className="finish-line-header-meta mono">
+              <span>FINAL VALUE DECISION</span>
+              <span>THREE OPTIONS</span>
+            </div>
+          </>
+        ) : (
+          <>
         <div>
           <span className="eyebrow">REDLINE UPGRADE // FINISH LINE</span>
           <h1 className="display">The last<br /><span>move.</span></h1>
@@ -332,9 +347,11 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
           <span>{endgame.snapshot.isCPU ? 'CPU RECORD' : 'LOCAL PLAYER RECORD'}</span>
           <span>POSITION {String(endgame.snapshot.position).padStart(2, '0')} / 75</span>
         </div>
+          </>
+        )}
       </header>
 
-      <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
+      {!choiceOnly && <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
         <div className="finish-line-portrait-wrap">
           {character ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
           <span className="mono finish-line-portrait-caption">PLAYER / {endgame.snapshot.displayName}</span>
@@ -349,16 +366,16 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
           <strong>{isResolved ? 'RESOLVED' : 'AT THE LINE'}</strong>
           <small>{isResolved ? 'FINAL ENGINE OUTPUT' : 'AWAITING DELIBERATE CHOICE'}</small>
         </div>
-      </section>
+      </section>}
 
-      {finishPlace && finishPlace > 0 && (
+      {!choiceOnly && finishPlace && finishPlace > 0 && (
         <section className="finish-order-banner" aria-label="Finish-order reward" data-testid="finish-order-bonus">
           <span className="mono">{finishOrdinal(finishPlace)} TO FINISH!</span>
           <strong>+{formatMoney(finishBonus ?? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0)} FINISH BONUS</strong>
           <small>ADDED TO WEALTH BEFORE THE FINAL SNAPSHOT</small>
         </section>
       )}
-      <SnapshotLedger endgame={endgame} />
+      {!choiceOnly && <SnapshotLedger endgame={endgame} />}
       {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : endgame.snapshot.isCPU ? (
         <section className="finish-line-decision finish-line-awaiting" aria-live="polite">
           <span className="eyebrow">CLOSING DECISION // CPU</span>
@@ -393,6 +410,31 @@ export function FinishLinePanel({ player, endgame, boardId, onChoose, onContinue
               </button>
             ))}
           </div>
+          {!!otherPlayers.length && <details className="finish-line-opponent-details" data-testid="finish-line-opponent-details">
+            <summary>Compare other players</summary>
+            <div className="finish-line-opponent-list">
+              {otherPlayers.map((opponent) => {
+                const opponentCharacter = getCharacter(opponent.characterId);
+                const opponentCareer = opponent.careerId ? getCareer(opponent.careerId) : undefined;
+                const opponentAssets = calculateAssetValue(opponent);
+                const attributePoints = opponent.aiSkill + opponent.fame + opponent.lifestyle + opponent.influence;
+                return <article className="finish-line-opponent-card" key={opponent.playerId}>
+                  <div>
+                    <strong>{opponentCharacter?.name ?? opponent.displayName}</strong>
+                    <small>{opponent.displayName} · {opponentCareer?.name ?? 'Career not assigned'} · {opponent.isCPU ? `CPU ${opponent.slot}` : `SPACE ${opponent.position}`}</small>
+                  </div>
+                  <dl>
+                    <div><dt>Wealth</dt><dd>{formatMoney(opponent.wealth)}</dd></div>
+                    <div><dt>Assets</dt><dd>{formatMoney(opponentAssets)}</dd></div>
+                    <div><dt>Attribute points</dt><dd>{attributePoints}</dd></div>
+                    {opponent.endgame?.status === 'RESOLVED' && typeof opponent.endgame.finalGameValue === 'number' && (
+                      <div><dt>Final score</dt><dd>{formatMoney(opponent.endgame.finalGameValue)}</dd></div>
+                    )}
+                  </dl>
+                </article>;
+              })}
+            </div>
+          </details>}
           {selected && (
             <div className="finish-line-consequence-preview" aria-live="polite">
               <span className="eyebrow">BEFORE YOU CONFIRM // {selected.title}</span>
@@ -470,7 +512,6 @@ export function MatchResultsPanel({
           <span className="eyebrow">MATCH OUTCOME // READ ONLY</span>
           <h2 id="finish-line-results-heading" className="display">Who held<br /><span>the line.</span></h2>
         </div>
-        <p>{resolvedPlayers[0] ? `${getCharacter(resolvedPlayers[0].characterId)?.name ?? resolvedPlayers[0].displayName} wins with ${typeof resolvedPlayers[0].endgame?.finalGameValue === 'number' ? formatMoney(resolvedPlayers[0].endgame.finalGameValue) : 'the top final value'}. ` : ''}Every finish choice is resolved. Standings are ordered by final game value.</p>
       </section>
 
       {resolvedPlayers.length ? (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MAX_ASSET_LEVEL, type AssetLevel } from '@/game/assets';
+import { ASSET_ATTRIBUTE_STATS, MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET, MAX_ASSET_LEVEL, calculateAssetAttributeAward, type AssetAttributeStat, type AssetLevel } from '@/game/assets';
 import type { MatchAction, MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { assetOptions } from '@/game/assets';
@@ -8,6 +8,13 @@ import { availableUpgradeTokens, formatAssetValue, getEligibleRecoveryMilestones
 import { AssetArtwork } from './asset-artwork';
 import { SpaceIcon } from './space-icon';
 import './upgrade-token-controls.css';
+
+const assetAttributeLabels: Record<AssetAttributeStat, string> = {
+  aiSkill: 'AI Skill',
+  fame: 'Fame',
+  lifestyle: 'Lifestyle',
+  influence: 'Influence',
+};
 
 export function UpgradeTokenControls({
   player,
@@ -43,6 +50,17 @@ export function UpgradeTokenControls({
               {ownedAssets.map((asset) => {
                 const level = player.assetLevels[asset.id] ?? 1;
                 const nextLevel = Math.min(MAX_ASSET_LEVEL, level + 1) as AssetLevel;
+                const currentAward = calculateAssetAttributeAward(asset.id, level as AssetLevel);
+                const nextAward = calculateAssetAttributeAward(asset.id, nextLevel);
+                const attributeIncreases = ASSET_ATTRIBUTE_STATS
+                  .map((stat) => ({ stat, amount: nextAward[stat] - currentAward[stat] }))
+                  .filter(({ amount }) => amount > 0);
+                const currentTotal = ASSET_ATTRIBUTE_STATS.reduce((total, stat) => total + currentAward[stat], 0);
+                const attributeDescription = attributeIncreases.length
+                  ? attributeIncreases.map(({ stat, amount }) => `+${amount} ${assetAttributeLabels[stat]}`).join(' · ')
+                  : currentTotal >= MAX_ASSET_ATTRIBUTE_POINTS_PER_ASSET
+                    ? 'asset attribute limit reached'
+                    : 'no attribute bonus';
                 return (
                   <button
                     type="button"
@@ -55,7 +73,7 @@ export function UpgradeTokenControls({
                     <span className="upgrade-token-choice-copy">
                       <strong>{asset.name}</strong>
                       <span>LEVEL {level} → {nextLevel}</span>
-                      <small>+{formatAssetValue(asset.cost)} value · listed effects increase</small>
+                      <small>+{formatAssetValue(asset.cost)} value · {attributeDescription}</small>
                     </span>
                   </button>
                 );

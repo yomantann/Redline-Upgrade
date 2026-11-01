@@ -270,8 +270,8 @@ try {
   assert.equal((stackedFeedbackMarkup.match(/animation-duration:30000ms/g) ?? []).length, 3, 'each stacked stat change receives its own 30-second duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
-    assert.match(affinityCard?.effect ?? '', /Lifestyle affinity/i, `${cardId} uses the attribute affinity terminology`);
-    assert.doesNotMatch(affinityCard?.effect ?? '', /Performance careers/i);
+    assert.match(affinityCard?.effect ?? '', /CAREER BONUS \+1 LIFESTYLE/i, `${cardId} uses the consistent career-bonus attribute wording`);
+    assert.doesNotMatch(affinityCard?.effect ?? '', /Performance careers|Lifestyle affinity/i);
     assert(affinityCard?.effects.some(effect => effect.kind === 'STAT' && effect.careerTag === 'performance'), `${cardId} keeps its existing eligible careers`);
   }
   assert(influenceImpact && wealthImpact && targetedFameImpact, 'all sample player stat changes are available for rendering');
@@ -1500,9 +1500,15 @@ try {
   assert.equal(upgraded.players[0].assetLevels[offeredCar.id], 2);
   assert.equal(upgraded.players[0].upgradeTokens, 0);
   assert.equal(upgraded.players[0].wealth, upgradeBasePlayer.wealth + (offeredCar.effects.wealth ?? 0), 'upgrading does not charge the purchase price again');
+  const tokenUpgradeAttributeBefore = calculateAssetAttributeAward(offeredCar.id, 1);
+  const tokenUpgradeAttributeAfter = calculateAssetAttributeAward(offeredCar.id, 2);
+  let tokenUpgradeAttributePoints = 0;
   for (const stat of ['aiSkill', 'fame', 'lifestyle', 'influence']) {
-    assert.equal(upgraded.players[0][stat], upgradeBasePlayer[stat] + (offeredCar.effects[stat] ?? 0), `Level 2 repeats the asset's ${stat} effect`);
+    const expectedAward = tokenUpgradeAttributeAfter[stat] - tokenUpgradeAttributeBefore[stat];
+    tokenUpgradeAttributePoints += expectedAward;
+    assert.equal(upgraded.players[0][stat], upgradeBasePlayer[stat] + expectedAward, `the Upgrade Token adds the asset's Level 2 ${stat} award`);
   }
+  assert(tokenUpgradeAttributePoints > 0, 'using an Upgrade Token on an attribute-bearing asset awards its additional attribute points');
   assert(upgraded.eventLog.find(entry => entry.eventType === 'ASSET_UPGRADED')?.detail.includes('Level 2'), 'asset upgrade level is included in the event log');
   assert.equal(upgraded.eventLog.some(entry => entry.eventType === 'UPGRADE_TOKEN_SPENT'), true);
   assert.equal(upgraded.players[0].history.upgradeTokensSpent, 1, 'spent Upgrade Tokens remain countable for the final record');
@@ -2207,6 +2213,7 @@ try {
   const { FinishLinePanel, MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
   const noGambleMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
     player: noGambleStart.players[0],
+    otherPlayers: noGambleStart.players.slice(1),
     endgame: noGambleStart.players[0].endgame,
     boardId: noGambleStart.boardId,
     finishPlace: 1,
@@ -2215,6 +2222,10 @@ try {
     onContinue: () => {},
   }));
   assert.match(noGambleMarkup, /<button[^>]*disabled=""[^>]*data-testid="button-finish-choice-final_gamble"/, 'Final Gamble is visibly disabled without assets or tokens');
+  assert(noGambleMarkup.includes('finish-line-choice-only'), 'an unresolved player sees the compact final-choice view');
+  assert(!noGambleMarkup.includes('finish-line-ledger') && !noGambleMarkup.includes('finish-line-identity'), 'the final choice view hides the snapshot ledger and full identity panel');
+  assert(noGambleMarkup.includes('Compare other players') && noGambleMarkup.includes('finish-line-opponent-card'), 'opponent information is available in a collapsed comparison dropdown');
+  assert(!noGambleMarkup.includes('<details class="finish-line-opponent-details" open'), 'opponent information stays collapsed until requested');
   const resultsMarkup = renderToStaticMarkup(
     React.createElement(MatchResultsPanel, {
       players: titledCompleteMatch.players,
@@ -2232,12 +2243,18 @@ try {
   assert(resultsMarkup.includes('Final score breakdown'), 'final records show the score components');
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('BOARD FINISH / 1ST') && resultsMarkup.includes('WEALTH BONUS'), 'final records distinguish arrival order from final-value placement');
+  assert(!resultsMarkup.includes('Every finish choice is resolved') && !resultsMarkup.includes('wins with $'), 'the final record omits the unnecessary result-intro copy');
   const { cards: previewCards } = await vite.ssrLoadModule('/src/game/cards.ts');
   for (const card of previewCards) {
     if (!card.value || card.value === '—') continue;
     const faceMarkup = renderToStaticMarkup(React.createElement(RedlineCard, { deck: card.deck, face: 'front', card }));
     assert(faceMarkup.includes(`card-effect-summary-${card.id}`), `${card.title} shows its concise effect on the card face`);
     assert(faceMarkup.includes(card.value), `${card.title} passes its concise effect summary onto the card`);
+  }
+  for (const cardId of ['fame-brand-deal', 'ai-agent-fleet', 'ai-algorithmic-breakthrough', 'ai-deepfake-leak', 'ai-licensing-deal', 'ai-zero-day', 'lifestyle-biohack', 'lifestyle-home-gym']) {
+    const card = previewCards.find(candidate => candidate.id === cardId);
+    assert.match(card?.description ?? '', /eligible careers gain \+\d+ (Fame|AI Skill|Lifestyle)/i, `${cardId} uses a common attribute-and-career description`);
+    assert.match(card?.effect ?? '', /CAREER BONUS \+\d+ (FAME|AI SKILL|LIFESTYLE)/i, `${cardId} uses the same concise attribute wording on its card`);
   }
   const rankedPlayers = titledCompleteMatch.players.map((player, index) => ({
     ...player,

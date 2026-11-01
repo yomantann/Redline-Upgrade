@@ -274,6 +274,22 @@
   gap: 10px;
 }
 
+.finish-line-choice-only .finish-line-header-decision { margin-bottom: 20px; }
+.finish-line-choice-only .finish-line-header-decision h1 { font-size: clamp(48px, 6vw, 76px); }
+.finish-line-choice-only .finish-line-choice-review { margin-top: 8px; }
+
+.finish-line-opponent-details { margin-top: 14px; border: 1px solid #46534a; background: #131c19; }
+.finish-line-opponent-details > summary { padding: 12px 15px; color: #d4e981; font: 10px 'Space Mono',monospace; text-transform: uppercase; cursor: pointer; }
+.finish-line-opponent-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 8px; padding: 0 10px 10px; }
+.finish-line-opponent-card { padding: 12px; border: 1px solid #39463d; background: #1a241d; }
+.finish-line-opponent-card > div:first-child { display: grid; gap: 3px; }
+.finish-line-opponent-card > div:first-child strong { color: #f0eee4; font: 700 21px 'Barlow Condensed',sans-serif; text-transform: uppercase; }
+.finish-line-opponent-card > div:first-child small { color: #9fb09f; font-size: 10px; }
+.finish-line-opponent-card dl { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 11px 0 0; }
+.finish-line-opponent-card dl > div { display: grid; gap: 4px; padding: 7px; border: 1px solid #354238; }
+.finish-line-opponent-card dt { color: #9fb09f; font: 8px 'Space Mono',monospace; text-transform: uppercase; }
+.finish-line-opponent-card dd { margin: 0; color: #f0eee4; font: 700 13px 'Barlow Condensed',sans-serif; }
+
 .finish-line-choice {
   position: relative;
   display: flex;
@@ -631,6 +647,8 @@
 @media (max-width:1000px) { .finish-line-result-ledger { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (max-width:700px) { .finish-line-result-ledger { grid-column:2; grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:600px) {
+  .finish-line-opponent-card dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .finish-line-choice-only .finish-line-header-decision { align-items: flex-end; }
   .finish-line-result-actions { align-items:stretch; flex-direction:column; }
   .finish-line-result-actions .action { width:100%; }
   .finish-line-choice-review-actions { flex-direction:column; }
