@@ -688,7 +688,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           const savedDisclosure = playerCardDisclosure[contestant.playerId];
           const playerCardOpen = savedDisclosure?.layout === cardLayout ? savedDisclosure.open : !compactPlayerLayout;
           return (
-             <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${(remote ? index === remote.youIndex : index === 0) ? 'human' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? seatName(contestant) : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
+              <article className={`game-player ${index === match.turnIndex ? 'active' : ''} ${(remote ? index === remote.youIndex : index === 0) ? 'human' : ''} ${compactPlayerLayout && playerCardOpen ? 'player-card-expanded-mobile' : ''}`} key={contestant.playerId} data-slot={index} data-active={index === match.turnIndex} data-testid={`card-player-${index}`} aria-label={`${character?.name ?? contestant.displayName}, ${contestant.isCPU ? seatName(contestant) : 'human player'}${index === match.turnIndex ? ', active turn' : ''}`}>
                 <details
                   className="game-player-details"
                   open={playerCardOpen}

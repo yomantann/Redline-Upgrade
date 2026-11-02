@@ -252,6 +252,7 @@
 @media(max-width:1000px) { .game-tabletop { grid-template-columns:1fr; } .game-tabletop > .card-draw-panel { grid-row:auto; } .game-tabletop:has(.card-draw-panel) > .game-tabletop-board,.game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-row:auto; } .tabletop-decks { width:100%; } }
 @media(max-width:600px) { .game-player-identity { grid-template-columns:84px minmax(0,1fr); min-height:94px; } .game-player-portrait { height:94px; } .game-player-name { font-size:36px !important; } .asset-purchase-flash,.career-locked-flash { top:76px; } }
 @media(max-width:600px) { .game-player-summary { min-height:190px; padding-inline:12px; } .game-player-summary-values b { font-size:22px; } }
+@media(max-width:700px) { .game-player.player-card-expanded-mobile { grid-column:1 / -1; } }
 @media(prefers-reduced-motion:no-preference) { .asset-purchase-flash,.career-locked-flash { animation:payday-in .35s cubic-bezier(.2,.9,.2,1) both; } }
 .game-player-stats > div[data-stat="ai-skill"] .mono,
 .game-player-stats > div[data-stat="ai-skill"] .mono svg,
