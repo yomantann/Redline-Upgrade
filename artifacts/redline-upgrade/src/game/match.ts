@@ -1636,7 +1636,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (match.players[match.turnIndex]?.isCPU) return match;
       return resolvePartyChallenge(match, action.participantIds, action.passed, action.resolution);
     case 'ACKNOWLEDGE_CARD':
-      if (match.players[match.turnIndex]?.isCPU) return match;
+      if (match.players[match.turnIndex]?.isCPU && match.mode !== 'SINGLE_PLAYER') return match;
       return acknowledgeCardDecision(match);
     case 'TAKE_PAYDAY': {
       const pending = match.pending;

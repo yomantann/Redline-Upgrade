@@ -51,6 +51,8 @@ try {
   for (const career of careers) {
     const points = Object.values(career.statModifiers).reduce((sum, value) => sum + value, 0);
     assert.equal(points, STARTING_ATTRIBUTE_POINTS, `${career.id} starts with the shared ${STARTING_ATTRIBUTE_POINTS} career attribute points`);
+    assert(career.deckAffinity.secondary, `${career.id} is linked to at least two card decks`);
+    assert.notEqual(career.deckAffinity.primary, career.deckAffinity.secondary, `${career.id} has two distinct deck affinities`);
   }
   const { getPublicAssetUrl } = await vite.ssrLoadModule('/src/lib/public-asset-url.ts');
   const { CharacterPortrait } = await vite.ssrLoadModule('/src/components/character-portrait.tsx');
@@ -270,7 +272,7 @@ try {
   assert.equal((stackedFeedbackMarkup.match(/animation-duration:30000ms/g) ?? []).length, 3, 'each stacked stat change receives its own 30-second duration');
   for (const cardId of ['lifestyle-biohack', 'lifestyle-home-gym']) {
     const affinityCard = cards.find(card => card.id === cardId);
-    assert.match(affinityCard?.effect ?? '', /eligible careers gain \+1 Lifestyle/i, `${cardId} uses the consistent career-bonus attribute wording`);
+    assert.match(affinityCard?.effect ?? '', /career bonus: \+1 Lifestyle/i, `${cardId} uses the consistent career-bonus attribute wording`);
     assert.match(affinityCard?.value ?? '', /CAREER BONUS \+1 LIFESTYLE/i);
     assert.doesNotMatch(affinityCard?.effect ?? '', /Performance careers|Lifestyle affinity/i);
     assert(affinityCard?.effects.some(effect => effect.kind === 'STAT' && effect.careerTag === 'performance'), `${cardId} keeps its existing eligible careers`);
@@ -324,6 +326,7 @@ try {
       assert(cardMarkup.includes(card.title) && card.value !== '—' && cardMarkup.includes(card.value) && cardMarkup.includes(`card-effect-summary-${card.id}`), `${deck.name} card image, name, and concise effect are visible on the card`);
       assert(!cardMarkup.includes(card.effect), `${deck.name} keeps full effect prose in the card preview instead of repeating it in the side copy`);
       assert(cardMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${deck.name} draw card loads the artwork mapped to ${card.id}`);
+      assert(!cardMarkup.includes(` / ${card.rarity}`), `${deck.name} draw card omits rarity labels`);
       assert(cardMarkup.includes(`data-testid="deck-bay-${deck.id}"`), `${deck.name} stays visible in the non-interactive deck bay`);
       assert(cardMarkup.includes(`button-preview-card-${card.id}`), `${deck.name} card exposes an independent full-card preview button`);
       assert(cardMarkup.includes('OPEN FULL CARD'), `${deck.name} card preview action is visible`);
@@ -337,10 +340,27 @@ try {
         : cardMarkup.includes(card.description), `${deck.name} card description or result is visible to the local table`);
     }
   }
+  const soloCpuAckCard = cards.find(card => card.id === 'wealth-side-contract');
+  const soloCpuAckMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
+    activeDeck: 'wealth',
+    activeCard: soloCpuAckCard,
+    cardStage: 'resolved',
+    isCPU: true,
+    requireHumanAcknowledgement: true,
+    onAcknowledge: () => {},
+    resultSummary: 'CPU received the recorded card result.',
+  }));
+  assert(soloCpuAckMarkup.includes('CPU EFFECT APPLIED // ACKNOWLEDGE TO CONTINUE'), 'solo CPU card result asks the player to acknowledge its effect');
+  assert(soloCpuAckMarkup.includes('ACKNOWLEDGE CPU CARD EFFECT'), 'solo CPU card result has a clear acknowledgment action');
+  assert(!soloCpuAckMarkup.includes('AUTO-CONTINUE'), 'solo CPU card result does not advertise automatic continuation');
   for (const card of cards) {
     const previewMarkup = renderToStaticMarkup(React.createElement(CardPreviewModal, { card, onClose: () => {} }));
     assert(previewMarkup.includes(card.title) && previewMarkup.includes(card.description), `${card.id} preview shows its title and full description`);
-    assert(previewMarkup.includes(card.effect) && previewMarkup.includes(`${card.rarity}`), `${card.id} preview shows gameplay effect and rarity`);
+    assert(previewMarkup.includes(card.effect) && !previewMarkup.includes(` / ${card.rarity}`), `${card.id} preview shows its gameplay effect without a rarity label`);
+    if (card.id === 'wealth-side-contract') {
+      assert(previewMarkup.includes('career bonus for Gig Worker'), 'Gig Worker career bonus uses the exact career name');
+      assert(!previewMarkup.toLowerCase().includes('only gig careers'), 'card preview avoids the inaccurate gig-career-only phrasing');
+    }
     assert(previewMarkup.includes(`src="${getCardArtworkUrl(card.id)}"`), `${card.id} preview uses the matching card artwork`);
     assert(previewMarkup.includes('button-close-card-preview'), `${card.id} preview has an accessible close action`);
   }
@@ -434,6 +454,42 @@ try {
       Math.random = originalRandom;
     }
   }
+  const cpuFastForwardBase = withRandomValue(0, () => start(13, 1));
+  const fastForwardHuman = cpuFastForwardBase.players[0];
+  const alreadyFinishedHuman = {
+    ...fastForwardHuman,
+    position: 75,
+    status: 'FINISHED',
+    endgame: {
+      status: 'PENDING',
+      snapshot: createFinishSnapshot(fastForwardHuman, 0, false, cpuFastForwardBase.round, cpuFastForwardBase.turnCounter),
+      baseValue: fastForwardHuman.wealth,
+    },
+  };
+  const cpuFastForwardFixture = {
+    ...cpuFastForwardBase,
+    phase: 'ready',
+    turnIndex: 1,
+    finishOrder: [0],
+    players: cpuFastForwardBase.players.map((player, index) => index === 0 ? alreadyFinishedHuman : player),
+  };
+  const cpuBeforeFastForwardCard = cpuFastForwardFixture.players[1];
+  const fastForwardCardResult = withRandomValue(0, () => applySoloAutomationStep(cpuFastForwardFixture));
+  assert(fastForwardCardResult, 'CPU fast-forward advances its turn instead of stalling');
+  assert.equal(fastForwardCardResult.match.players[1].position, 15, 'CPU fast-forward rolls and moves across the board before pausing');
+  assert.equal(fastForwardCardResult.match.pending?.kind, 'CARD', 'CPU fast-forward reaches the board card');
+  assert.equal(fastForwardCardResult.match.pending?.stage, 'resolved', 'CPU fast-forward resolves the card before asking for acknowledgment');
+  assert(eventTypes(fastForwardCardResult.match).includes('CARD_DRAW') && eventTypes(fastForwardCardResult.match).includes('CARD_RESOLVED'), 'CPU fast-forward records both the card draw and its resolution');
+  const cpuAfterFastForwardCard = fastForwardCardResult.match.players[1];
+  assert.notDeepEqual(
+    [cpuAfterFastForwardCard.wealth, cpuAfterFastForwardCard.aiSkill, cpuAfterFastForwardCard.fame, cpuAfterFastForwardCard.lifestyle, cpuAfterFastForwardCard.influence],
+    [cpuBeforeFastForwardCard.wealth, cpuBeforeFastForwardCard.aiSkill, cpuBeforeFastForwardCard.fame, cpuBeforeFastForwardCard.lifestyle, cpuBeforeFastForwardCard.influence],
+    'CPU card effects change the CPU values during fast-forward',
+  );
+  assert.equal(applySoloAutomationStep(fastForwardCardResult.match), null, 'CPU automation stops while its resolved card awaits player acknowledgment');
+  const acknowledgedCpuCard = applySoloPlayerAction(fastForwardCardResult.match, { type: 'ACKNOWLEDGE_CARD' });
+  assert(acknowledgedCpuCard, 'the solo player can acknowledge a CPU card effect');
+  assert.notEqual(acknowledgedCpuCard.match.pending?.stage, 'resolved', 'acknowledgment lets CPU play continue');
   function abilityFixture(careerIds = []) {
     const base = withoutAbilities(createMatch(id));
     return {
@@ -2304,7 +2360,7 @@ try {
   }
   for (const cardId of ['wealth-patent-payout', 'ai-agent-fleet', 'ai-algorithmic-breakthrough', 'ai-deepfake-leak', 'ai-licensing-deal', 'ai-zero-day', 'fame-brand-deal', 'lifestyle-biohack', 'lifestyle-home-gym', 'gamble-prediction-market']) {
     const card = previewCards.find(candidate => candidate.id === cardId);
-    assert.match(card?.effect ?? '', /eligible careers gain \+\d+ (Fame|AI Skill|Lifestyle)/i, `${cardId} uses a common attribute-and-career description`);
+    assert.match(card?.effect ?? '', /career bonus: \+\d+ (Fame|AI Skill|Lifestyle)/i, `${cardId} uses a common attribute-and-career description`);
     assert.match(card?.value ?? '', /CAREER BONUS \+\d+ (FAME|AI SKILL|LIFESTYLE)/i, `${cardId} uses the same concise attribute wording on its card`);
   }
   for (const cardId of ['ai-robot-tax', 'ai-disruption-wave', 'ai-zero-day', 'fame-press-cycle', 'influence-veto-vote']) {
@@ -2671,13 +2727,28 @@ try {
     for (let step = 0; step < 8000 && soloMatch.phase !== 'complete'; step += 1) {
       const actorIndex = actingPlayerIndex(soloMatch);
       if (actorIndex !== 0) {
-        const automated = applySoloAutomationStep(soloMatch);
-        assert(automated, `${boardId} CPU phase ${soloMatch.phase} should advance one scheduled step`);
+        const cpuCardNeedsAcknowledgement = soloMatch.mode === 'SINGLE_PLAYER'
+          && soloMatch.phase === 'decision'
+          && soloMatch.pending?.kind === 'CARD'
+          && soloMatch.pending.stage === 'resolved'
+          && !getCard(soloMatch.pending.cardId)?.partyChallenge;
+        let automated;
+        if (cpuCardNeedsAcknowledgement) {
+          automated = applySoloPlayerAction(soloMatch, { type: 'ACKNOWLEDGE_CARD' });
+          assert(automated, `${boardId} player can acknowledge a CPU card effect`);
+        } else {
+          automated = applySoloAutomationStep(soloMatch);
+          assert(automated, `${boardId} CPU phase ${soloMatch.phase} should advance one scheduled step`);
+        }
         const humanAlreadyFinished = soloMatch.players.filter(player => !player.isCPU).every(player => player.status === 'FINISHED');
         soloMatch = automated.match;
-        if (humanAlreadyFinished) {
+        if (humanAlreadyFinished && cpuCardNeedsAcknowledgement) {
+          assert.equal(soloMatch.players[soloMatch.turnIndex].isCPU, true, `${boardId} acknowledges the CPU effect without changing the acting seat`);
+        } else if (humanAlreadyFinished) {
           const humanFinish = soloMatch.players.find(player => !player.isCPU);
-          if (humanFinish?.endgame?.status === 'PENDING') {
+          if (soloMatch.phase === 'decision' && soloMatch.pending?.kind === 'CARD' && soloMatch.pending.stage === 'resolved') {
+            assert.equal(soloMatch.players[soloMatch.turnIndex].isCPU, true, `${boardId} pauses fast-forward for the player to acknowledge a CPU card`);
+          } else if (humanFinish?.endgame?.status === 'PENDING') {
             assert.equal(soloMatch.phase, 'endgame', `${boardId} fast-forwards CPUs to the human's finish choice`);
             assert.equal(soloMatch.players[soloMatch.turnIndex].isCPU, false, `${boardId} stops CPU fast-forward at the human choice`);
           } else {

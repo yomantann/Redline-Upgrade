@@ -197,6 +197,7 @@ export function GameScreen() {
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
   const [decisionInspection, setDecisionInspection] = useState<'choice' | 'board' | 'players'>('choice');
+  const [dismissedFastForwardMatchId, setDismissedFastForwardMatchId] = useState<string | null>(null);
   const phase = match?.phase;
   const turnIndex = match?.turnIndex;
   const remaining = match?.stepsRemaining;
@@ -205,6 +206,31 @@ export function GameScreen() {
   const decisionPlayerIndex = pending?.kind === 'ABILITY' ? pending.playerIndex : turnIndex;
   const decisionIsCPU = decisionPlayerIndex === undefined ? isCPU : match?.players[decisionPlayerIndex]?.isCPU;
   const hasTurnStartToken = Boolean(match && availableUpgradeTokens(match.players[match.turnIndex]) > 0);
+  const isFastForwardCpuSeat = (index: number) => remote
+    ? Boolean(remote.seats[index]?.userId.startsWith('cpu:'))
+    : Boolean(match?.players[index]?.isCPU);
+  const fastForwardRealIndexes = match
+    ? match.players.map((_, index) => index).filter(index => !isFastForwardCpuSeat(index))
+    : [];
+  const fastForwardCpuIndexes = match
+    ? match.players.map((_, index) => index).filter(index => isFastForwardCpuSeat(index))
+    : [];
+  const showFastForwardNotice = Boolean(
+    match
+    && match.phase !== 'complete'
+    && fastForwardRealIndexes.length > 0
+    && fastForwardCpuIndexes.length > 0
+    && fastForwardRealIndexes.every(index => match.players[index]?.status === 'FINISHED')
+    && dismissedFastForwardMatchId !== match.matchId,
+  );
+  const fastForwardNotice = showFastForwardNotice ? (
+    <aside className="cpu-fast-forward-notice" role="status" aria-live="polite" data-testid="notice-cpu-fast-forward">
+      <button type="button" className="cpu-fast-forward-dismiss" onClick={() => setDismissedFastForwardMatchId(match!.matchId)} aria-label="Dismiss CPU fast-forward notice">×</button>
+      <span className="eyebrow">CPU FAST-FORWARD</span>
+      <strong>They still play it through.</strong>
+      <p>Fast-forward speeds up the wait, not the game: CPUs still move across the board, draw and resolve cards, and apply every effect until they finish.</p>
+    </aside>
+  ) : null;
   const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
   const toggleAutoScroll = useCallback(() => {
     if (autoScrollEnabled) window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'auto' });
@@ -365,6 +391,7 @@ export function GameScreen() {
     let callback: () => void;
     // Multiplayer: the server drives everything except the local player's own pacing steps.
     if (remote && (phase === 'ready' || phase === 'decision' || phase === 'endgame' || isCPU)) return;
+    if (!remote && match.mode === 'SINGLE_PLAYER' && decisionIsCPU && pending?.kind === 'CARD' && pending.stage === 'resolved' && !getCard(pending.cardId)?.partyChallenge) return;
     if (phase === 'ready' && isCPU) {
       delay = 850;
       callback = rollDice;
@@ -395,7 +422,7 @@ export function GameScreen() {
     } else return;
     const timer = window.setTimeout(callback, delay);
     return () => window.clearTimeout(timer);
-}, [match === null, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch, remote !== null]);
+}, [match === null, match?.mode, phase, isCPU, decisionIsCPU, decisionPlayerIndex, turnIndex, remaining, pending?.kind, pending?.kind === 'CARD' || pending?.kind === 'CAREER' ? pending.stage : pending?.kind === 'ASSET' ? pending.category : pending?.kind === 'ABILITY' ? pending.decision : undefined, rollDice, dispatchMatch, remote !== null]);
 
   useEffect(() => {
     if (!phase || !autoScrollEnabled) return;
@@ -526,6 +553,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
     const waitingForHumanChoice = active.endgame.status !== 'RESOLVED' && !active.isCPU;
     return (
       <main className="game-screen game-screen-finish-line">
+        {fastForwardNotice}
         {!waitingForHumanChoice && <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />}
         {!waitingForHumanChoice && isBioBoard && <AgeRestrictionBadge />}
         {!waitingForHumanChoice && <DecisionInspectionToolbar
@@ -558,6 +586,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   return (
     <main className="game-screen">
+      {fastForwardNotice}
       <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
       {isBioBoard && <AgeRestrictionBadge />}
       {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
@@ -817,6 +846,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
          cardStage={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.stage : undefined}
          cardPiles={match.cardPiles}
          isCPU={active.isCPU}
+         requireHumanAcknowledgement={!remote && match.mode === 'SINGLE_PLAYER'}
           actorName={currentCharacter?.name ?? active.displayName}
          actorLabel={active.isCPU ? seatName(active) : 'YOU'}
           resultSummary={cardResultSummary}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CardDefinition, CardEffect, PartyChallenge } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
+import { careers, type CareerCategoryTag } from '@/game/careers';
 import type { MatchPlayer } from '@/game/match';
 import type { BoardId } from '@/game/boards';
 import { CARD_READ_MINIMUM_MS, CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_MS, CPU_CARD_DRAW_SECONDS, CPU_CARD_RESULT_SECONDS } from '@/game/card-reveal-timing';
@@ -31,7 +32,10 @@ function targetLabel(target?: string) {
 
 function effectInstructions(effect: CardEffect): string[] {
   const careerTag = 'careerTag' in effect ? effect.careerTag : undefined;
-  const condition = careerTag ? ` (only ${careerTag.toLowerCase().replaceAll('_', ' ')} careers)` : '';
+  const eligibleCareerNames = careerTag
+    ? careers.filter(career => career.tags.includes(careerTag as CareerCategoryTag)).map(career => career.name).join(', ')
+    : '';
+  const condition = eligibleCareerNames ? ` (career bonus for ${eligibleCareerNames})` : '';
   const reason = effect.reason ? ` — ${effect.reason}` : '';
   switch (effect.kind) {
     case 'STAT':
@@ -81,7 +85,7 @@ export function CardPreviewModal({ card, onClose }: { card: CardDefinition; onCl
       >
         <header className="card-preview-header">
           <div>
-            <span className="eyebrow">{deck.name} / {card.rarity}</span>
+            <span className="eyebrow">{deck.name}</span>
             <h2 id="card-preview-title">{card.title}</h2>
           </div>
           <button type="button" className="card-preview-close" onClick={onClose} aria-label="Close card preview" data-testid="button-close-card-preview">×</button>
@@ -91,7 +95,7 @@ export function CardPreviewModal({ card, onClose }: { card: CardDefinition; onCl
             <RedlineCard deck={card.deck} face="front" card={card} className="card-preview-face" />
           </div>
           <div className="card-preview-rules">
-            <p className="mono card-preview-category">{deck.name.toUpperCase()} / {card.rarity}</p>
+            <p className="mono card-preview-category">{deck.name.toUpperCase()}</p>
             <h3>{card.title}</h3>
             <section>
               <h4>DESCRIPTION</h4>
@@ -155,6 +159,7 @@ type Props = {
   onResolvePartyChallenge?: (participantIds: string[], passed: boolean, resolution?: string) => void;
   onAcknowledge?: () => void;
   isCPU?: boolean;
+  requireHumanAcknowledgement?: boolean;
   actorName?: string;
   actorLabel?: string;
   resultSummary?: string;
@@ -176,6 +181,7 @@ export function CardTabletop({
   onResolvePartyChallenge,
   onAcknowledge,
   isCPU = false,
+  requireHumanAcknowledgement = false,
   actorName = isCPU ? 'CPU' : 'You',
   actorLabel = isCPU ? 'CPU' : 'YOU',
   resultSummary,
@@ -222,6 +228,7 @@ export function CardTabletop({
 
   const activeCardResolved = cardStage === 'resolved' && activeCard;
   const partyChallenge: PartyChallenge | undefined = activeCard?.partyChallenge;
+  const cpuCardNeedsHumanAcknowledgement = Boolean(isCPU && requireHumanAcknowledgement && activeCardResolved && !partyChallenge);
   const requiredParticipants = partyChallenge?.target === 'SELECTED_PLAYER' || partyChallenge?.target === 'SELF_AND_SELECTED' ? 1
     : partyChallenge?.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
   const selectablePlayers = partyPlayers.filter(player => player.playerId !== partyActorId);
@@ -308,7 +315,7 @@ export function CardTabletop({
               </div>
           )}
           <div className="card-draw-action">
-              {isCPU ? (
+              {isCPU && !cpuCardNeedsHumanAcknowledgement ? (
                <>
                  <p className="mono">{activeCardResolved ? 'RESULT RECORDED // CPU CONTINUES AUTOMATICALLY' : 'CPU ACTION // CARD READ IN PROGRESS'}</p>
                  <div className={`card-cpu-progress ${activeCardResolved ? 'resolved' : 'draw'}`} role="progressbar" aria-label={activeCardResolved ? 'CPU continuing after card result' : 'CPU reviewing card'} aria-valuetext={activeCardResolved ? `Auto-continue in about ${CPU_CARD_RESULT_SECONDS} seconds` : `Card read in progress for about ${drawReadTimeSeconds} seconds`} key={`${activeCard?.id ?? activeDeck}-${cardStage ?? 'draw'}`}>
@@ -345,7 +352,10 @@ export function CardTabletop({
                 : cardStage === 'choice'
                ? <p className="mono">CHOOSE ONE CARD TO RESOLVE</p>
                : activeCardResolved
-              ? <button type="button" className="action lime-action" onClick={onAcknowledge} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-acknowledge-card">CONTINUE RUN <span aria-hidden="true">↗</span></button>
+               ? <>
+                   {cpuCardNeedsHumanAcknowledgement && <p className="mono card-human-acknowledgement">CPU EFFECT APPLIED // ACKNOWLEDGE TO CONTINUE</p>}
+                   <button type="button" className="action lime-action" onClick={onAcknowledge} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-acknowledge-card">{cpuCardNeedsHumanAcknowledgement ? 'ACKNOWLEDGE CPU CARD EFFECT' : 'CONTINUE RUN'} <span aria-hidden="true">↗</span></button>
+                 </>
               : onResolveCard
                 ? <button type="button" className="action" onClick={onResolveCard} disabled={!minimumReadTimeComplete} aria-describedby={!minimumReadTimeComplete ? 'card-read-time-reason' : undefined} data-testid="button-draw-card">RESOLVE CARD EFFECT <span aria-hidden="true">↗</span></button>
                 : <p className="mono">FINAL GAMBLE // CARD REVEALED, RESULT NEXT</p>}

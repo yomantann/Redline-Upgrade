@@ -1,5 +1,6 @@
 import { advanceMatch, rollD4, type DiceResult, type Match, type MatchAction } from './match';
 import type { EndgameChoice } from './endgame';
+import { getCard } from './cards';
 
 /**
  * Server-authoritative multiplayer layer. It owns no gameplay rules: clients send intent-level
@@ -294,7 +295,10 @@ export function applySoloPlayerAction(
   match: Match,
   action: ClientAction,
 ): { match: Match; assetEvents: MatchAssetEvent[] } | null {
-  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete' || actingPlayerIndex(match) !== 0 || match.players[0]?.isCPU) return null;
+  const acknowledgingCpuCard = action.type === 'ACKNOWLEDGE_CARD'
+    && isSoloCpuCardAwaitingAcknowledgement(match)
+    && match.turnIndex !== 0;
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete' || (actingPlayerIndex(match) !== 0 && !acknowledgingCpuCard) || match.players[0]?.isCPU) return null;
   const matchActions = toMatchActions(action);
   if (!matchActions) return null;
   const original = match;
@@ -317,10 +321,14 @@ export function applySoloAutomationStep(
   match: Match,
 ): { match: Match; assetEvents: MatchAssetEvent[] } | null {
   if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete') return null;
+  if (isSoloCpuCardAwaitingAcknowledgement(match)) return null;
   const index = actingPlayerIndex(match);
   if (index === 0 || !match.players[index]?.isCPU) return null;
   let next = autopilotStep(match, index);
   if (next === match) return null;
+  if (isSoloCpuCardAwaitingAcknowledgement(next)) {
+    return { match: next, assetEvents: collectAssetEvents(match, next) };
+  }
   if (allRealPlayersFinished(match)) {
     for (let guard = 0; guard < 5000 && next.phase !== 'complete'; guard += 1) {
       const nextIndex = actingPlayerIndex(next);
@@ -328,9 +336,16 @@ export function applySoloAutomationStep(
       const advanced = autopilotStep(next, nextIndex);
       if (advanced === next) break;
       next = advanced;
+      if (isSoloCpuCardAwaitingAcknowledgement(next)) break;
     }
   }
   return { match: next, assetEvents: collectAssetEvents(match, next) };
+}
+
+function isSoloCpuCardAwaitingAcknowledgement(match: Match): boolean {
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return false;
+  if (!match.players[match.turnIndex]?.isCPU) return false;
+  return !getCard(match.pending.cardId)?.partyChallenge;
 }
 
 function allRealPlayersFinished(match: Match): boolean {

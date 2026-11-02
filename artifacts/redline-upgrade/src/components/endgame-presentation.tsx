@@ -120,7 +120,7 @@ function FinalGambleReveal({
     <section className="endgame-panel endgame-gamble-panel" aria-labelledby="endgame-gamble-heading">
       <div className="endgame-panel-heading">
         <span className="eyebrow">FINAL GAMBLE // REVEALED</span>
-        <span className="mono">{card.deck.toUpperCase()} / {card.rarity}</span>
+        <span className="mono">{card.deck.toUpperCase()}</span>
       </div>
       <div className="endgame-gamble-content">
         <div className="endgame-gamble-art" aria-hidden="true">

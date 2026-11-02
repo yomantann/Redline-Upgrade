@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useLocation } from 'wouter';
-import { getCareer, formatMoney, SALARY_TIERS, STARTING_ATTRIBUTE_POINTS } from '@/game/careers';
+import { getCareer, formatMoney, SALARY_TIERS } from '@/game/careers';
 import { getDeck } from '@/game/decks';
 import { useGame } from '@/game/state';
 import { SpaceIcon } from './space-icon';
@@ -30,7 +30,16 @@ export function CareerReveal() {
   }
 
   const tierIndex = Math.max(0, Math.min(3, player.salaryTier - 1));
-  const totalStartingAttributes = player.aiSkill + player.fame + player.lifestyle + player.influence;
+  const startingAttributes = [
+    ['AI Skill', player.aiSkill],
+    ['Fame', player.fame],
+    ['Lifestyle', player.lifestyle],
+    ['Influence', player.influence],
+  ] as const;
+  const startingAttributeSummary = startingAttributes
+    .filter(([, value]) => value > 0)
+    .map(([name, value]) => `${name} ${value}`)
+    .join(' · ');
   const icon = career.icon || career.name;
   const careerDecks = [career.deckAffinity.primary, career.deckAffinity.secondary].filter(
     (deck): deck is NonNullable<typeof deck> => Boolean(deck),
@@ -92,8 +101,8 @@ export function CareerReveal() {
             </div>
           </div>
           <div className="career-ability" data-testid="text-starting-attributes">
-            <span className="mono">STARTING ATTRIBUTES / {totalStartingAttributes} TOTAL · +{STARTING_ATTRIBUTE_POINTS} CAREER</span>
-            <p>AI Skill {player.aiSkill} · Fame {player.fame} · Lifestyle {player.lifestyle} · Influence {player.influence}.</p>
+            <span className="mono">STARTING ATTRIBUTES</span>
+            <p>{startingAttributeSummary}</p>
           </div>
         </div>
       </section>

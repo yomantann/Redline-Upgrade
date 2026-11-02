@@ -475,3 +475,29 @@
 .remote-activity { flex-direction: column; opacity: 0.75; }
 @media (prefers-reduced-motion: no-preference) { .remote-status.my-turn .remote-banner { animation: payday-in .35s ease both; } }
 @media (max-width: 600px) { .remote-status { font-size: 0.68rem; padding: 0.4rem 0.5rem; } .remote-players { flex-direction: column; gap: 0.2rem; } .remote-activity li:nth-child(n+3) { display: none; } }
+
+.cpu-fast-forward-notice {
+  position: fixed;
+  z-index: 9999;
+  right: clamp(12px, 3vw, 28px);
+  bottom: clamp(76px, 10vh, 110px);
+  width: min(390px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+  padding: 18px 22px 18px 18px;
+  color: #e9e7dc;
+  background: #142019;
+  border: 1px solid rgba(212, 233, 129, 0.62);
+  border-left: 4px solid #d4e981;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.46);
+}
+.cpu-fast-forward-notice .eyebrow { color: #d4e981; font-size: 10px; letter-spacing: 0.14em; }
+.cpu-fast-forward-notice strong { font-size: 15px; letter-spacing: 0.03em; }
+.cpu-fast-forward-notice p { margin: 0; color: #c7d0c4; font-size: 12px; line-height: 1.5; }
+.cpu-fast-forward-dismiss { position: absolute; top: 7px; right: 9px; width: 26px; height: 26px; color: #e9e7dc; background: transparent; border: 0; font-size: 20px; cursor: pointer; }
+.cpu-fast-forward-dismiss:hover, .cpu-fast-forward-dismiss:focus-visible { color: #d4e981; }
+.card-human-acknowledgement { margin: 0 0 10px; color: #d4e981; font-size: 11px; letter-spacing: 0.08em; }
+@media (max-width: 600px) {
+  .cpu-fast-forward-notice { bottom: 72px; padding: 16px 20px 16px 14px; }
+  .cpu-fast-forward-notice p { font-size: 11px; }
+}

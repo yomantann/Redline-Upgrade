@@ -15,4 +15,5 @@
 - [Production shop assets](shop-production-assets.md) — generate a filename-only cosmetics manifest inside API output; the API runtime lacks frontend asset folders.
 - [Personal Best baselines](personal-best-baselines.md) — seed comparable records from authenticated legacy games; do not infer categories older snapshots never stored.
 - [Endgame and asset awards](endgame-settlement-rules.md) — awarded attribute points persist after asset loss and can accumulate without a match-wide cap; asset awards cap at 10.
-- [Salary gates and finish pacing](salary-gates-and-finish-pacing.md) — salary-tier rerolls collect a payday; CPU play fast-forwards after all real players finish but pauses at human choices.
+- [Salary gates and finish pacing](salary-gates-and-finish-pacing.md) — fast-forward preserves CPU turns and card effects; solo pauses for acknowledgment, multiplayer remains automatic.
+- [Career card affinities](career-card-affinities.md) — every career keeps two distinct deck affinities and career bonuses use consistent attribute language.
