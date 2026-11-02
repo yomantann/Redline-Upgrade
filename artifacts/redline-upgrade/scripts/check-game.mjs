@@ -47,7 +47,7 @@ try {
   const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { BIO_PAWN_COLORS, BIO_PAWN_PALETTES, STANDARD_PAWN_COLORS } = await vite.ssrLoadModule('/src/components/pawns/pawn-palettes.ts');
   const { PawnFallback } = await vite.ssrLoadModule('/src/components/pawns/pawn-fallback.tsx');
-  const { careers, categories, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { careers, categories, formatMoney, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
   for (const career of careers) {
     const points = Object.values(career.statModifiers).reduce((sum, value) => sum + value, 0);
     assert.equal(points, STARTING_ATTRIBUTE_POINTS, `${career.id} starts with the shared ${STARTING_ATTRIBUTE_POINTS} career attribute points`);
@@ -1713,13 +1713,36 @@ try {
   assertCompleteCardPiles(match.cardPiles);
 
   const firstPaydaySpace = [...PAYDAY_SPACES][0];
-  const paydayFixture = withoutAbilities(start(firstPaydaySpace - 2, 0));
+  const basePaydayFixture = withoutAbilities(start(firstPaydaySpace - 2, 0));
+  const lawyerCareer = getCareer('lawyer');
+  const paydayFixture = {
+    ...basePaydayFixture,
+    players: basePaydayFixture.players.map((player, index) => index === 0 ? {
+      ...player,
+      careerId: lawyerCareer.id,
+      salaryTier: 1,
+      salaryAmount: lawyerCareer.salaryTiers[0],
+    } : player),
+  };
   const paydayLanding = move(paydayFixture, 2);
   assert.equal(paydayLanding.pending?.kind, 'SALARY_GATE', 'landing exactly on payday pauses for a choice');
   const salaryBefore = paydayLanding.players[0].wealth;
   const tookPayday = advanceMatch(paydayLanding, { type: 'TAKE_PAYDAY' });
   assert.equal(tookPayday.players[0].wealth, salaryBefore + effectiveSalaryAmount(paydayLanding.players[0]));
   assert.equal(tookPayday.phase, 'landed');
+  const rerolledPayday = withRandomValue(0.99, () => advanceMatch(paydayLanding, { type: 'REROLL_SALARY_TIER' }));
+  const rerolledCareer = getCareer(rerolledPayday.players[0].careerId);
+  assert.equal(rerolledPayday.players[0].salaryTier, 4, 'salary gate can reroll the active career to Elite');
+  assert.equal(rerolledPayday.players[0].salaryAmount, rerolledCareer.salaryTiers[3], 'salary reroll replaces the active salary tier');
+  assert.equal(rerolledPayday.players[0].wealth, salaryBefore + effectiveSalaryAmount(rerolledPayday.players[0]), 'rerolled tier pays its effective payday immediately');
+  assert.equal(rerolledPayday.phase, 'landed', 'salary reroll resolves the gate without a second decision');
+  const salaryGateMarkup = renderToStaticMarkup(React.createElement(MilestoneChoice, {
+    pending: paydayLanding.pending,
+    player: paydayLanding.players[0],
+    players: paydayLanding.players,
+    onAction: () => {},
+  }));
+  assert(salaryGateMarkup.includes('button-reroll-salary-tier') && salaryGateMarkup.includes('COLLECT NEW PAYDAY'), 'salary gate offers a visible tier reroll choice');
   const shoveFixture = {
     ...paydayFixture,
     players: paydayFixture.players.map((player, index) => index === 1 ? { ...player, position: 2 } : player),
@@ -2214,7 +2237,19 @@ try {
   const { FinishLinePanel, MatchResultsPanel } = await vite.ssrLoadModule('/src/components/finish-line-panel.tsx');
   const noGambleMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
     player: noGambleStart.players[0],
-    otherPlayers: noGambleStart.players.slice(1),
+    otherPlayers: noGambleStart.players.slice(1).map(opponent => {
+      const beforeChoice = { ...opponent, wealth: 123456, aiSkill: 4, fame: 3, lifestyle: 2, influence: 1 };
+      return {
+        ...opponent,
+        wealth: 654321,
+        aiSkill: 99,
+        endgame: {
+          status: 'RESOLVED',
+          snapshot: createFinishSnapshot(beforeChoice, opponent.slot, opponent.isCPU, noGambleStart.round, noGambleStart.turnCounter),
+          finalGameValue: 99876543,
+        },
+      };
+    }),
     endgame: noGambleStart.players[0].endgame,
     boardId: noGambleStart.boardId,
     finishPlace: 1,
@@ -2227,6 +2262,10 @@ try {
   assert(!noGambleMarkup.includes('finish-line-ledger') && !noGambleMarkup.includes('finish-line-identity'), 'the final choice view hides the snapshot ledger and full identity panel');
   assert(noGambleMarkup.includes('Compare other players') && noGambleMarkup.includes('finish-line-opponent-card'), 'opponent information is available in a collapsed comparison dropdown');
   assert(!noGambleMarkup.includes('<details class="finish-line-opponent-details" open'), 'opponent information stays collapsed until requested');
+  assert(!noGambleMarkup.includes('Final score') && !noGambleMarkup.includes('99876543'), 'opponent comparison never reveals a final choice score');
+  assert(noGambleMarkup.includes(`<dt>Wealth</dt><dd>${formatMoney(123456)}</dd>`), 'opponent comparison reads Wealth from their pre-choice snapshot');
+  assert(noGambleMarkup.includes('<dt>Attribute points</dt><dd>10</dd>'), 'opponent comparison reads attribute points from their pre-choice snapshot');
+  assert(!noGambleMarkup.includes(formatMoney(654321)) && !noGambleMarkup.includes('<dt>Attribute points</dt><dd>99</dd>'), 'opponent comparison hides post-snapshot changes');
   const resultsMarkup = renderToStaticMarkup(
     React.createElement(MatchResultsPanel, {
       players: titledCompleteMatch.players,
@@ -2245,6 +2284,17 @@ try {
   assert(resultsMarkup.includes('level 3'), 'final assets retain their captured upgrade level');
   assert(resultsMarkup.includes('BOARD FINISH / 1ST') && resultsMarkup.includes('WEALTH BONUS'), 'final records distinguish arrival order from final-value placement');
   assert(!resultsMarkup.includes('Every finish choice is resolved') && !resultsMarkup.includes('wins with $'), 'the final record omits the unnecessary result-intro copy');
+  const resolvedFinishMarkup = renderToStaticMarkup(React.createElement(FinishLinePanel, {
+    player: titledCompleteMatch.players[0],
+    endgame: titledCompleteMatch.players[0].endgame,
+    boardId: titledCompleteMatch.boardId,
+    finishPlace: 1,
+    finishBonus: FINISH_ORDER_WEALTH_REWARDS[0],
+    onChoose: () => {},
+    onContinue: () => {},
+  }));
+  assert(resolvedFinishMarkup.includes('finish-line-choice-assets') && resolvedFinishMarkup.includes('finish-line-result-details'), 'resolved finish starts with the choice result and asset summary, with full details expandable');
+  assert(!resolvedFinishMarkup.includes('finish-line-identity') && !resolvedFinishMarkup.includes('finish-order-banner'), 'resolved finish hides the full identity and finish banner by default');
   const { cards: previewCards } = await vite.ssrLoadModule('/src/game/cards.ts');
   for (const card of previewCards) {
     if (!card.value || card.value === '—') continue;
@@ -2571,6 +2621,42 @@ try {
       assert.equal(auto.state.missedTurns.u0, 1);
       assert.equal(describeTurn(auto.state).currentUserId, 'u1', 'autoplay advances visible CPU phases and passes the turn on');
       assert.ok(auto.state.match.eventLog.some(entry => entry.eventType === 'DICE_ROLL'), 'autoplay goes through the shared event log');
+      const finishedHuman = { ...mpMatch.players[0], position: 75, status: 'FINISHED' };
+      const finishedCpu = { ...mpMatch.players[1], position: 75, status: 'FINISHED', isCPU: true };
+      const fastEndgameMatch = {
+        ...mpMatch,
+        turnIndex: 1,
+        turnCounter: 1,
+        phase: 'endgame',
+        finishOrder: [0, 1],
+        players: [
+          {
+            ...finishedHuman,
+            endgame: {
+              status: 'PENDING',
+              snapshot: createFinishSnapshot(finishedHuman, 0, false, mpMatch.round, 1),
+              baseValue: 200000,
+            },
+          },
+          {
+            ...finishedCpu,
+            endgame: {
+              status: 'PENDING',
+              snapshot: createFinishSnapshot(finishedCpu, 1, true, mpMatch.round, 1),
+              baseValue: 200000,
+            },
+          },
+        ],
+      };
+      const fastEndgameState = {
+        ...createMultiplayerState(fastEndgameMatch, ['u0', null], t0),
+        careerRevealPendingPlayerIndexes: [],
+        actionAt: t0,
+      };
+      const fastEndgame = autoplayIfStale(fastEndgameState, new Set(), t0);
+      assert.equal(fastEndgame.state.match.players[1].endgame.status, 'RESOLVED', 'finished human players trigger immediate CPU endgame resolution');
+      assert.equal(fastEndgame.state.match.phase, 'endgame', 'CPU settlement hands the screen directly to the pending human finish choice');
+      assert.equal(fastEndgame.state.match.turnIndex, 0);
       let allCpuState = idle;
       for (let step = 0; step < 4000 && allCpuState.match.phase !== 'complete'; step += 1) {
         allCpuState = autoplayIfStale(allCpuState, new Set(['u0', 'u1']), t0 + 1 + step * 2000).state;
@@ -2587,7 +2673,17 @@ try {
       if (actorIndex !== 0) {
         const automated = applySoloAutomationStep(soloMatch);
         assert(automated, `${boardId} CPU phase ${soloMatch.phase} should advance one scheduled step`);
+        const humanAlreadyFinished = soloMatch.players.filter(player => !player.isCPU).every(player => player.status === 'FINISHED');
         soloMatch = automated.match;
+        if (humanAlreadyFinished) {
+          const humanFinish = soloMatch.players.find(player => !player.isCPU);
+          if (humanFinish?.endgame?.status === 'PENDING') {
+            assert.equal(soloMatch.phase, 'endgame', `${boardId} fast-forwards CPUs to the human's finish choice`);
+            assert.equal(soloMatch.players[soloMatch.turnIndex].isCPU, false, `${boardId} stops CPU fast-forward at the human choice`);
+          } else {
+            assert.equal(soloMatch.phase, 'complete', `${boardId} fast-forwards remaining CPU play after the human chooses`);
+          }
+        }
         continue;
       }
 

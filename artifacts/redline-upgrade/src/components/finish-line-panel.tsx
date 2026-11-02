@@ -440,15 +440,16 @@ export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, o
               {otherPlayers.map((opponent) => {
                 const opponentCharacter = getCharacter(opponent.characterId);
                 const opponentCareer = opponent.careerId ? getCareer(opponent.careerId) : undefined;
-                const opponentAssets = calculateAssetValue(opponent);
-                const attributePoints = opponent.aiSkill + opponent.fame + opponent.lifestyle + opponent.influence;
+                const opponentBeforeChoice = opponent.endgame?.snapshot ?? opponent;
+                const opponentAssets = calculateAssetValue(opponentBeforeChoice);
+                const attributePoints = opponentBeforeChoice.aiSkill + opponentBeforeChoice.fame + opponentBeforeChoice.lifestyle + opponentBeforeChoice.influence;
                 return <article className="finish-line-opponent-card" key={opponent.playerId}>
                   <div>
                     <strong>{opponentCharacter?.name ?? opponent.displayName}</strong>
                     <small>{opponent.displayName} · {opponentCareer?.name ?? 'Career not assigned'} · {opponent.isCPU ? `CPU ${opponent.slot}` : `SPACE ${opponent.position}`}</small>
                   </div>
                   <dl>
-                    <div><dt>Wealth</dt><dd>{formatMoney(opponent.wealth)}</dd></div>
+                    <div><dt>Wealth</dt><dd>{formatMoney(opponentBeforeChoice.wealth)}</dd></div>
                     <div><dt>Assets</dt><dd>{formatMoney(opponentAssets)}</dd></div>
                     <div><dt>Attribute points</dt><dd>{attributePoints}</dd></div>
                   </dl>

@@ -322,7 +322,7 @@ export function applySoloAutomationStep(
   let next = autopilotStep(match, index);
   if (next === match) return null;
   if (allRealPlayersFinished(match)) {
-    for (let guard = 0; guard < 500 && next.phase !== 'complete'; guard += 1) {
+    for (let guard = 0; guard < 5000 && next.phase !== 'complete'; guard += 1) {
       const nextIndex = actingPlayerIndex(next);
       if (!next.players[nextIndex]?.isCPU) break;
       const advanced = autopilotStep(next, nextIndex);
@@ -434,7 +434,7 @@ export function autoplayIfStale(
     state = { ...state, careerRevealPendingPlayerIndexes: remainingCareerPending };
     changed = true;
   }
-  for (let guard = 0; guard < 500 && state.match.phase !== 'complete'; guard += 1) {
+  for (let guard = 0; guard < 5000 && state.match.phase !== 'complete'; guard += 1) {
     if ((state.careerRevealPendingPlayerIndexes ?? []).length > 0) break;
     const index = actingPlayerIndex(state.match);
     const seat = state.seats.find((candidate) => candidate.playerIndex === index);

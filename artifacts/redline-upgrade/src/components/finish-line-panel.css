@@ -725,3 +725,47 @@
   .finish-line-score-breakdown dl { gap:5px 8px; }
   .finish-line-score-breakdown dt,.finish-line-score-breakdown dd { font-size:10px; }
 }
+
+.finish-line-result { padding-top:16px; }
+.finish-line-result .finish-line-section-heading { margin-bottom:12px; }
+.finish-line-result-head { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:18px; margin:0; padding:18px 20px; border:1px solid #46534a; background:#131c19; }
+.finish-line-result-head h2 { margin:8px 0 0; font-size:clamp(40px,6vw,76px); }
+.finish-line-result-head p { margin:8px 0 0; color:#aeb9ae; font-size:12px; line-height:1.45; }
+.finish-line-result-head .finish-line-final-value { min-width:0; padding:8px 0 8px 18px; }
+.finish-line-result-head .finish-line-final-value strong { font-size:clamp(32px,4.5vw,58px); }
+.finish-line-choice-assets { margin-top:12px; padding:14px; border:1px solid #46534a; background:#131c19; }
+.finish-line-choice-assets-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; color:#d4e981; }
+.finish-line-choice-assets-heading .mono { font-size:9px; }
+.finish-line-choice-assets-heading small { color:#f9a66d; font:700 8px 'Space Mono',monospace; }
+.finish-line-choice-asset-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:8px; }
+.finish-line-choice-asset { min-width:0; display:grid; grid-template-columns:72px minmax(0,1fr); gap:10px; align-items:center; padding:8px; border:1px solid #35453a; background:#17221b; }
+.finish-line-choice-asset-art { position:relative; display:grid; place-items:center; width:72px; height:72px; overflow:hidden; border:1px solid #304238; background:#111a14; }
+.finish-line-choice-asset-art img { width:100%; height:100%; object-fit:contain; }
+.finish-line-choice-asset > div { min-width:0; display:grid; gap:4px; }
+.finish-line-choice-asset > div .mono { color:#9fb09f; font-size:7px; }
+.finish-line-choice-asset strong { color:#e9e7dc; font:700 17px/1 'Barlow Condensed',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
+.finish-line-choice-asset small { color:#d4e981; font:8px 'Space Mono',monospace; }
+.finish-line-result-empty { margin:0; color:#aeb9ae; font-size:11px; }
+.finish-line-result-details { margin-top:12px; border:1px solid #46534a; background:#131c19; }
+.finish-line-result-details > summary { padding:12px 15px; color:#d4e981; font:700 9px 'Space Mono',monospace; text-transform:uppercase; cursor:pointer; }
+.finish-line-result-details[open] > summary { border-bottom:1px solid #3c4941; }
+.finish-line-result-details > .finish-line-ledger,.finish-line-result-details > .finish-line-endgame-callout,.finish-line-result-details > .finish-line-result-score-details,.finish-line-result-details > .finish-line-detail-finish-place { margin:14px; }
+.finish-line-detail-finish-place { color:#c7d4c3; font-size:11px; }
+.finish-line-result-score-details { padding:12px; border:1px solid #435248; background:#101a15; }
+.finish-line-result-score-details h3 { margin:0; color:#d4e981; font:700 10px 'Space Mono',monospace; text-transform:uppercase; }
+.finish-line-result-score-details dl { display:grid; grid-template-columns:1fr auto; gap:6px 14px; margin:12px 0 2px; }
+.finish-line-result-score-details dl > div { display:contents; }
+.finish-line-result-score-details dt,.finish-line-result-score-details dd { margin:0; padding:4px 0; color:#cbd4c8; font:500 11px/1.4 'Inter',sans-serif; }
+.finish-line-result-score-details dd { text-align:right; font-variant-numeric:tabular-nums; }
+.finish-line-result-score-details .finish-line-score-total dt,.finish-line-result-score-details .finish-line-score-total dd { border-top:1px solid #52604f; padding-top:9px; color:#e6f0a8; font-weight:800; }
+
+@media(max-width:700px) {
+  .finish-line-result-head { grid-template-columns:1fr; }
+  .finish-line-result-head .finish-line-final-value { border-left:0; border-top:1px solid #46534a; padding:12px 0 0; }
+  .finish-line-choice-asset-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width:600px) {
+  .finish-line-result-score-details dl { gap:5px 8px; }
+  .finish-line-result-score-details dt,.finish-line-result-score-details dd { font-size:10px; }
+}
