@@ -41,6 +41,7 @@ const TILE_LABELS = [
 ] as const;
 
 const ZONE_COLORS = ZONES.map(zone => zone.color);
+const BIO_TILE_SURFACE_Y = 0.70;
 const COLORS = {
   board: '#18232b',
   edge: '#273942',
@@ -477,13 +478,13 @@ function LivePawn({ player, index, count, active, reduceMotion }: { player: Matc
       root.current.rotation.y = rotation;
     }
     if (!bob.current || reduceMotion) return;
-    bob.current.position.y = 0.21 + (active ? Math.sin(clock.elapsedTime * 3.1) * 0.07 : 0);
+    bob.current.position.y = BIO_TILE_SURFACE_Y + (active ? Math.sin(clock.elapsedTime * 3.1) * 0.07 : 0);
   });
   return <group ref={root}>
-    <group ref={bob} position={[0, 0.21, 0]} scale={0.42}>
+    <group ref={bob} position={[0, BIO_TILE_SURFACE_Y, 0]} scale={0.42}>
       <PawnModel characterId={player.characterId} boardId="BIO_UPGRADE" selected={active} />
     </group>
-    {active && <mesh position={[0, 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    {active && <mesh position={[0, BIO_TILE_SURFACE_Y + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.92, 1.02, 40]} /><meshBasicMaterial color="#f3ead7" transparent opacity={0.88} side={THREE.DoubleSide} />
     </mesh>}
   </group>;

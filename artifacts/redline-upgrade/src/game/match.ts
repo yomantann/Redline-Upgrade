@@ -1453,7 +1453,7 @@ function autoDecide(match: Match): Match {
   return resume(withCareerEvent);
 }
 
-function createStepEvents(match: Match, previousPosition: number, position: number, isFinalStep: boolean, salaryAmount: number, hitPayday: boolean): EventDraft[] {
+function createStepEvents(match: Match, previousPosition: number, position: number, isFinalStep: boolean): EventDraft[] {
   const drafts: EventDraft[] = [{
     type: 'PASS_SPACE',
     playerIndex: match.turnIndex,
@@ -1463,18 +1463,6 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
   }];
   const space = getSpace(position, match.boardId);
   if (!space) return drafts;
-  if (hitPayday) {
-    drafts.push({
-      type: 'SALARY_GATE',
-      playerIndex: match.turnIndex,
-      previousPosition,
-      newPosition: position,
-      spaceNumber: position,
-      salaryAmount,
-      previousWealth: match.players[match.turnIndex].wealth,
-      newWealth: match.players[match.turnIndex].wealth + salaryAmount,
-    });
-  }
   if (space.type === 'CAREER_CHANGE') {
     drafts.push({
       type: 'CAREER_CHANGE',
@@ -1555,14 +1543,17 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
         };
       }
       const effectiveSalary = effectiveSalaryAmount(current);
-      const salaryGate = applySalaryGate(moved, match.turnIndex, previousPosition, position);
+      const isFinalStep = moved.stepsRemaining <= 0;
+      const salaryGate = space.payday && !isFinalStep
+        ? applySalaryGate(moved, match.turnIndex, previousPosition, position)
+        : { match: moved, drafts: [] };
       moved = {
         ...salaryGate.match,
         wealthEvents: salaryGate.drafts.length
           ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: effectiveSalary, kind: 'PAYDAY', space: position }]
           : match.wealthEvents,
       };
-      const drafts = createStepEvents(moved, previousPosition, position, moved.stepsRemaining <= 0, effectiveSalary, salaryGate.drafts.length > 0);
+      const drafts = createStepEvents(moved, previousPosition, position, isFinalStep);
       drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
       moved = emit(moved, [...salaryGate.drafts, ...drafts]);
       if (moved.pending?.kind === 'ABILITY') {
@@ -1633,7 +1624,7 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       return resolveCardDecision({ ...match, cardPiles, pending: { ...pending, cardId: action.cardId, stage: 'draw' } });
     }
     case 'RESOLVE_PARTY_CHALLENGE':
-      if (match.players[match.turnIndex]?.isCPU) return match;
+      if (match.players[match.turnIndex]?.isCPU && match.mode !== 'SINGLE_PLAYER') return match;
       return resolvePartyChallenge(match, action.participantIds, action.passed, action.resolution);
     case 'ACKNOWLEDGE_CARD':
       if (match.players[match.turnIndex]?.isCPU && match.mode !== 'SINGLE_PLAYER') return match;

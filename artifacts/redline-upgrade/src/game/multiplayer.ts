@@ -298,7 +298,10 @@ export function applySoloPlayerAction(
   const acknowledgingCpuCard = action.type === 'ACKNOWLEDGE_CARD'
     && isSoloCpuCardAwaitingAcknowledgement(match)
     && match.turnIndex !== 0;
-  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete' || (actingPlayerIndex(match) !== 0 && !acknowledgingCpuCard) || match.players[0]?.isCPU) return null;
+  const resolvingCpuPartyChallenge = action.type === 'RESOLVE_PARTY_CHALLENGE'
+    && isSoloCpuPartyChallengeAwaitingHumanAction(match)
+    && match.turnIndex !== 0;
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete' || (actingPlayerIndex(match) !== 0 && !acknowledgingCpuCard && !resolvingCpuPartyChallenge) || match.players[0]?.isCPU) return null;
   const matchActions = toMatchActions(action);
   if (!matchActions) return null;
   const original = match;
@@ -321,12 +324,12 @@ export function applySoloAutomationStep(
   match: Match,
 ): { match: Match; assetEvents: MatchAssetEvent[] } | null {
   if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete') return null;
-  if (isSoloCpuCardAwaitingAcknowledgement(match)) return null;
+  if (isSoloCpuCardAwaitingHumanAction(match)) return null;
   const index = actingPlayerIndex(match);
   if (index === 0 || !match.players[index]?.isCPU) return null;
   let next = autopilotStep(match, index);
   if (next === match) return null;
-  if (isSoloCpuCardAwaitingAcknowledgement(next)) {
+  if (isSoloCpuCardAwaitingHumanAction(next)) {
     return { match: next, assetEvents: collectAssetEvents(match, next) };
   }
   if (allRealPlayersFinished(match)) {
@@ -336,7 +339,7 @@ export function applySoloAutomationStep(
       const advanced = autopilotStep(next, nextIndex);
       if (advanced === next) break;
       next = advanced;
-      if (isSoloCpuCardAwaitingAcknowledgement(next)) break;
+      if (isSoloCpuCardAwaitingHumanAction(next)) break;
     }
   }
   return { match: next, assetEvents: collectAssetEvents(match, next) };
@@ -346,6 +349,16 @@ function isSoloCpuCardAwaitingAcknowledgement(match: Match): boolean {
   if (match.mode !== 'SINGLE_PLAYER' || match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return false;
   if (!match.players[match.turnIndex]?.isCPU) return false;
   return !getCard(match.pending.cardId)?.partyChallenge;
+}
+
+function isSoloCpuPartyChallengeAwaitingHumanAction(match: Match): boolean {
+  if (match.mode !== 'SINGLE_PLAYER' || match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'resolved') return false;
+  if (!match.players[match.turnIndex]?.isCPU) return false;
+  return Boolean(getCard(match.pending.cardId)?.partyChallenge);
+}
+
+function isSoloCpuCardAwaitingHumanAction(match: Match): boolean {
+  return isSoloCpuCardAwaitingAcknowledgement(match) || isSoloCpuPartyChallengeAwaitingHumanAction(match);
 }
 
 function allRealPlayersFinished(match: Match): boolean {

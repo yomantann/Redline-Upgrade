@@ -391,7 +391,7 @@ export function GameScreen() {
     let callback: () => void;
     // Multiplayer: the server drives everything except the local player's own pacing steps.
     if (remote && (phase === 'ready' || phase === 'decision' || phase === 'endgame' || isCPU)) return;
-    if (!remote && match.mode === 'SINGLE_PLAYER' && decisionIsCPU && pending?.kind === 'CARD' && pending.stage === 'resolved' && !getCard(pending.cardId)?.partyChallenge) return;
+    if (!remote && match.mode === 'SINGLE_PLAYER' && decisionIsCPU && pending?.kind === 'CARD' && pending.stage === 'resolved') return;
     if (phase === 'ready' && isCPU) {
       delay = 850;
       callback = rollDice;
