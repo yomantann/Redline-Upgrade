@@ -30,6 +30,7 @@ export function CareerReveal() {
   }
 
   const tierIndex = Math.max(0, Math.min(3, player.salaryTier - 1));
+  const totalStartingAttributes = player.aiSkill + player.fame + player.lifestyle + player.influence;
   const icon = career.icon || career.name;
   const careerDecks = [career.deckAffinity.primary, career.deckAffinity.secondary].filter(
     (deck): deck is NonNullable<typeof deck> => Boolean(deck),
@@ -46,7 +47,6 @@ export function CareerReveal() {
           <span className="mono lime">PLAYER 01 / CLASSIFIED DOSSIER</span>
           <h1 className="display">Your next<br /><span>move.</span></h1>
         </div>
-        <p>The identity was your choice. The career is the luck of the draw. This is where your run begins.</p>
       </div>
       <section className="career-dossier" aria-label="Your assigned career">
         <div className={`career-feature career-${career.id}`} data-career={career.id}>
@@ -92,8 +92,8 @@ export function CareerReveal() {
             </div>
           </div>
           <div className="career-ability" data-testid="text-starting-attributes">
-            <span className="mono">STARTING ATTRIBUTES / +{STARTING_ATTRIBUTE_POINTS} CAREER POINTS</span>
-            <p>AI Skill {player.aiSkill} · Fame {player.fame} · Lifestyle {player.lifestyle} · Influence {player.influence}. Every career grants the same total; only the split differs.</p>
+            <span className="mono">STARTING ATTRIBUTES / {totalStartingAttributes} TOTAL · +{STARTING_ATTRIBUTE_POINTS} CAREER</span>
+            <p>AI Skill {player.aiSkill} · Fame {player.fame} · Lifestyle {player.lifestyle} · Influence {player.influence}.</p>
           </div>
         </div>
       </section>

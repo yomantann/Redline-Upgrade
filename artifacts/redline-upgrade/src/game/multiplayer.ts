@@ -98,6 +98,7 @@ export type ClientAction =
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
+  | { type: 'REROLL_SALARY_TIER' }
   | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
   | { type: 'USE_ABILITY'; resolution: AbilityResolution }
   | { type: 'CHOOSE_ASSET_CATEGORY'; category: 'pet' | 'investment' }
@@ -158,6 +159,7 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution };
     case 'ACKNOWLEDGE_CARD': return { type: 'ACKNOWLEDGE_CARD' };
     case 'TAKE_PAYDAY': return { type: 'TAKE_PAYDAY' };
+    case 'REROLL_SALARY_TIER': return { type: 'REROLL_SALARY_TIER' };
     case 'PUSH_PLAYER_BACK': return { type: 'PUSH_PLAYER_BACK', targetPlayerId: action.targetPlayerId };
     case 'CHOOSE_ASSET_CATEGORY': return { type: 'CHOOSE_ASSET_CATEGORY', category: action.category };
     case 'BUY_ASSET': return { type: 'BUY_ASSET', assetId: action.assetId };
@@ -198,6 +200,7 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
         : null;
     case 'ACKNOWLEDGE_CARD': return [{ type: 'ACKNOWLEDGE_CARD' }];
     case 'TAKE_PAYDAY': return [{ type: 'TAKE_PAYDAY' }];
+    case 'REROLL_SALARY_TIER': return [{ type: 'REROLL_SALARY_TIER' }];
     case 'PUSH_PLAYER_BACK': return isString(action.targetPlayerId) ? [{ type: 'PUSH_PLAYER_BACK', targetPlayerId: action.targetPlayerId }] : null;
     case 'USE_ABILITY': {
       const resolution = action.resolution;
@@ -316,9 +319,23 @@ export function applySoloAutomationStep(
   if (match.mode !== 'SINGLE_PLAYER' || match.phase === 'complete') return null;
   const index = actingPlayerIndex(match);
   if (index === 0 || !match.players[index]?.isCPU) return null;
-  const next = autopilotStep(match, index);
+  let next = autopilotStep(match, index);
   if (next === match) return null;
+  if (allRealPlayersFinished(match)) {
+    for (let guard = 0; guard < 500 && next.phase !== 'complete'; guard += 1) {
+      const nextIndex = actingPlayerIndex(next);
+      if (!next.players[nextIndex]?.isCPU) break;
+      const advanced = autopilotStep(next, nextIndex);
+      if (advanced === next) break;
+      next = advanced;
+    }
+  }
   return { match: next, assetEvents: collectAssetEvents(match, next) };
+}
+
+function allRealPlayersFinished(match: Match): boolean {
+  const realPlayers = match.players.filter((player) => !player.isCPU);
+  return realPlayers.length > 0 && realPlayers.every((player) => player.status === 'FINISHED');
 }
 
 /** Public view for a client: the canonical match plus who is acting. */
@@ -427,8 +444,9 @@ export function autoplayIfStale(
     const automaticTurn = cpuControlled
       || (state.missedTurns[seat.userId] !== undefined && state.missedTurns[seat.userId] === state.match.turnCounter);
     if (!automaticTurn && now - state.actionAt < AUTOPLAY_AFTER_MS) break;
-    const fastCpu = automaticTurn && (state.cpuTurns?.[seat.userId] ?? 0) >= 4;
-    if (automaticTurn && now - state.actionAt < (fastCpu ? 220 : CPU_VISIBLE_STEP_MS)) break;
+    const humansFinished = allRealPlayersFinished(state.match);
+    const fastCpu = automaticTurn && (humansFinished || (state.cpuTurns?.[seat.userId] ?? 0) >= 4);
+    if (automaticTurn && now - state.actionAt < (humansFinished ? 0 : fastCpu ? 220 : CPU_VISIBLE_STEP_MS)) break;
 
     let { missedTurns, missedMarks, kicked } = state;
     const turnCounter = state.match.turnCounter;

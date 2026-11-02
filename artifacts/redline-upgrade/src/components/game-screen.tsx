@@ -25,7 +25,6 @@ import { groupPlayerStatChangesByPlayer, PLAYER_CHANGE_FEEDBACK_MS, PlayerStatCh
 import { UpgradeTokenControls } from './upgrade-token-controls';
 import { CardTabletop } from './card-tabletop';
 import { FinishLinePanel, MatchResultsPanel } from './finish-line-panel';
-import { EndgameAttributeBonusSummary } from './endgame-attribute-bonus-summary';
 import { SpaceIcon } from './space-icon';
 import { CareerDeckBadges } from './career-deck-badges';
 import { AgeRestrictionBadge } from './age-restriction-badge';
@@ -539,7 +538,6 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
         />}
-        {!waitingForHumanChoice && <EndgameAttributeBonusSummary awards={match.endgameAttributeBonuses} players={match.players} />}
         <FinishLinePanel
           player={active}
           otherPlayers={match.players.filter((candidate) => candidate.playerId !== active.playerId)}

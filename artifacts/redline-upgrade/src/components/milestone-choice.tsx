@@ -102,10 +102,13 @@ export function MilestoneChoice({ pending, player, players, onAction, boardId = 
     const targets = players.filter(candidate => candidate.playerId !== player.playerId && candidate.status === 'ACTIVE' && candidate.position < 75);
     return (
       <section className="milestone-choice" aria-live="polite" data-testid="panel-salary-gate-choice">
-        <Header space={pending.space} eyebrow="PAYDAY GATE" title="Choose your" highlighted="move." description="Take your payday and end this landing, or give it up to send an active opponent back four spaces." />
+        <Header space={pending.space} eyebrow="PAYDAY GATE" title="Choose your" highlighted="move." description="Take your current payday, reroll the active salary tier and collect that payday, or forgo it to send an active opponent back four spaces." />
         <div className="ability-decision-actions" role="group" aria-label="Choose salary gate action">
           <button className="action lime-action" type="button" onClick={() => onAction({ type: 'TAKE_PAYDAY' })} data-testid="button-take-payday">
             TAKE PAYDAY / {formatMoney(effectiveSalaryAmount(player))}
+          </button>
+          <button className="action" type="button" onClick={() => onAction({ type: 'REROLL_SALARY_TIER' })} data-testid="button-reroll-salary-tier">
+            REROLL TIER / COLLECT NEW PAYDAY
           </button>
           {targets.map(target => (
             <PlayerTargetOption

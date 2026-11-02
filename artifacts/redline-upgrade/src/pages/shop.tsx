@@ -94,6 +94,14 @@ export function ShopPage() {
     load().catch(() => setError('The market could not load. Please retry.'));
   }, [user, load]);
   useEffect(() => { if (!isLoading && !user) login(); }, [isLoading, user, login]);
+  useEffect(() => {
+    if (!previewItem) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) setPreviewItem(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [previewItem, busy]);
   const owned = useMemo(() => new Set(catalog?.ownedItemIds ?? []), [catalog?.ownedItemIds]);
   const equipped = useMemo(() => new Set((catalog?.equipped ?? []).map(row => row.itemId).filter((id): id is string => Boolean(id))), [catalog?.equipped]);
   const items = useMemo(() => (catalog?.items.filter(item => item.category === category) ?? [])
@@ -232,8 +240,8 @@ export function ShopPage() {
         </section>
       </div>}
       {previewItem && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPreviewItem(null); }}>
-        <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="market-preview-title">
-          <button className="market-modal-close" onClick={() => setPreviewItem(null)} aria-label="Close preview">×</button>
+        <section className="market-modal market-artwork-preview-modal" role="dialog" aria-modal="true" aria-labelledby="market-preview-title">
+          <button className="market-modal-close" type="button" onClick={event => { event.stopPropagation(); setPreviewItem(null); }} aria-label="Close preview">×</button>
           <img src={getPublicAssetUrl(previewItem.assetPath)} alt={previewItem.name} />
           <span className="market-kicker">{previewItem.category === 'LOGO' ? 'PLAYER LOGO' : `${characterName(previewItem.characterId)} DRIVER SKIN`} · {previewItem.rarity}</span>
           <h2 id="market-preview-title">{previewItem.name}</h2>
@@ -264,6 +272,14 @@ export function InventoryPage() {
   const load = useCallback(() => getJson<InventoryResponse>('/api/inventory').then(setData), []);
   useEffect(() => { if (user) load().catch(() => setError('Inventory could not load.')); }, [user, load]);
   useEffect(() => { if (!isLoading && !user) login(); }, [isLoading, user, login]);
+  useEffect(() => {
+    if (!previewItem) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) setPreviewItem(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [previewItem, busy]);
   const filtered = (data?.items ?? []).filter(({ item }) =>
     (category === 'ALL' || item.category === category)
     && (character === 'ALL' || item.characterId === character)
@@ -338,8 +354,8 @@ export function InventoryPage() {
       )}
     </section>
     {previewItem && <div className="market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPreviewItem(null); }}>
-      <section className="market-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-preview-title">
-        <button className="market-modal-close" onClick={() => setPreviewItem(null)} aria-label="Close preview">×</button>
+      <section className="market-modal market-artwork-preview-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-preview-title">
+        <button className="market-modal-close" type="button" onClick={event => { event.stopPropagation(); setPreviewItem(null); }} aria-label="Close preview">×</button>
         <img src={getPublicAssetUrl(previewItem.assetPath)} alt={previewItem.name} />
         <span className="market-kicker">{previewItem.category === 'LOGO' ? 'PLAYER LOGO' : `${characterName(previewItem.characterId)} DRIVER SKIN`} · {previewItem.rarity}</span>
         <h2 id="inventory-preview-title">{previewItem.name}</h2>

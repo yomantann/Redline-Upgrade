@@ -491,6 +491,7 @@ export type MatchAction =
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
+  | { type: 'REROLL_SALARY_TIER' }
   | { type: 'PUSH_PLAYER_BACK'; targetPlayerId: string }
   | { type: 'RESOLVE_ABILITY_STAT_DESTINATION'; stat: 'aiSkill' | 'fame' | 'influence' }
   | { type: 'RESOLVE_ABILITY_ASSET_INTERACTION'; choice: 'STEAL' | 'SWAP' | 'DECLINE' }
@@ -1643,6 +1644,43 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const gate = applySalaryGate(match, match.turnIndex, pending.previousPosition, pending.space);
       const salaryAmount = effectiveSalaryAmount(match.players[match.turnIndex]);
       return emit({ ...gate.match, phase: 'landed', pending: null, wealthEvents: [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: salaryAmount, kind: 'PAYDAY', space: pending.space }] }, gate.drafts);
+    }
+    case 'REROLL_SALARY_TIER': {
+      const pending = match.pending;
+      const player = match.players[match.turnIndex];
+      if (match.phase !== 'decision' || pending?.kind !== 'SALARY_GATE' || !player) return match;
+      const primaryCareer = careers.find((career) => career.id === player.careerId);
+      const secondaryCareer = player.secondCareer
+        ? careers.find((career) => career.id === player.secondCareer?.careerId)
+        : undefined;
+      const rerollSecondary = Boolean(
+        player.secondCareer && player.secondCareer.salaryAmount > player.salaryAmount && secondaryCareer,
+      );
+      const salaryCareer = rerollSecondary ? secondaryCareer : primaryCareer;
+      if (!salaryCareer) return match;
+      const salaryTier = (Math.floor(Math.random() * 4) + 1) as SalaryTier;
+      const salaryAmount = salaryCareer.salaryTiers[salaryTier - 1];
+      const rerolledPlayer = rerollSecondary && player.secondCareer
+        ? { ...player, secondCareer: { ...player.secondCareer, salaryTier, salaryAmount } }
+        : { ...player, salaryTier, salaryAmount };
+      const rerolledMatch = {
+        ...match,
+        players: match.players.map((candidate, index) => index === match.turnIndex ? rerolledPlayer : candidate),
+      };
+      const gate = applySalaryGate(rerolledMatch, match.turnIndex, pending.previousPosition, pending.space);
+      const paydayAmount = effectiveSalaryAmount(gate.match.players[match.turnIndex]);
+      return emit({
+        ...gate.match,
+        phase: 'landed',
+        pending: null,
+        wealthEvents: [...match.wealthEvents, {
+          id: (match.wealthEvents.at(-1)?.id ?? 0) + 1,
+          playerIndex: match.turnIndex,
+          amount: paydayAmount,
+          kind: 'PAYDAY',
+          space: pending.space,
+        }],
+      }, gate.drafts);
     }
     case 'PUSH_PLAYER_BACK': {
       const pending = match.pending;

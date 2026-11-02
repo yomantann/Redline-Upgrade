@@ -107,24 +107,40 @@ function ScoreBreakdownDetails({
   return (
     <details className="finish-line-score-breakdown">
       <summary>Final score breakdown</summary>
-      <dl>
-        <div><dt>Wealth before finish bonus</dt><dd>{formatMoney(breakdown.wealthBeforeFinishBonus)}</dd></div>
-        <div><dt>Finish-order wealth bonus</dt><dd>+{formatMoney(breakdown.finishOrderBonus)}</dd></div>
-        <div><dt>Attribute-leader bonus included above</dt><dd>+{formatMoney(breakdown.attributeLeaderBonus)}</dd></div>
-        <div><dt>Scored Wealth after bonuses</dt><dd>{formatMoney(breakdown.wealth)}</dd></div>
-        <div><dt>Assets · {Math.round(breakdown.assetMultiplier * 100)}% of {formatMoney(breakdown.assetBaseValue)}</dt><dd>{formatMoney(breakdown.adjustedAssetValue)}</dd></div>
-        <div><dt>Attribute point value</dt><dd>{formatMoney(breakdown.attributePointValue)}</dd></div>
-        <div><dt>Score before endgame adjustment</dt><dd>{formatMoney(breakdown.preAdjustmentScore)}</dd></div>
-        {choice === 'DOUBLE_DOWN' && dice && (
-          <>
-            <div><dt>2d4 result</dt><dd>{dice.die1} + {dice.die2} = {dice.total}</dd></div>
-            <div><dt>2d4 multiplier</dt><dd>{multiplier?.toFixed(2) ?? '—'}×</dd></div>
-            <div><dt>Dice adjustment</dt><dd>{formatSignedMoney(breakdown.diceAdjustment)}</dd></div>
-          </>
-        )}
-        <div className="finish-line-score-total"><dt>Final dollar score</dt><dd>{formatMoney(breakdown.finalScore)}</dd></div>
-      </dl>
+      <ScoreBreakdownRows breakdown={breakdown} choice={choice} multiplier={multiplier} dice={dice} />
     </details>
+  );
+}
+
+function ScoreBreakdownRows({
+  breakdown,
+  choice,
+  multiplier,
+  dice,
+}: {
+  breakdown: EndgameScoreBreakdown;
+  choice: EndgameChoice;
+  multiplier?: number;
+  dice?: EndgameState['dice'];
+}) {
+  return (
+    <dl>
+      <div><dt>Wealth before finish bonus</dt><dd>{formatMoney(breakdown.wealthBeforeFinishBonus)}</dd></div>
+      <div><dt>Finish-order wealth bonus</dt><dd>+{formatMoney(breakdown.finishOrderBonus)}</dd></div>
+      <div><dt>Attribute-leader bonus included above</dt><dd>+{formatMoney(breakdown.attributeLeaderBonus)}</dd></div>
+      <div><dt>Scored Wealth after bonuses</dt><dd>{formatMoney(breakdown.wealth)}</dd></div>
+      <div><dt>Assets · {Math.round(breakdown.assetMultiplier * 100)}% of {formatMoney(breakdown.assetBaseValue)}</dt><dd>{formatMoney(breakdown.adjustedAssetValue)}</dd></div>
+      <div><dt>Attribute point value</dt><dd>{formatMoney(breakdown.attributePointValue)}</dd></div>
+      <div><dt>Score before endgame adjustment</dt><dd>{formatMoney(breakdown.preAdjustmentScore)}</dd></div>
+      {choice === 'DOUBLE_DOWN' && dice && (
+        <>
+          <div><dt>2d4 result</dt><dd>{dice.die1} + {dice.die2} = {dice.total}</dd></div>
+          <div><dt>2d4 multiplier</dt><dd>{multiplier?.toFixed(2) ?? '—'}×</dd></div>
+          <div><dt>Dice adjustment</dt><dd>{formatSignedMoney(breakdown.diceAdjustment)}</dd></div>
+        </>
+      )}
+      <div className="finish-line-score-total"><dt>Final dollar score</dt><dd>{formatMoney(breakdown.finalScore)}</dd></div>
+    </dl>
   );
 }
 
@@ -214,27 +230,45 @@ function SnapshotLedger({ endgame }: { endgame: EndgameState }) {
   );
 }
 
-function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onContinue: () => void }) {
+function ResolvedResult({
+  endgame,
+  finishPlace,
+  finishBonus,
+  onContinue,
+}: {
+  endgame: EndgameState;
+  finishPlace?: number;
+  finishBonus?: number;
+  onContinue: () => void;
+}) {
   const choice = choices.find((entry) => entry.id === endgame.choice);
   const hasFinalValue = typeof endgame.finalGameValue === 'number';
+  const assetMultiplier = endgame.scoreBreakdown?.assetMultiplier ?? 0;
+  const assets = assetSlots.flatMap(({ slot, label }) => {
+    const assetId = endgame.snapshot.equipment[slot];
+    const asset = assetId ? getAsset(assetId) : undefined;
+    if (!asset) return [];
+    const level = endgame.snapshot.assetLevels[asset.id] ?? 1;
+    return [{
+      asset,
+      level,
+      label: asset.category === 'pet' ? 'COMPANION' : asset.category === 'investment' ? 'INVESTMENT' : label,
+      value: Math.round(assetValueAtLevel(asset, level) * assetMultiplier),
+    }];
+  });
   return (
     <section className="finish-line-result" aria-labelledby="finish-line-result-heading" aria-live="polite">
       <div className="finish-line-section-heading">
-        <span className="eyebrow">FINAL DECISION // RESOLVED</span>
-        <span className="mono">ENGINE RESULT ON RECORD</span>
+        <span className="eyebrow">YOUR FINISH // RESULT</span>
       </div>
       <div className="finish-line-result-head">
         <div>
-          <span className="mono">CHOICE MADE</span>
+          <span className="mono">YOUR CHOICE</span>
           <h2 id="finish-line-result-heading" className="display">{choice?.title ?? 'CHOICE RECORDED'}</h2>
+          {endgame.choice === 'CASH_OUT' && <p>Cashed out at 50% asset value.</p>}
+          {endgame.choice === 'DOUBLE_DOWN' && <p>2d4 result {endgame.dice ? `${endgame.dice.die1} + ${endgame.dice.die2} = ${endgame.dice.total}` : 'recorded'} · {endgame.multiplier?.toFixed(2) ?? '—'}×.</p>}
+          {endgame.choice === 'FINAL_GAMBLE' && <p>Final Gamble {endgame.gambleStake?.won ? 'won' : 'lost'} · {endgame.gambleStake?.won ? 'assets retained' : 'assets forfeited'}.</p>}
         </div>
-       {(endgame.endGameTitle || endgame.endGameTitleDescription) && (
-         <div className="finish-line-endgame-callout" data-testid="finish-endgame-title">
-           <span className="eyebrow">ENDGAME SIGNAL // RECORDED</span>
-           {endgame.endGameTitle && <h3>{endgame.endGameTitle}</h3>}
-           {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
-         </div>
-       )}
         {hasFinalValue && (
           <div className="finish-line-final-value">
             <span className="mono">FINAL GAME VALUE</span>
@@ -242,51 +276,41 @@ function ResolvedResult({ endgame, onContinue }: { endgame: EndgameState; onCont
           </div>
         )}
       </div>
-      <div className="finish-line-result-body">
-        {endgame.choice === 'CASH_OUT' && (
-          <div className="finish-line-outcome">
-            <span className="mono">SECURED VALUE</span>
-            <strong>{hasFinalValue ? formatMoney(endgame.finalGameValue!) : 'VALUE PENDING'}</strong>
-            <small>{typeof endgame.multiplier === 'number' ? `MULTIPLIER / ${endgame.multiplier.toFixed(2)}×` : 'MULTIPLIER NOT SUPPLIED'}</small>
+      <section className="finish-line-choice-assets" aria-label="Assets after final choice">
+        <div className="finish-line-choice-assets-heading">
+          <span className="mono">ASSETS / {assets.length} HELD AT FINISH</span>
+          {endgame.choice === 'FINAL_GAMBLE' && <small>{endgame.gambleStake?.won ? 'RETAINED' : 'FORFEITED'}</small>}
+        </div>
+        {assets.length ? <div className="finish-line-choice-asset-grid">
+          {assets.map(({ asset, level, label, value }) => (
+            <article className="finish-line-choice-asset" key={asset.id}>
+              <AssetArtwork assetId={asset.id} level={level as AssetLevel} className="finish-line-choice-asset-art" />
+              <div><span className="mono">{label} · LEVEL {level}</span><strong>{asset.name}</strong><small>{endgame.choice === 'FINAL_GAMBLE' && !endgame.gambleStake?.won ? 'FORFEITED · $0 SCORE' : `${formatMoney(value)} SCORE VALUE`}</small></div>
+            </article>
+          ))}
+        </div> : <p className="finish-line-result-empty">No assets were held at the finish.</p>}
+      </section>
+      <details className="finish-line-result-details" data-testid="finish-line-result-details">
+        <summary>View all finish details</summary>
+        {(endgame.endGameTitle || endgame.endGameTitleDescription) && (
+          <div className="finish-line-endgame-callout" data-testid="finish-endgame-title">
+            <span className="eyebrow">ENDGAME SIGNAL // RECORDED</span>
+            {endgame.endGameTitle && <h3>{endgame.endGameTitle}</h3>}
+            {endgame.endGameTitleDescription && <p>{endgame.endGameTitleDescription}</p>}
           </div>
         )}
-        {endgame.choice === 'DOUBLE_DOWN' && (
-          <div className="finish-line-outcome">
-            <span className="mono">LAST ROLL</span>
-            <strong>{endgame.dice ? `${endgame.dice.die1} + ${endgame.dice.die2} = ${endgame.dice.total}` : 'ROLL NOT SUPPLIED'}</strong>
-            <small>{typeof endgame.effectiveRoll === 'number' ? `EFFECTIVE ROLL / ${endgame.effectiveRoll}` : 'EFFECTIVE ROLL NOT SUPPLIED'}</small>
-            {typeof endgame.multiplier === 'number' && <small>MULTIPLIER / {endgame.multiplier.toFixed(2)}×</small>}
-            {typeof endgame.rollEffectDelta === 'number' && <small>ROLL MODIFIER / {endgame.rollEffectDelta >= 0 ? '+' : '−'}{Math.abs(endgame.rollEffectDelta)}</small>}
-          </div>
-        )}
-        {endgame.choice === 'FINAL_GAMBLE' && (
-          <div className="finish-line-outcome finish-line-gamble-outcome">
-            <span className="mono">50/50 FINAL GAMBLE</span>
-            <strong>{endgame.gambleStake?.won ? 'WON' : 'LOST'}</strong>
-            <small>
-              Wealth and attributes stay unchanged. Assets {endgame.gambleStake?.won
-                ? `score at 140% (${formatMoney(endgame.gambleStake.adjustedAssetValue)}) and remain owned.`
-                : 'score $0 and are forfeited.'}
-            </small>
-            {endgame.gambleStake && (
-              <>
-                <small data-testid="finish-gamble-stake">
-                  TOKENS / {endgame.gambleStake.tokens} × {formatCredits(endgame.gambleStake.creditsPerToken)} = {formatCredits(endgame.gambleStake.credits)} CREDITS
-                </small>
-              </>
-            )}
-          </div>
-        )}
-        {!endgame.choice && <p className="finish-line-result-missing">The engine resolved this finish without a named choice.</p>}
-      </div>
-      {endgame.scoreBreakdown && endgame.choice && (
-        <ScoreBreakdownDetails
-          breakdown={endgame.scoreBreakdown}
-          choice={endgame.choice}
-          multiplier={endgame.multiplier}
-          dice={endgame.dice}
-        />
-      )}
+        {finishPlace && finishPlace > 0 && <p className="finish-line-detail-finish-place">{finishOrdinal(finishPlace)} to finish · +{formatMoney(finishBonus ?? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0)} Wealth bonus</p>}
+        <SnapshotLedger endgame={endgame} />
+        {endgame.scoreBreakdown && endgame.choice && <div className="finish-line-result-score-details">
+          <h3>Final score breakdown</h3>
+          <ScoreBreakdownRows
+            breakdown={endgame.scoreBreakdown}
+            choice={endgame.choice}
+            multiplier={endgame.multiplier}
+            dice={endgame.dice}
+          />
+        </div>}
+      </details>
       <button className="action finish-line-continue" type="button" onClick={onContinue} data-testid="button-finish-continue">
         Continue to final record <span aria-hidden="true">↗</span>
       </button>
@@ -325,7 +349,7 @@ export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, o
 
   return (
     <main className={`finish-line-panel ${choiceOnly ? 'finish-line-choice-only' : ''}`} data-player-id={player.playerId} data-status={endgame.status}>
-      <header className={`finish-line-header ${choiceOnly ? 'finish-line-header-decision' : ''}`}>
+      {!isResolved && <header className={`finish-line-header ${choiceOnly ? 'finish-line-header-decision' : ''}`}>
         {choiceOnly ? (
           <>
             <div>
@@ -349,9 +373,9 @@ export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, o
         </div>
           </>
         )}
-      </header>
+      </header>}
 
-      {!choiceOnly && <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
+      {!choiceOnly && !isResolved && <section className="finish-line-identity" aria-labelledby="finish-line-player-heading">
         <div className="finish-line-portrait-wrap">
           {character ? <CharacterPortrait character={character} imagePath={player.portraitImagePath ?? undefined} logoPath={player.playerLogoPath} boardId={boardId} className="finish-line-portrait" /> : <div className="finish-line-portrait-fallback">PORTRAIT UNAVAILABLE</div>}
           <span className="mono finish-line-portrait-caption">PLAYER / {endgame.snapshot.displayName}</span>
@@ -368,15 +392,15 @@ export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, o
         </div>
       </section>}
 
-      {!choiceOnly && finishPlace && finishPlace > 0 && (
+      {!choiceOnly && !isResolved && finishPlace && finishPlace > 0 && (
         <section className="finish-order-banner" aria-label="Finish-order reward" data-testid="finish-order-bonus">
           <span className="mono">{finishOrdinal(finishPlace)} TO FINISH!</span>
           <strong>+{formatMoney(finishBonus ?? FINISH_ORDER_WEALTH_REWARDS[finishPlace - 1] ?? 0)} FINISH BONUS</strong>
           <small>ADDED TO WEALTH BEFORE THE FINAL SNAPSHOT</small>
         </section>
       )}
-      {!choiceOnly && <SnapshotLedger endgame={endgame} />}
-      {isResolved ? <ResolvedResult endgame={endgame} onContinue={onContinue} /> : endgame.snapshot.isCPU ? (
+      {!choiceOnly && !isResolved && <SnapshotLedger endgame={endgame} />}
+      {isResolved ? <ResolvedResult endgame={endgame} finishPlace={finishPlace} finishBonus={finishBonus} onContinue={onContinue} /> : endgame.snapshot.isCPU ? (
         <section className="finish-line-decision finish-line-awaiting" aria-live="polite">
           <span className="eyebrow">CLOSING DECISION // CPU</span>
           <h2 className="display">Decision<br /><span>processing.</span></h2>
@@ -427,9 +451,6 @@ export function FinishLinePanel({ player, otherPlayers = [], endgame, boardId, o
                     <div><dt>Wealth</dt><dd>{formatMoney(opponent.wealth)}</dd></div>
                     <div><dt>Assets</dt><dd>{formatMoney(opponentAssets)}</dd></div>
                     <div><dt>Attribute points</dt><dd>{attributePoints}</dd></div>
-                    {opponent.endgame?.status === 'RESOLVED' && typeof opponent.endgame.finalGameValue === 'number' && (
-                      <div><dt>Final score</dt><dd>{formatMoney(opponent.endgame.finalGameValue)}</dd></div>
-                    )}
                   </dl>
                 </article>;
               })}
