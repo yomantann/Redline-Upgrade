@@ -757,9 +757,57 @@ try {
   };
   const gigPayday = move(gigSalaryFixture, 2);
   assert.equal(effectiveSalaryAmount(gigPayday.players[0]), gigSecondSalary);
-  assert.equal(gigPayday.players[0].wealth, 100_000 + gigSecondSalary, 'Payday pays Gig Worker the higher of the two salaries');
-  assert.equal(gigPayday.wealthEvents.at(-1).amount, gigSecondSalary, 'Payday wealth records use the effective salary');
-  assert(gigPayday.eventLog.some(event => event.eventType === 'SALARY_GATE' && event.salaryAmount === gigSecondSalary), 'salary-gate feedback records the effective salary');
+  assert.equal(gigPayday.pending?.kind, 'SALARY_GATE', 'landing on payday waits for the Gig Worker salary choice');
+  assert.equal(gigPayday.players[0].wealth, gigSalaryFixture.players[0].wealth, 'landing on payday does not pay before the choice resolves');
+  const gigPaydayTaken = advanceMatch(gigPayday, { type: 'TAKE_PAYDAY' });
+  assert.equal(gigPaydayTaken.players[0].wealth, gigSalaryFixture.players[0].wealth + gigSecondSalary, 'Payday pays Gig Worker the higher of the two salaries exactly once');
+  assert.equal(gigPaydayTaken.wealthEvents.at(-1).amount, gigSecondSalary, 'Payday wealth records use the effective salary');
+  assert(gigPaydayTaken.eventLog.some(event => event.eventType === 'SALARY_GATE' && event.salaryAmount === gigSecondSalary), 'salary-gate feedback records the effective salary');
+
+  for (const boardId of ['REDLINE_UPGRADE', 'BIO_UPGRADE']) {
+    const paydayCareer = getCareer('ai-engineer');
+    const paydayBase = withoutAbilities(createMatch('guardian_h', boardId));
+    const initialWealth = 200_000;
+    const paydayPlayer = {
+      ...paydayBase.players[0],
+      characterId: '__test_no_ability__',
+      careerId: paydayCareer.id,
+      position: 5,
+      salaryTier: 1,
+      salaryAmount: paydayCareer.salaryTiers[0],
+      secondCareer: null,
+      wealth: initialWealth,
+    };
+    const paydayFixture = (stepsRemaining) => ({
+      ...paydayBase,
+      phase: 'moving',
+      pending: null,
+      turnIndex: 0,
+      stepsRemaining,
+      eventLog: [],
+      wealthEvents: [],
+      players: paydayBase.players.map((player, index) => index === 0 ? paydayPlayer : player),
+    });
+    const paydayAmount = paydayCareer.salaryTiers[0];
+
+    const passedPayday = advanceMatch(paydayFixture(2), { type: 'STEP' });
+    assert.equal(passedPayday.players[0].wealth, initialWealth + paydayAmount, `${boardId} pays once when passing a payday`);
+    assert.equal(countEvent(passedPayday, 'SALARY_GATE'), 1, `${boardId} records a single payday event when passing`);
+
+    const landedOnPayday = advanceMatch(paydayFixture(1), { type: 'STEP' });
+    assert.equal(landedOnPayday.pending?.kind, 'SALARY_GATE', `${boardId} presents the salary choice when landing on payday`);
+    assert.equal(landedOnPayday.players[0].wealth, initialWealth, `${boardId} waits to pay until the landing choice resolves`);
+    const takenPayday = advanceMatch(landedOnPayday, { type: 'TAKE_PAYDAY' });
+    assert.equal(takenPayday.players[0].wealth, initialWealth + paydayAmount, `${boardId} pays exactly once when taking the landing payday`);
+    assert.equal(countEvent(takenPayday, 'SALARY_GATE'), 1, `${boardId} records one salary event for a landing choice`);
+    assert.equal(advanceMatch(takenPayday, { type: 'TAKE_PAYDAY' }).players[0].wealth, initialWealth + paydayAmount, `${boardId} rejects a repeated payday action`);
+
+    const rerollLanding = advanceMatch(paydayFixture(1), { type: 'STEP' });
+    const rerolledPayday = withRandomValue(0.99, () => advanceMatch(rerollLanding, { type: 'REROLL_SALARY_TIER' }));
+    assert.equal(rerolledPayday.players[0].wealth, initialWealth + paydayCareer.salaryTiers[3], `${boardId} pays only the rerolled salary tier`);
+    assert.equal(countEvent(rerolledPayday, 'SALARY_GATE'), 1, `${boardId} records one event for a rerolled landing payday`);
+    assert.equal(rerolledPayday.wealthEvents.filter(event => event.kind === 'PAYDAY').length, 1, `${boardId} stores one payday transaction after rerolling`);
+  }
 
   assert.equal(BOARD_SPACES.length, 75, 'the board retains 75 spaces');
   assert.deepEqual(
@@ -944,6 +992,26 @@ try {
     pending: { ...cpuPartyShown.pending, cardId: 'bio-receipt-check' },
   };
   assert.equal(advanceMatch(undersizedCpuParty, { type: 'AUTO_DECIDE' }).phase, 'landed', 'CPU passes a challenge requiring more participants than the match has instead of stalling');
+  const soloCpuPartyBase = createMatch('guardian_h', 'BIO_UPGRADE');
+  const soloCpuPartyFixture = {
+    ...soloCpuPartyBase,
+    cardPiles: partyInFlightPiles,
+    phase: 'decision',
+    turnIndex: 1,
+    pending: { kind: 'CARD', deck: 'wealth', space: 4, cardId: partyCardId, stage: 'draw' },
+    players: soloCpuPartyBase.players.map((player, index) => ({ ...player, isCPU: index !== 0, position: 4 })),
+  };
+  const soloCpuPartyRevealed = applySoloAutomationStep(soloCpuPartyFixture);
+  assert(soloCpuPartyRevealed, 'single-player Bio CPU card draws reveal through the normal automation flow');
+  assert.equal(soloCpuPartyRevealed.match.pending?.stage, 'resolved', 'single-player Bio CPU party cards reach their resolved presentation');
+  assert.equal(applySoloAutomationStep(soloCpuPartyRevealed.match), null, 'single-player Bio CPU party cards pause for the human player');
+  const soloCpuPartyPassed = applySoloPlayerAction(soloCpuPartyRevealed.match, {
+    type: 'RESOLVE_PARTY_CHALLENGE',
+    participantIds: [],
+    passed: true,
+  });
+  assert(soloCpuPartyPassed, 'the single-player human can resolve or pass a CPU-drawn Bio challenge');
+  assert.equal(soloCpuPartyPassed.match.phase, 'landed', 'passing a CPU-drawn Bio challenge resumes the turn');
   const partyCardMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
     activeDeck: 'wealth',
     activeCard: bioCards.find(card => card.id === partyCardId),
@@ -1408,16 +1476,24 @@ try {
   assert(eventTypes(match).includes('SALARY_GATE'));
   assert.equal(advanceMatch(match, { type: 'STEP' }), match);
   match = move({ ...stablePaydayStart, phase: 'ready', stepsRemaining: 0, pending: null, roll: null, lastLanding: null }, 2);
+  assert.equal(match.pending?.kind, 'SALARY_GATE');
+  assert.equal(match.players[0].wealth, 900000, 'landing on payday waits for the choice before paying');
+  match = advanceMatch(match, { type: 'TAKE_PAYDAY' });
   assert.equal(match.players[0].wealth, 900000 + match.players[0].salaryAmount);
   assert.equal(match.wealthEvents.length, 1);
   const salaryDebug = start(4);
   const originalSalary = salaryDebug.players[0].salaryAmount;
   match = move(withoutAbilities(salaryDebug, 0, 'alpha_prime'), 2);
   assert.equal(match.players[0].salaryAmount, originalSalary + 5000);
+  assert.equal(match.players[0].wealth, 900000, 'salary bonuses update before the landing payday is collected');
+  match = advanceMatch(match, { type: 'TAKE_PAYDAY' });
   assert.equal(match.players[0].wealth, 900000 + originalSalary + 5000);
   assert(eventTypes(match).includes('PLAYER_AFFECTED'));
   const secondPlayerStart = start(4, 1);
   match = move(withoutAbilities(secondPlayerStart, 1), 2);
+  assert.equal(match.pending?.kind, 'SALARY_GATE');
+  assert.equal(match.players[1].wealth, 900000);
+  match = advanceMatch(match, { type: 'TAKE_PAYDAY' });
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
   match = advanceMatch(match, { type: 'NEXT_TURN' });
   assert.equal(match.players[1].wealth, 900000 + match.players[1].salaryAmount);
@@ -2732,17 +2808,25 @@ try {
           && soloMatch.pending?.kind === 'CARD'
           && soloMatch.pending.stage === 'resolved'
           && !getCard(soloMatch.pending.cardId)?.partyChallenge;
+        const cpuBioPartyNeedsHumanAction = soloMatch.mode === 'SINGLE_PLAYER'
+          && soloMatch.phase === 'decision'
+          && soloMatch.pending?.kind === 'CARD'
+          && soloMatch.pending.stage === 'resolved'
+          && Boolean(getCard(soloMatch.pending.cardId)?.partyChallenge);
         let automated;
         if (cpuCardNeedsAcknowledgement) {
           automated = applySoloPlayerAction(soloMatch, { type: 'ACKNOWLEDGE_CARD' });
           assert(automated, `${boardId} player can acknowledge a CPU card effect`);
+        } else if (cpuBioPartyNeedsHumanAction) {
+          automated = applySoloPlayerAction(soloMatch, { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: [], passed: true });
+          assert(automated, `${boardId} player can pass a CPU Bio party challenge`);
         } else {
           automated = applySoloAutomationStep(soloMatch);
           assert(automated, `${boardId} CPU phase ${soloMatch.phase} should advance one scheduled step`);
         }
         const humanAlreadyFinished = soloMatch.players.filter(player => !player.isCPU).every(player => player.status === 'FINISHED');
         soloMatch = automated.match;
-        if (humanAlreadyFinished && cpuCardNeedsAcknowledgement) {
+        if (humanAlreadyFinished && (cpuCardNeedsAcknowledgement || cpuBioPartyNeedsHumanAction)) {
           assert.equal(soloMatch.players[soloMatch.turnIndex].isCPU, true, `${boardId} acknowledges the CPU effect without changing the acting seat`);
         } else if (humanAlreadyFinished) {
           const humanFinish = soloMatch.players.find(player => !player.isCPU);
