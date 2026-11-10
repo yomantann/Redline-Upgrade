@@ -74,7 +74,12 @@ function playerStatSourceLabel(event: EventLogEntry, eventLog: EventLogEntry[], 
   const ability = abilityId ? getAbility(abilityId) : undefined;
   const labels: string[] = [];
 
-  if (abilityId) {
+  const salaryGateSource = event.eventType === 'SALARY_GATE'
+    || sourceEvent?.eventType === 'SALARY_GATE'
+    || event.reason?.toLowerCase() === 'salary gate';
+  if (salaryGateSource) {
+    labels.push('SALARY');
+  } else if (abilityId) {
     const family = abilityId.startsWith('career')
       ? 'CAREER'
       : abilityId.startsWith('character:')
@@ -89,8 +94,6 @@ function playerStatSourceLabel(event: EventLogEntry, eventLog: EventLogEntry[], 
     labels.push('BOARD EFFECT');
   } else if (event.eventType === 'ASSET_PURCHASED') {
     labels.push('ASSET PURCHASE');
-  } else if (event.reason?.toLowerCase() === 'salary gate') {
-    labels.push('PASSIVE');
   }
 
   if (event.baseDelta !== undefined && event.baseDelta > 0 && delta > event.baseDelta) {
