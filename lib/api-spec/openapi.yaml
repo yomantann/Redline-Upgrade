@@ -17,6 +17,39 @@ tags:
   - name: Progression
     description: Authenticated lifetime achievements, asset history, and solo games.
 paths:
+  /asset-art/{assetId}/{level}:
+    get:
+      operationId: getExpansionAssetArt
+      tags: [Progression]
+      summary: Public level-specific expansion asset illustration
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+        - in: path
+          name: level
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+      responses:
+        "200":
+          description: Immutable level-specific WebP illustration
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid asset or level
+        "404":
+          description: Illustration not found
+        "503":
+          description: Artwork storage temporarily unavailable
   /healthz:
     get:
       operationId: healthCheck

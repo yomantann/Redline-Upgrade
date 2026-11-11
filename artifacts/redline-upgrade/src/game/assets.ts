@@ -1,5 +1,6 @@
 import type { CareerStat } from './careers';
 import { additionalAssets } from './assets-extra';
+import { expansionAssets } from './assets-expansion';
 
 export type AssetCategory = 'car' | 'lifestyle' | 'pet' | 'investment' | 'property';
 export type AssetSlot = 'car' | 'lifestyle' | 'companion' | 'property';
@@ -49,6 +50,7 @@ const assetRecords: readonly AssetDefinition[] = [
   { id: 'beach-house', name: 'Beach House', category: 'property', visual: '◒', cost: 400000, description: 'A permanent escape route.', effects: { lifestyle: 15, fame: 10 }, rarity: 'ELITE' },
   { id: 'mansion', name: 'Mansion', category: 'property', visual: '◇', cost: 500000, description: 'An address everyone knows.', effects: { influence: 20, lifestyle: 15 }, rarity: 'ELITE' },
   ...additionalAssets,
+  ...expansionAssets,
 ];
 
 export const assets: readonly AssetDefinition[] = assetRecords.map((asset) => ({

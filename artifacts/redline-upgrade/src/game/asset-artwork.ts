@@ -1,5 +1,6 @@
 import { assets, type AssetCategory, type AssetLevel } from './assets';
 import { getPublicAssetUrl } from '@/lib/public-asset-url';
+import { expansionAssetIds } from './assets-expansion';
 
 const artworkGroups: Record<AssetCategory, { directory: string; prefix: string }> = {
   car: { directory: 'cars', prefix: 'CAR' },
@@ -20,6 +21,7 @@ export const approvedLevelOneArtworkIds: Record<AssetCategory, readonly string[]
 };
 
 const artworkByAssetId = Object.fromEntries(assets.map((asset) => {
+  if (expansionAssetIds.has(asset.id)) return [asset.id, `api/asset-art/${asset.id}/1`];
   const legacyIndex = approvedLevelOneArtworkIds[asset.category].indexOf(asset.id);
   if (legacyIndex >= 0) {
     const group = artworkGroups[asset.category];
@@ -37,6 +39,7 @@ export function getAssetArtworkFilePathForLevel(assetId: string, level: AssetLev
   const asset = assets.find(candidate => candidate.id === assetId);
   const basePath = getAssetArtworkFilePath(assetId);
   if (!asset || !basePath) return undefined;
+  if (expansionAssetIds.has(assetId)) return `api/asset-art/${assetId}/${level}`;
   if (level === 1) return basePath;
   const directory = artworkGroups[asset.category].directory;
   return `milestone-assets/${directory}/phase14/${asset.id}-level-${level}.webp`;
