@@ -76,6 +76,88 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
+export const getGetExpansionAssetArtUrl = (assetId: string,
+    level: number,) => {
+
+
+
+
+  return `/api/asset-art/${assetId}/${level}`
+}
+
+/**
+ * @summary Public level-specific expansion asset illustration
+ */
+export const getExpansionAssetArt = async (assetId: string,
+    level: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetExpansionAssetArtUrl(assetId,level),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExpansionAssetArtQueryKey = (assetId: string,
+    level: number,) => {
+    return [
+    `/api/asset-art/${assetId}/${level}`
+    ] as const;
+    }
+
+
+export const getGetExpansionAssetArtQueryOptions = <TData = Awaited<ReturnType<typeof getExpansionAssetArt>>, TError = ErrorType<void>>(assetId: string,
+    level: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpansionAssetArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExpansionAssetArtQueryKey(assetId,level);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExpansionAssetArt>>> = ({ signal }) => getExpansionAssetArt(assetId,level, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: assetId !== null && assetId !== undefined && level !== null && level !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExpansionAssetArt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExpansionAssetArtQueryResult = NonNullable<Awaited<ReturnType<typeof getExpansionAssetArt>>>
+export type GetExpansionAssetArtQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public level-specific expansion asset illustration
+ */
+
+export function useGetExpansionAssetArt<TData = Awaited<ReturnType<typeof getExpansionAssetArt>>, TError = ErrorType<void>>(
+ assetId: string,
+    level: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpansionAssetArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExpansionAssetArtQueryOptions(assetId,level,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getHealthCheckUrl = () => {
 
 

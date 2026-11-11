@@ -9,6 +9,22 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Public level-specific expansion asset illustration
+ */
+export const getExpansionAssetArtPathAssetIdRegExp = new RegExp('^[a-z0-9-]+$');
+export const getExpansionAssetArtPathLevelMax = 4;
+
+
+
+export const GetExpansionAssetArtParams = zod.object({
+  "assetId": zod.coerce.string().regex(getExpansionAssetArtPathAssetIdRegExp),
+  "level": zod.coerce.number().int().min(1).max(getExpansionAssetArtPathLevelMax)
+})
+
+export const GetExpansionAssetArtResponse = zod.unknown()
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
