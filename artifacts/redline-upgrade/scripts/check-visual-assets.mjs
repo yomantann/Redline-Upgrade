@@ -22,11 +22,12 @@ const vite = await createServer({
 try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { assets } = await vite.ssrLoadModule('/src/game/assets.ts');
+  const { expansionAssetIds } = await vite.ssrLoadModule('/src/game/assets-expansion.ts');
   const { approvedLevelOneArtworkIds, getAssetArtworkFilePath, getAssetArtworkFilePathForLevel } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { careers } = await vite.ssrLoadModule('/src/game/careers.ts');
   const manifestIds = visualAssets.map((asset) => asset.id);
   assert.equal(new Set(manifestIds).size, manifestIds.length, 'visual asset IDs are unique');
-  assert.equal(assets.length, 100, 'milestone catalog has exactly 100 assets');
+  assert.equal(assets.length, 200, 'milestone catalog has exactly 200 assets');
   const approvedFolders = {
     car: ['cars', 'CAR'],
     lifestyle: ['lifestyles', 'LIFESTYLE'],
@@ -60,34 +61,56 @@ try {
 
     const artworkPath = getAssetArtworkFilePath(asset.id);
     assert(artworkPath, `${asset.id} has an artwork path`);
-    assert.match(artworkPath, /\.webp$/i, `${asset.id} points to WebP artwork`);
+    const isExpansion = expansionAssetIds.has(asset.id);
+    if (isExpansion) {
+      assert.equal(artworkPath, `api/asset-art/${asset.id}/1`, `${asset.id} uses its own level 1 storage image`);
+    } else {
+      assert.match(artworkPath, /\.webp$/i, `${asset.id} points to WebP artwork`);
+    }
     assert(!/\/(?:generic|placeholders?)\//i.test(artworkPath), `${asset.id} does not use a generic placeholder path`);
-    const artworkFile = path.join(publicRoot, artworkPath.replace(/^\/+/, ''));
-    assert(existsSync(artworkFile), `${asset.id} artwork file exists: ${artworkPath}`);
-    artworkHashes.push(createHash('sha256').update(readFileSync(artworkFile)).digest('hex'));
+    const artworkFile = isExpansion
+      ? path.resolve(projectRoot, '../../attached_assets/generated_images/asset-expansion/webp', `${asset.id}-level-1.webp`)
+      : path.join(publicRoot, artworkPath.replace(/^\/+/, ''));
+    if (!isExpansion || existsSync(artworkFile)) {
+      assert(existsSync(artworkFile), `${asset.id} artwork file exists: ${artworkPath}`);
+      artworkHashes.push(createHash('sha256').update(readFileSync(artworkFile)).digest('hex'));
+    }
     for (const level of [1, 2, 3, 4]) {
       assert.equal(asset.visualVariants?.[level], `${asset.id}:level-${level}`, `${asset.id} has an asset-specific level ${level} visual reference`);
       const levelPath = getAssetArtworkFilePathForLevel(asset.id, level);
       assert(levelPath, `${asset.id} level ${level} has an artwork path`);
-      const levelFile = path.join(publicRoot, levelPath);
-      assert(existsSync(levelFile), `${asset.id} level ${level} artwork exists: ${levelPath}`);
-      const levelContents = readFileSync(levelFile);
-      assert.match(levelPath, /\.webp$/i, `${asset.id} level ${level} is a rendered WebP`);
-      assert.equal(levelContents.toString('ascii', 0, 4), 'RIFF', `${asset.id} level ${level} has a WebP RIFF header`);
-      assert.equal(levelContents.toString('ascii', 8, 12), 'WEBP', `${asset.id} level ${level} has a WebP signature`);
-      levelHashes.push({ assetId: asset.id, level, hash: createHash('sha256').update(levelContents).digest('hex') });
+      if (isExpansion) {
+        assert.equal(levelPath, `api/asset-art/${asset.id}/${level}`, `${asset.id} level ${level} has its unique storage route`);
+        const levelFile = path.resolve(projectRoot, '../../attached_assets/generated_images/asset-expansion/webp', `${asset.id}-level-${level}.webp`);
+        if (existsSync(levelFile)) {
+          const levelContents = readFileSync(levelFile);
+          assert.equal(levelContents.toString('ascii', 0, 4), 'RIFF', `${asset.id} level ${level} has a WebP RIFF header`);
+          assert.equal(levelContents.toString('ascii', 8, 12), 'WEBP', `${asset.id} level ${level} has a WebP signature`);
+          levelHashes.push({ assetId: asset.id, level, hash: createHash('sha256').update(levelContents).digest('hex') });
+        }
+      } else {
+        const levelFile = path.join(publicRoot, levelPath);
+        assert(existsSync(levelFile), `${asset.id} level ${level} artwork exists: ${levelPath}`);
+        const levelContents = readFileSync(levelFile);
+        assert.match(levelPath, /\.webp$/i, `${asset.id} level ${level} is a rendered WebP`);
+        assert.equal(levelContents.toString('ascii', 0, 4), 'RIFF', `${asset.id} level ${level} has a WebP RIFF header`);
+        assert.equal(levelContents.toString('ascii', 8, 12), 'WEBP', `${asset.id} level ${level} has a WebP signature`);
+        levelHashes.push({ assetId: asset.id, level, hash: createHash('sha256').update(levelContents).digest('hex') });
+      }
     }
   }
   assert.equal(categoryGroups.size, 5, 'the catalog has all five milestone categories');
   for (const [category, categoryAssets] of categoryGroups) {
-    assert.equal(categoryAssets.length, 20, `${category} contains exactly 20 assets`);
+    assert.equal(categoryAssets.length, 40, `${category} contains exactly 40 assets`);
   }
-  assert.equal(new Set(artworkHashes).size, assets.length, 'every asset artwork file has distinct image content');
-  assert.equal(levelHashes.length, 400, 'all 100 assets have four artwork files');
-  assert.equal(new Set(levelHashes.map(entry => entry.hash)).size, 400, 'every asset and level has unique image content');
+  assert.equal(new Set(artworkHashes).size, artworkHashes.length, 'every available Level 1 asset image has distinct content');
+  assert.equal(levelHashes.length, 400 + (existsSync(path.resolve(projectRoot, '../../attached_assets/generated_images/asset-expansion/webp/nightjar-courier-level-1.webp')) ? 400 : 0), 'every local or static asset level image is checked');
+  assert.equal(new Set(levelHashes.map(entry => entry.hash)).size, levelHashes.length, 'every checked asset and level has unique image content');
   for (const asset of assets) {
     const hashes = levelHashes.filter(entry => entry.assetId === asset.id).map(entry => entry.hash);
-    assert.equal(new Set(hashes).size, 4, `${asset.id} changes artwork at every level`);
+    if (!expansionAssetIds.has(asset.id) || hashes.length > 0) {
+      assert.equal(new Set(hashes).size, 4, `${asset.id} changes artwork at every level`);
+    }
   }
 
   for (const file of [
@@ -100,7 +123,7 @@ try {
     const source = readFileSync(path.join(projectRoot, 'src', file), 'utf8');
     assert.match(source, /AssetArtwork/, `${file} renders asset-specific artwork`);
   }
-  const phase11Assets = assets.filter((asset) => asset.id.includes('-') && ![
+  const phase11Assets = assets.filter((asset) => !expansionAssetIds.has(asset.id) && asset.id.includes('-') && ![
     'budget-racer', 'flex-car', 'supercar', 'electric-hypercar', 'street-tuner', 'electric-coupe', 'executive-sedan',
     'track-special', 'grand-tourer', 'prototype-one', 'luxury-travel', 'vip-life', 'low-key-life', 'creator-lifestyle',
     'studio-life', 'city-weekends', 'wellness-club', 'art-collector', 'private-retreat', 'global-elite', 'cyber-dog',
@@ -118,7 +141,11 @@ try {
   }
 
   for (const asset of visualAssets) {
-    assert(existsSync(path.resolve(projectRoot, asset.filePath)), `asset path exists: ${asset.filePath}`);
+    if (asset.filePath.startsWith('api/asset-art/')) {
+      assert.match(asset.filePath, /^api\/asset-art\/[a-z0-9-]+\/1$/, `asset storage route is valid: ${asset.filePath}`);
+    } else {
+      assert(existsSync(path.resolve(projectRoot, asset.filePath)), `asset path exists: ${asset.filePath}`);
+    }
   }
 
   const allItemIds = [];
@@ -151,7 +178,7 @@ try {
   assert.equal(catalog.collections.find((collection) => collection.id === 'milestone-states').items.length, 4, 'all four milestone states have a marker');
   assert.equal(catalog.collections.find((collection) => collection.id === 'endgame-support').items.length, 7, 'all seven endgame support symbols are mapped');
 
-  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} distinct WebP Level 1 artworks (20 per category), 400 unique WebP Level 1–4 artworks, five asset display surfaces, and ${visualAssets.length} valid manifest paths.`);
+  console.log(`PASS: ${allSymbols.length} unique SVG symbols, ${careerItems.length} mapped careers, ${assets.length} assets (40 per category), ${levelHashes.length} unique WebP level images checked, five asset display surfaces, and ${visualAssets.length} valid manifest paths.`);
 } finally {
   await vite.close();
 }

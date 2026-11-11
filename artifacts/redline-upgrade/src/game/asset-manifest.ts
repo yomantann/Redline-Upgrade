@@ -31,11 +31,14 @@ export const visualAssets: readonly VisualAsset[] = [
   })),
   ...assets.map(asset => {
     const artworkPath = getAssetArtworkFilePath(asset.id);
+    const usesApiArtwork = artworkPath?.startsWith('api/');
     return {
       id: `asset_${asset.id}`, name: asset.name, category: assetCategories[asset.category],
-      filePath: artworkPath ? `public/${artworkPath}` : 'src/components/milestone-choice.tsx',
+      filePath: artworkPath ? `${usesApiArtwork ? '' : 'public/'}${artworkPath}` : 'src/components/milestone-choice.tsx',
       assetType: artworkPath ? 'image' as const : 'symbol' as const,
-      description: artworkPath ? `${asset.description} Individual milestone artwork.` : `${asset.description} Shared category artwork fallback.`,
+      description: artworkPath
+        ? `${asset.description} Individual milestone artwork${usesApiArtwork ? ' served from asset storage' : ''}.`
+        : `${asset.description} Shared category artwork fallback.`,
       status: artworkPath ? 'available' as const : 'fallback' as const,
     };
   }),

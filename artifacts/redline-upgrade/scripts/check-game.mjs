@@ -77,6 +77,7 @@ try {
     getAssetAttributeAwardTransition,
   } = await vite.ssrLoadModule('/src/game/assets.ts');
   const { getAssetArtworkFilePath, getAssetArtworkFilePathForLevel, getAssetArtworkUrl } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
+  const { expansionAssetIds } = await vite.ssrLoadModule('/src/game/assets-expansion.ts');
   const { evaluateEndGameTitle } = await vite.ssrLoadModule('/src/game/endgame-titles.ts');
   const {
     calculateAdjustedAssetValue,
@@ -1523,17 +1524,22 @@ try {
   }));
   assert.equal((milestoneMarkup.match(/class="milestone-art-image/g) ?? []).length, 3, 'all three milestone options render shared asset artwork');
   assert(milestoneMarkup.includes('LEVEL 1') && milestoneMarkup.includes('COST / WEALTH'), 'milestone choices label initial level and purchase cost');
-  assert.equal(assets.length, 100, 'the complete milestone catalog has 100 choices');
+  assert.equal(assets.length, 200, 'the complete milestone catalog has 200 choices');
   for (const category of ['car', 'lifestyle', 'pet', 'investment', 'property']) {
-    assert.equal(assets.filter(asset => asset.category === category).length, 20);
+    assert.equal(assets.filter(asset => asset.category === category).length, 40);
   }
   const levelOneArtworkPaths = assets.map(asset => getAssetArtworkFilePath(asset.id));
   const allLevelArtworkPaths = assets.flatMap(asset => [1, 2, 3, 4].map(level => getAssetArtworkFilePathForLevel(asset.id, level)));
-  assert.equal(allLevelArtworkPaths.length, 400, 'the complete catalog has 400 level-specific artwork paths');
-  assert.equal(new Set(allLevelArtworkPaths).size, 400, 'each asset level resolves to its own artwork file');
-  assert(allLevelArtworkPaths.every(path => path && existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 400 L1–L4 artwork files exist');
+  assert.equal(allLevelArtworkPaths.length, 800, 'the complete catalog has 800 level-specific artwork paths');
+  assert.equal(new Set(allLevelArtworkPaths).size, 800, 'each asset level resolves to its own artwork file or API route');
+  assert(allLevelArtworkPaths.every((path, index) => {
+    const asset = assets[Math.floor(index / MAX_ASSET_LEVEL)];
+    const level = (index % MAX_ASSET_LEVEL) + 1;
+    if (expansionAssetIds.has(asset.id)) return path === `api/asset-art/${asset.id}/${level}`;
+    return Boolean(path && existsSync(new URL(`../public/${path}`, import.meta.url)));
+  }), 'all 800 L1–L4 artworks resolve to local files or their storage routes');
   assert(levelOneArtworkPaths.every(Boolean), 'all milestone choices map to Level 1 artwork');
-  assert.equal(new Set(levelOneArtworkPaths).size, 100, 'every milestone choice has a distinct Level 1 artwork path');
+  assert.equal(new Set(levelOneArtworkPaths).size, 200, 'every milestone choice has a distinct Level 1 artwork path');
   for (const asset of assets) {
     const artworkUrl = getAssetArtworkUrl(asset.id, 1);
     const artworkMarkup = renderToStaticMarkup(React.createElement(AssetArtwork, {
@@ -1599,10 +1605,16 @@ try {
       `${asset.id}:level-4`,
     ], `${asset.id} has asset-specific Level 2–4 references`);
   }
-  assert(levelOneArtworkPaths.every(path => existsSync(new URL(`../public/${path}`, import.meta.url))), 'all 100 Level 1 artwork files exist');
+  assert(levelOneArtworkPaths.every((path, index) => {
+    const asset = assets[index];
+    if (expansionAssetIds.has(asset.id)) return path === `api/asset-art/${asset.id}/1`;
+    return Boolean(path && existsSync(new URL(`../public/${path}`, import.meta.url)));
+  }), 'all 200 Level 1 artworks resolve to local files or storage routes');
   assert.equal(new Set(assets.map(asset => asset.id)).size, assets.length);
   assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
-  assert(visualAssets.every(asset => existsSync(asset.filePath)));
+  assert(visualAssets.every(asset => asset.filePath.startsWith('api/asset-art/')
+    ? /^api\/asset-art\/[a-z0-9-]+\/1$/.test(asset.filePath)
+    : existsSync(asset.filePath)));
   const specialSpaces = BOARD_SPACES.filter(space => space.type !== 'NORMAL');
   assert(specialSpaces.length > 0 && specialSpaces.every(space => ICON_PATHS[space.icon]), 'every special board space has an available icon');
   assert(Array.from({ length: 75 }, (_, index) => getSpace(index + 1)).every(space => ICON_PATHS[space.icon] && (!space.secondaryIcon || ICON_PATHS[space.secondaryIcon])));
@@ -2910,7 +2922,7 @@ try {
     assert.equal(withImages, deckCards.length, `${deck.name} deck has a mapped, existing image for every draw card`);
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
-  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 111 cards, 100 milestone visuals, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
+  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 111 cards, ${assets.length} asset choices, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
 } finally {
   await vite.close();
 }
