@@ -10,6 +10,7 @@ type Point = { x: number; z: number };
 type BioBoardSceneProps = {
   players: MatchPlayer[];
   activePlayerId: string;
+  focusPosition?: number;
   finishOrder?: number[];
   landingPosition: number | null;
   overview: boolean;
@@ -151,9 +152,17 @@ function makeTileTexture(space: BoardSpace, label: string, accent: string) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = accent;
-  ctx.font = '700 42px monospace';
-  ctx.fillText(String(space.number).padStart(2, '0'), 42, 76);
+  // Number plate: solid dark chip behind a large numeral so it reads at chase zoom.
+  ctx.fillStyle = 'rgba(9,15,20,.9)';
+  ctx.beginPath();
+  ctx.roundRect(26, 30, 148, 96, 16);
+  ctx.fill();
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.fillStyle = '#fff6df';
+  ctx.font = '800 68px "Space Mono", monospace';
+  ctx.fillText(String(space.number).padStart(2, '0'), 44, 80);
   ctx.save();
   ctx.translate(376, 82);
   ctx.fillStyle = '#101a20';
@@ -174,7 +183,11 @@ function makeTileTexture(space: BoardSpace, label: string, accent: string) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = space.type === 'NORMAL' ? '#d8deda' : accent;
-  ctx.font = `800 ${label.length > 15 ? 25 : label.length > 10 ? 30 : 34}px "Arial Narrow", sans-serif`;
+  ctx.font = `800 ${label.length > 15 ? 30 : label.length > 10 ? 36 : 42}px "Arial Narrow", sans-serif`;
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = 'rgba(9,15,20,.9)';
+  ctx.strokeText(label.toUpperCase(), 256, 282, 456);
   ctx.fillText(label.toUpperCase(), 256, 282, 456);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -523,6 +536,7 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
 export function BioBoardScene({
   players,
   activePlayerId,
+  focusPosition,
   finishOrder: _finishOrder = [],
   landingPosition,
   overview,
@@ -550,7 +564,7 @@ export function BioBoardScene({
     <pointLight position={[-18, 3, -5]} intensity={1.5} distance={12} color="#ef6d9d" />
     <pointLight position={[18, 3, 9]} intensity={1.7} distance={13} color="#f8b85e" />
     <pointLight position={[0, 4, -2]} intensity={1.45} distance={15} color="#60d8d2" />
-    <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
+    <CameraRig focus={focusPosition ?? activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <Floor />
     {BIO_ROUTE.slice(0, 75).map((point, index) => <Walkway key={`walk-${index}`} a={point} b={BIO_ROUTE[index + 1]} index={index} />)}
     {BIO_SPACES.map(space => {

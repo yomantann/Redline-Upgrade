@@ -28,3 +28,31 @@ mtime_ms = 1793241482933
 storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/2d6265db-8680-4453-ae70-2f9dccd62fee/61849432-73b2-4dda-93c2-1d05b6cb3d0f"
 storage_version_token = "1793241591388382"
 content_type = "text/html"
+
+[[outputs]]
+id = "RuZYNDPo7F0Kmzm4tERFR"
+uri = "file://screenshots/phase29-before-mobile.jpg"
+type = "image"
+title = "Mobile board — before"
+description = "390 × 844 guest board preview before Phase 29 changes."
+logical_id = "81451df8-7b10-4c7a-a86f-c6961c9f6b9b"
+content_hash = "sha256:54d99c8b6ffd8906294a927bfbfd779cb81db55a421412f40605a93b5f8f9162"
+size = 42021
+mtime_ms = 1794357084488
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/81451df8-7b10-4c7a-a86f-c6961c9f6b9b/0e9401af-c948-4a6c-90e1-1b8fc356d1b7"
+storage_version_token = "1794358803975899"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "mHM6AeJTbBOBgaE41uQel"
+uri = "file://screenshots/phase29-after-mobile.jpg"
+type = "image"
+title = "Mobile board — after"
+description = "Same 390 × 844 guest preview with compact controls and wider board area. Gameplay and Focus mode were tested separately."
+logical_id = "5a1a2bac-721d-4e21-ba77-357097093210"
+content_hash = "sha256:981d342dfa7a802885820766232804759b50ee0f3c23847969324cf7fa6b0b51"
+size = 48927
+mtime_ms = 1794357444256
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/5a1a2bac-721d-4e21-ba77-357097093210/a7d68326-6bad-4985-80f5-e8a107bc818d"
+storage_version_token = "1794358804652382"
+content_type = "image/jpeg"

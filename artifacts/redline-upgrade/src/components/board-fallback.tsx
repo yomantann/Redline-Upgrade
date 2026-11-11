@@ -26,12 +26,13 @@ const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAM
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlayerId, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { boardId?: BoardId; players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlayerId, focusPosition, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { boardId?: BoardId; players: MatchPlayer[]; activePlayerId: string; focusPosition?: number; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
   const isBio = boardId === 'BIO_UPGRADE';
   const route = isBio ? BIO_ROUTE : ROUTE;
   const boardSpaces = getBoardSpaces(boardId);
   const activePosition = Math.max(0, Math.min(75, players.find(player => player.playerId === activePlayerId)?.position ?? 0));
-  const focus = project(route[activePosition].x, route[activePosition].z, .45);
+  const focusIndex = Math.max(0, Math.min(75, focusPosition ?? activePosition));
+  const focus = project(route[focusIndex].x, route[focusIndex].z, .45);
   const cameraZoom = zoom * (overview ? 1 : 2);
   const centerX = overview ? 600 : focus.x;
   const centerY = overview ? 380 : focus.y;
@@ -102,7 +103,7 @@ export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlay
           const tileLabel = categoryLabel ?? space.label;
           const frontFace = face([[-1.02, .95, .42], [1.02, .95, .42], [1.02, .95, .72], [-1.02, .95, .72]]);
           const rightFace = face([[1.02, -.95, .42], [1.02, .95, .42], [1.02, .95, .72], [1.02, -.95, .72]]);
-          return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onClick={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
+          return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`} onPointerDown={() => onSpaceSelect?.(space.number)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSpaceSelect?.(space.number); } }} onPointerEnter={() => onSpaceHover?.(space.number)} onPointerLeave={() => onSpaceHover?.(null)} style={{ cursor: 'pointer' }}>
             <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
             <polygon points={corners(1.02, .95, .42)} fill="#101a19" stroke={accent} strokeOpacity=".42" strokeWidth="1" />
             <polygon points={rightFace} fill="#101e19" stroke={accent} strokeOpacity=".62" strokeWidth="1" />

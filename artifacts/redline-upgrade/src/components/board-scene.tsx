@@ -79,6 +79,11 @@ function graphic(lines: string[], accent = COLORS.cream, width = 512, height = 1
   lines.forEach((line, i) => {
     ctx.font = `${i === 0 ? '900 76px' : '700 32px'} "Barlow Condensed", sans-serif`;
     ctx.fillStyle = i === 0 ? accent : '#b7c5b5';
+    // Dark keyline keeps printed numbers legible on lit and metallic tile tops.
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = i === 0 ? 10 : 6;
+    ctx.strokeStyle = 'rgba(8,14,12,.92)';
+    ctx.strokeText(line, width / 2, lines.length === 1 ? height / 2 : 55 + i * 65);
     ctx.fillText(line, width / 2, lines.length === 1 ? height / 2 : 55 + i * 65);
   });
   const texture = new THREE.CanvasTexture(canvas);
@@ -126,11 +131,15 @@ function PrintedIcon({ icon, y, color, x = 0.59, z = -0.26, size = 0.74 }: { ico
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'rgba(10,18,15,.88)';
+    ctx.beginPath();
+    ctx.arc(64, 64, 60, 0, Math.PI * 2);
+    ctx.fill();
     ctx.translate(64, 64);
-    ctx.scale(4.4, 4.4);
+    ctx.scale(4.1, 4.1);
     ctx.translate(-12, -12);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.lineJoin = ctx.lineCap = 'round';
     ctx.stroke(new Path2D(ICON_PATHS[icon] ?? ICON_PATHS.milestone));
     const map = new THREE.CanvasTexture(canvas);
@@ -706,8 +715,8 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
   return null;
 }
 
-export function BoardScene({ players, activePlayerId, finishOrder = [], landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover }: {
-  players: MatchPlayer[]; activePlayerId: string; finishOrder?: number[]; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point; onSpaceSelect: (n: number) => void; onSpaceHover: (n: number | null) => void;
+export function BoardScene({ players, activePlayerId, focusPosition, finishOrder = [], landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover }: {
+  players: MatchPlayer[]; activePlayerId: string; focusPosition?: number; finishOrder?: number[]; landingPosition: number | null; overview: boolean; reduceMotion: boolean; zoom: number; pan: Point; onSpaceSelect: (n: number) => void; onSpaceHover: (n: number | null) => void;
 }) {
   const activePosition = players.find(p => p.playerId === activePlayerId)?.position ?? 0;
   return <>
@@ -719,7 +728,7 @@ export function BoardScene({ players, activePlayerId, finishOrder = [], landingP
     <pointLight position={[ZONE_ANCHORS[0].x, 0.65, ZONE_ANCHORS[0].z]} intensity={1.35} distance={6} color="#c5b96d" />
     <pointLight position={[ZONE_ANCHORS[2].x, 0.65, ZONE_ANCHORS[2].z]} intensity={1.45} distance={6} color="#88c6c2" />
     <pointLight position={[0, 0.55, 0]} intensity={0.8} distance={11} color="#d4e981" />
-    <CameraRig focus={activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
+    <CameraRig focus={focusPosition ?? activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <CircuitBoard />
     <CenterEmblem />
     {ROUTE.slice(0, 75).map((a, i) => <Connector key={i} a={a} b={ROUTE[i + 1]} hot={i % 15 === 14} zoneColor={ZONE_COLORS[Math.floor(i / 15)]} />)}

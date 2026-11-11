@@ -178,6 +178,31 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
   );
 }
 
+function BoardFocusDock({ players, activeIndex, hasDecision, onExit }: { players: MatchPlayer[]; activeIndex: number; hasDecision: boolean; onExit: () => void }) {
+  const [open, setOpen] = useState(false);
+  const jump = (selector: string) => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelector(selector)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  };
+  return <nav className="board-focus-dock" aria-label="Board Focus quick access" data-testid="dock-board-focus">
+    <div className="board-focus-dock-bar">
+      <span className="mono">BOARD FOCUS</span>
+      <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)} data-testid="button-focus-players">PLAYERS {open ? '−' : '+'}</button>
+      {hasDecision && <button type="button" className="urgent" onClick={() => jump('.card-draw-panel, .milestone-choice')} data-testid="button-focus-decision">DECISION PENDING</button>}
+      <button type="button" onClick={() => jump('.game-dice-panel')} data-testid="button-focus-turn">TURN / ROLL</button>
+      <button type="button" onClick={onExit} data-testid="button-focus-exit">EXIT</button>
+    </div>
+    {open && <ul className="board-focus-dock-players" data-testid="list-focus-players">
+      {players.map((player, index) => <li key={player.playerId} className={index === activeIndex ? 'active' : ''}>
+        <b>{player.displayName}</b>
+        <span className="mono">{player.position === 0 ? 'START' : `SP ${String(player.position).padStart(2, '0')}`}</span>
+        <strong>{formatMoney(player.wealth)}</strong>
+        <span className="mono">AI {player.aiSkill} / FM {player.fame} / LS {player.lifestyle} / IN {player.influence}</span>
+      </li>)}
+    </ul>}
+  </nav>;
+}
+
 export function GameScreen() {
   const [, navigate] = useLocation();
   const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId, selectBoard, returnHome, newAchievementIds } = useGame();
@@ -197,6 +222,14 @@ export function GameScreen() {
   const [compactPlayerLayout, setCompactPlayerLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches);
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
   const [decisionInspection, setDecisionInspection] = useState<'choice' | 'board' | 'players'>('choice');
+  const [boardFocus, setBoardFocus] = useState(false);
+  const toggleBoardFocus = useCallback(() => setBoardFocus(value => !value), []);
+  useEffect(() => {
+    if (!boardFocus) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => document.querySelector('.ru-board--focus')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }), 60);
+    return () => window.clearTimeout(timer);
+  }, [boardFocus]);
   const [dismissedFastForwardMatchId, setDismissedFastForwardMatchId] = useState<string | null>(null);
   const phase = match?.phase;
   const turnIndex = match?.turnIndex;
@@ -453,7 +486,7 @@ export function GameScreen() {
   }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, hasTurnStartToken, autoScrollEnabled]);
 
   if (!match) return (
-    <main className="game-screen board-preview-page">
+    <main className={`game-screen board-preview-page ${boardFocus ? 'game-screen--board-focus' : ''}`}>
       <header className="empty-board-header">
         <div>
           <span className="eyebrow">NO MATCH LOADED // BOARD PREVIEW</span>
@@ -498,6 +531,8 @@ export function GameScreen() {
         landingPosition={null}
         movingPlayerId={isBioBoard ? previewActivePlayer.playerId : null}
         preview={isBioBoard}
+        focusMode={boardFocus}
+        onToggleFocusMode={toggleBoardFocus}
       />
     </main>
   );
@@ -585,9 +620,10 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   }
 
   return (
-    <main className="game-screen">
+    <main className={`game-screen game-screen--play ${boardFocus ? 'game-screen--board-focus' : ''}`}>
       {fastForwardNotice}
       <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
+      {boardFocus ? <BoardFocusDock players={match.players} activeIndex={match.turnIndex} hasDecision={match.phase === 'decision' && Boolean(pending)} onExit={toggleBoardFocus} /> : null}
       {isBioBoard && <AgeRestrictionBadge />}
       {remote && <RemoteStatus remote={remote} error={remoteError} players={match.players} match={match} connected={remoteConnected} />}
       {remote && remote.careerRevealPendingPlayerIndexes.length > 0 && !needsRemoteCareerConfirmation && (
@@ -803,6 +839,8 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         activePlayerId={active.playerId}
         landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
         movingPlayerId={match.phase === 'moving' ? active.playerId : null}
+        focusMode={boardFocus}
+        onToggleFocusMode={toggleBoardFocus}
         finishOrder={match.finishOrder}
          boardId={match.boardId}
        /></div>
@@ -836,6 +874,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           />
         </aside>
        <CardTabletop
+         inlineDecision
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
          activeCard={match.phase === 'decision' && pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined}
          offeredCards={offeredGambleCards}

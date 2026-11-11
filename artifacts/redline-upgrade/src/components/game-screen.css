@@ -502,3 +502,66 @@
   .cpu-fast-forward-notice { bottom: 72px; padding: 16px 20px 16px 14px; }
   .cpu-fast-forward-notice p { font-size: 11px; }
 }
+
+/* ── Phase 29 / board-first gameplay shell ── */
+.game-screen--play,.board-preview-page { padding:14px clamp(10px,1.6vw,28px) 64px; }
+.game-screen--play .game-head { margin-bottom:10px; gap:12px; align-items:center; }
+.game-screen--play .game-head h1 { font-size:clamp(28px,3vw,44px); margin:4px 0 0; }
+.game-screen--play .game-players { margin-bottom:10px; }
+.game-screen--play .game-tabletop { gap:10px; grid-template-columns:minmax(0,1fr) minmax(240px,clamp(240px,20vw,310px)); }
+.board-preview-page .empty-board-header { margin-bottom:10px; }
+.board-preview-page .empty-board-title { font-size:clamp(30px,4vw,54px) !important; margin:6px 0 4px; }
+.board-preview-page .ru-tabletop.ru-board .ru-board__stage { height:clamp(480px, calc(100dvh - 230px), 1000px); min-height:0; }
+.game-screen--board-focus { padding-top:6px; }
+.game-screen--board-focus .game-head,.game-screen--board-focus .board-preview-banner,.game-screen--board-focus .empty-board-header { display:none; }
+.game-screen--board-focus > .game-tabletop { order:1; }
+.game-screen--board-focus > .game-players { order:3; }
+.game-screen--board-focus .game-dice-panel { position:sticky; top:8px; }
+@media (max-width:1000px) {
+  .game-screen--play .game-tabletop { grid-template-columns:minmax(0,1fr); }
+  .game-screen--board-focus .game-dice-panel { position:sticky; bottom:0; top:auto; z-index:30; padding:8px; }
+  .game-screen--board-focus .game-tabletop > .game-tabletop-board { grid-row:1; }
+  .game-screen--board-focus .game-tabletop > .game-dice-panel { grid-row:2; }
+}
+@media (max-width:700px) {
+  .game-screen--play,.board-preview-page { padding:8px 6px 72px; }
+  .game-screen--play .game-head { display:flex; }
+  .game-screen--play .game-head h1 { font-size:26px; margin:2px 0 0; }
+  .board-preview-page .ru-tabletop.ru-board .ru-board__stage { height:max(380px, calc(100dvh - 300px)); }
+  .game-screen--play .game-players { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .game-screen--play .game-player.player-card-expanded-mobile { grid-column:1 / -1; }
+  .game-screen--board-focus .game-dice-panel .turn-signal small { display:none; }
+}
+.board-focus-dock { position:sticky; top:0; z-index:45; order:0; margin:0 0 6px; border:1px solid #3d5145; background:#0f1814f5; backdrop-filter:blur(8px); }
+.board-focus-dock-bar { display:flex; align-items:center; gap:4px; padding:5px; overflow-x:auto; }
+.board-focus-dock-bar > .mono { padding:0 6px; color:#d4e981; font-size:8px; white-space:nowrap; }
+.board-focus-dock-bar button { flex:none; min-height:34px; padding:0 10px; border:1px solid #39463d; background:#1b251e; color:#d8e3d5; font:700 9px 'Space Mono',monospace; cursor:pointer; }
+.board-focus-dock-bar button[aria-expanded="true"] { border-color:#d4e981; color:#d4e981; }
+.board-focus-dock-bar button.urgent { border-color:#f96346; color:#14211c; background:#f96346; }
+.board-focus-dock-bar button:focus-visible { outline:2px solid #d4e981; outline-offset:1px; }
+.board-focus-dock-players { list-style:none; margin:0; padding:0 5px 5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:4px; max-height:40dvh; overflow:auto; }
+.board-focus-dock-players li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 8px; padding:7px 9px; border:1px solid #2f3e35; border-left:3px solid #4d6152; background:#151f1a; }
+.board-focus-dock-players li.active { border-left-color:#f96346; background:#1d2a22; }
+.board-focus-dock-players b { font:700 16px/1 'Barlow Condensed',sans-serif; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.board-focus-dock-players strong { color:#d4e981; font:800 17px/1 'Barlow Condensed',sans-serif; font-variant-numeric:tabular-nums; }
+.board-focus-dock-players .mono { color:#9fb09f; font-size:8px; }
+.game-screen--board-focus .ru-tabletop.ru-board--focus .ru-board__masthead { position:static; }
+.game-screen--board-focus .ru-tabletop.ru-board--focus .ru-board__stage { height:calc(100dvh - 176px); }
+.game-screen--board-focus > .milestone-choice { order:0; }
+.game-screen--play .card-draw-panel { position:relative; inset:auto; z-index:auto; width:100%; height:auto; max-height:none; background:transparent; backdrop-filter:none; padding:8px; scroll-margin-top:72px; }
+.game-screen--play .card-draw-modal-card { width:100%; min-width:0; }
+.game-screen--play .game-tabletop:has(.card-draw-panel) > .card-draw-panel { grid-column:1 / -1; grid-row:1; }
+.game-screen--play .game-tabletop:has(.card-draw-panel) > .game-tabletop-board { grid-column:1; grid-row:2; }
+.game-screen--play .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:2; grid-row:2; }
+.game-screen--play .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1 / -1; grid-row:3; }
+@media (max-width:1000px) {
+  .game-screen--play .game-tabletop:has(.card-draw-panel) > .game-dice-panel { grid-column:1; grid-row:3; }
+  .game-screen--play .game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-column:1; grid-row:4; }
+}
+.game-screen--board-focus .milestone-choice { scroll-margin-top:72px; }
+@media (max-width:700px) {
+  .game-screen--board-focus .ru-tabletop.ru-board--focus .ru-board__stage { height:max(340px, calc(100dvh - 260px)); }
+  .board-focus-dock-players { grid-template-columns:1fr 1fr; }
+  .board-focus-dock-players li { grid-template-columns:1fr; }
+  .board-focus-dock-players li .mono:last-child { display:none; }
+}

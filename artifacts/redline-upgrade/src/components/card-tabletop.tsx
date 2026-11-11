@@ -152,6 +152,7 @@ type Props = {
   partyActorId?: string;
   partyCanAct?: boolean;
   boardId?: BoardId;
+  inlineDecision?: boolean;
   cardStage?: 'choice' | 'draw' | 'resolved';
   cardPiles?: CardPileMap;
   onResolveCard?: () => void;
@@ -174,6 +175,7 @@ export function CardTabletop({
   partyActorId,
   partyCanAct = true,
   boardId = 'REDLINE_UPGRADE',
+  inlineDecision = false,
   cardStage,
   cardPiles,
   onResolveCard,
@@ -252,7 +254,7 @@ export function CardTabletop({
         <section
           className="card-draw-panel"
           aria-label={`${getDeck(activeDeck).name} card drawn by ${actorLabel}`}
-          aria-modal="true"
+          aria-modal={!inlineDecision}
           role="dialog"
           data-testid="section-card-draw"
           data-card-stage={activeCardResolved ? 'result' : 'reveal'}

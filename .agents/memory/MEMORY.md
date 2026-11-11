@@ -17,3 +17,4 @@
 - [Endgame and asset awards](endgame-settlement-rules.md) — awarded attribute points persist after asset loss and can accumulate without a match-wide cap; asset awards cap at 10.
 - [Salary gates and finish pacing](salary-gates-and-finish-pacing.md) — fast-forward preserves CPU turns and card effects; solo pauses for acknowledgment, multiplayer remains automatic.
 - [Career card affinities](career-card-affinities.md) — every career keeps two distinct deck affinities and career bonuses use consistent attribute language.
+- [Board camera ownership](board-camera-ownership.md) — manual panning freezes the camera target; gameplay events must not take over the viewer's inspection.

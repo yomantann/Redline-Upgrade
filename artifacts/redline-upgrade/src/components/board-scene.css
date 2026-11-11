@@ -298,3 +298,47 @@
 }
 .ru-board__telemetry { border-left-color: #f96346; }
 .ru-board__minimap { border-top-color: #88c6c2; }
+
+/* ── Phase 29 / board-first camera + layout (single authoritative block) ── */
+.ru-tabletop.ru-board .ru-board__masthead { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px 14px; padding:10px 12px; }
+.ru-tabletop .ru-board__title { font-size:clamp(20px,2vw,30px); margin:2px 0 0; line-height:1; }
+.ru-tabletop .ru-board__overline { font-size:8px; }
+.ru-tabletop .ru-board__controls { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:3px; width:auto; }
+.ru-tabletop .ru-board__controls button { min-height:34px; min-width:34px; padding:0 10px; font:700 9px/1 'Space Mono',monospace; letter-spacing:.04em; }
+.ru-tabletop .ru-board__focus-toggle { border-color:#d4e981 !important; color:#14211c !important; background:#d4e981 !important; }
+.ru-tabletop .ru-board__focus-toggle.selected { color:#d4e981 !important; background:transparent !important; }
+.ru-board--bio .ru-board__focus-toggle { border-color:#58d7d0 !important; background:#58d7d0 !important; }
+.ru-board--bio .ru-board__focus-toggle.selected { color:#58d7d0 !important; background:transparent !important; }
+.ru-board__runners { grid-column:1/-1; display:flex; align-items:center; gap:4px; overflow-x:auto; scrollbar-width:none; }
+.ru-board__runners::-webkit-scrollbar { display:none; }
+.ru-board__runners button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 9px; border:1px solid #33463c; background:#111b17; color:#c2cfbf; font:700 9px/1 'Space Mono',monospace; text-transform:uppercase; cursor:pointer; }
+.ru-board__runners button i { width:7px; height:7px; border-radius:50%; background:#5f7466; }
+.ru-board__runners button.is-active i { background:#f96346; }
+.ru-board__runners button b { color:#d4e981; font-variant-numeric:tabular-nums; }
+.ru-board__runners button.selected { border-color:#d4e981; color:#f1f3e6; background:#1d2a22; }
+.ru-board__runners button:focus-visible,.ru-tabletop .ru-board__controls button:focus-visible { outline:2px solid #d4e981; outline-offset:1px; }
+.ru-board__camera-state { margin-left:auto; flex:none; padding-left:8px; color:#8fa293; font:700 8px/1 'Space Mono',monospace; letter-spacing:.06em; white-space:nowrap; }
+.ru-tabletop.ru-board .ru-board__stage { height:clamp(520px, calc(100dvh - 190px), 1040px); min-height:0; cursor:grab; }
+.ru-tabletop.ru-board .ru-board__stage:active { cursor:grabbing; }
+.ru-board__info-focus { width:auto !important; padding:0 10px !important; font:700 9px/1 'Space Mono',monospace !important; }
+/* Board Focus: the board owns the viewport; decisions, dice and players stay in flow. */
+.ru-tabletop.ru-board--focus .ru-board__stage { height:calc(100dvh - 128px); }
+.ru-tabletop.ru-board--focus .ru-board__foot { display:none; }
+.ru-tabletop.ru-board--focus .ru-board__heading { display:none; }
+.ru-tabletop.ru-board--focus .ru-board__masthead { grid-template-columns:1fr; position:sticky; top:0; z-index:5; background:#0d1613f2; }
+.ru-tabletop.ru-board--focus .ru-board__controls { justify-content:flex-start; }
+@media (max-width:700px) {
+  .ru-tabletop.ru-board .ru-board__masthead { grid-template-columns:1fr; padding:8px; }
+  .ru-tabletop .ru-board__heading { display:none; }
+  .ru-tabletop .ru-board__controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); justify-content:stretch; }
+  .ru-tabletop .ru-board__controls button:nth-child(n) { padding:0 4px; min-height:44px; grid-column:auto; }
+  .ru-tabletop .ru-board__wheel-toggle { display:none; }
+  .ru-tabletop.ru-board .ru-board__stage { height:max(380px, calc(100dvh - 250px)); }
+  .ru-tabletop.ru-board--focus .ru-board__stage { height:max(360px, calc(100dvh - 150px)); }
+  .ru-board__camera-state { display:none; }
+  .ru-tabletop .ru-board__minimap { transform:scale(.78); transform-origin:bottom right; }
+}
+@media (max-width:700px) and (orientation:landscape) {
+  .ru-tabletop.ru-board .ru-board__stage,.ru-tabletop.ru-board--focus .ru-board__stage { height:max(300px, calc(100dvh - 110px)); }
+  .ru-tabletop .ru-board__controls { grid-template-columns:repeat(6,minmax(0,1fr)); }
+}
