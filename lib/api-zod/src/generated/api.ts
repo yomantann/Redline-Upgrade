@@ -25,6 +25,19 @@ export const GetExpansionAssetArtResponse = zod.unknown()
 
 
 /**
+ * @summary Public expansion card illustration
+ */
+export const getExpansionCardArtPathCardIdRegExp = new RegExp('^[a-z0-9-]+$');
+
+
+export const GetExpansionCardArtParams = zod.object({
+  "cardId": zod.coerce.string().regex(getExpansionCardArtPathCardIdRegExp)
+})
+
+export const GetExpansionCardArtResponse = zod.unknown()
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

@@ -50,6 +50,32 @@ paths:
           description: Illustration not found
         "503":
           description: Artwork storage temporarily unavailable
+  /card-art/{cardId}:
+    get:
+      operationId: getExpansionCardArt
+      tags: [Progression]
+      summary: Public expansion card illustration
+      parameters:
+        - in: path
+          name: cardId
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        "200":
+          description: Immutable WebP card illustration
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid card identifier
+        "404":
+          description: Card illustration not found
+        "503":
+          description: Artwork storage temporarily unavailable
   /healthz:
     get:
       operationId: healthCheck

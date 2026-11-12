@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import roomsRouter from "./rooms";
 import progressionRouter from "./progression";
 import assetArtRouter from "./asset-art";
+import cardArtRouter from "./card-art";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(roomsRouter);
 router.use(progressionRouter);
 router.use(assetArtRouter);
+router.use(cardArtRouter);
 
 export default router;

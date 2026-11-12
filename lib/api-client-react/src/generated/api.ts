@@ -158,6 +158,83 @@ export function useGetExpansionAssetArt<TData = Awaited<ReturnType<typeof getExp
 
 
 
+export const getGetExpansionCardArtUrl = (cardId: string,) => {
+
+
+
+
+  return `/api/card-art/${cardId}`
+}
+
+/**
+ * @summary Public expansion card illustration
+ */
+export const getExpansionCardArt = async (cardId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetExpansionCardArtUrl(cardId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExpansionCardArtQueryKey = (cardId: string,) => {
+    return [
+    `/api/card-art/${cardId}`
+    ] as const;
+    }
+
+
+export const getGetExpansionCardArtQueryOptions = <TData = Awaited<ReturnType<typeof getExpansionCardArt>>, TError = ErrorType<void>>(cardId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpansionCardArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExpansionCardArtQueryKey(cardId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExpansionCardArt>>> = ({ signal }) => getExpansionCardArt(cardId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExpansionCardArt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExpansionCardArtQueryResult = NonNullable<Awaited<ReturnType<typeof getExpansionCardArt>>>
+export type GetExpansionCardArtQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public expansion card illustration
+ */
+
+export function useGetExpansionCardArt<TData = Awaited<ReturnType<typeof getExpansionCardArt>>, TError = ErrorType<void>>(
+ cardId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpansionCardArt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExpansionCardArtQueryOptions(cardId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getHealthCheckUrl = () => {
 
 

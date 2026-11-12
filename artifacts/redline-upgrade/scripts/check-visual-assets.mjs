@@ -143,10 +143,27 @@ try {
   for (const asset of visualAssets) {
     if (asset.filePath.startsWith('api/asset-art/')) {
       assert.match(asset.filePath, /^api\/asset-art\/[a-z0-9-]+\/1$/, `asset storage route is valid: ${asset.filePath}`);
+    } else if (asset.filePath.startsWith('api/card-art/')) {
+      assert.match(asset.filePath, /^api\/card-art\/[a-z0-9-]+$/, `card storage route is valid: ${asset.filePath}`);
     } else {
       assert(existsSync(path.resolve(projectRoot, asset.filePath)), `asset path exists: ${asset.filePath}`);
     }
   }
+  const expansionCardAssets = visualAssets.filter((asset) => asset.id.startsWith('card_') && asset.filePath.startsWith('api/card-art/'));
+  assert.equal(expansionCardAssets.length, 100, 'all 100 added cards are included in the visual catalog with unique stored artwork');
+  assert.equal(new Set(expansionCardAssets.map((asset) => asset.filePath)).size, 100, 'every added card maps to its own image route');
+  const cardArtworkRoot = path.resolve(projectRoot, '../../attached_assets/generated_images/card-expansion/webp');
+  const cardArtworkHashes = [];
+  for (const asset of expansionCardAssets) {
+    const cardId = asset.filePath.replace(/^api\/card-art\//, '');
+    const artworkFile = path.join(cardArtworkRoot, `${cardId}.webp`);
+    assert(existsSync(artworkFile), `${cardId} generated image exists for its stored artwork route`);
+    const image = readFileSync(artworkFile);
+    assert.equal(image.toString('ascii', 0, 4), 'RIFF', `${cardId} illustration has a WebP RIFF header`);
+    assert.equal(image.toString('ascii', 8, 12), 'WEBP', `${cardId} illustration has a WebP signature`);
+    cardArtworkHashes.push(createHash('sha256').update(image).digest('hex'));
+  }
+  assert.equal(new Set(cardArtworkHashes).size, 100, 'all 100 added card images have unique image content');
 
   const allItemIds = [];
   const allSymbols = [];

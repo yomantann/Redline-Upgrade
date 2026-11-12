@@ -37,7 +37,8 @@ try {
   const { applySoloPlayerAction, applySoloAutomationStep, actingPlayerIndex } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
   const { getBoardSpaces } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
-  const { cards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
+  const { cards, allCards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
+  const { cardExpansion } = await vite.ssrLoadModule('/src/game/cards-expansion.ts');
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
@@ -347,6 +348,13 @@ try {
         ? cardMarkup.includes('Frostbyte received the recorded card result.')
         : cardMarkup.includes(card.description), `${deck.name} card description or result is visible to the local table`);
     }
+  }
+  for (const card of cardExpansion) {
+    const imageUrl = getCardArtworkUrl(card.id);
+    const faceMarkup = renderToStaticMarkup(React.createElement(RedlineCard, { deck: card.deck, face: 'front', card }));
+    assert(imageUrl?.endsWith(`api/card-art/${card.id}`), `${card.id} has its own public image endpoint`);
+    assert(faceMarkup.includes(card.title) && faceMarkup.includes(card.value), `${card.id} renders its card title and concise effect`);
+    assert(faceMarkup.includes(imageUrl) && faceMarkup.includes(`data-card-id="${card.id}"`), `${card.id} renders its individual illustration`);
   }
   const soloCpuAckCard = cards.find(card => card.id === 'wealth-side-contract');
   const soloCpuAckMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
@@ -875,7 +883,21 @@ try {
   const tokenCards = cards.filter(card => card.id.endsWith('upgrade-token'));
   assert.equal(tokenCards.length, 6, 'there is one Upgrade Token card in each deck');
   assert.deepEqual([...tokenCards.map(card => card.deck)].sort(), ['ai', 'fame', 'gamble', 'influence', 'lifestyle', 'wealth']);
-  const expectedDeckCounts = { wealth: 19, ai: 19, fame: 19, lifestyle: 19, influence: 17, gamble: 18 };
+  const expectedDeckCounts = { wealth: 36, ai: 36, fame: 36, lifestyle: 36, influence: 33, gamble: 34 };
+  const expectedExpansionCounts = { wealth: 17, ai: 17, fame: 17, lifestyle: 17, influence: 16, gamble: 16 };
+  assert.equal(cardExpansion.length, 100, 'the card expansion adds exactly 100 new cards');
+  assert.equal(new Set(cardExpansion.map(card => card.id)).size, 100, 'the new card IDs are unique');
+  assert.equal(new Set(cardExpansion.map(card => card.title)).size, 100, 'the new card names are unique');
+  assert.equal(new Set(cardExpansion.map(card => card.artCue)).size, 100, 'the new card art concepts are unique');
+  assert.equal(new Set(allCards.map(card => card.id)).size, allCards.length, 'all Standard, expansion, and Bio card IDs are unique');
+  const originalCardTitles = new Set(allCards.filter(card => !cardExpansion.some(expanded => expanded.id === card.id)).map(card => card.title.trim().toLowerCase()));
+  assert(cardExpansion.every(card => !originalCardTitles.has(card.title.trim().toLowerCase())), 'all 100 added names are distinct from existing Standard and Bio cards');
+  assert.equal(allCards.length, 293, 'the game catalog includes 211 Standard cards and 82 Bio cards');
+  assert(cardExpansion.every(card => card.rarity === 'STANDARD' && card.effects.length > 0), 'expansion cards use the existing rarity and effect model');
+  assert(cardExpansion.every(card => card.artworkPath === `api/card-art/${card.id}`), 'each added card maps to its own stored illustration');
+  for (const deck of decks) {
+    assert.equal(cardExpansion.filter(card => card.deck === deck.id).length, expectedExpansionCounts[deck.id], `${deck.name} receives its intended number of expansion cards`);
+  }
   for (const deck of decks) {
     assert.equal(cardsForDeck(deck.id).length, expectedDeckCounts[deck.id], `${deck.name} contains its updated cards`);
     assert.equal(deck.count, expectedDeckCounts[deck.id], `${deck.name} reports its updated card count`);
@@ -1614,7 +1636,9 @@ try {
   assert.equal(new Set(visualAssets.map(asset => asset.id)).size, visualAssets.length);
   assert(visualAssets.every(asset => asset.filePath.startsWith('api/asset-art/')
     ? /^api\/asset-art\/[a-z0-9-]+\/1$/.test(asset.filePath)
-    : existsSync(asset.filePath)));
+    : asset.filePath.startsWith('api/card-art/')
+      ? /^api\/card-art\/[a-z0-9-]+$/.test(asset.filePath)
+      : existsSync(asset.filePath)));
   const specialSpaces = BOARD_SPACES.filter(space => space.type !== 'NORMAL');
   assert(specialSpaces.length > 0 && specialSpaces.every(space => ICON_PATHS[space.icon]), 'every special board space has an available icon');
   assert(Array.from({ length: 75 }, (_, index) => getSpace(index + 1)).every(space => ICON_PATHS[space.icon] && (!space.secondaryIcon || ICON_PATHS[space.secondaryIcon])));
@@ -2917,12 +2941,15 @@ try {
     const deckCards = cardsForDeck(deck.id);
     const withImages = deckCards.filter(card => {
       const path = getCardArtworkFilePath(card.id);
+      if (path?.startsWith('api/card-art/')) {
+        return existsSync(new URL(`../../../attached_assets/generated_images/card-expansion/webp/${card.id}.webp`, import.meta.url));
+      }
       return Boolean(path && existsSync(new URL(`../public/${path}`, import.meta.url)));
     }).length;
     assert.equal(withImages, deckCards.length, `${deck.name} deck has a mapped, existing image for every draw card`);
     console.log(`${deck.name} | ${deckCards.length} | ${withImages} | ${deckCards.length - withImages}`);
   }
-  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 111 cards, ${assets.length} asset choices, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
+  console.log(`PASS: 21 portraits, 21 character ability displays, ${careers.length} career ability displays, 211 Standard cards, ${assets.length} asset choices, four-level artwork, all 75 board icons, finish-order rewards, endgame and board regressions`);
 } finally {
   await vite.close();
 }

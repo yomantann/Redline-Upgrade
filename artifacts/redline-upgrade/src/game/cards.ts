@@ -4,6 +4,7 @@ import type { DeckId } from './decks';
 import type { PlayerStat } from './player';
 import type { BoardId } from './boards';
 import { bioPartyCards } from './bio-party-cards';
+import { cardExpansion } from './cards-expansion';
 
 export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER' | 'ALL_OPPONENTS';
 export type PartyTarget = 'SELF' | 'SELECTED_PLAYER' | 'SELF_AND_SELECTED' | 'TWO_SELECTED_PLAYERS' | 'ALL_PLAYERS' | 'ALL_EXCEPT_SELF' | 'SELF_OR_ALL_PLAYERS';
@@ -76,7 +77,7 @@ const card = (
   artworkPath = `cards/${deck}/${id}.webp`,
 ): CardDefinition => ({ id, deck, title, description, effect, value, effects, artCue, rarity, artworkPath });
 
-export const cards: readonly CardDefinition[] = [
+const baseCards: readonly CardDefinition[] = [
   // WEALTH
   card('wealth-seed', 'wealth', 'Seed Capital', 'A small opening becomes a real opportunity.', 'Gain $12,500 Wealth.', '+$12,500', [stat('wealth', 12500)], 'A sealed black investment case opens to reveal a tiny gold seedling growing through scattered banknotes.'),
   card('wealth-windfall', 'wealth', 'Unexpected Return', 'An old bet finally makes its way home.', 'Gain $28,750 Wealth.', '+$28,750', [stat('wealth', 28750)], 'A dusty arcade prize machine erupts with antique coins and one absurdly oversized golden check.'),
@@ -201,10 +202,12 @@ export const cards: readonly CardDefinition[] = [
   card('gamble-upgrade-token', 'gamble', 'Wildcard Upgrade', 'A rare win: improve an owned asset, choose a missed milestone to recover, or hold.', 'Gain 1 Upgrade Token.', '+1 TOKEN', [upgradeToken()], 'A gold token lands on a roulette wheel beside a rising upgrade arrow.', 'RARE', 'cards/gamble/gamble-upgrade-token.svg'),
 ];
 
-export const allCards: readonly CardDefinition[] = [...cards, ...bioPartyCards];
+export const cards: readonly CardDefinition[] = baseCards;
+
+export const allCards: readonly CardDefinition[] = [...cards, ...cardExpansion, ...bioPartyCards];
 
 export function cardsForDeck(deck: DeckId, boardId: BoardId = 'REDLINE_UPGRADE'): readonly CardDefinition[] {
-  const boardCards = boardId === 'BIO_UPGRADE' ? bioPartyCards : boardId === 'REDLINE_UPGRADE' ? cards : [];
+  const boardCards = boardId === 'BIO_UPGRADE' ? bioPartyCards : boardId === 'REDLINE_UPGRADE' ? [...cards, ...cardExpansion] : [];
   return boardCards.filter(card => card.deck === deck);
 }
 

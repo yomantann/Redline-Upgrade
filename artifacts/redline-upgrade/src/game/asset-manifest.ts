@@ -1,6 +1,6 @@
 import { characters } from './characters';
 import { assets } from './assets';
-import { cards } from './cards';
+import { allCards } from './cards';
 import { decks } from './decks';
 import { ICON_PATHS } from './icon-paths';
 import { getAssetArtworkFilePath } from './asset-artwork';
@@ -48,13 +48,14 @@ export const visualAssets: readonly VisualAsset[] = [
     description: `Reusable ${deck.name} card back for the active ${deck.count}-card draw pile.`,
     status: 'available' as const,
   })),
-  ...cards.map(card => {
+  ...allCards.map(card => {
     const artworkPath = getCardArtworkFilePath(card.id);
+    const usesApiArtwork = artworkPath?.startsWith('api/');
     return {
       id: `card_${card.id}`, name: card.title, category: 'cards' as const,
-      filePath: artworkPath ? `public/${artworkPath}` : 'src/components/redline-card.tsx',
+      filePath: artworkPath ? `${usesApiArtwork ? '' : 'public/'}${artworkPath}` : 'src/components/redline-card.tsx',
       assetType: artworkPath ? 'image' as const : 'css-art' as const,
-      description: artworkPath ? `${card.deck} card illustration. Gameplay text remains in the card UI.` : `${card.deck} card front fallback; dedicated artwork is not mapped.`,
+      description: artworkPath ? `${card.deck} card illustration${usesApiArtwork ? ' served from asset storage' : ''}. Gameplay text remains in the card UI.` : `${card.deck} card front fallback; dedicated artwork is not mapped.`,
       status: artworkPath ? 'available' as const : 'fallback' as const,
     };
   }),
