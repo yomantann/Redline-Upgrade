@@ -43,6 +43,7 @@ const TILE_LABELS = [
 
 const ZONE_COLORS = ZONES.map(zone => zone.color);
 const BIO_TILE_SURFACE_Y = 0.70;
+const BIO_TILE_FOOTPRINT = { width: 2.16, depth: 1.98 } as const;
 const COLORS = {
   board: '#49382f',
   edge: '#60483a',
@@ -282,6 +283,62 @@ function Floor() {
   </group>;
 }
 
+function BioPerimeterDressing() {
+  const accentAt = (index: number) => ZONE_COLORS[index % ZONE_COLORS.length];
+  return <group>
+    {[-1, 1].flatMap(side => Array.from({ length: 15 }, (_, index) => {
+      const x = -25.2 + index * 3.6;
+      const accent = accentAt(index + (side > 0 ? 3 : 0));
+      return <group key={`edge-display-horizontal-${side}-${index}`} position={[x, 0.055, side * 20.35]}>
+        <mesh castShadow>
+          <boxGeometry args={[1.22, 0.12, 0.38]} />
+          <meshStandardMaterial color="#342a30" metalness={0.72} roughness={0.28} />
+        </mesh>
+        <mesh position={[0, 0.066, 0.08]}>
+          <boxGeometry args={[0.76, 0.035, 0.055]} />
+          <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.58} metalness={0.54} roughness={0.22} />
+        </mesh>
+        {[-0.43, 0.43].map(pin => <mesh key={pin} position={[pin, 0.073, -0.1]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.03, 8]} />
+          <meshStandardMaterial color="#f4d5ac" emissive="#e5a879" emissiveIntensity={0.28} metalness={0.68} roughness={0.24} />
+        </mesh>)}
+      </group>;
+    }))}
+    {[-1, 1].flatMap(side => Array.from({ length: 9 }, (_, index) => {
+      const z = -16 + index * 4;
+      const accent = accentAt(index + (side > 0 ? 1 : 5));
+      return <group key={`edge-display-vertical-${side}-${index}`} position={[side * 30.35, 0.055, z]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.38, 0.12, 1.22]} />
+          <meshStandardMaterial color="#342a30" metalness={0.72} roughness={0.28} />
+        </mesh>
+        <mesh position={[-side * 0.08, 0.066, 0]}>
+          <boxGeometry args={[0.055, 0.035, 0.76]} />
+          <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.58} metalness={0.54} roughness={0.22} />
+        </mesh>
+        {[-0.43, 0.43].map(pin => <mesh key={pin} position={[side * 0.1, 0.073, pin]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.03, 8]} />
+          <meshStandardMaterial color="#f4d5ac" emissive="#e5a879" emissiveIntensity={0.28} metalness={0.68} roughness={0.24} />
+        </mesh>)}
+      </group>;
+    }))}
+    {[-1, 1].flatMap(x => [-1, 1].map(z => <group key={`edge-pylon-${x}-${z}`} position={[x * 30.05, 0, z * 20.05]}>
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <cylinderGeometry args={[0.3, 0.4, 0.2, 8]} />
+        <meshStandardMaterial color="#3a2a31" metalness={0.78} roughness={0.24} />
+      </mesh>
+      <mesh position={[0, 0.43, 0]} castShadow>
+        <boxGeometry args={[0.2, 0.48, 0.2]} />
+        <meshStandardMaterial color="#8b514f" metalness={0.64} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.72, 0]}>
+        <sphereGeometry args={[0.14, 12, 8]} />
+        <meshStandardMaterial color="#ffd08c" emissive="#f59a63" emissiveIntensity={0.7} />
+      </mesh>
+    </group>))}
+  </group>;
+}
+
 function Walkway({ a, b, index }: { a: Point; b: Point; index: number }) {
   const from = new THREE.Vector3(a.x, 0.015, a.z);
   const to = new THREE.Vector3(b.x, 0.015, b.z);
@@ -320,19 +377,19 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
   const edgeColor = landing || active ? '#d4e981' : accent;
   return <group position={[point.x, 0, point.z]} rotation={[0, angle, 0]}>
     <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.06, 0.24, 1.9]} />
+      <boxGeometry args={[BIO_TILE_FOOTPRINT.width - 0.08, 0.24, BIO_TILE_FOOTPRINT.depth - 0.1]} />
       <meshStandardMaterial color="#101a19" metalness={0.55} roughness={0.52} />
     </mesh>
     <mesh position={[0, 0.56, 0]}>
-      <boxGeometry args={[2.12, 0.035, 1.96]} />
+      <boxGeometry args={[BIO_TILE_FOOTPRINT.width, 0.035, BIO_TILE_FOOTPRINT.depth]} />
       <meshStandardMaterial color={edgeColor} metalness={0.68} roughness={0.34} emissive={edgeColor} emissiveIntensity={0.08} />
     </mesh>
     <mesh position={[0, 0.63, 0]} castShadow receiveShadow>
-      <boxGeometry args={[1.96, 0.12, 1.8]} />
+      <boxGeometry args={[BIO_TILE_FOOTPRINT.width - 0.16, 0.12, BIO_TILE_FOOTPRINT.depth - 0.16]} />
       <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : tileColor} metalness={0.46} roughness={0.3} />
     </mesh>
     <mesh position={[0, 0.70, 0]}>
-      <planeGeometry args={[1.92, 1.68]} />
+      <planeGeometry args={[BIO_TILE_FOOTPRINT.width - 0.2, BIO_TILE_FOOTPRINT.depth - 0.28]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} depthWrite={false} />
     </mesh>
     <mesh position={[0.59, 0.78, -0.26]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -363,7 +420,7 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
     {space.type === 'GAMBLE' && <mesh position={[0, 0.72, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.63, 0.69, 8]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.35} /></mesh>}
     <mesh position={[0, 0.73, 0]} onClick={event => { event.stopPropagation(); onSelect(number); }}
       onPointerOver={event => { event.stopPropagation(); onHover(number); }} onPointerOut={() => onHover(null)}>
-      <planeGeometry args={[2.16, 1.88]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      <planeGeometry args={[BIO_TILE_FOOTPRINT.width + 0.04, BIO_TILE_FOOTPRINT.depth - 0.08]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
   </group>;
 }
@@ -592,6 +649,7 @@ export function BioBoardScene({
     <pointLight position={[0, 4, -2]} intensity={1.45} distance={15} color="#60d8d2" />
     <CameraRig focus={focusPosition ?? activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <Floor />
+    <BioPerimeterDressing />
     {BIO_ROUTE.slice(0, 75).map((point, index) => <Walkway key={`walk-${index}`} a={point} b={BIO_ROUTE[index + 1]} index={index} />)}
     {BIO_SPACES.map(space => {
       const number = space.number;

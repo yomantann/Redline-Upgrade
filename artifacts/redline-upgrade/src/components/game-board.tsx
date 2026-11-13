@@ -69,7 +69,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (preview) return portraitPhone ? 1.05 : isBio ? 1.15 : 1.25;
     return portraitPhone ? 1.3 : landscapePhone ? 1 : 1.25;
   };
-  const fitZoom = isBio ? 1.12 : 1.17;
+  const fitZoom = isBio ? 1.2 : 1.24;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(true);
   const [zoom, setZoom] = useState(fitZoom);

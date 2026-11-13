@@ -16,7 +16,7 @@ const COLORS = {
   orange: '#f96346', lime: '#d4e981', cream: '#e9e7dc', teal: '#7fbdb1',
 };
 const ZONE_COLORS = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'];
-export const SPACE_TILE_FOOTPRINT = { width: 2.08, depth: 1.92, landmarkScale: 1.02 } as const;
+export const SPACE_TILE_FOOTPRINT = { width: 2.08, depth: 1.94, landmarkScale: 1.02 } as const;
 export const START_PAD_FOOTPRINT = { width: 2.9, depth: 3.55 } as const;
 export const PHASE_FLAG_FOOTPRINT = { width: 2.5, depth: 0.12 } as const;
 export const TABLETOP_DRESSING = [
