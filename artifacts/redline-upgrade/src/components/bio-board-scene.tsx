@@ -322,20 +322,49 @@ function BioPerimeterDressing() {
         </mesh>)}
       </group>;
     }))}
-    {[-1, 1].flatMap(x => [-1, 1].map(z => <group key={`edge-pylon-${x}-${z}`} position={[x * 30.05, 0, z * 20.05]}>
-      <mesh position={[0, 0.16, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.4, 0.2, 8]} />
-        <meshStandardMaterial color="#3a2a31" metalness={0.78} roughness={0.24} />
-      </mesh>
-      <mesh position={[0, 0.43, 0]} castShadow>
-        <boxGeometry args={[0.2, 0.48, 0.2]} />
-        <meshStandardMaterial color="#8b514f" metalness={0.64} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.72, 0]}>
-        <sphereGeometry args={[0.14, 12, 8]} />
-        <meshStandardMaterial color="#ffd08c" emissive="#f59a63" emissiveIntensity={0.7} />
-      </mesh>
-    </group>))}
+    {[-1, 1].flatMap((x, cornerX) => [-1, 1].map((z, cornerZ) => {
+      const corner = cornerX * 2 + cornerZ;
+      const accent = accentAt(corner + 1);
+      return <group key={`edge-pylon-${x}-${z}`} position={[x * 30.05, 0, z * 20.05]}>
+        <mesh position={[0, 0.16, 0]} castShadow>
+          <cylinderGeometry args={[0.3, 0.4, 0.2, 8]} />
+          <meshStandardMaterial color="#3a2a31" metalness={0.78} roughness={0.24} />
+        </mesh>
+        <mesh position={[0, 0.43, 0]} castShadow>
+          <boxGeometry args={[0.2, 0.48, 0.2]} />
+          <meshStandardMaterial color="#8b514f" metalness={0.64} roughness={0.3} />
+        </mesh>
+        <mesh position={[0, 0.72, 0]}>
+          <sphereGeometry args={[0.14, 12, 8]} />
+          <meshStandardMaterial color="#ffd08c" emissive="#f59a63" emissiveIntensity={0.7} />
+        </mesh>
+        <group position={[-x * 2.1, 0.015, -z * 2.1]} rotation={[0, (x === z ? 1 : -1) * Math.PI / 4, 0]}>
+          <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[1.12, 1.28, 8]} />
+            <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.4} metalness={0.54} roughness={0.24} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.98, 8]} />
+            <meshStandardMaterial color="#302b35" metalness={0.72} roughness={0.28} />
+          </mesh>
+          {Array.from({ length: 6 }, (_, petal) => {
+            const angle = petal * Math.PI / 3;
+            return <mesh key={`petal-${petal}`} position={[Math.sin(angle) * 0.57, 0.1, Math.cos(angle) * 0.57]} rotation={[0, angle, Math.PI / 2]} scale={[0.22, 0.12, 0.58]} castShadow>
+              <sphereGeometry args={[1, 12, 8]} />
+              <meshStandardMaterial color={petal % 2 ? accent : '#eab88d'} emissive={petal % 2 ? accent : '#c97967'} emissiveIntensity={0.24} metalness={0.42} roughness={0.3} />
+            </mesh>;
+          })}
+          <mesh position={[0, 0.2, 0]} castShadow>
+            <octahedronGeometry args={[0.34, 1]} />
+            <meshStandardMaterial color="#fff0c9" emissive={accent} emissiveIntensity={0.72} metalness={0.52} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.42, 0.035, 6, 24]} />
+            <meshBasicMaterial color={accent} transparent opacity={0.9} />
+          </mesh>
+        </group>
+      </group>;
+    }))}
   </group>;
 }
 
