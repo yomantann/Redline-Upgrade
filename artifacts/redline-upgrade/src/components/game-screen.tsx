@@ -530,7 +530,7 @@ export function GameScreen() {
         activePlayerId={previewActivePlayer.playerId}
         landingPosition={null}
         movingPlayerId={isBioBoard ? previewActivePlayer.playerId : null}
-        preview={isBioBoard}
+        preview
         focusMode={boardFocus}
         onToggleFocusMode={toggleBoardFocus}
       />
@@ -737,7 +737,13 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                     });
                   }}
                 >
-                 <summary className="game-player-summary" data-testid={`button-toggle-player-status-${index}`}>
+                 <summary
+                   className="game-player-summary"
+                   data-testid={`button-toggle-player-status-${index}`}
+                   aria-expanded={playerCardOpen}
+                   aria-controls={`player-expanded-${contestant.playerId}`}
+                   aria-label={`${playerCardOpen ? 'Hide' : 'View'} ${character?.name ?? contestant.displayName}'s assets and player details`}
+                 >
                     <div className="game-player-summary-top">
                       <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? seatName(contestant) : 'YOU'}</span>
                       {index === match.turnIndex && <span className={`game-player-summary-active ${contestant.isCPU ? 'cpu' : ''}`} data-testid={`status-active-player-${index}`}>{contestant.isCPU ? `${seatName(contestant)} ACTIVE` : 'YOUR TURN'}</span>}
@@ -765,9 +771,11 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
                         );
                       })}
                    </div>
-                    <span className="game-player-summary-toggle mono">DETAILS / TAP</span>
+                    <span className="game-player-summary-toggle mono">
+                      {playerCardOpen ? 'HIDE DETAILS' : 'VIEW ASSETS + DETAILS'}
+                    </span>
                  </summary>
-                 <div className="game-player-expanded">
+                 <div className="game-player-expanded" id={`player-expanded-${contestant.playerId}`}>
                <div className={`game-player-top ${contestant.status === 'FINISHED' ? 'finished' : ''}`}>
                  <span className="game-player-index mono">0{index + 1} / {contestant.isCPU ? seatName(contestant) : 'YOU'}</span>
                   <span className="game-player-position mono">{contestant.position === 0 ? 'START' : `SPACE ${String(contestant.position).padStart(2, '0')}`}{contestant.status === 'FINISHED' ? ' / FINISHED' : ''}{finishPlace ? ` / ${ordinal(finishPlace)}` : ''}</span>

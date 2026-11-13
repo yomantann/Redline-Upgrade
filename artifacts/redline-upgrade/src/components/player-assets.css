@@ -28,9 +28,12 @@
 .player-asset.empty .player-asset-art { color:#657b68; background:#23342a; }
 .player-asset-label { padding:6px 5px 3px; color:#a9bca7; font:700 8px/1.2 'Space Mono',monospace; letter-spacing:.04em; text-transform:uppercase; }
 .player-asset-name { display:block; min-height:24px; padding:0 5px 7px; color:#ebebd9; font:700 13px/.95 'Barlow Condensed',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
+.player-asset-description { display:flex; flex-direction:column; gap:3px; padding:0 5px 6px; color:#c2d0bf; font:500 9px/1.25 'Barlow',sans-serif; overflow-wrap:anywhere; }
+.player-asset-description span + span { color:#d4e981; }
 .player-asset.empty .player-asset-name { color:#94a998; font-size:11px; line-height:1.05; overflow-wrap:normal; word-break:normal; }
 .player-asset-empty-state { color:#718575; }
 .player-token-count strong { color:#d4e981; font-size:11px; }
 .player-token-count { color:#75d8c8; }
 .player-token-count b { color:#d8fff4; }
+@media(max-width:700px) { .player-asset-description { font-size:10px; } }
 @media(max-width:600px) { .player-asset-art { height:63px; } .player-asset-name { font-size:15px; } }

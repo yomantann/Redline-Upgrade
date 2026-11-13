@@ -699,7 +699,7 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
     const target = overview ? new THREE.Vector3(pan.x, 0, pan.z) : new THREE.Vector3(p.x + pan.x, 0, p.z + pan.z);
     const width = size.width / Math.max(size.height, 1);
     const mobile = size.width <= 700;
-    const height = (overview ? Math.max(39, 56 / width) : Math.max(14.7, (mobile ? 14 : 20) / width)) / zoom;
+    const height = (overview ? Math.max(32, 56 / width) : Math.max(14.7, (mobile ? 14 : 20) / width)) / zoom;
     const c = camera as THREE.OrthographicCamera;
     const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
     c.left += (-height * width / 2 - c.left) * factor;

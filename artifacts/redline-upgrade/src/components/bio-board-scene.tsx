@@ -514,7 +514,7 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: { focus: number
     // Bio's ~63×43 tabletop is larger than Standard's; size the orthographic
     // frustum to the actual Bio bounds while keeping the same follow angle.
     const mobile = size.width <= 700;
-    const frustumHeight = (overview ? Math.max(47, 70 / aspect) : Math.max(11.5, (mobile ? 14 : 17) / aspect)) / zoom;
+    const frustumHeight = (overview ? Math.max(38, 70 / aspect) : Math.max(11.5, (mobile ? 14 : 17) / aspect)) / zoom;
     const orthographic = camera as THREE.OrthographicCamera;
     const factor = !initialized.current || reduceMotion ? 1 : Math.min(1, delta * (overview ? 3 : 5));
     orthographic.left += (-frustumHeight * aspect / 2 - orthographic.left) * factor;

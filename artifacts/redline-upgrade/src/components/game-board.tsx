@@ -66,12 +66,13 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (typeof window === 'undefined') return 1.15;
     const portraitPhone = window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
     const landscapePhone = window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches;
-    if (preview) return portraitPhone ? 1.05 : isBio ? 1.15 : 1.4;
-    return portraitPhone ? 1.3 : landscapePhone ? 1 : 1.15;
+    if (preview) return portraitPhone ? 1.05 : isBio ? 1.15 : 1.25;
+    return portraitPhone ? 1.3 : landscapePhone ? 1 : 1.25;
   };
+  const fitZoom = isBio ? 1.08 : 1.12;
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [overview, setOverview] = useState(false);
-  const [zoom, setZoom] = useState(defaultFollowZoom);
+  const [overview, setOverview] = useState(preview);
+  const [zoom, setZoom] = useState(() => preview ? fitZoom : defaultFollowZoom());
   const [followActive, setFollowActive] = useState(true);
   const [target, setTarget] = useState<CameraTarget>({ kind: 'active' });
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
@@ -147,7 +148,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   }, [focusMode, onToggleFocusMode]);
 
   /** Fit: whole board in frame. Reset: back to the default chase camera on the active pawn. */
-  const fitBoard = () => { setOverview(true); setZoom(1); setPan({ x: 0, z: 0 }); };
+  const fitBoard = () => { setOverview(true); setZoom(fitZoom); setPan({ x: 0, z: 0 }); };
   const resetCamera = () => { setOverview(false); setTarget({ kind: 'active' }); setFollowActive(true); setPan({ x: 0, z: 0 }); setZoom(defaultFollowZoom()); };
   const focusPlayer = (playerId: string) => {
     setOverview(false); setPan({ x: 0, z: 0 });

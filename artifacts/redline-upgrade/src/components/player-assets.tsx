@@ -60,6 +60,12 @@ export function PlayerAssets({
               </div>
               <div className="player-asset-label">{categoryLabel}</div>
               <strong className="player-asset-name">{asset?.name ?? empty}</strong>
+              {asset && (
+                <div className="player-asset-description">
+                  <span>{asset.description}</span>
+                  {asset.passiveEffect && <span>{asset.passiveEffect}</span>}
+                </div>
+              )}
               {asset
                   ? <span className="player-asset-level">LEVEL {level} · CASH OUT +{formatMoney(cashOutValue)}</span>
                 : <span className="player-asset-level player-asset-empty-state">NOT ACQUIRED</span>}

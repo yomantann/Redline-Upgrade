@@ -246,7 +246,7 @@
 .game-player-wealth-heading .player-stat-change-stack { align-items:flex-end; max-width:58%; text-align:right; }
 .game-player-wealth-heading .player-stat-change-pulse { flex-direction:column; align-items:flex-end; gap:1px; white-space:normal; }
 .player-stat-changing { position:relative; }
-.game-player-summary-toggle { align-self:end; color:#aebfac; font-size:10px; text-align:right; white-space:nowrap; }
+.game-player-summary-toggle { align-self:end; color:#d4e981; font-size:9px; font-weight:700; text-align:right; white-space:nowrap; }
 .game-player-expanded { display:flex; flex-direction:column; gap:7px; border-top:1px solid #405045; padding-bottom:5px; }
 .game-player-expanded .game-player-top { padding-top:12px; }
 @media(max-width:1000px) { .game-tabletop { grid-template-columns:1fr; } .game-tabletop > .card-draw-panel { grid-row:auto; } .game-tabletop:has(.card-draw-panel) > .game-tabletop-board,.game-tabletop:has(.card-draw-panel) > .tabletop-decks { grid-row:auto; } .tabletop-decks { width:100%; } }
