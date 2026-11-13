@@ -12,11 +12,11 @@ import { getSpaceVisual } from './board-space-visuals';
 type Point = { x: number; z: number };
 const ZONES = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 const COLORS = {
-  deck: '#172521', side: '#0c1615', rim: '#536557', face: '#273831',
+  deck: '#263b2e', side: '#0c1615', rim: '#536557', face: '#304638',
   orange: '#f96346', lime: '#d4e981', cream: '#e9e7dc', teal: '#7fbdb1',
 };
 const ZONE_COLORS = ['#9eae83', '#a6c1a0', '#82b7b6', '#d6a76f', '#f18463'];
-export const SPACE_TILE_FOOTPRINT = { width: 2.06, depth: 1.9, landmarkScale: 1.02 } as const;
+export const SPACE_TILE_FOOTPRINT = { width: 2.08, depth: 1.92, landmarkScale: 1.02 } as const;
 export const START_PAD_FOOTPRINT = { width: 2.9, depth: 3.55 } as const;
 export const PHASE_FLAG_FOOTPRINT = { width: 2.5, depth: 0.12 } as const;
 export const TABLETOP_DRESSING = [
@@ -555,7 +555,7 @@ function CircuitBoard() {
     </mesh>
     <mesh position={[0, 0.105, 0]} receiveShadow>
       <boxGeometry args={[46.8, 0.035, 30.6]} />
-      <meshStandardMaterial color="#22342c" metalness={0.28} roughness={0.76} />
+      <meshStandardMaterial color="#304638" metalness={0.28} roughness={0.76} />
     </mesh>
     {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`bolt-${x}-${z}`} position={[x * 22.45, 0.18, z * 14.65]}>
       <cylinderGeometry args={[0.12, 0.12, 0.035, 12]} />
@@ -583,7 +583,7 @@ function CircuitBoard() {
     </mesh>)}
     <mesh position={[0, -0.92, 0]} receiveShadow>
       <boxGeometry args={[54, 0.08, 37]} />
-      <meshStandardMaterial color="#101816" roughness={0.9} />
+      <meshStandardMaterial color="#1b2b21" roughness={0.9} />
     </mesh>
     {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`${x}-${z}`} position={[x * 20.7, -0.93, z * 13.2]} castShadow>
       <boxGeometry args={[2.2, 0.25, 1.5]} /><meshStandardMaterial color="#0a100f" metalness={0.5} />
@@ -720,7 +720,7 @@ export function BoardScene({ players, activePlayerId, focusPosition, finishOrder
 }) {
   const activePosition = players.find(p => p.playerId === activePlayerId)?.position ?? 0;
   return <>
-    <color attach="background" args={['#101917']} />
+    <color attach="background" args={['#263b2e']} />
     <ambientLight intensity={1.4} />
     <hemisphereLight args={['#bcd2c2', '#16201d', 1.8]} />
     <directionalLight position={[-12, 25, 17]} intensity={2.6} color="#ffe4cb" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-29} shadow-camera-right={29} shadow-camera-top={23} shadow-camera-bottom={-23} shadow-bias={-0.0005} />

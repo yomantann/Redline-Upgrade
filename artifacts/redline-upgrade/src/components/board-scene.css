@@ -260,7 +260,14 @@
     radial-gradient(ellipse at 50% 42%, rgba(119, 145, 101, .2), transparent 42%),
     linear-gradient(115deg, rgba(249, 99, 70, .035), transparent 32%, rgba(136, 198, 194, .04) 72%, transparent),
     repeating-linear-gradient(90deg, transparent 0 47px, rgba(206, 224, 184, .022) 48px, transparent 49px),
-    #101816;
+    #263b2e;
+}
+.ru-board--bio .ru-board__stage {
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(235, 157, 111, .2), transparent 46%),
+    linear-gradient(115deg, rgba(243, 107, 157, .035), transparent 34%, rgba(248, 184, 94, .08) 72%, transparent),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(244, 207, 174, .028) 48px, transparent 49px),
+    #49382f;
 }
 .ru-board__stage::before {
   inset: 15px;
@@ -282,7 +289,13 @@
   background:
     radial-gradient(ellipse at 50% 46%, rgba(106, 136, 93, .22), transparent 48%),
     linear-gradient(120deg, rgba(249, 99, 70, .04), transparent 36%, rgba(136, 198, 194, .05)),
-    #101b17;
+    #263b2e;
+}
+.ru-board--bio .ru-board__static {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(245, 163, 116, .24), transparent 48%),
+    linear-gradient(120deg, rgba(243, 107, 157, .05), transparent 36%, rgba(248, 184, 94, .08)),
+    #49382f;
 }
 .ru-board__static-svg {
   filter: drop-shadow(0 18px 13px rgba(0, 5, 3, .4));

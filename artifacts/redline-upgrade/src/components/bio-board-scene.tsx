@@ -44,9 +44,9 @@ const TILE_LABELS = [
 const ZONE_COLORS = ZONES.map(zone => zone.color);
 const BIO_TILE_SURFACE_Y = 0.70;
 const COLORS = {
-  board: '#18232b',
-  edge: '#273942',
-  metal: '#47535b',
+  board: '#49382f',
+  edge: '#60483a',
+  metal: '#b77a57',
   tile: '#24333a',
   cream: '#f3ead7',
   muted: '#9eafb2',
@@ -253,6 +253,32 @@ function Floor() {
       <boxGeometry args={[60, 0.28, 0.24]} />
       <meshStandardMaterial color={COLORS.metal} metalness={0.72} roughness={0.26} />
     </mesh>)}
+    {/* A warm metal perimeter with small illuminated inlays makes the tabletop edge
+        read clearly without changing the route or the play-space geometry. */}
+    {[-1, 1].map(side => <group key={`perimeter-x-${side}`}>
+      <mesh position={[side * 30.35, 0.02, 0]}>
+        <boxGeometry args={[0.14, 0.08, 39.8]} />
+        <meshStandardMaterial color="#d58a60" emissive="#d58a60" emissiveIntensity={0.18} metalness={0.72} roughness={0.28} />
+      </mesh>
+      <mesh position={[side * 29.98, 0.025, 0]}>
+        <boxGeometry args={[0.045, 0.025, 39.5]} />
+        <meshStandardMaterial color="#f2c18c" emissive="#e9a978" emissiveIntensity={0.34} metalness={0.6} roughness={0.24} />
+      </mesh>
+    </group>)}
+    {[-1, 1].map(side => <group key={`perimeter-z-${side}`}>
+      <mesh position={[0, 0.02, side * 20.35]}>
+        <boxGeometry args={[59.8, 0.08, 0.14]} />
+        <meshStandardMaterial color="#d58a60" emissive="#d58a60" emissiveIntensity={0.18} metalness={0.72} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, 0.025, side * 19.98]}>
+        <boxGeometry args={[59.5, 0.025, 0.045]} />
+        <meshStandardMaterial color="#f2c18c" emissive="#e9a978" emissiveIntensity={0.34} metalness={0.6} roughness={0.24} />
+      </mesh>
+    </group>)}
+    {[-1, 1].flatMap(x => [-1, 1].map(z => <mesh key={`perimeter-corner-${x}-${z}`} position={[x * 30.05, 0.075, z * 20.05]} castShadow>
+      <cylinderGeometry args={[0.34, 0.34, 0.09, 8]} />
+      <meshStandardMaterial color="#e0a274" emissive="#cb7856" emissiveIntensity={0.28} metalness={0.76} roughness={0.24} />
+    </mesh>))}
   </group>;
 }
 
@@ -294,19 +320,19 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
   const edgeColor = landing || active ? '#d4e981' : accent;
   return <group position={[point.x, 0, point.z]} rotation={[0, angle, 0]}>
     <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2, 0.24, 1.84]} />
+      <boxGeometry args={[2.06, 0.24, 1.9]} />
       <meshStandardMaterial color="#101a19" metalness={0.55} roughness={0.52} />
     </mesh>
     <mesh position={[0, 0.56, 0]}>
-      <boxGeometry args={[2.06, 0.035, 1.9]} />
+      <boxGeometry args={[2.12, 0.035, 1.96]} />
       <meshStandardMaterial color={edgeColor} metalness={0.68} roughness={0.34} emissive={edgeColor} emissiveIntensity={0.08} />
     </mesh>
     <mesh position={[0, 0.63, 0]} castShadow receiveShadow>
-      <boxGeometry args={[1.9, 0.12, 1.74]} />
+      <boxGeometry args={[1.96, 0.12, 1.8]} />
       <meshStandardMaterial color={landing ? '#493446' : active ? '#34464b' : tileColor} metalness={0.46} roughness={0.3} />
     </mesh>
     <mesh position={[0, 0.70, 0]}>
-      <planeGeometry args={[1.86, 1.62]} />
+      <planeGeometry args={[1.92, 1.68]} />
       <meshBasicMaterial map={texture} transparent toneMapped={false} depthWrite={false} />
     </mesh>
     <mesh position={[0.59, 0.78, -0.26]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -337,7 +363,7 @@ function SpaceTile({ space, point, accent, active, landing, onSelect, onHover }:
     {space.type === 'GAMBLE' && <mesh position={[0, 0.72, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.63, 0.69, 8]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.35} /></mesh>}
     <mesh position={[0, 0.73, 0]} onClick={event => { event.stopPropagation(); onSelect(number); }}
       onPointerOver={event => { event.stopPropagation(); onHover(number); }} onPointerOut={() => onHover(null)}>
-      <planeGeometry args={[2.1, 1.82]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      <planeGeometry args={[2.16, 1.88]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
   </group>;
 }
@@ -556,7 +582,7 @@ export function BioBoardScene({
     return grouped;
   }, [players]);
   return <>
-    <color attach="background" args={['#111a20']} />
+    <color attach="background" args={['#49382f']} />
     <ambientLight intensity={1.4} />
     <hemisphereLight args={['#e1d4c6', '#18242b', 1.8]} />
     <directionalLight position={[-14, 24, 18]} intensity={2.6} color="#ffe3c1" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={24} shadow-camera-bottom={-24} shadow-bias={-0.0004} />

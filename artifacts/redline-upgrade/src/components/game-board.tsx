@@ -69,11 +69,11 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (preview) return portraitPhone ? 1.05 : isBio ? 1.15 : 1.25;
     return portraitPhone ? 1.3 : landscapePhone ? 1 : 1.25;
   };
-  const fitZoom = isBio ? 1.08 : 1.12;
+  const fitZoom = isBio ? 1.12 : 1.17;
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [overview, setOverview] = useState(preview);
-  const [zoom, setZoom] = useState(() => preview ? fitZoom : defaultFollowZoom());
-  const [followActive, setFollowActive] = useState(true);
+  const [overview, setOverview] = useState(true);
+  const [zoom, setZoom] = useState(fitZoom);
+  const [followActive, setFollowActive] = useState(false);
   const [target, setTarget] = useState<CameraTarget>({ kind: 'active' });
   const [wheelZoomEnabled, setWheelZoomEnabled] = useState(false);
   const [pan, setPan] = useState({ x: 0, z: 0 });
