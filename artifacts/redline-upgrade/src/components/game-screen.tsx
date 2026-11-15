@@ -223,6 +223,7 @@ export function GameScreen() {
   const [playerCardDisclosure, setPlayerCardDisclosure] = useState<Record<string, PlayerCardDisclosure>>({});
   const [decisionInspection, setDecisionInspection] = useState<'choice' | 'board' | 'players'>('choice');
   const [boardFocus, setBoardFocus] = useState(false);
+  const [rollOnBoard, setRollOnBoard] = useState(false);
   const toggleBoardFocus = useCallback(() => setBoardFocus(value => !value), []);
   useEffect(() => {
     if (!boardFocus) return;
@@ -563,6 +564,37 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
     : undefined;
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
+  const dicePanel = (
+    <aside className={`game-dice-panel${rollOnBoard ? ' game-dice-panel--centered' : ''}`} aria-label="Turn status and dice">
+      <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
+        <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
+        <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
+        <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
+        {match.round === 1 && !active.isCPU && match.phase === 'ready' && <details className="how-to-roll" data-testid="text-how-to-roll">
+          <summary>HOW TO WIN / Highest final score wins.</summary>
+          <ul>
+            <li>Final score combines Wealth, choice-adjusted assets, Attribute Points, and bonuses.</li>
+            <li>Each Attribute leader earns $50,000; ties go to the player who finished first.</li>
+            <li>Finish rewards: $100,000 / $75,000 / $50,000 / $25,000.</li>
+            <li>Upgrade Tokens convert to Credits separately from the final score.</li>
+            <li>Press ROLL to move with two D4s.</li>
+          </ul>
+        </details>}
+        {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
+      </div>
+      <DiceRoller
+        roll={roll}
+        phase={match.phase}
+        disabled={active.isCPU || match.phase !== 'ready'}
+        disabledReason={rollDisabledReason}
+        onRoll={rollDice}
+        onRollComplete={onRollComplete}
+        rollerName={active.displayName}
+        isHuman={!active.isCPU}
+        buttonTestId="button-roll-top"
+      />
+    </aside>
+  );
 
   if (match.phase === 'complete') {
     return (
@@ -842,45 +874,29 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
       </section>
 
        {(match.phase !== 'decision' || pending?.kind === 'CARD' || decisionInspection === 'board') && <div className="game-tabletop">
-       <div className="game-tabletop-board"><GameBoard
-        players={match.players}
-        activePlayerId={active.playerId}
-        landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
-        movingPlayerId={match.phase === 'moving' ? active.playerId : null}
-        focusMode={boardFocus}
-        onToggleFocusMode={toggleBoardFocus}
-        finishOrder={match.finishOrder}
-         boardId={match.boardId}
-       /></div>
-        <aside className="game-dice-panel" aria-label="Turn status and dice">
-          <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
-            <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
-            <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
-            <small>{currentCharacter?.name} · {match.phase === 'ready' ? (active.isCPU ? 'Preparing to roll' : 'Ready to roll') : match.phase === 'rolling' ? 'Dice in motion' : match.phase === 'reveal' ? 'Roll resolved' : match.phase === 'moving' ? `${match.stepsRemaining} steps remaining` : match.phase === 'decision' ? 'Card draw in progress' : 'Space reached'}</small>
-            {match.round === 1 && !active.isCPU && match.phase === 'ready' && <details className="how-to-roll" data-testid="text-how-to-roll">
-              <summary>HOW TO WIN / Highest final score wins.</summary>
-              <ul>
-                <li>Final score combines Wealth, choice-adjusted assets, Attribute Points, and bonuses.</li>
-                <li>Each Attribute leader earns $50,000; ties go to the player who finished first.</li>
-                <li>Finish rewards: $100,000 / $75,000 / $50,000 / $25,000.</li>
-                <li>Upgrade Tokens convert to Credits separately from the final score.</li>
-                <li>Press ROLL to move with two D4s.</li>
-              </ul>
-            </details>}
-            {rollDisabledReason && <small className="roll-disabled-reason">ROLL UNAVAILABLE / {rollDisabledReason}</small>}
-          </div>
-          <DiceRoller
-            roll={roll}
-            phase={match.phase}
-            disabled={active.isCPU || match.phase !== 'ready'}
-            disabledReason={rollDisabledReason}
-            onRoll={rollDice}
-            onRollComplete={onRollComplete}
-            rollerName={active.displayName}
-            isHuman={!active.isCPU}
-            buttonTestId="button-roll-top"
+        <div className="game-tabletop-board">
+          <GameBoard
+            players={match.players}
+            activePlayerId={active.playerId}
+            landingPosition={match.phase === 'landed' ? landing?.space.number ?? null : null}
+            movingPlayerId={match.phase === 'moving' ? active.playerId : null}
+            focusMode={boardFocus}
+            onToggleFocusMode={toggleBoardFocus}
+            finishOrder={match.finishOrder}
+            boardId={match.boardId}
           />
-        </aside>
+          <button
+            type="button"
+            className="game-roll-location-toggle mono"
+            data-testid="button-toggle-roll-overlay"
+            aria-pressed={rollOnBoard}
+            aria-label={rollOnBoard ? 'Move dice controls back beside the board' : 'Show dice controls in the middle of the board'}
+            onClick={() => setRollOnBoard(value => !value)}
+          >
+            {rollOnBoard ? 'DOCK ROLL PANEL' : 'ROLL ON BOARD'}
+          </button>
+        </div>
+        {dicePanel}
        <CardTabletop
          inlineDecision
          activeDeck={match.phase === 'decision' && pending?.kind === 'CARD' ? pending.deck : undefined}
