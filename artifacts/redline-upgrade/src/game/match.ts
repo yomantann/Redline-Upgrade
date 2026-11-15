@@ -27,6 +27,18 @@ import {
 import { evaluateEndGameTitle } from './endgame-titles';
 import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } from './boards';
+import {
+  createHauntedBoardState,
+  expireHauntedBoardChanges,
+  HAUNTED_FINISH_SPACE,
+  HAUNTED_FORKS,
+  getHauntedNextSpaces,
+  getHauntedShortestDistance,
+  getHauntedSpaceChange,
+  validateHauntedRouteGraph,
+  type HauntedBoardState,
+} from './haunted-board';
+import { CURSED_DOOR_CHOICES, getHauntedDoorOutcome, type HauntedDoorChange, type HauntedDoorId } from './haunted-encounters';
 
 export type MatchPlayer = ReturnType<typeof createPlayer> & {
   isCPU: boolean;
@@ -34,6 +46,8 @@ export type MatchPlayer = ReturnType<typeof createPlayer> & {
   slot: number;
   status: PlayerMatchStatus;
   endgame: EndgameState | null;
+  /** Visited graph nodes, used only by Haunted for branching movement and backtracking. */
+  hauntedPath?: number[];
 };
 export type EndgameAttribute = 'aiSkill' | 'fame' | 'lifestyle' | 'influence';
 export interface EndgameAttributeBonus {
@@ -102,6 +116,8 @@ export interface Landing { playerIndex: number; space: BoardSpace }
 export interface WealthEvent { id: number; playerIndex: number; amount: number; kind: 'PAYDAY' | 'PURCHASE' | 'FINISH_BONUS'; space: number }
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type BoardPendingDecision =
+  | { kind: 'ROUTE'; space: number; options: number[] }
+  | { kind: 'CURSED_DOOR'; space: number; stage: 'choice' | 'reveal'; choiceIds?: HauntedDoorId[]; chosenDoorId?: HauntedDoorId; outcomeId?: string; outcomeTitle?: string; reveal?: string }
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
   | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'choice' | 'draw' | 'resolved'; offeredCardIds?: string[] }
   | { kind: 'SALARY_GATE'; space: number; previousPosition: number }
@@ -126,6 +142,8 @@ export interface Match {
   /** Stable identifiers and host metadata form the future multiplayer/session boundary. */
   matchId: string;
   boardId: BoardId;
+  /** Canonical game-wide changes for Haunted; absent on Standard and Bio matches. */
+  hauntedBoard?: HauntedBoardState;
   mode: GameMode;
   hostPlayerId: string;
   players: MatchPlayer[];
@@ -347,6 +365,9 @@ function resetTurnScopedState(match: Match): Match {
   return {
     ...match,
     rewardModifiers,
+    ...(match.boardId === 'HAUNTED_UPGRADE'
+      ? { hauntedBoard: expireHauntedBoardChanges(match.hauntedBoard, match.turnCounter) }
+      : {}),
   };
 }
 
@@ -424,11 +445,13 @@ function buildMatch(boardId: BoardId, mode: GameMode, setups: MatchSeatSetup[]):
       slot,
       status: 'ACTIVE' as const,
       endgame: null,
+      hauntedPath: boardId === 'HAUNTED_UPGRADE' ? [0] : undefined,
     };
   });
   const match: Match = {
     matchId: crypto.randomUUID(),
     boardId,
+    hauntedBoard: boardId === 'HAUNTED_UPGRADE' ? createHauntedBoardState() : undefined,
     mode,
     hostPlayerId: players[0].playerId,
     players,
@@ -476,6 +499,9 @@ export type MatchAction =
   | { type: 'REVEAL' }
   | { type: 'MOVE' }
   | { type: 'STEP' }
+  | { type: 'CHOOSE_ROUTE'; space: number }
+  | { type: 'CHOOSE_DOOR'; doorId: HauntedDoorId }
+  | { type: 'ACKNOWLEDGE_DOOR' }
   | { type: 'CHOOSE_ASSET_CATEGORY'; category: 'pet' | 'investment' }
   | { type: 'BUY_ASSET'; assetId: string }
   | { type: 'UPGRADE_ASSET'; assetId: string }
@@ -583,8 +609,41 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
       effectId: space.effectId,
     });
   }
+  if (space.type === 'CURSED_DOOR' && match.boardId === 'HAUNTED_UPGRADE') {
+    return emit({
+      ...match,
+      phase: 'decision',
+      stepsRemaining: 0,
+      lastLanding: landing,
+      pending: {
+        kind: 'CURSED_DOOR',
+        space: space.number,
+        stage: 'choice',
+        choiceIds: CURSED_DOOR_CHOICES.map(choice => choice.id),
+      },
+    }, drafts);
+  }
+  let landedMatch = match;
+  if (match.boardId === 'HAUNTED_UPGRADE' && space.type === 'NORMAL') {
+    const change = getHauntedSpaceChange(match.hauntedBoard, space.number, match.turnCounter);
+    if (change?.kind === 'CURSE_SPACE') {
+      const currentPlayer = match.players[match.turnIndex];
+      const previousWealth = currentPlayer.wealth;
+      const newWealth = Math.max(0, previousWealth - 20_000);
+      landedMatch = {
+        ...match,
+        players: match.players.map((candidate, index) => index === match.turnIndex
+          ? { ...candidate, wealth: newWealth }
+          : candidate),
+      };
+      addNativeStatChange(match, drafts, match.turnIndex, 'wealth', previousWealth, newWealth, 'Living Board curse');
+      drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, spaceNumber: space.number, reason: 'Living Board curse', description: `${currentPlayer.displayName} lost $20,000 at cursed space ${space.number}.` });
+    } else if (change?.kind === 'SAFE_SPACE') {
+      drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, spaceNumber: space.number, reason: 'Living Board safe passage', description: `${match.players[match.turnIndex].displayName} passed safely through space ${space.number}.` });
+    }
+  }
   if (slot && !match.players[match.turnIndex].equipment[slot]) {
-    return emit({ ...match, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
+    return emit({ ...landedMatch, phase: 'decision', stepsRemaining: 0, lastLanding: landing, pending: { kind: 'ASSET', slot, space: space.number, offeredAssetIds: slot === 'companion' ? undefined : drawAssets(slot) } }, drafts);
   }
   if (space.deck) {
     const gamble = space.deck === 'gamble'
@@ -598,7 +657,7 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
       drafts.push({ type: 'CARD_DRAW', playerIndex: match.turnIndex, spaceNumber: space.number, deck: space.deck, cardId });
     }
     return emit({
-      ...match,
+      ...landedMatch,
       cardPiles: draw.cardPiles,
       phase: 'decision',
       stepsRemaining: 0,
@@ -606,7 +665,122 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
       pending: { kind: 'CARD', deck: space.deck, space: space.number, cardId: draw.cardId, stage: offeredCardIds ? 'choice' : 'draw', offeredCardIds },
     }, drafts);
   }
-  return emit({ ...match, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
+  return emit({ ...landedMatch, phase: 'landed', stepsRemaining: 0, lastLanding: landing, pending: null }, drafts);
+}
+
+function applyHauntedBoardChange(match: Match, change: HauntedDoorChange): [Match, string] {
+  const board = expireHauntedBoardChanges(match.hauntedBoard, match.turnCounter);
+  const expiresAtTurn = match.turnCounter + 3;
+  let boardChange: HauntedBoardState['changes'][number] | null = null;
+  if (change === 'OPEN_SHORTCUT') {
+    const alreadyOpen = board.changes.some(item => item.kind === 'OPEN_SHORTCUT' && item.from === 26 && item.to === 30);
+    if (alreadyOpen) return [{ ...match, hauntedBoard: board }, 'The hidden gallery passage is already open.'];
+    boardChange = { id: `haunted-${match.eventCursor + 1}-shortcut`, kind: 'OPEN_SHORTCUT', from: 26, to: 30, expiresAtTurn: null, label: 'THE WEST GALLERY SHORTCUT IS OPEN' };
+  } else if (change === 'CLOSE_ROUTE') {
+    const availableForks = HAUNTED_FORKS.filter(fork => getHauntedNextSpaces(fork.space, board, match.turnCounter).length > 1);
+    if (!availableForks.length) {
+      return applyHauntedBoardChange(match, 'OPEN_SHORTCUT');
+    }
+    const fork = availableForks[Math.floor(Math.random() * availableForks.length)];
+    const options = getHauntedNextSpaces(fork.space, board, match.turnCounter);
+    const to = options[Math.floor(Math.random() * options.length)];
+    boardChange = { id: `haunted-${match.eventCursor + 1}-closed-${fork.space}-${to}`, kind: 'CLOSE_ROUTE', from: fork.space, to, expiresAtTurn, label: `THE PASSAGE FROM ${fork.space} TO ${to} IS SEALED` };
+  } else if (change === 'CURSE_SPACE') {
+    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72]
+      .filter(space => !getHauntedSpaceChange(board, space, match.turnCounter));
+    const space = candidates[Math.floor(Math.random() * candidates.length)] ?? 24;
+    boardChange = { id: `haunted-${match.eventCursor + 1}-curse-${space}`, kind: 'CURSE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS CURSED` };
+  } else {
+    const currentCurse = board.changes.find(item => item.kind === 'CURSE_SPACE' && (item.expiresAtTurn === null || item.expiresAtTurn > match.turnCounter));
+    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72];
+    const space = currentCurse?.kind === 'CURSE_SPACE'
+      ? currentCurse.space
+      : candidates.find(candidate => !getHauntedSpaceChange(board, candidate, match.turnCounter)) ?? 24;
+    boardChange = { id: `haunted-${match.eventCursor + 1}-safe-${space}`, kind: 'SAFE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS SAFE` };
+  }
+  const nextBoard: HauntedBoardState = { changes: [...board.changes, boardChange] };
+  if (validateHauntedRouteGraph(nextBoard, match.turnCounter).length
+    || getHauntedShortestDistance(0, HAUNTED_FINISH_SPACE, nextBoard, match.turnCounter) === null) {
+    return [{ ...match, hauntedBoard: board }, 'The estate rejects the change; every route to the finish remains open.'];
+  }
+  return [{ ...match, hauntedBoard: nextBoard }, boardChange.label];
+}
+
+function resolveHauntedDoor(match: Match, doorId: HauntedDoorId): Match {
+  const pending = match.pending;
+  const player = match.players[match.turnIndex];
+  if (match.boardId !== 'HAUNTED_UPGRADE' || match.phase !== 'decision' || pending?.kind !== 'CURSED_DOOR'
+    || pending.stage !== 'choice' || !pending.choiceIds?.includes(doorId) || !player) return match;
+  const outcome = getHauntedDoorOutcome(doorId);
+  let players = [...match.players];
+  let hauntedBoard = match.hauntedBoard ?? createHauntedBoardState();
+  const drafts: EventDraft[] = [];
+  const updateStat = (playerIndex: number, stat: PlayerStat, amount: number, reason: string) => {
+    const current = players[playerIndex];
+    if (!current) return;
+    const previousValue = current[stat];
+    const newValue = Math.max(0, previousValue + amount);
+    players[playerIndex] = { ...current, [stat]: newValue };
+    addNativeStatChange(match, drafts, playerIndex, stat, previousValue, newValue, reason);
+  };
+  switch (outcome.effect.kind) {
+    case 'STAT':
+      updateStat(match.turnIndex, outcome.effect.stat, outcome.effect.amount, `Cursed Door / ${outcome.title}`);
+      break;
+    case 'GROUP_STAT':
+      players.forEach((candidate, index) => {
+        if (candidate.status === 'ACTIVE') updateStat(index, outcome.effect.stat, outcome.effect.amount, `Cursed Door / ${outcome.title}`);
+      });
+      break;
+    case 'TRANSFER': {
+      const eligible = players
+        .map((candidate, index) => ({ candidate, index }))
+        .filter(item => item.index !== match.turnIndex && item.candidate.status === 'ACTIVE')
+        .sort((a, b) => outcome.effect.target === 'WEALTH_LEADER'
+          ? b.candidate.wealth - a.candidate.wealth || a.index - b.index
+          : a.candidate.wealth - b.candidate.wealth || a.index - b.index);
+      const target = eligible[0];
+      if (target) {
+        const amount = Math.min(outcome.effect.amount, target.candidate.wealth);
+        updateStat(target.index, 'wealth', -amount, `Cursed Door transfer to ${player.displayName}`);
+        updateStat(match.turnIndex, 'wealth', amount, `Cursed Door transfer from ${target.candidate.displayName}`);
+      }
+      break;
+    }
+    case 'TOKEN':
+      players[match.turnIndex] = { ...players[match.turnIndex], upgradeTokens: players[match.turnIndex].upgradeTokens + 1 };
+      drafts.push({ type: 'UPGRADE_TOKEN_GAINED', playerIndex: match.turnIndex, delta: 1, reason: 'Cursed Door reward', description: `${player.displayName} gained 1 Upgrade Token from the Cursed Door.` });
+      break;
+    case 'SKIP_TURN':
+      players[match.turnIndex] = { ...players[match.turnIndex], skipTurns: players[match.turnIndex].skipTurns + 1 };
+      drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, reason: 'Cursed Door / temporary restriction', description: `${player.displayName} must skip their next turn after opening ${outcome.title}.` });
+      break;
+    case 'BOARD_CHANGE': {
+      const changed = applyHauntedBoardChange({ ...match, hauntedBoard }, outcome.effect.change);
+      hauntedBoard = changed[0].hauntedBoard ?? hauntedBoard;
+      drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, reason: 'Living Board', description: changed[1] });
+      break;
+    }
+  }
+  const revealPending: BoardPendingDecision = {
+    kind: 'CURSED_DOOR',
+    space: pending.space,
+    stage: 'reveal',
+    choiceIds: pending.choiceIds,
+    chosenDoorId: doorId,
+    outcomeId: outcome.id,
+    outcomeTitle: outcome.title,
+    reveal: outcome.reveal,
+  };
+  drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, spaceNumber: pending.space, reason: outcome.title, description: `${player.displayName} opened ${doorId.toLowerCase()} door: ${outcome.reveal}` });
+  return emit({
+    ...match,
+    players,
+    hauntedBoard,
+    phase: 'decision',
+    stepsRemaining: 0,
+    pending: revealPending,
+  }, drafts);
 }
 
 function resume(match: Match): Match {
@@ -1339,6 +1513,22 @@ function autoDecide(match: Match): Match {
     return resolveEndgameChoice(match, choice);
   }
   if (match.phase !== 'decision' || !pending) return match;
+  if (pending.kind === 'ROUTE') {
+    const chosenSpace = [...pending.options].sort((a, b) =>
+      (getHauntedShortestDistance(a, HAUNTED_FINISH_SPACE, match.hauntedBoard, match.turnCounter) ?? Number.MAX_SAFE_INTEGER)
+      - (getHauntedShortestDistance(b, HAUNTED_FINISH_SPACE, match.hauntedBoard, match.turnCounter) ?? Number.MAX_SAFE_INTEGER),
+    )[0];
+    return chosenSpace === undefined
+      ? match
+      : moveOneSpace({ ...match, phase: 'moving', pending: null }, chosenSpace);
+  }
+  if (pending.kind === 'CURSED_DOOR') {
+    if (pending.stage === 'reveal') return { ...match, phase: 'landed', pending: null, stepsRemaining: 0 };
+    const choice: HauntedDoorId = player.wealth < 500_000
+      ? 'LANTERN'
+      : player.influence < player.fame ? 'MIRROR' : 'BONE';
+    return resolveHauntedDoor(match, choice);
+  }
   if (pending.kind === 'CARD' && pending.stage === 'resolved') {
     const challenge = getCard(pending.cardId)?.partyChallenge;
     if (challenge) {
@@ -1493,6 +1683,59 @@ function createStepEvents(match: Match, previousPosition: number, position: numb
   return drafts;
 }
 
+function moveOneSpace(match: Match, position: number): Match {
+  if (match.phase !== 'moving' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
+  const current = match.players[match.turnIndex];
+  const previousPosition = current.position;
+  const space = getSpace(position, match.boardId);
+  if (!space) throw new Error(`Invalid movement position: ${position}`);
+  let moved: Match = {
+    ...match,
+    players: match.players.map((player, index) => index === match.turnIndex
+      ? {
+          ...player,
+          position,
+          ...(match.boardId === 'HAUNTED_UPGRADE'
+            ? { hauntedPath: [...(player.hauntedPath ?? [previousPosition]), position] }
+            : {}),
+        }
+      : player),
+    wealthEvents: match.wealthEvents,
+    stepsRemaining: match.stepsRemaining - 1,
+  };
+  if (!moved.lateGameCheckpoint && previousPosition < 60 && position >= 60) {
+    moved = {
+      ...moved,
+      lateGameCheckpoint: {
+        space: 60,
+        positions: moved.players.map((player) => player.position),
+      },
+    };
+  }
+  const effectiveSalary = effectiveSalaryAmount(current);
+  const isFinalStep = moved.stepsRemaining <= 0;
+  const salaryGate = space.payday && !isFinalStep
+    ? applySalaryGate(moved, match.turnIndex, previousPosition, position)
+    : { match: moved, drafts: [] };
+  moved = {
+    ...salaryGate.match,
+    wealthEvents: salaryGate.drafts.length
+      ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: effectiveSalary, kind: 'PAYDAY', space: position }]
+      : match.wealthEvents,
+  };
+  const drafts = createStepEvents(moved, previousPosition, position, isFinalStep);
+  drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
+  moved = emit(moved, [...salaryGate.drafts, ...drafts]);
+  if (moved.pending?.kind === 'ABILITY') {
+    return {
+      ...moved,
+      pending: { ...moved.pending, afterStep: { previousPosition } },
+    };
+  }
+  if (moved.phase !== 'moving') return moved;
+  return finishStep(moved, previousPosition);
+}
+
 /** Guard each transition so stale timers and repeated clicks cannot reapply an effect. */
 export function advanceMatch(match: Match, action: MatchAction): Match {
   switch (action.type) {
@@ -1521,49 +1764,30 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
     case 'STEP': {
       if (match.phase !== 'moving' || match.players[match.turnIndex]?.status !== 'ACTIVE') return match;
       const current = match.players[match.turnIndex];
-      const previousPosition = current.position;
-      const position = Math.min(75, current.position + 1);
-      const space = getSpace(position, match.boardId);
-      if (!space) throw new Error(`Invalid movement position: ${position}`);
-      let moved: Match = {
-        ...match,
-        players: match.players.map((player, index) => index === match.turnIndex
-          ? { ...player, position }
-          : player),
-        wealthEvents: match.wealthEvents,
-        stepsRemaining: match.stepsRemaining - 1,
-      };
-      if (!moved.lateGameCheckpoint && previousPosition < 60 && position >= 60) {
-        moved = {
-          ...moved,
-          lateGameCheckpoint: {
-            space: 60,
-            positions: moved.players.map((player) => player.position),
-          },
-        };
-      }
-      const effectiveSalary = effectiveSalaryAmount(current);
-      const isFinalStep = moved.stepsRemaining <= 0;
-      const salaryGate = space.payday && !isFinalStep
-        ? applySalaryGate(moved, match.turnIndex, previousPosition, position)
-        : { match: moved, drafts: [] };
-      moved = {
-        ...salaryGate.match,
-        wealthEvents: salaryGate.drafts.length
-          ? [...match.wealthEvents, { id: (match.wealthEvents.at(-1)?.id ?? 0) + 1, playerIndex: match.turnIndex, amount: effectiveSalary, kind: 'PAYDAY', space: position }]
-          : match.wealthEvents,
-      };
-      const drafts = createStepEvents(moved, previousPosition, position, isFinalStep);
-      drafts.unshift({ type: 'PLAYER_MOVED', playerIndex: match.turnIndex, previousPosition, newPosition: position, distance: 1 });
-      moved = emit(moved, [...salaryGate.drafts, ...drafts]);
-      if (moved.pending?.kind === 'ABILITY') {
+      const options = match.boardId === 'HAUNTED_UPGRADE'
+        ? getHauntedNextSpaces(current.position, match.hauntedBoard, match.turnCounter)
+        : [Math.min(75, current.position + 1)];
+      if (options.length > 1) {
         return {
-          ...moved,
-          pending: { ...moved.pending, afterStep: { previousPosition } },
+          ...match,
+          phase: 'decision',
+          pending: { kind: 'ROUTE', space: current.position, options: [...options] },
         };
       }
-      if (moved.phase !== 'moving') return moved;
-      return finishStep(moved, previousPosition);
+      if (!options.length) return match;
+      return moveOneSpace(match, options[0]);
+    }
+    case 'CHOOSE_ROUTE': {
+      const pending = match.pending;
+      if (match.phase !== 'decision' || pending?.kind !== 'ROUTE' || !pending.options.includes(action.space)) return match;
+      return moveOneSpace({ ...match, phase: 'moving', pending: null }, action.space);
+    }
+    case 'CHOOSE_DOOR':
+      return resolveHauntedDoor(match, action.doorId);
+    case 'ACKNOWLEDGE_DOOR': {
+      const pending = match.pending;
+      if (match.phase !== 'decision' || pending?.kind !== 'CURSED_DOOR' || pending.stage !== 'reveal') return match;
+      return { ...match, phase: 'landed', pending: null, stepsRemaining: 0 };
     }
     case 'CHOOSE_ASSET_CATEGORY':
       return match.phase === 'decision' && match.pending?.kind === 'ASSET' && match.pending.slot === 'companion' && !match.pending.category
@@ -1678,10 +1902,17 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       const targetIndex = match.players.findIndex(player => player.playerId === action.targetPlayerId);
       const target = match.players[targetIndex];
       if (match.phase !== 'decision' || pending?.kind !== 'SALARY_GATE' || !target || targetIndex === match.turnIndex || target.status !== 'ACTIVE' || target.position >= 75) return match;
-      const newPosition = Math.max(0, target.position - 4);
+      const hauntedPath = match.boardId === 'HAUNTED_UPGRADE'
+        ? [...(target.hauntedPath ?? [0, target.position])].slice(0, Math.max(1, (target.hauntedPath ?? [0, target.position]).length - 4))
+        : undefined;
+      const newPosition = match.boardId === 'HAUNTED_UPGRADE'
+        ? hauntedPath?.at(-1) ?? 0
+        : Math.max(0, target.position - 4);
       return emit({
         ...match, phase: 'landed', pending: null,
-        players: match.players.map((player, index) => index === targetIndex ? { ...player, position: newPosition } : player),
+        players: match.players.map((player, index) => index === targetIndex
+          ? { ...player, position: newPosition, ...(hauntedPath ? { hauntedPath } : {}) }
+          : player),
       }, [{ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, targetPlayerId: target.playerId, previousPosition: target.position, newPosition, description: `${match.players[match.turnIndex].displayName} gave up the payday and sent ${target.displayName} back four spaces to ${newPosition === 0 ? 'Start' : `space ${newPosition}`}.` }]);
     }
     case 'RESOLVE_ABILITY_STAT_DESTINATION':

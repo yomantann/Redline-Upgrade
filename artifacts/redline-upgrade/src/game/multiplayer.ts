@@ -1,6 +1,7 @@
 import { advanceMatch, rollD4, type DiceResult, type Match, type MatchAction } from './match';
 import type { EndgameChoice } from './endgame';
 import { getCard } from './cards';
+import type { HauntedDoorId } from './haunted-encounters';
 
 /**
  * Server-authoritative multiplayer layer. It owns no gameplay rules: clients send intent-level
@@ -94,6 +95,9 @@ export type ClientAction =
   | { type: 'REVEAL' }
   | { type: 'MOVE' }
   | { type: 'STEP' }
+  | { type: 'CHOOSE_ROUTE'; space: number }
+  | { type: 'CHOOSE_DOOR'; doorId: HauntedDoorId }
+  | { type: 'ACKNOWLEDGE_DOOR' }
   | { type: 'DRAW_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
@@ -155,6 +159,9 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'REVEAL': return { type: 'REVEAL' };
     case 'MOVE': return { type: 'MOVE' };
     case 'STEP': return { type: 'STEP' };
+    case 'CHOOSE_ROUTE': return { type: 'CHOOSE_ROUTE', space: action.space };
+    case 'CHOOSE_DOOR': return { type: 'CHOOSE_DOOR', doorId: action.doorId };
+    case 'ACKNOWLEDGE_DOOR': return { type: 'ACKNOWLEDGE_DOOR' };
     case 'RESOLVE_CARD': return { type: 'DRAW_CARD' };
     case 'CHOOSE_GAMBLE_CARD': return { type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId };
     case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution };
@@ -190,6 +197,16 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'REVEAL': return [{ type: 'REVEAL' }];
     case 'MOVE': return [{ type: 'MOVE' }];
     case 'STEP': return [{ type: 'STEP' }];
+    case 'CHOOSE_ROUTE':
+      return Number.isInteger(action.space) && action.space >= 1 && action.space <= 75
+        ? [{ type: 'CHOOSE_ROUTE', space: action.space }]
+        : null;
+    case 'CHOOSE_DOOR':
+      return ['LANTERN', 'MIRROR', 'BONE'].includes(action.doorId)
+        ? [{ type: 'CHOOSE_DOOR', doorId: action.doorId }]
+        : null;
+    case 'ACKNOWLEDGE_DOOR':
+      return [{ type: 'ACKNOWLEDGE_DOOR' }];
     case 'ACKNOWLEDGE_CAREER_REVEAL': return [];
     case 'DRAW_CARD': return [{ type: 'RESOLVE_CARD' }];
     case 'CHOOSE_GAMBLE_CARD': return isString(action.cardId) ? [{ type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId }] : null;

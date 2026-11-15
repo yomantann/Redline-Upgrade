@@ -24,6 +24,19 @@
   background: #111c19;
   overflow: hidden;
 }
+.ru-board--haunted {
+  --board-ink: #eee7dc;
+  --board-dim: #a49aa8;
+  --board-line: #55485b;
+  --board-orange: #c9a6e6;
+  --board-lime: #a5cfbf;
+  background: #17171b;
+}
+.ru-board--haunted .ru-board__masthead { background:linear-gradient(115deg,#211d25,#1b1d21); }
+.ru-board--haunted .ru-board__surface { background:radial-gradient(circle at 50% 45%,rgba(118,93,132,.15),transparent 56%),repeating-linear-gradient(90deg,transparent 0 19px,rgba(223,207,235,.02) 20px 21px),#151519; }
+.ru-board--haunted .ru-board__information { background:#211e25;border-color:#55485b;color:#c9a6e6; }
+.ru-board--haunted .ru-board__space-legend summary { color:#c9a6e6; }
+.ru-board--haunted .ru-board__space-legend svg { color:#a5cfbf; }
 .ru-board__masthead {
   display: flex;
   align-items: end;

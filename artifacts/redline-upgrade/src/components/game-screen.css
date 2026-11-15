@@ -339,6 +339,51 @@
 }
 .game-roll-location-toggle:hover,
 .game-roll-location-toggle:focus-visible { color:#d4e981; border-color:#d4e981; outline:2px solid transparent; }
+.haunted-route-choice { position:relative; z-index:18; margin:0 0 14px; padding:18px; border:1px solid #54476b; border-top:3px solid #b79cf0; color:#ede9f7; background:linear-gradient(140deg,#17131fef,#21182bec); box-shadow:0 14px 36px #0008; }
+.haunted-route-choice > .eyebrow { color:#b79cf0; }
+.haunted-route-choice h2 { margin:7px 0; font-size:clamp(24px,4vw,36px); }
+.haunted-route-choice > p { margin:0 0 14px; color:#c5bdcf; font-size:13px; }
+.haunted-route-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.haunted-route-options button { display:grid; gap:7px; min-height:112px; padding:13px; text-align:left; color:#f4effa; background:#241d30; border:1px solid #584b70; cursor:pointer; }
+.haunted-route-options button:hover,
+.haunted-route-options button:focus-visible { border-color:#c4aaff; background:#30243c; outline:2px solid #b79cf044; }
+.haunted-route-options button .mono { color:#b79cf0; font-size:9px; }
+.haunted-route-options button strong { font-size:17px; letter-spacing:.04em; }
+.haunted-route-options button small { color:#c5bdcf; font-size:12px; line-height:1.45; }
+.haunted-door-choice,
+.haunted-door-reveal { position:relative; z-index:18; display:grid; grid-template-columns:minmax(0,1fr); margin:0 0 14px; padding:18px; border:1px solid #55485b; border-top:3px solid #a5cfbf; color:#eee7dc; background:linear-gradient(140deg,#17171cee,#24202bec); box-shadow:0 14px 36px #0008; }
+.haunted-door-choice > .eyebrow,
+.haunted-door-reveal .eyebrow { color:#a5cfbf; }
+.haunted-door-choice h2,
+.haunted-door-reveal h2 { margin:7px 0; font-size:clamp(24px,4vw,36px); }
+.haunted-door-choice > p,
+.haunted-door-reveal p { max-width:780px; margin:0 0 14px; color:#c6bdc5; font-size:13px; line-height:1.5; }
+.haunted-door-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.haunted-door-option { display:grid; justify-items:center; gap:9px; min-height:204px; padding:15px; color:#eee7dc; background:#211f23; border:1px solid #564b50; text-align:center; cursor:pointer; }
+.haunted-door-option:hover,
+.haunted-door-option:focus-visible { border-color:#c3a2e2; background:#2d2730; outline:2px solid #c3a2e244; }
+.haunted-door-option > .mono { color:#c9a6e6; font-size:10px; }
+.haunted-door-option small { max-width:220px; color:#c6bdc5; font-size:12px; line-height:1.45; }
+.haunted-door-visual { position:relative; display:block; width:88px; height:112px; margin:2px auto 0; perspective:450px; }
+.haunted-door-arch { position:absolute; inset:0 0 0; border:5px solid #75645e; border-bottom:0; border-radius:48px 48px 0 0; background:#151417; box-shadow:0 0 0 4px #1d1b1d,0 0 19px #96787344; }
+.haunted-door-leaf { position:absolute; inset:18px 14px 0; transform-origin:left center; border:2px solid #796b63; background:linear-gradient(135deg,#40383a,#211e23); box-shadow:inset 0 0 0 5px #2b282b; transition:transform .65s cubic-bezier(.2,.7,.15,1); }
+.haunted-door-leaf::before { content:''; position:absolute; inset:12px 8px; border:1px solid #a28b70; }
+.haunted-door-leaf::after { content:''; position:absolute; top:50%; right:7px; width:5px; height:5px; border-radius:50%; background:#dfc89a; box-shadow:0 0 9px #f5d894; }
+.haunted-door-glow { position:absolute; inset:18px 14px 0; pointer-events:none; background:radial-gradient(ellipse at center,#a5cfbf66,transparent 65%); opacity:.16; }
+.haunted-door-visual--lantern .haunted-door-glow { background:radial-gradient(ellipse at center,#ffc77b99,transparent 68%); opacity:.5; }
+.haunted-door-visual--mirror .haunted-door-leaf { background:linear-gradient(135deg,#4b4c57,#202028); border-color:#a99cbd; }
+.haunted-door-visual--mirror .haunted-door-glow { background:radial-gradient(ellipse at center,#a7c9e277,transparent 68%); opacity:.38; }
+.haunted-door-visual--bone .haunted-door-leaf { background:linear-gradient(135deg,#55443e,#241e1d); border-color:#b79a7b; }
+.haunted-door-visual--bone .haunted-door-glow { background:radial-gradient(ellipse at center,#b1776e88,transparent 68%); opacity:.32; }
+.haunted-door-visual[data-door-open='true'] .haunted-door-leaf { transform:rotateY(-68deg); }
+.haunted-door-visual[data-door-open='true'] .haunted-door-glow { opacity:.9; animation:haunted-door-reveal 1.4s ease-out both; }
+.haunted-door-reveal { grid-template-columns:minmax(120px,180px) minmax(0,1fr); align-items:center; gap:20px; min-height:205px; }
+.haunted-door-reveal .haunted-door-visual { width:122px; height:156px; }
+.haunted-door-reveal .haunted-door-arch { border-width:7px; }
+.haunted-door-reveal .haunted-door-leaf,
+.haunted-door-reveal .haunted-door-glow { inset:25px 19px 0; }
+.haunted-door-reveal .haunted-door-copy { min-width:0; }
+@keyframes haunted-door-reveal { from { opacity:.2; filter:blur(5px); } to { opacity:1; filter:blur(0); } }
 .game-tabletop > .game-dice-panel--centered {
   grid-column:1;
   grid-row:1 / span 2;
@@ -640,6 +685,20 @@
   .game-screen--board-focus .game-tabletop > .game-dice-panel--centered { grid-row:1; }
 }
 @media (max-width:700px) {
+  .haunted-route-choice { padding:13px; }
+  .haunted-route-options { grid-template-columns:1fr; }
+  .haunted-route-options button { min-height:86px; }
+  .haunted-door-options { grid-template-columns:1fr; }
+  .haunted-door-option { grid-template-columns:82px minmax(0,1fr); justify-items:start; align-items:center; min-height:110px; text-align:left; }
+  .haunted-door-option > .haunted-door-visual { grid-row:span 2; width:60px; height:80px; margin:0 auto; }
+  .haunted-door-option .haunted-door-arch { border-width:4px; }
+  .haunted-door-option .haunted-door-leaf,
+  .haunted-door-option .haunted-door-glow { inset:13px 10px 0; }
+  .haunted-door-option small { max-width:none; }
+  .haunted-door-reveal { grid-template-columns:82px minmax(0,1fr); gap:10px; padding:13px; }
+  .haunted-door-reveal .haunted-door-visual { width:72px; height:100px; }
+  .haunted-door-reveal .haunted-door-leaf,
+  .haunted-door-reveal .haunted-door-glow { inset:16px 11px 0; }
   .game-tabletop > .game-dice-panel--centered { width:min(340px,calc(100% - 18px)); max-height:calc(100% - 96px); padding:10px; }
   .game-roll-location-toggle { top:76px; right:8px; min-height:32px; padding:0 8px; font-size:7px; }
 }

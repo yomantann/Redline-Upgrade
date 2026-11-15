@@ -87,7 +87,7 @@ export function MilestoneChoice({ pending, player, players, onAction, boardId = 
   const offers = pending.kind === 'ASSET' ? pending.offeredAssetIds : undefined;
   const options = category ? assetOptions(category as AssetCategory).filter(asset => !offers || offers.includes(asset.id)).slice(0, 3) : [];
 
-  if (pending.kind === 'CARD') return null;
+  if (pending.kind === 'CARD' || pending.kind === 'ROUTE' || pending.kind === 'CURSED_DOOR') return null;
 
   if (player.isCPU) {
     return (

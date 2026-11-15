@@ -7,6 +7,8 @@ import { getAsset, type AssetSlot } from '@/game/assets';
 import { CARD_READ_MINIMUM_MS, CPU_CARD_DRAW_MS, CPU_CARD_RESULT_MS } from '@/game/card-reveal-timing';
 import { createMatch, type Match, type MatchAction, type MatchPlayer, type PendingDecision, type WealthEvent } from '@/game/match';
 import type { BoardId } from '@/game/boards';
+import { getHauntedFork } from '@/game/haunted-board';
+import { CURSED_DOOR_CHOICES } from '@/game/haunted-encounters';
 import { effectiveSalaryAmount, type PlayerStat } from '@/game/player';
 import type { EndgameChoice } from '@/game/endgame';
 import { calculateEndgameBaseValue } from '@/game/endgame';
@@ -178,6 +180,76 @@ function RemoteStatus({ remote, error, players, match, connected }: { remote: No
   );
 }
 
+function HauntedRouteChoice({ pending, onChoose }: {
+  pending: Extract<PendingDecision, { kind: 'ROUTE' }>;
+  onChoose: (space: number) => void;
+}) {
+  const fork = getHauntedFork(pending.space);
+  return (
+    <section className="haunted-route-choice" aria-labelledby="haunted-route-title" data-testid="haunted-route-choice">
+      <span className="mono eyebrow">THE LIVING BOARD // ROUTE FORK</span>
+      <h2 className="display" id="haunted-route-title">{fork?.title ?? 'Choose a passage'}</h2>
+      <p>The passage is yours to choose. The board will remember which way you went.</p>
+      <div className="haunted-route-options">
+        {pending.options.map((space) => {
+          const option = fork?.options.find((candidate) => candidate.space === space);
+          return (
+            <button key={space} type="button" onClick={() => onChoose(space)} data-testid={`button-haunted-route-${space}`}>
+              <span className="mono">PASSAGE // {String(space).padStart(2, '0')}</span>
+              <strong>{option?.label ?? `SPACE ${space}`}</strong>
+              <small>{option?.description ?? 'Continue down this branch.'}</small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function HauntedDoorChoice({ pending, onAction }: {
+  pending: Extract<PendingDecision, { kind: 'CURSED_DOOR' }>;
+  onAction: (action: MatchAction) => void;
+}) {
+  if (pending.stage === 'reveal') {
+    return (
+      <section className="haunted-door-reveal" aria-live="polite" data-testid="haunted-door-reveal">
+        <div className={`haunted-door-visual haunted-door-visual--${pending.chosenDoorId?.toLowerCase()}`} data-door-open="true" aria-hidden="true">
+          <span className="haunted-door-arch" /><span className="haunted-door-leaf" /><span className="haunted-door-glow" />
+        </div>
+        <div className="haunted-door-copy">
+          <span className="mono eyebrow">CURSED DOOR // SPACE {String(pending.space).padStart(2, '0')}</span>
+          <h2 className="display">{pending.outcomeTitle ?? 'THE DOOR OPENS'}</h2>
+          <p>{pending.reveal}</p>
+          <button className="action lime-action" type="button" onClick={() => onAction({ type: 'ACKNOWLEDGE_DOOR' })} data-testid="button-acknowledge-haunted-door">CONTINUE</button>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="haunted-door-choice" aria-labelledby="haunted-door-title" data-testid="haunted-door-choice">
+      <span className="mono eyebrow">CURSED DOOR // SPACE {String(pending.space).padStart(2, '0')}</span>
+      <h2 className="display" id="haunted-door-title">Choose a door.</h2>
+      <p>Each clue hints at the kind of encounter. The house keeps the actual outcome hidden until you open it.</p>
+      <div className="haunted-door-options">
+        {(pending.choiceIds ?? []).map(id => {
+          const door = CURSED_DOOR_CHOICES.find(candidate => candidate.id === id);
+          if (!door) return null;
+          return (
+            <button key={door.id} className={`haunted-door-option haunted-door-option--${door.id.toLowerCase()}`} type="button"
+              onClick={() => onAction({ type: 'CHOOSE_DOOR', doorId: door.id })} data-testid={`button-haunted-door-${door.id.toLowerCase()}`}>
+              <span className={`haunted-door-visual haunted-door-visual--${door.id.toLowerCase()}`} aria-hidden="true">
+                <span className="haunted-door-arch" /><span className="haunted-door-leaf" /><span className="haunted-door-glow" />
+              </span>
+              <span className="mono">{door.label}</span>
+              <small>{door.clue}</small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function BoardFocusDock({ players, activeIndex, hasDecision, onExit }: { players: MatchPlayer[]; activeIndex: number; hasDecision: boolean; onExit: () => void }) {
   const [open, setOpen] = useState(false);
   const jump = (selector: string) => {
@@ -188,7 +260,7 @@ function BoardFocusDock({ players, activeIndex, hasDecision, onExit }: { players
     <div className="board-focus-dock-bar">
       <span className="mono">BOARD FOCUS</span>
       <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)} data-testid="button-focus-players">PLAYERS {open ? '−' : '+'}</button>
-      {hasDecision && <button type="button" className="urgent" onClick={() => jump('.card-draw-panel, .milestone-choice')} data-testid="button-focus-decision">DECISION PENDING</button>}
+      {hasDecision && <button type="button" className="urgent" onClick={() => jump('.card-draw-panel, .milestone-choice, .haunted-route-choice, .haunted-door-choice, .haunted-door-reveal')} data-testid="button-focus-decision">DECISION PENDING</button>}
       <button type="button" onClick={() => jump('.game-dice-panel')} data-testid="button-focus-turn">TURN / ROLL</button>
       <button type="button" onClick={onExit} data-testid="button-focus-exit">EXIT</button>
     </div>
@@ -489,7 +561,7 @@ export function GameScreen() {
       ? phase === 'ready' && hasTurnStartToken ? '.upgrade-token-panel'
         : phase === 'ready' || phase === 'rolling' || phase === 'reveal' ? '.game-dice-panel'
         : phase === 'moving' ? '.game-tabletop-board'
-        : phase === 'decision' ? pending?.kind === 'CARD' ? '.card-draw-panel' : '.milestone-choice'
+        : phase === 'decision' ? pending?.kind === 'CARD' ? '.card-draw-panel' : pending?.kind === 'ROUTE' ? '.haunted-route-choice' : pending?.kind === 'CURSED_DOOR' ? '.haunted-door-choice, .haunted-door-reveal' : '.milestone-choice'
         : phase === 'landed' ? active.endgame?.status === 'RESOLVED' ? '.finish-line-panel' : '.game-player[data-active="true"]'
         : phase === 'endgame' ? '.finish-line-panel'
         : phase === 'complete' ? '.finish-line-results-intro'
@@ -697,7 +769,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           } else if (view === 'board') {
             document.querySelector('.game-tabletop-board')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           } else if (view === 'choice') {
-            document.querySelector(pending.kind === 'CARD' ? '.game-tabletop' : '.milestone-choice')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelector(pending.kind === 'CARD' || pending.kind === 'ROUTE' || pending.kind === 'CURSED_DOOR' ? '.game-tabletop' : '.milestone-choice')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }}
       />}
@@ -723,7 +795,9 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
        {purchaseNotice && <div className="asset-purchase-flash" role="status" aria-live="polite" key={purchaseNotice.id}><span className="mono">{purchaseNotice.player} / NEW ASSET ACQUIRED</span><strong>{purchaseNotice.name}</strong>{purchaseNotice.currentWealth !== undefined && <span className="mono">WEALTH NOW / {formatMoney(purchaseNotice.currentWealth)}</span>}</div>}
       {careerLocked && <div className="career-locked-flash" role="status" aria-live="polite"><span className="mono">SPACE 35 / DECISION COMPLETE</span><strong>CAREER LOCKED IN</strong><span className="mono">SALARY AND WEALTH UNCHANGED</span></div>}
 
- {match.phase === 'decision' && pending && pending.kind !== 'CARD' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} boardId={match.boardId} />}
+ {match.phase === 'decision' && pending?.kind === 'ROUTE' && <HauntedRouteChoice pending={pending} onChoose={(space) => dispatchMatch({ type: 'CHOOSE_ROUTE', space })} />}
+ {match.phase === 'decision' && pending?.kind === 'CURSED_DOOR' && <HauntedDoorChoice pending={pending} onAction={dispatchMatch} />}
+ {match.phase === 'decision' && pending && pending.kind !== 'CARD' && pending.kind !== 'ROUTE' && pending.kind !== 'CURSED_DOOR' && <MilestoneChoice pending={pending} player={decisionPlayer} players={match.players} onAction={dispatchMatch} boardId={match.boardId} />}
 
       <section className="game-players" aria-label="Players, careers and finances">
         {match.players.map((contestant, index) => {
@@ -897,7 +971,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
         })}
       </section>
 
-       {(match.phase !== 'decision' || pending?.kind === 'CARD' || decisionInspection === 'board') && <div className="game-tabletop">
+       {(match.phase !== 'decision' || pending?.kind === 'CARD' || pending?.kind === 'ROUTE' || pending?.kind === 'CURSED_DOOR' || decisionInspection === 'board') && <div className="game-tabletop">
         <div className="game-tabletop-board">
           <GameBoard
             players={match.players}
@@ -908,6 +982,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             onToggleFocusMode={toggleBoardFocus}
             finishOrder={match.finishOrder}
             boardId={match.boardId}
+             routeOptions={pending?.kind === 'ROUTE' ? pending.options : []}
           />
           <button
             type="button"

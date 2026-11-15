@@ -7,7 +7,9 @@ import type { BoardId } from '../game/boards';
 import { ErrorBoundary } from './error-boundary';
 import { BoardScene, ROUTE } from './board-scene';
 import { BioBoardScene, BIO_ROUTE } from './bio-board-scene';
+import { HauntedBoardScene } from './haunted-board-scene';
 import { BoardFallback } from './board-fallback';
+import { HAUNTED_ROUTE_EDGES, HAUNTED_ROUTE_POINTS } from '../game/haunted-board';
 import './game-board.css';
 import './board-scene.css';
 
@@ -22,10 +24,12 @@ export interface GameBoardProps {
   /** Board Focus layout is owned by the screen; the board only exposes the toggle. */
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  routeOptions?: number[];
 }
 
 const redlineZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 const bioZones = ['NIGHTCLUB', 'CASINO ARCADE', 'VIP LOUNGE', 'HOLO BAR', 'ROOFTOP', 'FESTIVAL', 'THE ARENA'];
+const hauntedZones = ['THE GROUNDS', 'THE CHAPEL', 'THE GALLERY', 'THE CRYPT', 'THE ESTATE'];
 const MIN_ZOOM = 0.7;
 const isMobileViewport = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
 function maximumBoardZoom(): number {
@@ -35,15 +39,17 @@ const clampZoom = (value: number) => Math.min(maximumBoardZoom(), Math.max(MIN_Z
 
 type CameraTarget = { kind: 'active' } | { kind: 'player'; playerId: string } | { kind: 'space'; space: number };
 type SceneProps = ComponentProps<typeof BoardScene>;
+type ScenePropsWithRoutes = SceneProps & { routeOptions?: number[] };
 
 /**
  * Scenes only depend on what is drawn on the table. Wealth, stats and assets change
  * constantly during play; skipping those keeps the static circuit from re-rendering.
  */
-function sameSceneProps(a: SceneProps, b: SceneProps): boolean {
+function sameSceneProps(a: ScenePropsWithRoutes, b: ScenePropsWithRoutes): boolean {
   if (a.activePlayerId !== b.activePlayerId || a.focusPosition !== b.focusPosition || a.landingPosition !== b.landingPosition
     || a.overview !== b.overview || a.reduceMotion !== b.reduceMotion || a.zoom !== b.zoom || a.pan !== b.pan
-    || a.onSpaceSelect !== b.onSpaceSelect || a.onSpaceHover !== b.onSpaceHover) return false;
+    || a.onSpaceSelect !== b.onSpaceSelect || a.onSpaceHover !== b.onSpaceHover
+    || (a.routeOptions ?? []).join(',') !== (b.routeOptions ?? []).join(',')) return false;
   if ((a.finishOrder ?? []).join(',') !== (b.finishOrder ?? []).join(',')) return false;
   if (a.players.length !== b.players.length) return false;
   return a.players.every((p, i) => {
@@ -52,14 +58,18 @@ function sameSceneProps(a: SceneProps, b: SceneProps): boolean {
       && p.displayName === q.displayName && p.slot === q.slot;
   });
 }
-const MemoBoardScene = memo(BoardScene, sameSceneProps);
+const MemoBoardScene = memo(BoardScene, sameSceneProps as (a: ComponentProps<typeof BoardScene>, b: ComponentProps<typeof BoardScene>) => boolean);
 const MemoBioBoardScene = memo(BioBoardScene, sameSceneProps as (a: ComponentProps<typeof BioBoardScene>, b: ComponentProps<typeof BioBoardScene>) => boolean);
+const MemoHauntedBoardScene = memo(HauntedBoardScene, sameSceneProps as (a: ComponentProps<typeof HauntedBoardScene>, b: ComponentProps<typeof HauntedBoardScene>) => boolean);
 
-export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE', preview = false, focusMode = false, onToggleFocusMode }: GameBoardProps) {
+export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE', preview = false, focusMode = false, onToggleFocusMode, routeOptions = [] }: GameBoardProps) {
   const isBio = boardId === 'BIO_UPGRADE';
+  const isHaunted = boardId === 'HAUNTED_UPGRADE';
   const boardSpaces = getBoardSpaces(boardId);
-  const route = isBio ? BIO_ROUTE : ROUTE;
-  const zones = isBio ? bioZones : redlineZones;
+  const route = isBio ? BIO_ROUTE : isHaunted
+    ? Array.from({ length: 76 }, (_, index) => HAUNTED_ROUTE_POINTS[index])
+    : ROUTE;
+  const zones = isBio ? bioZones : isHaunted ? hauntedZones : redlineZones;
   // Phone portrait gets a wide-enough chase frame (~5 tiles across) instead of the old
   // 2.1x crop; phone landscape uses the desktop-style frustum at a gentle zoom.
   const defaultFollowZoom = () => {
@@ -69,7 +79,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     if (preview) return portraitPhone ? 1.05 : isBio ? 1.15 : 1.25;
     return portraitPhone ? 1.3 : landscapePhone ? 1 : 1.25;
   };
-  const fitZoom = isBio ? 1 : 1.24;
+  const fitZoom = isBio || isHaunted ? 1 : 1.24;
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [overview, setOverview] = useState(true);
   const [zoom, setZoom] = useState(fitZoom);
@@ -214,12 +224,12 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       drag.current = null;
     }
   };
-  const fallback = <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} focusPosition={focusPosition} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={onSpaceSelect} onSpaceHover={onSpaceHover} />;
+  const fallback = <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} focusPosition={focusPosition} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={onSpaceSelect} onSpaceHover={onSpaceHover} routeOptions={routeOptions} />;
   const sceneProps = { players, activePlayerId, focusPosition, finishOrder, landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover };
 
-  return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''} ${preview ? 'ru-board--preview' : ''} ${focusMode ? 'ru-board--focus' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
+  return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''} ${isHaunted ? 'ru-board--haunted' : ''} ${preview ? 'ru-board--preview' : ''} ${focusMode ? 'ru-board--focus' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : isHaunted ? 'Haunted Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
     <header className="ru-board__masthead">
-      <div className="ru-board__heading"><span className="ru-board__overline">{isBio ? 'BIO UPGRADE / 21+ ONLY' : 'CIRCUIT 01 / PHYSICAL EDITION'}</span><h2 className="ru-board__title">{isBio ? 'The after-hours circuit' : 'The redline circuit'}<span className="ru-board__title-slash"> / 75</span></h2></div>
+      <div className="ru-board__heading"><span className="ru-board__overline">{isBio ? 'BIO UPGRADE / 21+ ONLY' : isHaunted ? 'HAUNTED UPGRADE / LIVING BOARD' : 'CIRCUIT 01 / PHYSICAL EDITION'}</span><h2 className="ru-board__title">{isBio ? 'The after-hours circuit' : isHaunted ? 'The haunted estate' : 'The redline circuit'}<span className="ru-board__title-slash"> / 75</span></h2></div>
       <div className="ru-board__controls" role="group" aria-label="Board camera">
         <button type="button" data-testid="button-board-overview" className={overview ? 'selected' : ''} onClick={fitBoard} aria-pressed={overview} title="Fit the whole board in view">FIT BOARD</button>
         <button type="button" data-testid="button-board-reset" onClick={resetCamera} title="Reset to the default camera on the active pawn">RESET</button>
@@ -243,7 +253,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       </div>
     </header>
     <div className={`ru-board__stage ${wheelArmed ? 'zoom-armed' : ''}`} ref={stageRef} style={{ touchAction: 'none' }} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
-      <div className="ru-board__stage-index" aria-hidden="true"><span>{isBio ? 'BIO / UPGRADE' : 'REDLINE / UPGRADE'}</span><span>TABLETOP  /  01—75</span></div>
+      <div className="ru-board__stage-index" aria-hidden="true"><span>{isBio ? 'BIO / UPGRADE' : isHaunted ? 'HAUNTED / UPGRADE' : 'REDLINE / UPGRADE'}</span><span>TABLETOP  /  01—75</span></div>
       {webgl === null && <div className="ru-board__loading" aria-label="Preparing 3D tabletop"><span /><span /><span /><p>PREPARING THE CIRCUIT</p></div>}
       {webgl === false && fallback}
       {webgl === true && <ErrorBoundary resetKey={`${boardId}-tabletop`} FallbackComponent={() => fallback}>
@@ -257,7 +267,11 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
           dpr={[1, 1.75]}
           onCreated={({ gl }) => { gl.toneMapping = 3; gl.toneMappingExposure = 1.25; }}
         >
-          {isBio ? <MemoBioBoardScene {...sceneProps} /> : <MemoBoardScene {...sceneProps} />}
+          {isHaunted
+            ? <MemoHauntedBoardScene {...sceneProps} routeOptions={routeOptions} />
+            : isBio
+              ? <MemoBioBoardScene {...sceneProps} />
+              : <MemoBoardScene {...sceneProps} />}
         </Canvas>
       </ErrorBoundary>}
       <div className="ru-board__telemetry" aria-live="polite">
@@ -267,10 +281,19 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       </div>
       <div className="ru-board__minimap" aria-label="Complete circuit overview">
         <span className="ru-board__minimap-label">ROUTE / 00—75</span>
-         <svg viewBox={isBio ? '-29 -19 58 38' : '-25 -18 50 36'} role="img" aria-label={`${isBio ? 'Bio Upgrade route' : 'Circuit map'}, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
-           <polyline points={route.map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#58d7d0' : '#516b58'} strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />
-           <polyline points={route.slice(0, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#f36b9d' : '#f96346'} strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />
-           {(isBio ? [10, 20, 30, 40, 50, 62, 75] : [10, 20, 30, 45, 60, 75]).map(n => <circle key={n} cx={route[n].x} cy={route[n].z} r=".52" fill={isBio ? '#f36b9d' : '#f96346'} />)}
+         <svg viewBox={isBio ? '-29 -19 58 38' : '-30 -21 60 42'} role="img" aria-label={`${isBio ? 'Bio Upgrade route' : isHaunted ? 'Haunted Upgrade branching route' : 'Circuit map'}, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
+           {isHaunted
+             ? Object.entries(HAUNTED_ROUTE_EDGES).flatMap(([from, destinations]) => destinations.map(to => <line key={`${from}-${to}`} x1={route[Number(from)].x} y1={route[Number(from)].z} x2={route[to].x} y2={route[to].z} stroke="#6b5e72" strokeWidth=".42" strokeLinecap="round" />))
+             : <polyline points={route.slice(1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#58d7d0' : '#516b58'} strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />}
+           {isHaunted
+             ? players.map(player => {
+                 const path = player.hauntedPath?.map(space => route[space]).filter(Boolean) ?? [];
+                 return player.playerId === activePlayerId && path.length > 1
+                   ? <polyline key={player.playerId} points={path.map(point => `${point.x},${point.z}`).join(' ')} fill="none" stroke="#c6a8fa" strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />
+                   : null;
+               })
+             : <polyline points={route.slice(1, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#f36b9d' : '#f96346'} strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />}
+           {(isBio ? [10, 20, 30, 40, 50, 62, 75] : isHaunted ? [10, 30, 45, 60, 75] : [10, 20, 30, 45, 60, 75]).map(n => <circle key={n} cx={route[n].x} cy={route[n].z} r=".52" fill={isBio ? '#f36b9d' : isHaunted ? '#c6a8fa' : '#f96346'} />)}
            <circle cx={route[activePosition].x} cy={route[activePosition].z} r=".92" fill="#d4e981" stroke="#14211c" strokeWidth=".3" />
         </svg>
         <span className="ru-board__minimap-endpoints"><span>START</span><span>FINISH</span></span>

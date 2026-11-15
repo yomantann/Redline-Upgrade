@@ -5,6 +5,7 @@ import type { MatchPlayer } from '../game/match';
 import { PHASE_FLAG_FOOTPRINT, ROUTE, SPACE_TILE_FOOTPRINT, START_PAD_FOOTPRINT, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
 import { BIO_ROUTE } from './bio-board-scene';
 import { getSpaceVisual } from './board-space-visuals';
+import { HAUNTED_ROUTE_EDGES, HAUNTED_ROUTE_POINTS } from '../game/haunted-board';
 
 type P = { x: number; y: number };
 function project(x: number, z: number, height = 0): P {
@@ -25,11 +26,96 @@ function platform(x: number, z: number, halfX: number, halfZ: number, y: number)
 const zoneNames = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
 const playerColors = ['#d4e981', '#72c4b9', '#f9a66d', '#e9a5b6'];
 
+function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover, routeOptions = [] }: {
+  players: MatchPlayer[];
+  activePlayerId: string;
+  focusPosition?: number;
+  finishOrder?: number[];
+  landingPosition?: number | null;
+  overview?: boolean;
+  zoom?: number;
+  pan?: { x: number; z: number };
+  onSpaceSelect?: (number: number) => void;
+  onSpaceHover?: (number: number | null) => void;
+  routeOptions?: number[];
+}) {
+  const spaces = getBoardSpaces('HAUNTED_UPGRADE');
+  const route = HAUNTED_ROUTE_POINTS;
+  const activePosition = Math.max(0, Math.min(75, players.find(player => player.playerId === activePlayerId)?.position ?? 0));
+  const focus = route[Math.max(0, Math.min(75, focusPosition ?? activePosition))];
+  const cameraZoom = zoom * (overview ? 1 : 1.8);
+  const centerX = overview ? 600 : 600 + focus.x * 16 + focus.z * 5;
+  const centerY = overview ? 380 : 380 + focus.z * 12 - focus.x * 3;
+  const p = (x: number, z: number) => ({ x: 600 + x * 16 + z * 5, y: 380 + z * 12 - x * 3 });
+  const activePath = players.find(player => player.playerId === activePlayerId)?.hauntedPath ?? [];
+  const edges = Object.entries(HAUNTED_ROUTE_EDGES).flatMap(([from, destinations]) =>
+    destinations.map(to => [Number(from), to] as const),
+  );
+  return <div className="ru-board__static ru-board__static--haunted" data-testid="board-static-fallback">
+    <div className="ru-board__static-heading"><span>HAUNTED UPGRADE / BRANCHING ESTATE</span><strong>The living route remains visible.</strong><p>WebGL is unavailable. Choose a space to inspect it; every branch and player position remains available below.</p></div>
+    <svg className="ru-board__static-svg" viewBox={`${centerX - 600 / cameraZoom + pan.x * 16 + pan.z * 5} ${centerY - 380 / cameraZoom + pan.z * 12 - pan.x * 3} ${1200 / cameraZoom} ${760 / cameraZoom}`} role="img" aria-label="Haunted Upgrade branching route with all spaces and player positions">
+      <defs>
+        <radialGradient id="haunted-fallback-bg"><stop offset="0" stopColor="#343039" /><stop offset="1" stopColor="#17191c" /></radialGradient>
+        <filter id="haunted-fallback-glow"><feGaussianBlur stdDeviation="7" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      <rect x="-2000" y="-2000" width="5000" height="5000" fill="url(#haunted-fallback-bg)" />
+      <ellipse cx="600" cy="390" rx="144" ry="90" fill="#101114" stroke="#645853" strokeWidth="3" />
+      <path d="M520 395v-72l80-45 80 45v72z" fill="#292729" stroke="#88796b" strokeWidth="3" />
+      <path d="M503 326l97-58 97 58M573 395v-48h54v48" fill="none" stroke="#aa8067" strokeWidth="4" />
+      <text x="600" y="430" fill="#c2a68d" textAnchor="middle" fontFamily="monospace" fontWeight="900" fontSize="14">THE ESTATE REMEMBERS</text>
+      {edges.map(([from, to]) => {
+        const start = p(route[from].x, route[from].z);
+        const end = p(route[to].x, route[to].z);
+        const highlighted = routeOptions.includes(to);
+        return <line key={`${from}-${to}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y}
+          stroke={highlighted ? '#a8dac9' : '#665d5b'} strokeWidth={highlighted ? 8 : 6}
+          strokeLinecap="round" opacity={highlighted ? 1 : 0.78} />;
+      })}
+      {activePath.length > 1 && <polyline points={activePath.map(space => `${p(route[space].x, route[space].z).x},${p(route[space].x, route[space].z).y}`).join(' ')}
+        fill="none" stroke="#c6a8fa" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity=".88" />}
+      {spaces.map(space => {
+        const point = p(route[space.number].x, route[space.number].z);
+        const fork = [11, 30, 49, 64].includes(space.number);
+        const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
+        const choice = routeOptions.includes(space.number);
+        const accent = choice ? '#a8dac9' : milestone ? '#dc9865' : space.payday ? '#d5c77d' : fork ? '#b29bd5' : '#b3aaa0';
+        return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`}
+          onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)}
+          onPointerLeave={() => onSpaceHover?.(null)}
+          onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSpaceSelect?.(space.number); } }}
+          style={{ cursor: 'pointer' }}>
+          <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
+          <circle cx={point.x} cy={point.y} r={milestone ? 11 : 8} fill={landingPosition === space.number ? '#f1cb9e' : milestone ? '#554238' : '#29292b'}
+            stroke={accent} strokeWidth={landingPosition === space.number ? 4 : choice || fork || milestone ? 3 : 1.5}
+            filter={choice || fork ? 'url(#haunted-fallback-glow)' : undefined} />
+          <text x={point.x} y={point.y + 3.5} fill="#f3e8d7" textAnchor="middle" fontFamily="monospace" fontSize="8" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
+        </g>;
+      })}
+      {players.map((player, index) => {
+        const point = p(route[player.position].x, route[player.position].z);
+        const offset = players.filter(candidate => candidate.position === player.position).findIndex(candidate => candidate.playerId === player.playerId);
+        const place = finishOrder.indexOf(index);
+        return <g key={player.playerId} transform={`translate(${point.x + (offset - 1) * 13} ${point.y - 16})`}>
+          <circle r="11" fill={playerColors[index % playerColors.length]} stroke={player.playerId === activePlayerId ? '#f5e8cc' : '#141416'} strokeWidth={player.playerId === activePlayerId ? 3 : 2} />
+          <text y="4" fill="#17181a" textAnchor="middle" fontFamily="sans-serif" fontSize="9" fontWeight="900">{player.displayName.slice(0, 1).toUpperCase()}</text>
+          {place >= 0 && <text y="-15" fill="#d5b896" textAnchor="middle" fontFamily="monospace" fontSize="8">{place + 1}ST</text>}
+        </g>;
+      })}
+      <text x={p(route[0].x, route[0].z).x} y={p(route[0].x, route[0].z).y + 28} fill="#a8dac9" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="900">START</text>
+      <text x={p(route[75].x, route[75].z).x} y={p(route[75].x, route[75].z).y + 30} fill="#dc9865" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="900">FINISH</text>
+    </svg>
+  </div>;
+}
+
 /** Same 76 route coordinates as WebGL, projected into an isometric, physical-looking diagram. */
-export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlayerId, focusPosition, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover }: { boardId?: BoardId; players: MatchPlayer[]; activePlayerId: string; focusPosition?: number; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void }) {
+export function BoardFallback({ boardId = 'REDLINE_UPGRADE', players, activePlayerId, focusPosition, finishOrder = [], landingPosition = null, overview = false, zoom = 1, pan = { x: 0, z: 0 }, onSpaceSelect, onSpaceHover, routeOptions = [] }: { boardId?: BoardId; players: MatchPlayer[]; activePlayerId: string; focusPosition?: number; finishOrder?: number[]; landingPosition?: number | null; overview?: boolean; zoom?: number; pan?: { x: number; z: number }; onSpaceSelect?: (n: number) => void; onSpaceHover?: (n: number | null) => void; routeOptions?: number[] }) {
   const isBio = boardId === 'BIO_UPGRADE';
+  const isHaunted = boardId === 'HAUNTED_UPGRADE';
   const route = isBio ? BIO_ROUTE : ROUTE;
   const boardSpaces = getBoardSpaces(boardId);
+  if (isHaunted) return <HauntedFallback players={players} activePlayerId={activePlayerId} focusPosition={focusPosition}
+    finishOrder={finishOrder} landingPosition={landingPosition} overview={overview} zoom={zoom} pan={pan}
+    onSpaceSelect={onSpaceSelect} onSpaceHover={onSpaceHover} routeOptions={routeOptions} />;
   const activePosition = Math.max(0, Math.min(75, players.find(player => player.playerId === activePlayerId)?.position ?? 0));
   const focusIndex = Math.max(0, Math.min(75, focusPosition ?? activePosition));
   const focus = project(route[focusIndex].x, route[focusIndex].z, .45);

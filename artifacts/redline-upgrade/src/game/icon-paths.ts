@@ -14,6 +14,7 @@ export const ICON_PATHS: Record<string, string> = {
   investment: 'M3 20h18 M5 17l5-5 3 3 6-8 M15 7h4v4',
   property: 'M2 11 12 3l10 8 M5 9v12h14V9 M10 21v-7h4v7',
   gamble: 'M4 4h16v16H4z M8 8h.01 M16 8h.01 M12 12h.01 M8 16h.01 M16 16h.01',
+  'haunted-door': 'M5 21V4l7-2 7 2v17 M8 21v-7h8v7 M9 7h.01 M15 7h.01 M17 14h.01',
   event: 'M12 3v12 M12 20h.01 M3 21 12 3l9 18z',
   start: 'M5 22V3 M5 4h14l-3 5 3 5H5',
   finish: 'M4 22V3h16v13H4 M4 7h16 M4 11h16 M8 3v4 M16 3v4 M8 11v5 M16 11v5',

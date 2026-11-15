@@ -94,6 +94,64 @@ try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
+  const hauntedRoute = await vite.ssrLoadModule('/src/game/haunted-board.ts');
+  const { HAUNTED_FINISH_SPACE, HAUNTED_FORKS, getHauntedNextSpaces, validateHauntedRouteGraph } = hauntedRoute;
+  assert.deepEqual(validateHauntedRouteGraph(), [], 'every Haunted route reaches the finish without cycles or unreachable spaces');
+  assert.equal(HAUNTED_FORKS.length, 4, 'Haunted has four decision forks');
+  const hauntedSpaces = getBoardSpaces('HAUNTED_UPGRADE');
+  assert.equal(hauntedSpaces.length, 75, 'Haunted has its own 75-space board');
+  assert.equal(new Set(hauntedSpaces.map(space => space.number)).size, 75, 'every Haunted board position is unique');
+  assert(hauntedSpaces.every(space => space.label && space.description), 'every Haunted space is named and described');
+  const enumerateHauntedRoutes = (space, path = [space]) => {
+    if (space === HAUNTED_FINISH_SPACE) return [path];
+    return getHauntedNextSpaces(space).flatMap(next => enumerateHauntedRoutes(next, [...path, next]));
+  };
+  const hauntedRoutes = enumerateHauntedRoutes(0);
+  assert.equal(hauntedRoutes.length, 16, 'all four two-way Haunted forks produce sixteen complete routes');
+  for (const route of hauntedRoutes) {
+    assert.equal(route.at(-1), HAUNTED_FINISH_SPACE, 'each Haunted route reaches the finish');
+    assert.equal(new Set(route).size, route.length, 'a Haunted route never loops through a space twice');
+  }
+  const hauntedMoveBase = createMatch(id);
+  const hauntedForkFixture = (isCPU = false, position = 11) => ({
+    ...hauntedMoveBase,
+    boardId: 'HAUNTED_UPGRADE',
+    phase: 'moving',
+    stepsRemaining: 2,
+    pending: null,
+    players: hauntedMoveBase.players.map((player, index) => index === 0
+      ? { ...player, position, hauntedPath: [0, position], isCPU }
+      : player),
+  });
+  for (const fork of HAUNTED_FORKS) {
+    const prompt = advanceMatch(hauntedForkFixture(false, fork.space), { type: 'STEP' });
+    assert.equal(prompt.phase, 'decision', `fork ${fork.space} pauses movement for a human choice`);
+    assert.deepEqual(prompt.pending.options, fork.options.map(option => option.space), `fork ${fork.space} only offers connected routes`);
+    for (const option of fork.options) {
+      const move = advanceMatch(prompt, { type: 'CHOOSE_ROUTE', space: option.space });
+      assert.equal(move.players[0].position, option.space, `fork ${fork.space} moves to chosen branch ${option.space}`);
+      assert.equal(move.stepsRemaining, 1, `fork ${fork.space} consumes one movement step`);
+    }
+    const cpuPrompt = advanceMatch(hauntedForkFixture(true, fork.space), { type: 'STEP' });
+    const cpuMove = advanceMatch(cpuPrompt, { type: 'AUTO_DECIDE' });
+    const shortest = [...fork.options].sort((a, b) =>
+      hauntedRoute.getHauntedShortestDistance(a.space) - hauntedRoute.getHauntedShortestDistance(b.space),
+    )[0];
+    assert.equal(cpuMove.players[0].position, shortest.space, `CPU chooses the shortest safe path at fork ${fork.space}`);
+  }
+  const routePrompt = advanceMatch(hauntedForkFixture(), { type: 'STEP' });
+  assert.equal(routePrompt.phase, 'decision', 'movement pauses at a Haunted fork for a real player choice');
+  assert.deepEqual(routePrompt.pending.options, [12, 15], 'fork prompt exposes only connected passages');
+  assert.equal(advanceMatch(routePrompt, { type: 'CHOOSE_ROUTE', space: 13 }), routePrompt, 'a route outside the fork is rejected');
+  const shortRouteMove = advanceMatch(routePrompt, { type: 'CHOOSE_ROUTE', space: 12 });
+  assert.equal(shortRouteMove.players[0].position, 12, 'choosing the gallery moves to that branch');
+  assert.equal(shortRouteMove.stepsRemaining, 1, 'choosing a branch consumes exactly one movement step');
+  assert.deepEqual(shortRouteMove.players[0].hauntedPath, [0, 11, 12], 'Haunted movement records the visited branch');
+  const longRouteMove = advanceMatch(routePrompt, { type: 'CHOOSE_ROUTE', space: 15 });
+  assert.equal(longRouteMove.players[0].position, 15, 'the alternate tower branch also works');
+  const cpuRoutePrompt = advanceMatch(hauntedForkFixture(true), { type: 'STEP' });
+  const cpuRouteMove = advanceMatch(cpuRoutePrompt, { type: 'AUTO_DECIDE' });
+  assert.equal(cpuRouteMove.players[0].position, 12, 'CPU selects a valid route using shortest-path distance');
 
   const assetTestEmptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
   const slotForAsset = (asset) => (

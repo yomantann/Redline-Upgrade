@@ -2,7 +2,7 @@ import type { DeckId } from './decks';
 import { BOARD_EFFECTS_BY_SPACE } from './board-effects';
 import type { BoardId } from './boards';
 
-export type SpaceType = 'NORMAL' | 'EVENT' | 'CARD' | 'MILESTONE' | 'GAMBLE' | 'SALARY_GATE' | 'CAREER_CHANGE' | 'UPGRADE_TOKEN';
+export type SpaceType = 'NORMAL' | 'EVENT' | 'CARD' | 'MILESTONE' | 'GAMBLE' | 'SALARY_GATE' | 'CAREER_CHANGE' | 'UPGRADE_TOKEN' | 'CURSED_DOOR';
 export type SpaceTrigger = 'NONE' | 'LAND' | 'LAND_OR_PASS';
 
 export interface BoardSpace {
@@ -174,8 +174,64 @@ const BIO_BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) => 
   };
 });
 
+const HAUNTED_SPACE_NAMES = [
+  'Iron Gate', 'Rusted Bell', 'Moonlit Courtyard', 'The Watchman', 'Thorn Walk', 'Empty Carriage', 'Gravel Drive', 'Black Ivy Arch', 'The First Footstep', 'Carriage House',
+  'Chapel Fork', 'Candlelit Gallery', 'Saint Orra’s Niche', 'Quiet Reliquary', 'Bell Tower Stairs', 'The Hanging Rope', 'Choir Loft', 'Broken Bellworks', 'The Ringer’s Room', 'Chapel Yard',
+  'North Cloister', 'Ashen Fountain', 'The Glasshouse', 'Night Conservatory', 'Withered Orchard', 'Moth Garden', 'The Well That Answers', 'Root Cellar', 'Kitchen Passage', 'Mirror Hall',
+  'Shattered Gallery', 'The Backward Portrait', 'The Long Portrait Hall', 'The Painted Twins', 'The Listening Frame', 'West Gallery', 'The Empty Ballroom', 'Dance Floor Dust', 'Gallery Junction', 'The Grand Stair',
+  'Servants’ Landing', 'The Locked Nursery', 'Cradle Room', 'The Nursery Window', 'The Long Corridor', 'The Wrong Door', 'The East Landing', 'Widow’s Room', 'Sunken Crossing', 'Flooded Crypt',
+  'The Drowned Chapel', 'Bone Bridge', 'Skull Toll', 'The Low Vault', 'The Rusted Grate', 'River of Keys', 'Crypt Steps', 'The Burial Ledger', 'Old Family Tomb', 'The Rooted Crypt',
+  'Witchlight Garden', 'The Crooked Sundial', 'Mourner’s Path', 'Final Approach', 'Old Catacombs', 'The Bell Crypt', 'Grave of the Architect', 'The Buried Kitchen', 'The House Beneath', 'Graveyard Gate',
+  'The Watcher’s Lawn', 'The Final Hedge', 'Cursed Estate', 'The Last Threshold', 'The Black Door',
+] as const;
+const HAUNTED_PAYDAY_SPACES = new Set([6, 18, 29, 41, 54, 66, 73]);
+const HAUNTED_MILESTONES = new Set([10, 30, 45, 60, 75]);
+const HAUNTED_TOKEN_SPACES = new Set([2, 14, 55]);
+export const HAUNTED_DOOR_SPACES = new Set([5, 19, 27, 43, 57, 68]);
+const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index) => {
+  const number = index + 1;
+  const payday = HAUNTED_PAYDAY_SPACES.has(number);
+  const milestone = HAUNTED_MILESTONES.has(number);
+  const token = HAUNTED_TOKEN_SPACES.has(number);
+  const door = HAUNTED_DOOR_SPACES.has(number);
+  const type: SpaceType = number === 35 ? 'CAREER_CHANGE'
+    : payday ? 'SALARY_GATE'
+      : milestone ? 'MILESTONE'
+        : token ? 'UPGRADE_TOKEN' : door ? 'CURSED_DOOR' : 'NORMAL';
+  const milestoneInfo: Partial<Record<number, [string, string, string]>> = {
+    10: ['car', 'Cursed Carriage', 'Choose a milestone vehicle, or skip.'],
+    30: ['lifestyle', 'The Portrait Cloak', 'Choose a milestone lifestyle, or skip.'],
+    45: ['pet', 'The House Familiar', 'Choose a companion or investment, then an offer, or skip.'],
+    60: ['property', 'The Buried Estate', 'Choose a property milestone, or skip.'],
+    75: ['finish', 'The Black Door', 'Reach the estate finish to lock in your place and choose your ending.'],
+  };
+  const special = milestoneInfo[number];
+  const icon = special?.[0] ?? (payday ? 'salary' : token ? 'upgrade-token' : number === 35 ? 'career' : door ? 'haunted-door' : 'normal');
+  const label = special?.[1] ?? (payday ? 'HAUNTED PAYDAY' : token ? 'CURSED TOKEN' : number === 35 ? 'CAREER SWITCH' : door ? 'CURSED DOOR' : name.toUpperCase());
+  const description = special?.[2] ?? (payday
+    ? 'Pass through or land here to receive your current salary once.'
+    : token
+      ? 'Gain one match-only Upgrade Token.'
+      : number === 35
+        ? 'Keep your current career or choose another opportunity.'
+        : door
+          ? 'Choose a sealed door and reveal the encounter inside.'
+        : `${name}. The estate watches as you pass.`);
+  return {
+    number,
+    type,
+    payday,
+    icon,
+    label,
+    description,
+    trigger: payday || number === 35 ? 'LAND_OR_PASS' : type === 'NORMAL' ? 'NONE' : 'LAND',
+  };
+});
+
 export function getBoardSpaces(boardId: BoardId = 'REDLINE_UPGRADE'): BoardSpace[] {
-  return boardId === 'BIO_UPGRADE' ? BIO_BOARD_SPACES : BOARD_SPACES;
+  if (boardId === 'BIO_UPGRADE') return BIO_BOARD_SPACES;
+  if (boardId === 'HAUNTED_UPGRADE') return HAUNTED_BOARD_SPACES;
+  return BOARD_SPACES;
 }
 
 export function getSpace(position: number, boardId: BoardId = 'REDLINE_UPGRADE'): BoardSpace | null {
