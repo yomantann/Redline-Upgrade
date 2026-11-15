@@ -361,6 +361,10 @@
 .game-dice-panel--centered .turn-signal { padding-left:10px; }
 .game-dice-panel--centered .turn-signal strong { font-size:clamp(24px,3vw,34px); }
 .game-dice-panel--centered .how-to-roll summary { white-space:normal; }
+.game-dice-panel--centered > .turn-signal,
+.game-dice-panel--centered .ru-dice__header { display:none; }
+.game-dice-panel--centered .ru-dice__tray { min-height:130px; }
+.game-dice-panel--centered .ru-dice:not([data-phase='ready']) .ru-dice__button { display:none; }
 .game-tabletop { grid-template-columns:minmax(0,1fr) minmax(260px,clamp(260px,24vw,340px)); }
 .game-tabletop > .game-tabletop-board { grid-column:1; grid-row:1; }
 .game-tabletop > .game-dice-panel { grid-column:2; grid-row:1; }

@@ -225,6 +225,7 @@ export function GameScreen() {
   const [boardFocus, setBoardFocus] = useState(false);
   const [rollOnBoard, setRollOnBoard] = useState(false);
   const [rollPanelMinimized, setRollPanelMinimized] = useState(false);
+  const rollPanelMinimizeTimer = useRef<number | null>(null);
   const toggleBoardFocus = useCallback(() => setBoardFocus(value => !value), []);
   useEffect(() => {
     if (!boardFocus) return;
@@ -266,13 +267,29 @@ export function GameScreen() {
       <p>Fast-forward speeds up the wait, not the game: CPUs still move across the board, draw and resolve cards, and apply every effect until they finish.</p>
     </aside>
   ) : null;
+  const clearRollPanelMinimizeTimer = useCallback(() => {
+    if (rollPanelMinimizeTimer.current !== null) {
+      window.clearTimeout(rollPanelMinimizeTimer.current);
+      rollPanelMinimizeTimer.current = null;
+    }
+  }, []);
   const onRollComplete = useCallback(() => {
     dispatchMatch({ type: 'REVEAL' });
-    if (rollOnBoard) setRollPanelMinimized(true);
-  }, [dispatchMatch, rollOnBoard]);
+    if (rollOnBoard) {
+      clearRollPanelMinimizeTimer();
+      rollPanelMinimizeTimer.current = window.setTimeout(() => {
+        setRollPanelMinimized(true);
+        rollPanelMinimizeTimer.current = null;
+      }, 1000);
+    }
+  }, [clearRollPanelMinimizeTimer, dispatchMatch, rollOnBoard]);
   useEffect(() => {
-    if (rollOnBoard && match?.phase === 'rolling') setRollPanelMinimized(false);
-  }, [match?.phase, rollOnBoard]);
+    if (rollOnBoard && match?.phase === 'rolling') {
+      clearRollPanelMinimizeTimer();
+      setRollPanelMinimized(false);
+    }
+  }, [clearRollPanelMinimizeTimer, match?.phase, rollOnBoard]);
+  useEffect(() => () => clearRollPanelMinimizeTimer(), [clearRollPanelMinimizeTimer]);
   const toggleAutoScroll = useCallback(() => {
     if (autoScrollEnabled) window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'auto' });
     setAutoScrollEnabled(enabled => !enabled);
@@ -899,6 +916,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             aria-pressed={rollOnBoard}
             aria-label={rollOnBoard ? (rollPanelMinimized ? 'Show dice controls on the board' : 'Move dice controls back beside the board') : 'Show dice controls in the middle of the board'}
             onClick={() => {
+              clearRollPanelMinimizeTimer();
               if (rollOnBoard && rollPanelMinimized) {
                 setRollPanelMinimized(false);
                 return;
