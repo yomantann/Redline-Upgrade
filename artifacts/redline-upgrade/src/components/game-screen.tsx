@@ -224,6 +224,7 @@ export function GameScreen() {
   const [decisionInspection, setDecisionInspection] = useState<'choice' | 'board' | 'players'>('choice');
   const [boardFocus, setBoardFocus] = useState(false);
   const [rollOnBoard, setRollOnBoard] = useState(false);
+  const [rollPanelMinimized, setRollPanelMinimized] = useState(false);
   const toggleBoardFocus = useCallback(() => setBoardFocus(value => !value), []);
   useEffect(() => {
     if (!boardFocus) return;
@@ -265,7 +266,13 @@ export function GameScreen() {
       <p>Fast-forward speeds up the wait, not the game: CPUs still move across the board, draw and resolve cards, and apply every effect until they finish.</p>
     </aside>
   ) : null;
-  const onRollComplete = useCallback(() => dispatchMatch({ type: 'REVEAL' }), [dispatchMatch]);
+  const onRollComplete = useCallback(() => {
+    dispatchMatch({ type: 'REVEAL' });
+    if (rollOnBoard) setRollPanelMinimized(true);
+  }, [dispatchMatch, rollOnBoard]);
+  useEffect(() => {
+    if (rollOnBoard && match?.phase === 'rolling') setRollPanelMinimized(false);
+  }, [match?.phase, rollOnBoard]);
   const toggleAutoScroll = useCallback(() => {
     if (autoScrollEnabled) window.scrollTo({ top: window.scrollY, left: window.scrollX, behavior: 'auto' });
     setAutoScrollEnabled(enabled => !enabled);
@@ -565,7 +572,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   const landingEvent = landing ? match.wealthEvents?.slice().reverse().find((event) => event.kind === 'PAYDAY' && event.playerIndex === landing.playerIndex && event.space === landing.space.number) : undefined;
   const recentLog = match.eventLog.slice(-4).reverse();
   const dicePanel = (
-    <aside className={`game-dice-panel${rollOnBoard ? ' game-dice-panel--centered' : ''}`} aria-label="Turn status and dice">
+    <aside className={`game-dice-panel${rollOnBoard ? ' game-dice-panel--centered' : ''}${rollPanelMinimized ? ' game-dice-panel--minimized' : ''}`} aria-label="Turn status and dice">
       <div className={`turn-signal ${active.isCPU ? 'cpu' : ''}`} aria-live="polite">
         <span className="mono">ROUND {String(match.round).padStart(2, '0')} // TURN {match.turnIndex + 1} OF {match.players.length}</span>
         <strong className="display">{active.isCPU ? `${seatName(active)}'S TURN` : 'YOUR TURN'}</strong>
@@ -890,10 +897,17 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             className="game-roll-location-toggle mono"
             data-testid="button-toggle-roll-overlay"
             aria-pressed={rollOnBoard}
-            aria-label={rollOnBoard ? 'Move dice controls back beside the board' : 'Show dice controls in the middle of the board'}
-            onClick={() => setRollOnBoard(value => !value)}
+            aria-label={rollOnBoard ? (rollPanelMinimized ? 'Show dice controls on the board' : 'Move dice controls back beside the board') : 'Show dice controls in the middle of the board'}
+            onClick={() => {
+              if (rollOnBoard && rollPanelMinimized) {
+                setRollPanelMinimized(false);
+                return;
+              }
+              setRollOnBoard(value => !value);
+              setRollPanelMinimized(false);
+            }}
           >
-            {rollOnBoard ? 'DOCK ROLL PANEL' : 'ROLL ON BOARD'}
+            {rollOnBoard ? (rollPanelMinimized ? 'SHOW ROLL PANEL' : 'DOCK ROLL PANEL') : 'ROLL ON BOARD'}
           </button>
         </div>
         {dicePanel}
