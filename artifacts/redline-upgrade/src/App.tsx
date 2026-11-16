@@ -104,7 +104,7 @@ function BoardSelection() {
 
   const chooseBoard = (board: (typeof boards)[number]) => {
     selectBoard(board.id);
-    navigate(board.availability === 'COMING_SOON' ? '/board-coming-soon' : '/mode');
+    navigate(board.availability === 'AVAILABLE' ? '/mode' : '/board-coming-soon');
   };
 
   return (
@@ -137,7 +137,7 @@ function BoardSelection() {
                 <strong>{board.name}</strong>
                 <span>{board.description}</span>
                 {board.id === 'BIO_UPGRADE' && <AgeRestrictionBadge />}
-                <span className="board-choice-link">{board.availability === 'COMING_SOON' ? 'Preview' : 'View game modes'} <span aria-hidden="true">↗</span></span>
+                <span className="board-choice-link">{board.availability === 'AVAILABLE' ? 'View game modes' : 'Preview board'} <span aria-hidden="true">↗</span></span>
               </span>
             </button>
           ))}

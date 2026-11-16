@@ -81,7 +81,7 @@ function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder =
       <ellipse cx="600" cy="390" rx="144" ry="90" fill="#101114" stroke="#645853" strokeWidth="3" />
       <path d="M520 395v-72l80-45 80 45v72z" fill="#292729" stroke="#88796b" strokeWidth="3" />
       <path d="M503 326l97-58 97 58M573 395v-48h54v48" fill="none" stroke="#aa8067" strokeWidth="4" />
-      <image href={getPublicAssetUrl('characters/haunted/more%20logos/redline-mark-danger-portrait.png')}
+      <image href={getPublicAssetUrl('Logos/redline-mark-danger-portrait.png')}
         x="562" y="322" width="76" height="76" preserveAspectRatio="xMidYMid slice" />
       <rect x="560" y="320" width="80" height="80" fill="none" stroke="#ba9c71" strokeWidth="3" />
       <text x="600" y="430" fill="#c2a68d" textAnchor="middle" fontFamily="monospace" fontWeight="900" fontSize="14">THE ESTATE REMEMBERS</text>
@@ -112,16 +112,27 @@ function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder =
               : space.type === 'CURSED_DOOR' ? '#bc8795'
                 : space.type === 'CARD' ? (space.deck ? deckAccent[space.deck] : undefined) ?? '#b3aaa0'
                   : fork ? '#b29bd5' : '#b3aaa0';
+        const marker = space.number === 75 ? 'END'
+          : space.type === 'CARD' ? ({ wealth: '$', ai: 'AI', fame: 'F', lifestyle: 'L', influence: 'I', gamble: 'G' } as const)[space.deck ?? 'wealth']
+            : space.type === 'SALARY_GATE' ? 'PAY'
+              : space.type === 'CURSED_DOOR' ? 'D'
+                : space.type === 'MILESTONE' ? 'M'
+                  : space.type === 'UPGRADE_TOKEN' ? 'T'
+                    : space.type === 'CAREER_CHANGE' ? 'C' : '•';
+        const markerRadius = space.number === 75 || milestone ? 14 : 12;
         return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`}
           onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)}
           onPointerLeave={() => onSpaceHover?.(null)}
           onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSpaceSelect?.(space.number); } }}
           style={{ cursor: 'pointer' }}>
           <title>{`Space ${space.number}: ${space.label}. ${space.description}`}</title>
-          <circle cx={point.x} cy={point.y} r={milestone ? 11 : 8} fill={landingPosition === space.number ? '#f1cb9e' : milestone ? '#554238' : '#29292b'}
-            stroke={accent} strokeWidth={landingPosition === space.number ? 4 : choice || fork || milestone ? 3 : 1.5}
+          <circle cx={point.x} cy={point.y} r={markerRadius} fill={landingPosition === space.number ? '#f1cb9e' : milestone ? '#554238' : '#29292b'}
+            stroke={accent} strokeWidth={landingPosition === space.number ? 4 : choice || fork || milestone || space.number === 75 ? 3 : 2}
             filter={choice || fork ? 'url(#haunted-fallback-glow)' : undefined} />
           <text x={point.x} y={point.y + 3.5} fill="#f3e8d7" textAnchor="middle" fontFamily="monospace" fontSize="8" fontWeight="800">{String(space.number).padStart(2, '0')}</text>
+          <circle cx={point.x + markerRadius - 1} cy={point.y - markerRadius + 1} r="8" fill={accent} stroke="#17191b" strokeWidth="1.5" />
+          <text x={point.x + markerRadius - 1} y={point.y - markerRadius + 3.2} fill="#17191b" textAnchor="middle"
+            fontFamily="monospace" fontSize={marker.length > 1 ? 5 : 7} fontWeight="900">{marker}</text>
           {boardChange && <circle cx={point.x + 10} cy={point.y - 10} r="4.5" fill={accent} stroke="#17191c" strokeWidth="1.5" />}
         </g>;
       })}

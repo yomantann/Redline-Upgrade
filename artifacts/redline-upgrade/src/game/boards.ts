@@ -1,4 +1,4 @@
-export type BoardId = 'REDLINE_UPGRADE' | 'BIO_UPGRADE' | 'HAUNTED_UPGRADE';
+export type BoardId = 'REDLINE_UPGRADE' | 'BIO_UPGRADE' | 'HAUNTED_UPGRADE' | 'WAGER_BOARD' | 'SOCIAL_BOARD';
 export type GameMode = 'SINGLE_PLAYER' | 'MULTIPLAYER';
 export type BoardAvailability = 'AVAILABLE' | 'IN_DEVELOPMENT' | 'COMING_SOON';
 
@@ -84,6 +84,44 @@ export const boards: readonly BoardDefinition[] = [
     visualThemeId: 'haunted',
     playable: true,
     multiplayerAvailable: true,
+  },
+  {
+    id: 'WAGER_BOARD',
+    name: 'Wager Board',
+    tagline: 'Every move has a price.',
+    description: 'A new board focused on calculated stakes and high-risk choices.',
+    availability: 'IN_DEVELOPMENT',
+    artwork: { mark: 'W', themeClass: 'wager-choice' },
+    content: {
+      dataSetId: 'wager-board',
+      rulesetId: 'wager-board',
+      cardSetId: 'wager-board',
+      characterSetId: 'wager-board',
+      assetSetId: 'wager-board',
+      engineId: 'wager-board',
+    },
+    visualThemeId: 'wager',
+    playable: false,
+    multiplayerAvailable: false,
+  },
+  {
+    id: 'SOCIAL_BOARD',
+    name: 'Social Board',
+    tagline: 'The room is part of the game.',
+    description: 'A new board built around player interaction and social choices.',
+    availability: 'IN_DEVELOPMENT',
+    artwork: { mark: 'S', themeClass: 'social-choice' },
+    content: {
+      dataSetId: 'social-board',
+      rulesetId: 'social-board',
+      cardSetId: 'social-board',
+      characterSetId: 'social-board',
+      assetSetId: 'social-board',
+      engineId: 'social-board',
+    },
+    visualThemeId: 'social',
+    playable: false,
+    multiplayerAvailable: false,
   },
 ];
 

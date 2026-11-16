@@ -51,29 +51,137 @@ const deckAccent: Partial<Record<NonNullable<BoardSpace['deck']>, string>> = {
   gamble: '#d98473',
 };
 
+function spaceKindLabel(space: BoardSpace): string {
+  if (space.number === 75) return 'FINISH / BLACK DOOR';
+  if (space.type === 'CARD') {
+    const deck = space.deck?.toUpperCase().replace('AI', 'AI SKILL') ?? 'EVENT';
+    return `${deck} CARD`;
+  }
+  if (space.type === 'SALARY_GATE') return 'SALARY GATE';
+  if (space.type === 'CURSED_DOOR') return 'CURSED DOOR';
+  if (space.type === 'MILESTONE') return 'MILESTONE';
+  if (space.type === 'UPGRADE_TOKEN') return 'UPGRADE TOKEN';
+  if (space.type === 'CAREER_CHANGE') return 'CAREER CHANGE';
+  return space.label.toUpperCase();
+}
+
+function drawSpaceIcon(ctx: CanvasRenderingContext2D, space: BoardSpace, accent: string) {
+  const centerX = 256;
+  const centerY = 148;
+  ctx.save();
+  ctx.strokeStyle = accent;
+  ctx.fillStyle = accent;
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (space.type === 'CARD') {
+    const deckSymbol: Partial<Record<NonNullable<BoardSpace['deck']>, string>> = {
+      wealth: '$', ai: 'AI', fame: 'F', lifestyle: 'L', influence: 'I', gamble: 'G',
+    };
+    ctx.fillStyle = '#17191b';
+    ctx.beginPath();
+    ctx.roundRect(centerX - 43, centerY - 53, 86, 106, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f4ead8';
+    ctx.font = '900 54px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(deckSymbol[space.deck ?? 'wealth'] ?? '?', centerX, centerY);
+  } else if (space.type === 'SALARY_GATE') {
+    ctx.beginPath();
+    ctx.moveTo(centerX - 53, centerY + 48);
+    ctx.lineTo(centerX - 53, centerY - 26);
+    ctx.quadraticCurveTo(centerX, centerY - 79, centerX + 53, centerY - 26);
+    ctx.lineTo(centerX + 53, centerY + 48);
+    ctx.moveTo(centerX - 72, centerY + 48);
+    ctx.lineTo(centerX + 72, centerY + 48);
+    ctx.moveTo(centerX - 25, centerY + 42);
+    ctx.lineTo(centerX - 25, centerY - 1);
+    ctx.moveTo(centerX + 25, centerY + 42);
+    ctx.lineTo(centerX + 25, centerY - 1);
+    ctx.stroke();
+  } else if (space.type === 'CURSED_DOOR' || space.number === 75) {
+    ctx.beginPath();
+    ctx.moveTo(centerX - 45, centerY + 52);
+    ctx.lineTo(centerX - 45, centerY - 23);
+    ctx.quadraticCurveTo(centerX, centerY - 77, centerX + 45, centerY - 23);
+    ctx.lineTo(centerX + 45, centerY + 52);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(centerX + 26, centerY + 9, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (space.type === 'MILESTONE') {
+    ctx.beginPath();
+    for (let point = 0; point < 10; point += 1) {
+      const radius = point % 2 === 0 ? 66 : 30;
+      const angle = -Math.PI / 2 + (point * Math.PI) / 5;
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      if (point === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else if (space.type === 'UPGRADE_TOKEN') {
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - 69);
+    ctx.lineTo(centerX + 58, centerY);
+    ctx.lineTo(centerX, centerY + 69);
+    ctx.lineTo(centerX - 58, centerY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#202026';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(centerX - 63, centerY - 23);
+    ctx.lineTo(centerX + 42, centerY - 23);
+    ctx.lineTo(centerX + 21, centerY - 44);
+    ctx.moveTo(centerX + 42, centerY - 23);
+    ctx.lineTo(centerX + 21, centerY - 2);
+    ctx.moveTo(centerX + 63, centerY + 24);
+    ctx.lineTo(centerX - 42, centerY + 24);
+    ctx.lineTo(centerX - 21, centerY + 3);
+    ctx.moveTo(centerX - 42, centerY + 24);
+    ctx.lineTo(centerX - 21, centerY + 45);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function labelTexture(space: BoardSpace, accent: string) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 160;
+  canvas.width = 512;
+  canvas.height = 320;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.clearRect(0, 0, 256, 160);
+    ctx.clearRect(0, 0, 512, 320);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(18,20,22,.9)';
     ctx.beginPath();
-    ctx.roundRect(10, 12, 236, 136, 18);
+    ctx.roundRect(10, 10, 492, 300, 22);
     ctx.fill();
     ctx.strokeStyle = accent;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 8;
     ctx.stroke();
     ctx.fillStyle = '#e8deca';
-    ctx.font = '700 46px monospace';
-    ctx.fillText(String(space.number).padStart(2, '0'), 128, 63);
+    ctx.font = '700 42px monospace';
+    ctx.fillText(`SPACE ${String(space.number).padStart(2, '0')}`, 256, 47);
+    drawSpaceIcon(ctx, space, accent);
     ctx.fillStyle = accent;
-    ctx.font = '700 21px sans-serif';
-    const title = space.label.toUpperCase();
-    ctx.fillText(title.length > 17 ? `${title.slice(0, 16)}…` : title, 128, 113);
+    const title = spaceKindLabel(space);
+    ctx.font = `900 ${title.length > 16 ? 26 : 31}px sans-serif`;
+    ctx.fillText(title, 256, 263);
+    if (space.payday) {
+      ctx.fillStyle = '#e8deca';
+      ctx.font = '700 19px monospace';
+      ctx.fillText('PAYDAY', 256, 292);
+    }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -87,6 +195,9 @@ function Space({ space, active, landing, choice, boardChange, onSelect, onHover 
   onSelect: (number: number) => void; onHover: (number: number | null) => void;
 }) {
   const point = ROUTE[space.number];
+  const before = ROUTE[Math.max(0, space.number - 1)];
+  const after = ROUTE[Math.min(75, space.number + 1)];
+  const routeAngle = -Math.atan2(after.z - before.z, after.x - before.x);
   const changeColor = boardChange?.kind === 'CURSE_SPACE' ? '#d66b73' : boardChange?.kind === 'SAFE_SPACE' ? '#79c9ae' : undefined;
   const accent = changeColor ?? (space.number === 75 ? palette.ember
     : choice ? palette.teal
@@ -97,25 +208,30 @@ function Space({ space, active, landing, choice, boardChange, onSelect, onHover 
               : space.type === 'CARD' ? (space.deck ? deckAccent[space.deck] : undefined) ?? '#8b9187' : '#8b9187');
   const texture = useMemo(() => labelTexture(space, accent), [space, accent]);
   useEffect(() => () => texture.dispose(), [texture]);
-  const special = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' || space.number === 75;
-  return <group position={[point.x, 0, point.z]}
+  const special = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE'
+    || space.type === 'UPGRADE_TOKEN' || space.type === 'CURSED_DOOR' || space.type === 'SALARY_GATE' || space.number === 75;
+  const tileWidth = space.number === 75 ? 2.75 : special ? 2.3 : 2.05;
+  const tileDepth = space.number === 75 ? 2.35 : special ? 2.0 : 1.78;
+  const highlightInner = Math.min(tileWidth, tileDepth) * 0.42;
+  const highlightOuter = highlightInner + 0.12;
+  return <group position={[point.x, 0, point.z]} rotation={[0, routeAngle, 0]}
     onPointerDown={event => { event.stopPropagation(); onSelect(space.number); }}
     onPointerOver={event => { event.stopPropagation(); onHover(space.number); }}
     onPointerOut={() => onHover(null)}>
     <mesh position={[0, 0.22, 0]} castShadow receiveShadow>
-      <boxGeometry args={[special ? 1.88 : 1.58, 0.34, special ? 1.62 : 1.42]} />
+      <boxGeometry args={[tileWidth, 0.34, tileDepth]} />
       <meshStandardMaterial color="#17191b" metalness={0.45} roughness={0.72} />
     </mesh>
     <mesh position={[0, 0.43, 0]} castShadow receiveShadow>
-      <boxGeometry args={[special ? 1.82 : 1.52, 0.12, special ? 1.56 : 1.36]} />
-      <meshStandardMaterial color={choice ? '#344744' : special ? '#47413b' : '#303336'} metalness={0.32} roughness={0.55} />
+      <boxGeometry args={[tileWidth - 0.08, 0.12, tileDepth - 0.08]} />
+      <meshStandardMaterial color={choice ? '#344744' : space.number === 75 ? '#45302b' : special ? '#47413b' : '#303336'} metalness={0.32} roughness={0.55} />
     </mesh>
-    <mesh position={[0, 0.497, 0]}>
-      <planeGeometry args={[special ? 1.7 : 1.4, special ? 1.42 : 1.22]} />
+    <mesh position={[0, 0.497, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[tileWidth - 0.22, tileDepth - 0.22]} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} />
     </mesh>
     {(active || landing || choice) && <mesh position={[0, 0.505, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.82, 0.92, 24]} />
+      <ringGeometry args={[highlightInner, highlightOuter, 24]} />
       <meshBasicMaterial color={landing ? palette.ember : choice ? palette.teal : '#e3d5b5'} transparent opacity={0.92} />
     </mesh>}
     {boardChange && <group position={[0, 0.76, 0]}>
@@ -129,7 +245,7 @@ function Space({ space, active, landing, choice, boardChange, onSelect, onHover 
       </mesh>
     </group>}
     <mesh position={[0, 0.51, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[2.05, 1.85]} />
+      <planeGeometry args={[tileWidth + 0.18, tileDepth + 0.18]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
   </group>;
@@ -163,7 +279,7 @@ function HauntedStart({ position }: { position: { x: number; z: number } }) {
   useEffect(() => () => texture.dispose(), [texture]);
   return <group position={[position.x, 0, position.z]}>
     <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
-      <boxGeometry args={[2.45, 0.25, 1.9]} />
+      <boxGeometry args={[3.1, 0.25, 2.45]} />
       <meshStandardMaterial color="#22292a" metalness={0.4} roughness={0.68} />
     </mesh>
     <mesh position={[0, 0.275, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -198,7 +314,7 @@ function HauntedStart({ position }: { position: { x: number; z: number } }) {
 function HauntedCenterPortrait() {
   const texture = useMemo(() => {
     const image = new THREE.TextureLoader().load(getPublicAssetUrl(
-      'characters/haunted/more%20logos/redline-mark-danger-portrait.png',
+      'Logos/redline-mark-danger-portrait.png',
     ));
     image.colorSpace = THREE.SRGBColorSpace;
     image.anisotropy = 4;

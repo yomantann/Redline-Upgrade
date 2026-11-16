@@ -100,11 +100,17 @@ try {
   const hauntedBoardDefinition = boards.find(board => board.id === 'HAUNTED_UPGRADE');
   assert.equal(hauntedBoardDefinition?.playable, true, 'Haunted is enabled for new games, not preview-only');
   assert.equal(hauntedBoardDefinition?.multiplayerAvailable, true, 'Haunted is enabled for multiplayer too');
+  const developmentBoards = boards.filter(board => board.id === 'WAGER_BOARD' || board.id === 'SOCIAL_BOARD');
+  assert.deepEqual(developmentBoards.map(board => board.id), ['WAGER_BOARD', 'SOCIAL_BOARD'],
+    'Wager and Social board placeholders appear in the board registry');
+  assert(developmentBoards.every(board => board.availability === 'IN_DEVELOPMENT' && !board.playable && !board.multiplayerAvailable),
+    'Wager and Social remain unavailable for gameplay until their content is ready');
   const hauntedRoute = await vite.ssrLoadModule('/src/game/haunted-board.ts');
   const { CURSED_DOOR_CHOICES, getHauntedDoorOutcome } = await vite.ssrLoadModule('/src/game/haunted-encounters.ts');
   const {
     HAUNTED_FINISH_SPACE,
     HAUNTED_FORKS,
+    HAUNTED_ROUTE_POINTS,
     createHauntedBoardState,
     expireHauntedBoardChanges,
     getHauntedNextSpaces,
@@ -115,6 +121,11 @@ try {
   } = hauntedRoute;
   assert.deepEqual(validateHauntedRouteGraph(), [], 'every Haunted route reaches the finish without cycles or unreachable spaces');
   assert.equal(HAUNTED_FORKS.length, 4, 'Haunted has four decision forks');
+  assert(Math.hypot(HAUNTED_ROUTE_POINTS[HAUNTED_FINISH_SPACE].x - HAUNTED_ROUTE_POINTS[0].x,
+    HAUNTED_ROUTE_POINTS[HAUNTED_FINISH_SPACE].z - HAUNTED_ROUTE_POINTS[0].z) > 8,
+  'Haunted start and finish no longer overlap');
+  assert(Math.hypot(HAUNTED_ROUTE_POINTS[HAUNTED_FINISH_SPACE].x, HAUNTED_ROUTE_POINTS[HAUNTED_FINISH_SPACE].z) < 11,
+    'Haunted final spaces use the inner board approach');
   const hauntedSpaces = getBoardSpaces('HAUNTED_UPGRADE');
   assert.equal(hauntedSpaces.length, 75, 'Haunted has its own 75-space board');
   assert.equal(new Set(hauntedSpaces.map(space => space.number)).size, 75, 'every Haunted board position is unique');
@@ -391,7 +402,13 @@ try {
     const hauntedPath = getCharacterImagePath(character.id, 'HAUNTED_UPGRADE');
     assert.equal(hauntedPath, hauntedPortraits[character.id] ? `characters/haunted/${hauntedPortraits[character.id]}` : character.imagePath);
     assert(existsSync(new URL(`../public/${hauntedPath}`, import.meta.url)), `character select portrait exists for ${character.id}`);
+    assert.equal(getCharacterImagePath(character.id, 'SOCIAL_BOARD'), `characters/SOCIAL/${character.id}.png`,
+      `${character.id} has a reserved Social portrait path`);
+    assert.equal(getCharacterImagePath(character.id, 'WAGER_BOARD'), `characters/WAGER/${character.id}.png`,
+      `${character.id} has a reserved Wager portrait path`);
   }
+  assert(existsSync(new URL('../public/characters/SOCIAL/README.md', import.meta.url)), 'Social character artwork folder is prepared');
+  assert(existsSync(new URL('../public/characters/WAGER/README.md', import.meta.url)), 'Wager character artwork folder is prepared');
   for (const mark of [
     'redline-mark-crown-crest.png',
     'redline-mark-speedometer.png',
@@ -400,7 +417,7 @@ try {
     'redline-mark-night-highway.png',
     'redline-mark-danger-portrait.png',
   ]) {
-    assert(existsSync(new URL(`../public/characters/haunted/more logos/${mark}`, import.meta.url)), `Haunted logo artwork exists: ${mark}`);
+    assert(existsSync(new URL(`../public/Logos/${mark}`, import.meta.url)), `Logo artwork exists: ${mark}`);
   }
   for (const character of characters) {
     assert(existsSync(new URL(`../public/${character.imagePath}`, import.meta.url)), `${character.name} portrait exists at ${character.imagePath}`);

@@ -103,12 +103,42 @@ export const HAUNTED_FORKS: readonly HauntedFork[] = [
 
 const forkBySpace = new Map(HAUNTED_FORKS.map((fork) => [fork.space, fork]));
 
+const ELLIPSE_SAMPLES = 4096;
+const ellipsePoints = Array.from({ length: ELLIPSE_SAMPLES + 1 }, (_, index) => {
+  const angle = -Math.PI / 2 + (index / ELLIPSE_SAMPLES) * Math.PI * 2;
+  return { angle, x: Math.cos(angle) * 25, z: Math.sin(angle) * 16 };
+});
+const ellipseDistances = [0];
+for (let index = 1; index < ellipsePoints.length; index += 1) {
+  const previous = ellipsePoints[index - 1];
+  const current = ellipsePoints[index];
+  ellipseDistances.push(ellipseDistances[index - 1] + Math.hypot(current.x - previous.x, current.z - previous.z));
+}
+const ellipsePerimeter = ellipseDistances[ellipseDistances.length - 1];
+
+function pointOnEllipseAt(distance: number): HauntedRoutePoint {
+  let low = 1;
+  let high = ellipseDistances.length - 1;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (ellipseDistances[middle] < distance) low = middle + 1;
+    else high = middle;
+  }
+  const upper = low;
+  const lower = Math.max(0, upper - 1);
+  const segmentLength = ellipseDistances[upper] - ellipseDistances[lower] || 1;
+  const progress = (distance - ellipseDistances[lower]) / segmentLength;
+  return {
+    x: ellipsePoints[lower].x + (ellipsePoints[upper].x - ellipsePoints[lower].x) * progress,
+    z: ellipsePoints[lower].z + (ellipsePoints[upper].z - ellipsePoints[lower].z) * progress,
+  };
+}
+
 const routePoints: Record<number, HauntedRoutePoint> = Object.fromEntries(
-  Array.from({ length: HAUNTED_FINISH_SPACE }, (_, index) => {
-    const space = index + 1;
-    const angle = -Math.PI / 2 + ((space - 1) / (HAUNTED_FINISH_SPACE - 1)) * Math.PI * 2;
-    return [space, { x: Math.cos(angle) * 25, z: Math.sin(angle) * 16 }];
-  }),
+  Array.from({ length: HAUNTED_FINISH_SPACE }, (_, index) => [
+    index + 1,
+    pointOnEllipseAt((index / HAUNTED_FINISH_SPACE) * ellipsePerimeter),
+  ]),
 );
 
 function placeBranch(spaces: readonly number[], from: number, to: number, offset: number): void {
@@ -128,22 +158,28 @@ function placeBranch(spaces: readonly number[], from: number, to: number, offset
   });
 }
 
-placeBranch([12, 13, 14], 11, 20, -5.6);
-placeBranch([15, 16, 17, 18, 19], 11, 20, 5.6);
-placeBranch([31, 32, 33], 30, 39, -5.6);
-placeBranch([34, 35, 36, 37, 38], 30, 39, 5.6);
-placeBranch([50, 51], 49, 54, -5.6);
-placeBranch([52, 53], 49, 54, 5.6);
-placeBranch([65, 66, 67, 68, 69], 64, 72, -5.6);
-placeBranch([70, 71], 64, 72, 5.6);
+// Longer branches occupy more of the otherwise empty central board area;
+// shorter options stay direct so the visual route length matches the rules.
+placeBranch([12, 13, 14], 11, 20, -1.5);
+placeBranch([15, 16, 17, 18, 19], 11, 20, 8.5);
+placeBranch([31, 32, 33], 30, 39, -1.5);
+placeBranch([34, 35, 36, 37, 38], 30, 39, 8.5);
+placeBranch([50, 51], 49, 54, -4.2);
+placeBranch([52, 53], 49, 54, 4.2);
+routePoints[72] = { x: -14, z: -11 };
+placeBranch([65, 66, 67, 68, 69], 64, 72, -7.5);
+placeBranch([70, 71], 64, 72, 2.5);
+routePoints[73] = { x: -11.8, z: -9 };
+routePoints[74] = { x: -9.6, z: -7 };
+routePoints[75] = { x: -7.4, z: -5 };
 const startVector = {
   x: routePoints[1].x - routePoints[2].x,
   z: routePoints[1].z - routePoints[2].z,
 };
 const startLength = Math.hypot(startVector.x, startVector.z) || 1;
 routePoints[HAUNTED_START_SPACE] = {
-  x: routePoints[1].x + (startVector.x / startLength) * 3.2,
-  z: routePoints[1].z + (startVector.z / startLength) * 3.2,
+  x: routePoints[1].x + (startVector.x / startLength) * 3.6,
+  z: routePoints[1].z + (startVector.z / startLength) * 3.6,
 };
 
 export const HAUNTED_ROUTE_POINTS: Readonly<Record<number, HauntedRoutePoint>> = Object.freeze(

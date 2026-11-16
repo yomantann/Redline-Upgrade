@@ -109,6 +109,15 @@ const hauntedImageFileById: Partial<Record<string, string>> = {
   wandering_eye: 'hnt_wander_1.png',
 };
 
+// Future board portraits use stable roster IDs as filenames so their artwork
+// stays isolated from Standard, Bio, and Haunted character imagery.
+const socialImageFileById: Record<string, string> = Object.fromEntries(
+  roster.map(([id]) => [id, `${id}.png`]),
+);
+const wagerImageFileById: Record<string, string> = Object.fromEntries(
+  roster.map(([id]) => [id, `${id}.png`]),
+);
+
 export const characters: CharacterDefinition[] = roster.map(
   ([id, name, description]) => {
    const abilityId = characterAbilityId(id);
@@ -140,6 +149,12 @@ export function getCharacterImagePath(characterId: string, boardId: BoardId): st
   if (boardId === 'HAUNTED_UPGRADE') {
     const hauntedImage = hauntedImageFileById[character.id];
     return hauntedImage ? `characters/haunted/${hauntedImage}` : character.imagePath;
+  }
+  if (boardId === 'SOCIAL_BOARD') {
+    return `characters/SOCIAL/${socialImageFileById[character.id]}`;
+  }
+  if (boardId === 'WAGER_BOARD') {
+    return `characters/WAGER/${wagerImageFileById[character.id]}`;
   }
   return character.imagePath;
 }
