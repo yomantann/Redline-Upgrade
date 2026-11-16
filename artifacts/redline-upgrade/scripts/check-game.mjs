@@ -95,6 +95,10 @@ try {
   const { visualAssets } = await vite.ssrLoadModule('/src/game/asset-manifest.ts');
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
+  const { boards } = await vite.ssrLoadModule('/src/game/boards.ts');
+  const hauntedBoardDefinition = boards.find(board => board.id === 'HAUNTED_UPGRADE');
+  assert.equal(hauntedBoardDefinition?.playable, true, 'Haunted is enabled for new games, not preview-only');
+  assert.equal(hauntedBoardDefinition?.multiplayerAvailable, true, 'Haunted is enabled for multiplayer too');
   const hauntedRoute = await vite.ssrLoadModule('/src/game/haunted-board.ts');
   const { CURSED_DOOR_CHOICES, getHauntedDoorOutcome } = await vite.ssrLoadModule('/src/game/haunted-encounters.ts');
   const {
@@ -214,8 +218,11 @@ try {
         }));
         const prompt = advanceMatch({ ...base, players: beforePlayers }, { type: 'STEP' });
         const resolved = advanceMatch(prompt, { type: 'CHOOSE_DOOR', doorId: door.id });
-        assert.equal(resolved.pending.outcomeTitle, expectedOutcome.title, `${door.id} reveals defined outcome ${expectedOutcome.id}`);
-        assert(resolved.pending.outcomeSummary, `${expectedOutcome.id} shows its actual result`);
+        const reveal = resolved.pending?.kind === 'ABILITY' && resolved.pending.resumePending?.kind === 'CURSED_DOOR'
+          ? resolved.pending.resumePending
+          : resolved.pending;
+        assert.equal(reveal?.outcomeTitle, expectedOutcome.title, `${door.id} reveals defined outcome ${expectedOutcome.id}`);
+        assert(reveal?.outcomeSummary, `${expectedOutcome.id} shows its actual result`);
         const effect = expectedOutcome.effect;
         if (effect.kind === 'STAT') {
           assert.equal(resolved.players[0][effect.stat], beforePlayers[0][effect.stat] + effect.amount, `${expectedOutcome.id} applies its player stat change`);
@@ -3158,6 +3165,9 @@ try {
     Math.random = () => 0;
     try {
       const hauntedSoloStart = createMatch(characters[0].id, 'HAUNTED_UPGRADE');
+      assert.equal(hauntedSoloStart.phase, 'ready', 'Haunted single-player starts at the first turn instead of a preview state');
+      assert.equal(hauntedSoloStart.players.filter(player => player.isCPU).length, 3, 'Haunted single-player starts with three CPU rivals');
+      assert(hauntedSoloStart.hauntedBoard, 'Haunted single-player starts with its Living Board state');
       let hauntedSolo = advanceMatch({
         ...hauntedSoloStart,
         phase: 'moving',

@@ -294,7 +294,7 @@ function CharacterPreview({ character, index, boardId, imagePath }: {
           <h2 className="display preview-name">{character.name}</h2>
           <div className="preview-selection-confirmation" role="status" aria-live="polite">
           <span className="mono lime">SELECTED / READY TO START</span>
-            <button className="action lime-action" type="button" onClick={confirm} data-testid="button-confirm-identity">
+            <button className={`action ${isHauntedBoard ? 'haunted-action' : 'lime-action'}`} type="button" onClick={confirm} data-testid="button-confirm-identity">
               Confirm identity <span aria-hidden="true">↗</span>
             </button>
           </div>
@@ -454,7 +454,7 @@ function Setup() {
               <span className="setup-record-value">{character.name}</span>
             </div>
               <div className="setup-actions">
-              <button className="action lime-action" type="button" onClick={enterCareer} disabled={starting} data-testid="button-enter-career">{starting ? 'Starting…' : match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
+              <button className={`action ${isHauntedBoard ? 'haunted-action' : 'lime-action'}`} type="button" onClick={enterCareer} disabled={starting} data-testid="button-enter-career">{starting ? 'Starting…' : match ? 'Reveal career' : 'Start game'} <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { startNewGame(); navigate('/characters'); }}>Change identity <span aria-hidden="true">→</span></button>
               </div>
               {remoteError && <p className="setup-lede" role="alert">{remoteError}</p>}
