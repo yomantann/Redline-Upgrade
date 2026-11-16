@@ -51,7 +51,7 @@ export interface PersonalBestDetail {
   improvement: number;
   isNewRecord: boolean;
   isBaseline: boolean;
-  mode: 'STANDARD' | 'BIO';
+  mode: 'STANDARD' | 'BIO' | 'HAUNTED';
   achievedAt: string;
   characterId: string;
   careerId: string | null;

@@ -18,3 +18,4 @@
 - [Salary gates and finish pacing](salary-gates-and-finish-pacing.md) — fast-forward preserves CPU turns and card effects; solo pauses for acknowledgment, multiplayer remains automatic.
 - [Career card affinities](career-card-affinities.md) — every career keeps two distinct deck affinities and career bonuses use consistent attribute language.
 - [Board camera ownership](board-camera-ownership.md) — manual panning freezes the camera target; gameplay events must not take over the viewer's inspection.
+- [Upgrade-token event ownership](upgrade-token-event-ownership.md) — token-gain events apply the count; do not also mutate the player's token total directly.

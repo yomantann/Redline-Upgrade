@@ -2,7 +2,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getBoardSpaces, type BoardSpace } from '../game/board-data';
-import { HAUNTED_ROUTE_EDGES, HAUNTED_ROUTE_POINTS } from '../game/haunted-board';
+import {
+  HAUNTED_ROUTE_EDGES,
+  HAUNTED_ROUTE_POINTS,
+  getHauntedRouteEdgeMode,
+  getHauntedSpaceChange,
+  type HauntedBoardState,
+} from '../game/haunted-board';
 import type { MatchPlayer } from '../game/match';
 import { PawnModel } from './pawns/PawnModel';
 
@@ -20,6 +26,8 @@ type HauntedBoardSceneProps = {
   onSpaceSelect: (number: number) => void;
   onSpaceHover: (number: number | null) => void;
   routeOptions?: number[];
+  hauntedBoardState?: HauntedBoardState;
+  turnCounter?: number;
 };
 
 const SPACES = getBoardSpaces('HAUNTED_UPGRADE');
@@ -64,16 +72,18 @@ function labelTexture(space: BoardSpace, accent: string) {
   return texture;
 }
 
-function Space({ space, active, landing, choice, onSelect, onHover }: {
+function Space({ space, active, landing, choice, boardChange, onSelect, onHover }: {
   space: BoardSpace; active: boolean; landing: boolean; choice: boolean;
+  boardChange?: ReturnType<typeof getHauntedSpaceChange>;
   onSelect: (number: number) => void; onHover: (number: number | null) => void;
 }) {
   const point = ROUTE[space.number];
-  const accent = space.number === 75 ? palette.ember
+  const changeColor = boardChange?.kind === 'CURSE_SPACE' ? '#d66b73' : boardChange?.kind === 'SAFE_SPACE' ? '#79c9ae' : undefined;
+  const accent = changeColor ?? (space.number === 75 ? palette.ember
     : choice ? palette.teal
       : space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' ? palette.ember
         : space.type === 'UPGRADE_TOKEN' ? palette.violet
-          : space.payday ? '#c3b876' : '#8b9187';
+          : space.payday ? '#c3b876' : '#8b9187');
   const texture = useMemo(() => labelTexture(space, accent), [space, accent]);
   useEffect(() => () => texture.dispose(), [texture]);
   const special = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' || space.number === 75;
@@ -97,6 +107,16 @@ function Space({ space, active, landing, choice, onSelect, onHover }: {
       <ringGeometry args={[0.82, 0.92, 24]} />
       <meshBasicMaterial color={landing ? palette.ember : choice ? palette.teal : '#e3d5b5'} transparent opacity={0.92} />
     </mesh>}
+    {boardChange && <group position={[0, 0.76, 0]}>
+      <mesh>
+        <sphereGeometry args={[0.16, 12, 8]} />
+        <meshBasicMaterial color={accent} />
+      </mesh>
+      <mesh position={[0, 0.19, 0]}>
+        <coneGeometry args={[0.1, 0.16, 8]} />
+        <meshBasicMaterial color={accent} />
+      </mesh>
+    </group>}
     <mesh position={[0, 0.51, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[2.05, 1.85]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -104,23 +124,30 @@ function Space({ space, active, landing, choice, onSelect, onHover }: {
   </group>;
 }
 
-function RouteEdge({ from, to, highlighted }: { from: number; to: number; highlighted: boolean }) {
+function RouteEdge({ from, to, highlighted, mode = 'OPEN' }: {
+  from: number; to: number; highlighted: boolean; mode?: 'OPEN' | 'CLOSED' | 'SHORTCUT';
+}) {
   const a = ROUTE[from];
   const b = ROUTE[to];
   const dx = b.x - a.x;
   const dz = b.z - a.z;
   const length = Math.hypot(dx, dz);
   const angle = -Math.atan2(dz, dx);
-  const color = highlighted ? palette.teal : '#776d62';
+  const color = mode === 'CLOSED' ? '#b34e57'
+    : highlighted ? palette.teal : mode === 'SHORTCUT' ? palette.violet : '#776d62';
   return <group position={[(a.x + b.x) / 2, 0.12, (a.z + b.z) / 2]} rotation={[0, angle, 0]}>
     <mesh receiveShadow>
       <boxGeometry args={[length, 0.13, 0.48]} />
-      <meshStandardMaterial color="#202326" metalness={0.28} roughness={0.83} />
+      <meshStandardMaterial color={mode === 'CLOSED' ? '#382628' : '#202326'} metalness={0.28} roughness={0.83} />
     </mesh>
     <mesh position={[0, 0.075, 0]}>
-      <boxGeometry args={[length, 0.025, highlighted ? 0.17 : 0.065]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={highlighted ? 0.5 : 0.08} metalness={0.36} roughness={0.52} />
+      <boxGeometry args={[length, 0.025, highlighted ? 0.17 : mode === 'SHORTCUT' ? 0.13 : 0.065]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={highlighted || mode !== 'OPEN' ? 0.5 : 0.08} metalness={0.36} roughness={0.52} />
     </mesh>
+    {mode === 'CLOSED' && <mesh position={[0, 0.35, 0]} rotation={[0, 0, Math.PI / 2]}>
+      <boxGeometry args={[0.09, 0.72, 0.64]} />
+      <meshStandardMaterial color="#c46668" emissive="#852f37" emissiveIntensity={0.25} metalness={0.35} roughness={0.62} />
+    </mesh>}
   </group>;
 }
 
@@ -241,7 +268,7 @@ function CameraRig({ focus, overview, reduceMotion, zoom, pan }: {
 
 export function HauntedBoardScene({
   players, activePlayerId, focusPosition, finishOrder = [], landingPosition, overview, reduceMotion,
-  zoom, pan, onSpaceSelect, onSpaceHover, routeOptions = [],
+  zoom, pan, onSpaceSelect, onSpaceHover, routeOptions = [], hauntedBoardState, turnCounter = 0,
 }: HauntedBoardSceneProps) {
   const activePosition = players.find(player => player.playerId === activePlayerId)?.position ?? 0;
   const activeChoices = useMemo(() => new Set(routeOptions), [routeOptions.join(',')]);
@@ -254,8 +281,14 @@ export function HauntedBoardScene({
     return grouped;
   }, [players]);
   const edges = Object.entries(HAUNTED_ROUTE_EDGES).flatMap(([from, tos]) =>
-    tos.map(to => ({ from: Number(from), to })),
+    tos.map(to => ({ from: Number(from), to, mode: getHauntedRouteEdgeMode(Number(from), to, hauntedBoardState, turnCounter) })),
   );
+  for (const change of hauntedBoardState?.changes ?? []) {
+    if (change.kind === 'OPEN_SHORTCUT' && (change.expiresAtTurn === null || change.expiresAtTurn > turnCounter)
+      && !edges.some(edge => edge.from === change.from && edge.to === change.to)) {
+      edges.push({ from: change.from, to: change.to, mode: 'SHORTCUT' });
+    }
+  }
   return <>
     <color attach="background" args={['#24272a']} />
     <ambientLight intensity={1.1} />
@@ -267,9 +300,11 @@ export function HauntedBoardScene({
     <pointLight position={[18, 1.2, -7]} intensity={0.9} distance={10} color="#9582a3" />
     <CameraRig focus={focusPosition ?? activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <Estate />
-    {edges.map(({ from, to }) => <RouteEdge key={`${from}-${to}`} from={from} to={to} highlighted={activeChoices.has(to)} />)}
+    {edges.map(({ from, to, mode }) => <RouteEdge key={`${from}-${to}`} from={from} to={to}
+      highlighted={activeChoices.has(to)} mode={mode} />)}
     {SPACES.map(space => <Space key={space.number} space={space} active={space.number === activePosition}
       landing={space.number === landingPosition} choice={activeChoices.has(space.number)}
+      boardChange={getHauntedSpaceChange(hauntedBoardState, space.number, turnCounter)}
       onSelect={onSpaceSelect} onHover={onSpaceHover} />)}
     {players.map((player, playerIndex) => {
       const atPosition = occupants.get(Math.max(0, Math.min(75, player.position))) ?? [player];

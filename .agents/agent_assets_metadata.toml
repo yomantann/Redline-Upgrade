@@ -56,3 +56,17 @@ mtime_ms = 1794357444256
 storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/5a1a2bac-721d-4e21-ba77-357097093210/a7d68326-6bad-4985-80f5-e8a107bc818d"
 storage_version_token = "1794358804652382"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "7x6re3ZiOzQ3ziG-D2ktI"
+uri = "file://generated-artifacts/phase-30-haunted-upgrade-report.html"
+type = "html"
+title = "Haunted Upgrade: Phase 30 reference"
+description = "Route graph, all Cursed Door outcomes, Living Board rules, test summary, and the complete 100-card effect list."
+logical_id = "d6a966e2-8d40-4ea5-aa37-d8cb236286cf"
+content_hash = "sha256:61ab5f0b0949c721ebe7fb6017640b5ebe2ebabd63fa3ba26a4c6a55d067eb14"
+size = 52228
+mtime_ms = 1794789938311
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:8afd3510-6f0e-49e2-95fb-745342e385dd/d6a966e2-8d40-4ea5-aa37-d8cb236286cf/7ccf55a3-4c19-4ec7-8794-8336319518ca"
+storage_version_token = "1794789939008593"
+content_type = "text/html"

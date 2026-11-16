@@ -284,7 +284,7 @@ export const GetAchievementProfileResponse = zod.object({
 })),
   "personalBests": zod.array(zod.object({
   "userId": zod.string(),
-  "mode": zod.enum(['STANDARD', 'BIO']),
+  "mode": zod.enum(['STANDARD', 'BIO', 'HAUNTED']),
   "category": zod.string(),
   "recordValue": zod.number().int(),
   "previousValue": zod.number().int().nullable(),

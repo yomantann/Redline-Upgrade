@@ -220,6 +220,7 @@ function HauntedDoorChoice({ pending, onAction }: {
           <span className="mono eyebrow">CURSED DOOR // SPACE {String(pending.space).padStart(2, '0')}</span>
           <h2 className="display">{pending.outcomeTitle ?? 'THE DOOR OPENS'}</h2>
           <p>{pending.reveal}</p>
+          {pending.outcomeSummary && <strong className="haunted-door-outcome-summary" data-testid="haunted-door-outcome-summary">{pending.outcomeSummary}</strong>}
           <button className="action lime-action" type="button" onClick={() => onAction({ type: 'ACKNOWLEDGE_DOOR' })} data-testid="button-acknowledge-haunted-door">CONTINUE</button>
         </div>
       </section>
@@ -279,7 +280,10 @@ export function GameScreen() {
   const [, navigate] = useLocation();
   const { match, dispatchMatch, rollDice, remote, remoteError, remoteConnected, selectedBoardId, selectBoard, returnHome, newAchievementIds } = useGame();
   const { user } = useAuth(import.meta.env.BASE_URL);
-  const isBioBoard = selectedBoardId === 'BIO_UPGRADE';
+  const activeBoardId = match?.boardId ?? selectedBoardId;
+  const isBioBoard = activeBoardId === 'BIO_UPGRADE';
+  const isHauntedBoard = activeBoardId === 'HAUNTED_UPGRADE';
+  const selectedBoardName = isBioBoard ? 'Bio Upgrade' : isHauntedBoard ? 'Haunted Upgrade' : 'Redline Upgrade';
   const previewPlayers = useMemo(
     () => createMatch(characters[0].id, selectedBoardId).players.map((player, index) => ({
       ...player,
@@ -583,11 +587,11 @@ export function GameScreen() {
   }, [phase, turnIndex, pending?.kind, match?.players[match.turnIndex]?.endgame?.status, hasTurnStartToken, autoScrollEnabled]);
 
   if (!match) return (
-    <main className={`game-screen board-preview-page ${boardFocus ? 'game-screen--board-focus' : ''}`}>
+    <main className={`game-screen board-preview-page ${isHauntedBoard ? 'haunted-mode' : ''} ${boardFocus ? 'game-screen--board-focus' : ''}`}>
       <header className="empty-board-header">
         <div>
           <span className="eyebrow">NO MATCH LOADED // BOARD PREVIEW</span>
-          <h1 className="display empty-board-title">{isBioBoard ? 'BIO UPGRADE' : 'REDLINE UPGRADE'}</h1>
+          <h1 className="display empty-board-title">{selectedBoardName.toUpperCase()}</h1>
           {isBioBoard && <AgeRestrictionBadge />}
         </div>
         <div className="empty-board-actions">
@@ -595,6 +599,7 @@ export function GameScreen() {
             {([
               ['REDLINE_UPGRADE', 'Redline Upgrade'],
               ['BIO_UPGRADE', 'Bio Upgrade'],
+              ['HAUNTED_UPGRADE', 'Haunted Upgrade'],
             ] as const satisfies readonly (readonly [BoardId, string])[]).map(([boardId, label]) => (
               <button
                 key={boardId}
@@ -609,15 +614,17 @@ export function GameScreen() {
               >{label}</button>
             ))}
           </div>
-          <button className={`action ${isBioBoard ? 'lime-action' : ''}`} type="button" onClick={() => navigate('/mode')} data-testid="button-board-start">
-            Play {isBioBoard ? 'Bio Upgrade' : 'Redline Upgrade'} <span aria-hidden>↗</span>
+          <button className={`action ${isBioBoard ? 'lime-action' : isHauntedBoard ? 'haunted-action' : ''}`} type="button" onClick={() => navigate('/mode')} data-testid="button-board-start">
+            Play {selectedBoardName} <span aria-hidden>↗</span>
           </button>
         </div>
       </header>
       <div className="board-preview-banner mono" role="note">
         {isBioBoard
           ? 'LIVE BOARD PREVIEW / PAWN AUTO-MOVES ALONG THE ROUTE / NO GAME STATE CHANGED'
-          : 'SAMPLE PAWN PLACEMENT / NO GAME STATE CHANGED / SELECT A BOARD TO PREVIEW'}
+          : isHauntedBoard
+            ? 'HAUNTED ESTATE PREVIEW / BRANCHING ROUTES / NO GAME STATE CHANGED'
+            : 'SAMPLE PAWN PLACEMENT / NO GAME STATE CHANGED / SELECT A BOARD TO PREVIEW'}
       </div>
       <GameBoard
         boardId={selectedBoardId}
@@ -694,7 +701,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
 
   if (match.phase === 'complete') {
     return (
-      <main className="game-screen game-screen-finish-line">
+      <main className={`game-screen game-screen-finish-line ${isHauntedBoard ? 'haunted-mode' : ''}`}>
         <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
         {isBioBoard && <AgeRestrictionBadge />}
         <MatchResultsPanel
@@ -715,7 +722,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
     if (!active.endgame) return null;
     const waitingForHumanChoice = active.endgame.status !== 'RESOLVED' && !active.isCPU;
     return (
-      <main className="game-screen game-screen-finish-line">
+      <main className={`game-screen game-screen-finish-line ${isHauntedBoard ? 'haunted-mode' : ''}`}>
         {fastForwardNotice}
         {!waitingForHumanChoice && <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />}
         {!waitingForHumanChoice && isBioBoard && <AgeRestrictionBadge />}
@@ -748,7 +755,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
   }
 
   return (
-    <main className={`game-screen game-screen--play ${boardFocus ? 'game-screen--board-focus' : ''}`}>
+    <main className={`game-screen game-screen--play ${isHauntedBoard ? 'haunted-mode' : ''} ${boardFocus ? 'game-screen--board-focus' : ''}`}>
       {fastForwardNotice}
       <AutoScrollToggle enabled={autoScrollEnabled} onToggle={toggleAutoScroll} />
       {boardFocus ? <BoardFocusDock players={match.players} activeIndex={match.turnIndex} hasDecision={match.phase === 'decision' && Boolean(pending)} onExit={toggleBoardFocus} /> : null}
@@ -983,6 +990,8 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
             finishOrder={match.finishOrder}
             boardId={match.boardId}
              routeOptions={pending?.kind === 'ROUTE' ? pending.options : []}
+             hauntedBoardState={match.hauntedBoard}
+             turnCounter={match.turnCounter}
           />
           <button
             type="button"
@@ -1022,6 +1031,7 @@ const decisionPlayer = pending?.kind === 'ABILITY' ? match.players[pending.playe
           resultSummary={cardResultSummary}
          onResolveCard={() => dispatchMatch({ type: 'RESOLVE_CARD' })}
          onChooseGambleCard={cardId => dispatchMatch({ type: 'CHOOSE_GAMBLE_CARD', cardId })}
+         onChooseCardOption={choiceId => dispatchMatch({ type: 'CHOOSE_CARD_OPTION', choiceId })}
            onResolvePartyChallenge={(participantIds, passed, resolution) => dispatchMatch({ type: 'RESOLVE_PARTY_CHALLENGE', participantIds, passed, resolution })}
          onAcknowledge={() => dispatchMatch({ type: 'ACKNOWLEDGE_CARD' })}
        />

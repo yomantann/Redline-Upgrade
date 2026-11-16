@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CardDefinition, CardEffect, PartyChallenge } from '@/game/cards';
+import type { CardChoiceOption, CardDefinition, CardEffect, PartyChallenge } from '@/game/cards';
 import type { CardPileMap } from '@/game/card-piles';
 import { careers, type CareerCategoryTag } from '@/game/careers';
 import type { MatchPlayer } from '@/game/match';
@@ -58,6 +58,8 @@ function effectInstructions(effect: CardEffect): string[] {
         ...effect.win.flatMap((entry) => effectInstructions(entry).map((line) => `On win: ${line}`)),
         ...effect.loss.flatMap((entry) => effectInstructions(entry).map((line) => `On loss: ${line}`)),
       ];
+    case 'BOARD_CHANGE':
+      return [`Living Board: ${effect.change.replaceAll('_', ' ')}${reason}`];
   }
 }
 
@@ -92,10 +94,13 @@ export function CardPreviewModal({ card, onClose }: { card: CardDefinition; onCl
         </header>
         <div className="card-preview-content">
           <div className="card-preview-art">
-            <RedlineCard deck={card.deck} face="front" card={card} className="card-preview-face" />
+            <RedlineCard deck={card.deck} face="front" card={card} boardId={card.boardId} className="card-preview-face" />
           </div>
           <div className="card-preview-rules">
-            <p className="mono card-preview-category">{deck.name.toUpperCase()}</p>
+            <p className="mono card-preview-category">
+              {card.boardId === 'HAUNTED_UPGRADE' ? `${card.hauntedCategory?.replaceAll('_', ' ') ?? 'HAUNTED'} / ` : ''}
+              {deck.name.toUpperCase()}
+            </p>
             <h3>{card.title}</h3>
             <section>
               <h4>DESCRIPTION</h4>
@@ -119,6 +124,12 @@ export function CardPreviewModal({ card, onClose }: { card: CardDefinition; onCl
                 <p><b>Participants:</b> {targetLabel(card.partyChallenge.target)} · <b>Flow:</b> {card.partyChallenge.flow.toLowerCase()}</p>
                 <p><b>Safety:</b> {card.partyChallenge.safetyNote}</p>
                 {!!card.partyChallenge.choices?.length && <ul>{card.partyChallenge.choices.map((choice) => <li key={choice.label}>{choice.label}: {targetLabel(choice.target)}</li>)}</ul>}
+              </section>
+            )}
+            {!!card.choices?.length && (
+              <section className="card-preview-choices">
+                <h4>CHOOSE ONE</h4>
+                <ul>{card.choices.map(choice => <li key={choice.id}><b>{choice.label}:</b> {choice.description}</li>)}</ul>
               </section>
             )}
           </div>
@@ -157,6 +168,7 @@ type Props = {
   cardPiles?: CardPileMap;
   onResolveCard?: () => void;
   onChooseGambleCard?: (cardId: string) => void;
+  onChooseCardOption?: (choiceId: string) => void;
   onResolvePartyChallenge?: (participantIds: string[], passed: boolean, resolution?: string) => void;
   onAcknowledge?: () => void;
   isCPU?: boolean;
@@ -180,6 +192,7 @@ export function CardTabletop({
   cardPiles,
   onResolveCard,
   onChooseGambleCard,
+  onChooseCardOption,
   onResolvePartyChallenge,
   onAcknowledge,
   isCPU = false,
@@ -244,7 +257,9 @@ export function CardTabletop({
   });
   const presentationStep = activeCardResolved ? 3 : cardStage === 'choice' ? 1 : activeCard ? 2 : 0;
   const cardDescription = cardStage === 'choice'
-    ? 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.'
+    ? activeCard?.choices?.length
+      ? 'Choose one response. Its effect resolves immediately.'
+      : 'Two cards are revealed. Choose one to resolve; the other returns to the bottom of the deck.'
     : partyChallenge?.prompt ?? (activeCardResolved
       ? resultSummary || activeCard?.description
       : activeCard?.description) ?? '';
@@ -267,7 +282,7 @@ export function CardTabletop({
             </ol>
           <div className="card-draw-copy">
             <span className="eyebrow">{getDeck(activeDeck).name} CARD / {getDeck(activeDeck).serial}</span>
-            <h2>{cardStage === 'choice' ? 'Choose your Gamble card.' : activeCard?.title ?? 'Draw your card.'}</h2>
+            <h2>{cardStage === 'choice' ? activeCard?.choices?.length ? 'Choose your response.' : 'Choose your Gamble card.' : activeCard?.title ?? 'Draw your card.'}</h2>
              {cardDescription && <ExpandableText className="card-draw-description" text={cardDescription} />}
           </div>
           {cardStage === 'choice' && offeredCards?.length ? (
@@ -310,10 +325,10 @@ export function CardTabletop({
               : <div className={`card-draw-stage ${activeCard ? 'revealed' : ''}`} key={activeCard?.id ?? activeDeck}>
                 {activeCard ? (
                   <button className="card-draw-preview-trigger" type="button" onClick={(event) => openPreview(activeCard, event.currentTarget)} aria-label={`Open full preview of ${activeCard.title}`} data-testid={`button-preview-card-${activeCard.id}`}>
-                    <RedlineCard deck={activeDeck} face="front" card={activeCard} />
+                    <RedlineCard deck={activeDeck} face="front" card={activeCard} boardId={boardId} />
                     <span>OPEN FULL CARD</span>
                   </button>
-                ) : <RedlineCard deck={activeDeck} face="back" />}
+                ) : <RedlineCard deck={activeDeck} face="back" boardId={boardId} />}
               </div>
           )}
           <div className="card-draw-action">
@@ -351,8 +366,20 @@ export function CardTabletop({
                     <button type="button" className="text-link" disabled={!minimumReadTimeComplete} onClick={() => onResolvePartyChallenge?.([], true)} data-testid="button-pass-party-challenge">PASS / NO PENALTY</button>
                   </div>
                 ) : <p className="mono">WAITING FOR {actorName.toUpperCase()} TO RESOLVE THE CHALLENGE.</p>
+               : cardStage === 'choice' && activeCard?.choices?.length
+                ? <div className="haunted-card-choice-list" role="group" aria-label="Choose a card effect">
+                    {activeCard.choices.map((choice: CardChoiceOption) => (
+                      <button type="button" key={choice.id} className="haunted-card-choice-option"
+                        onClick={() => onChooseCardOption?.(choice.id)}
+                        disabled={!partyCanAct || !minimumReadTimeComplete}
+                        data-testid={`button-haunted-card-choice-${choice.id.toLowerCase()}`}>
+                        <span className="mono">{choice.label}</span>
+                        <small>{choice.description}</small>
+                      </button>
+                    ))}
+                  </div>
                 : cardStage === 'choice'
-               ? <p className="mono">CHOOSE ONE CARD TO RESOLVE</p>
+                ? <p className="mono">CHOOSE ONE CARD TO RESOLVE</p>
                : activeCardResolved
                ? <>
                    {cpuCardNeedsHumanAcknowledgement && <p className="mono card-human-acknowledgement">CPU EFFECT APPLIED // ACKNOWLEDGE TO CONTINUE</p>}

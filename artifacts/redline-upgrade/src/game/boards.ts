@@ -69,9 +69,9 @@ export const boards: readonly BoardDefinition[] = [
   {
     id: 'HAUNTED_UPGRADE',
     name: 'Haunted Upgrade',
-    tagline: 'Something stirs after dark.',
-    description: 'A haunted board with its own rules, cards and cast. Coming soon.',
-    availability: 'COMING_SOON',
+    tagline: 'The house moves. The route changes.',
+    description: 'Choose a path, tempt the doors, and outrun a living haunted estate.',
+    availability: 'AVAILABLE',
     artwork: { mark: 'H', themeClass: 'haunted-choice' },
     content: {
       dataSetId: 'haunted-upgrade',
@@ -82,8 +82,8 @@ export const boards: readonly BoardDefinition[] = [
       engineId: 'haunted-upgrade',
     },
     visualThemeId: 'haunted',
-    playable: false,
-    multiplayerAvailable: false,
+    playable: true,
+    multiplayerAvailable: true,
   },
 ];
 

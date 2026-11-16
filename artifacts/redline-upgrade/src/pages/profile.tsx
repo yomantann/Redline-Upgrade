@@ -395,13 +395,13 @@ export function ProfilePage() {
                       </div>
                     </section>
                     <section className="red-personal-bests" aria-labelledby="red-personal-bests-heading">
-                      <div className="red-section-bar"><div><span className="eyebrow">RECORD BOOK</span><h2 id="red-personal-bests-heading">Personal bests.</h2><p className="red-section-copy">Your top completed-game result in each tracked category, kept separate by Standard and Bio mode.</p></div></div>
+                      <div className="red-section-bar"><div><span className="eyebrow">RECORD BOOK</span><h2 id="red-personal-bests-heading">Personal bests.</h2><p className="red-section-copy">Your top completed-game result in each category, tracked separately for Standard, Bio, and Haunted.</p></div></div>
                       {profile.personalBests.length ? <div className="red-personal-best-modes">
-                        {(['STANDARD', 'BIO'] as const).map(mode => {
+                        {(['STANDARD', 'BIO', 'HAUNTED'] as const).map(mode => {
                           const records = profile.personalBests.filter(record => record.mode === mode);
                           if (!records.length) return null;
                           return <section className={`red-personal-best-mode mode-${mode.toLowerCase()}`} key={mode} aria-label={`${mode} mode personal bests`}>
-                            <h3>{mode === 'BIO' ? 'Bio Upgrade' : 'Standard Redline'}</h3>
+                            <h3>{mode === 'BIO' ? 'Bio Upgrade' : mode === 'HAUNTED' ? 'Haunted Upgrade' : 'Standard Redline'}</h3>
                             <div className="red-personal-best-grid">{records.map(record => {
                               const label = record.category.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
                               const value = ['FINAL_SCORE', 'FINAL_WEALTH', 'PORTFOLIO_VALUE'].includes(record.category)

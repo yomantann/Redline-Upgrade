@@ -22,6 +22,7 @@ export type HauntedBoardChange =
   | { id: string; kind: 'CLOSE_ROUTE'; from: number; to: number; expiresAtTurn: number | null; label: string }
   | { id: string; kind: 'OPEN_SHORTCUT'; from: number; to: number; expiresAtTurn: number | null; label: string }
   | { id: string; kind: 'CURSE_SPACE' | 'SAFE_SPACE'; space: number; expiresAtTurn: number | null; label: string };
+export type HauntedBoardChangeRequest = 'CLOSE_ROUTE' | 'OPEN_SHORTCUT' | 'CURSE_SPACE' | 'SAFE_SPACE';
 export interface HauntedBoardState {
   changes: HauntedBoardChange[];
 }
@@ -70,32 +71,32 @@ export const HAUNTED_FORKS: readonly HauntedFork[] = [
     space: 11,
     title: 'THE CHAPEL FORK',
     options: [
-      { space: 12, label: 'CANDLELIT GALLERY', description: 'A shorter passage through the old chapel.' },
-      { space: 15, label: 'BELL TOWER STAIRS', description: 'A longer climb through the ringing tower.' },
+      { space: 12, label: 'CANDLELIT GALLERY', description: 'Shorter, quieter passage through the old chapel.' },
+      { space: 15, label: 'BELL TOWER STAIRS', description: 'Longer route with the risky Cursed Door at space 19.' },
     ],
   },
   {
     space: 30,
     title: 'THE MIRROR HALL',
     options: [
-      { space: 31, label: 'SHATTERED GALLERY', description: 'A shorter route through broken reflections.' },
-      { space: 34, label: 'THE LONG PORTRAIT HALL', description: 'A longer route beneath the watching portraits.' },
+      { space: 31, label: 'SHATTERED GALLERY', description: 'Shorter passage through broken reflections.' },
+      { space: 34, label: 'THE LONG PORTRAIT HALL', description: 'Longer route, with more spaces exposed to the house.' },
     ],
   },
   {
     space: 49,
     title: 'THE SUNKEN CROSSING',
     options: [
-      { space: 50, label: 'FLOODED CRYPT', description: 'Cross the low passage beneath the estate.' },
-      { space: 52, label: 'BONE BRIDGE', description: 'Take the narrow bridge above the crypt.' },
+      { space: 50, label: 'FLOODED CRYPT', description: 'Short flooded crossing beneath the estate.' },
+      { space: 52, label: 'BONE BRIDGE', description: 'Longer, exposed bridge above the crypt.' },
     ],
   },
   {
     space: 64,
     title: 'THE FINAL APPROACH',
     options: [
-      { space: 65, label: 'THE OLD CATACOMBS', description: 'A longer path through the buried halls.' },
-      { space: 70, label: 'THE GRAVEYARD GATE', description: 'A shorter route across the exposed grounds.' },
+      { space: 65, label: 'THE OLD CATACOMBS', description: 'Longer route, with the Cursed Door at space 68.' },
+      { space: 70, label: 'THE GRAVEYARD GATE', description: 'Shorter route across exposed ground.' },
     ],
   },
 ];
@@ -190,6 +191,48 @@ export function getHauntedRouteEdgeMode(
   return 'OPEN';
 }
 
+export function applyHauntedBoardMutation(
+  currentState: HauntedBoardState | undefined,
+  request: HauntedBoardChangeRequest,
+  turnCounter: number,
+  idPrefix: string,
+  random: () => number = Math.random,
+): [HauntedBoardState, string] {
+  const board = expireHauntedBoardChanges(currentState, turnCounter);
+  const expiresAtTurn = turnCounter + 3;
+  let boardChange: HauntedBoardChange;
+  if (request === 'OPEN_SHORTCUT') {
+    const alreadyOpen = board.changes.some(item => item.kind === 'OPEN_SHORTCUT' && item.from === 26 && item.to === 30);
+    if (alreadyOpen) return [board, 'The hidden gallery passage is already open.'];
+    boardChange = { id: `${idPrefix}-shortcut`, kind: 'OPEN_SHORTCUT', from: 26, to: 30, expiresAtTurn: null, label: 'THE WEST GALLERY SHORTCUT IS OPEN' };
+  } else if (request === 'CLOSE_ROUTE') {
+    const availableForks = HAUNTED_FORKS.filter(fork => getHauntedNextSpaces(fork.space, board, turnCounter).length > 1);
+    if (!availableForks.length) return applyHauntedBoardMutation(board, 'OPEN_SHORTCUT', turnCounter, idPrefix, random);
+    const fork = availableForks[Math.floor(random() * availableForks.length)] ?? availableForks[0];
+    const options = getHauntedNextSpaces(fork.space, board, turnCounter);
+    const to = options[Math.floor(random() * options.length)] ?? options[0];
+    boardChange = { id: `${idPrefix}-closed-${fork.space}-${to}`, kind: 'CLOSE_ROUTE', from: fork.space, to, expiresAtTurn, label: `THE PASSAGE FROM ${fork.space} TO ${to} IS SEALED` };
+  } else if (request === 'CURSE_SPACE') {
+    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72]
+      .filter(space => !getHauntedSpaceChange(board, space, turnCounter));
+    const space = candidates[Math.floor(random() * candidates.length)] ?? 24;
+    boardChange = { id: `${idPrefix}-curse-${space}`, kind: 'CURSE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS CURSED` };
+  } else {
+    const currentCurse = board.changes.find(item => item.kind === 'CURSE_SPACE' && (item.expiresAtTurn === null || item.expiresAtTurn > turnCounter));
+    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72];
+    const space = currentCurse?.kind === 'CURSE_SPACE'
+      ? currentCurse.space
+      : candidates.find(candidate => !getHauntedSpaceChange(board, candidate, turnCounter)) ?? 24;
+    boardChange = { id: `${idPrefix}-safe-${space}`, kind: 'SAFE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS SAFE` };
+  }
+  const nextBoard = { changes: [...board.changes, boardChange] };
+  if (validateHauntedRouteGraph(nextBoard, turnCounter).length
+    || getHauntedShortestDistance(0, HAUNTED_FINISH_SPACE, nextBoard, turnCounter) === null) {
+    return [board, 'The estate rejects the change; every route to the finish remains open.'];
+  }
+  return [nextBoard, boardChange.label];
+}
+
 export function getHauntedShortestDistance(from: number, target = HAUNTED_FINISH_SPACE, state?: HauntedBoardState, turnCounter = 0): number | null {
   if (from === target) return 0;
   const queue: Array<{ space: number; distance: number }> = [{ space: from, distance: 0 }];
@@ -219,6 +262,23 @@ export function validateHauntedRouteGraph(state?: HauntedBoardState, turnCounter
     }
   }
 
+  const reachable = new Set<number>([HAUNTED_START_SPACE]);
+  const pending = [HAUNTED_START_SPACE];
+  while (pending.length) {
+    const space = pending.shift()!;
+    for (const next of getHauntedNextSpaces(space, state, turnCounter)) {
+      if (!reachable.has(next)) {
+        reachable.add(next);
+        pending.push(next);
+      }
+    }
+  }
+  if (!state) {
+    for (let space = 1; space <= HAUNTED_FINISH_SPACE; space += 1) {
+      if (!reachable.has(space)) errors.push(`Space ${space} is unreachable from Start.`);
+    }
+  }
+
   const visiting = new Set<number>();
   const finishable = new Map<number, boolean>();
   const reachesFinish = (space: number): boolean => {
@@ -239,19 +299,6 @@ export function validateHauntedRouteGraph(state?: HauntedBoardState, turnCounter
   };
 
   reachesFinish(HAUNTED_START_SPACE);
-  const reachable = new Set<number>();
-  const queue = [HAUNTED_START_SPACE];
-  while (queue.length) {
-    const space = queue.shift()!;
-    if (reachable.has(space)) continue;
-    reachable.add(space);
-    queue.push(...getHauntedNextSpaces(space, state, turnCounter));
-  }
-  if (!state) {
-    for (let space = 1; space <= HAUNTED_FINISH_SPACE; space += 1) {
-      if (!reachable.has(space)) errors.push(`Space ${space} is unreachable from Start.`);
-    }
-  }
   return [...new Set(errors)];
 }
 

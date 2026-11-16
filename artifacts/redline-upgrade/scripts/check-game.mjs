@@ -34,11 +34,12 @@ const vite = await createServer({
 });
 try {
   const { createMatch, advanceMatch, getFinalPlacementOrder, calculateEndgameAttributeBonuses } = await vite.ssrLoadModule('/src/game/match.ts');
-  const { applySoloPlayerAction, applySoloAutomationStep, actingPlayerIndex } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
+  const { applySoloPlayerAction, applySoloAutomationStep, actingPlayerIndex, toClientAction } = await vite.ssrLoadModule('/src/game/multiplayer.ts');
   const { getBoardSpaces } = await vite.ssrLoadModule('/src/game/board-data.ts');
   const { effectiveSalaryAmount } = await vite.ssrLoadModule('/src/game/player.ts');
   const { cards, allCards, cardsForDeck, getCard } = await vite.ssrLoadModule('/src/game/cards.ts');
   const { cardExpansion } = await vite.ssrLoadModule('/src/game/cards-expansion.ts');
+  const { hauntedCards } = await vite.ssrLoadModule('/src/game/haunted-cards.ts');
   const { CARD_READ_MINIMUM_SECONDS, CPU_CARD_DRAW_SECONDS, CPU_CARD_AUTO_CONTINUE_MS, CPU_CARD_RESULT_SECONDS } = await vite.ssrLoadModule('/src/game/card-reveal-timing.ts');
   const { decks } = await vite.ssrLoadModule('/src/game/decks.ts');
   const { getCardArtworkFilePath, getCardArtworkUrl } = await vite.ssrLoadModule('/src/game/card-artwork.ts');
@@ -95,13 +96,28 @@ try {
   const { ICON_PATHS } = await vite.ssrLoadModule('/src/game/icon-paths.ts');
   const id = characters[0].id;
   const hauntedRoute = await vite.ssrLoadModule('/src/game/haunted-board.ts');
-  const { HAUNTED_FINISH_SPACE, HAUNTED_FORKS, getHauntedNextSpaces, validateHauntedRouteGraph } = hauntedRoute;
+  const { CURSED_DOOR_CHOICES, getHauntedDoorOutcome } = await vite.ssrLoadModule('/src/game/haunted-encounters.ts');
+  const {
+    HAUNTED_FINISH_SPACE,
+    HAUNTED_FORKS,
+    createHauntedBoardState,
+    expireHauntedBoardChanges,
+    getHauntedNextSpaces,
+    getHauntedRouteEdgeMode,
+    getHauntedShortestDistance,
+    getHauntedSpaceChange,
+    validateHauntedRouteGraph,
+  } = hauntedRoute;
   assert.deepEqual(validateHauntedRouteGraph(), [], 'every Haunted route reaches the finish without cycles or unreachable spaces');
   assert.equal(HAUNTED_FORKS.length, 4, 'Haunted has four decision forks');
   const hauntedSpaces = getBoardSpaces('HAUNTED_UPGRADE');
   assert.equal(hauntedSpaces.length, 75, 'Haunted has its own 75-space board');
   assert.equal(new Set(hauntedSpaces.map(space => space.number)).size, 75, 'every Haunted board position is unique');
   assert(hauntedSpaces.every(space => space.label && space.description), 'every Haunted space is named and described');
+  const hauntedCardSpaces = hauntedSpaces.filter(space => space.type === 'CARD');
+  assert.equal(hauntedCardSpaces.length, 15, 'Haunted includes fifteen dedicated card-draw spaces');
+  assert.deepEqual(new Set(hauntedCardSpaces.map(space => space.deck)), new Set(['wealth', 'ai', 'fame', 'lifestyle', 'influence', 'gamble']),
+    'all six Haunted decks are reachable through the board');
   const enumerateHauntedRoutes = (space, path = [space]) => {
     if (space === HAUNTED_FINISH_SPACE) return [path];
     return getHauntedNextSpaces(space).flatMap(next => enumerateHauntedRoutes(next, [...path, next]));
@@ -152,6 +168,106 @@ try {
   const cpuRoutePrompt = advanceMatch(hauntedForkFixture(true), { type: 'STEP' });
   const cpuRouteMove = advanceMatch(cpuRoutePrompt, { type: 'AUTO_DECIDE' });
   assert.equal(cpuRouteMove.players[0].position, 12, 'CPU selects a valid route using shortest-path distance');
+  const hauntedDoorFixture = (position = 4) => ({
+    ...hauntedMoveBase,
+    boardId: 'HAUNTED_UPGRADE',
+    hauntedBoard: createHauntedBoardState(),
+    phase: 'moving',
+    stepsRemaining: 1,
+    turnCounter: 8,
+    pending: null,
+    players: hauntedMoveBase.players.map((player, index) => index === 0
+      ? { ...player, position, hauntedPath: [0, 1, 2, 3, 4].slice(0, position + 1) }
+      : player),
+  });
+  const savedRandom = Math.random;
+  try {
+    Math.random = () => 0;
+    const doorPrompt = advanceMatch(hauntedDoorFixture(), { type: 'STEP' });
+    assert.equal(doorPrompt.pending.kind, 'CURSED_DOOR', 'landing on a Haunted door opens an explicit choice');
+    assert.equal(doorPrompt.pending.stage, 'choice', 'door outcome stays hidden until the player chooses');
+    assert.deepEqual(doorPrompt.pending.choiceIds, ['LANTERN', 'MIRROR', 'BONE'], 'each door exposes all three intended choices');
+    const initialWealth = doorPrompt.players[0].wealth;
+    const doorReveal = advanceMatch(doorPrompt, { type: 'CHOOSE_DOOR', doorId: 'LANTERN' });
+    assert.equal(doorReveal.pending.stage, 'reveal', 'choosing a door reveals the encounter for acknowledgement');
+    assert.match(doorReveal.pending.outcomeSummary, /gain.*35/i, 'door reveal clearly summarizes its applied outcome');
+    assert.equal(doorReveal.players[0].wealth, initialWealth + 35_000, 'Lantern outcome applies its reward once');
+    assert.equal(advanceMatch(doorReveal, { type: 'CHOOSE_DOOR', doorId: 'LANTERN' }).players[0].wealth, initialWealth + 35_000,
+      'repeated door-choice action cannot apply the result twice');
+    const acknowledgedDoor = advanceMatch(doorReveal, { type: 'ACKNOWLEDGE_DOOR' });
+    assert.equal(acknowledgedDoor.phase, 'landed', 'acknowledging the encounter resumes the landed state');
+
+    const expectedDoorOutcomes = { LANTERN: 4, MIRROR: 4, BONE: 6 };
+    for (const door of CURSED_DOOR_CHOICES) {
+      for (let index = 0; index < expectedDoorOutcomes[door.id]; index += 1) {
+        const randomValue = (index + 0.1) / expectedDoorOutcomes[door.id];
+        const expectedOutcome = getHauntedDoorOutcome(door.id, () => randomValue);
+        Math.random = () => randomValue;
+        const base = hauntedDoorFixture();
+        const beforePlayers = base.players.map((player, playerIndex) => ({
+          ...player,
+          wealth: [1_000_000, 2_000_000, 700_000, 500_000][playerIndex],
+          fame: 4,
+          influence: 3,
+          upgradeTokens: 1,
+          skipTurns: 0,
+        }));
+        const prompt = advanceMatch({ ...base, players: beforePlayers }, { type: 'STEP' });
+        const resolved = advanceMatch(prompt, { type: 'CHOOSE_DOOR', doorId: door.id });
+        assert.equal(resolved.pending.outcomeTitle, expectedOutcome.title, `${door.id} reveals defined outcome ${expectedOutcome.id}`);
+        assert(resolved.pending.outcomeSummary, `${expectedOutcome.id} shows its actual result`);
+        const effect = expectedOutcome.effect;
+        if (effect.kind === 'STAT') {
+          assert.equal(resolved.players[0][effect.stat], beforePlayers[0][effect.stat] + effect.amount, `${expectedOutcome.id} applies its player stat change`);
+        } else if (effect.kind === 'GROUP_STAT') {
+          assert(resolved.players.every((player, playerIndex) => player[effect.stat] === beforePlayers[playerIndex][effect.stat] + effect.amount),
+            `${expectedOutcome.id} applies its group stat change`);
+        } else if (effect.kind === 'TRANSFER') {
+          const leaderIndex = beforePlayers.findIndex(player => player.wealth === Math.max(...beforePlayers.map(candidate => candidate.wealth)));
+          assert.equal(resolved.players[0].wealth, beforePlayers[0].wealth + effect.amount, `${expectedOutcome.id} gives the transfer to the opener`);
+          assert.equal(resolved.players[leaderIndex].wealth, beforePlayers[leaderIndex].wealth - effect.amount, `${expectedOutcome.id} charges its selected rival`);
+        } else if (effect.kind === 'TOKEN') {
+          assert.equal(resolved.players[0].upgradeTokens, beforePlayers[0].upgradeTokens + 1, `${expectedOutcome.id} grants a token`);
+        } else if (effect.kind === 'SKIP_TURN') {
+          assert.equal(resolved.players[0].skipTurns, beforePlayers[0].skipTurns + 1, `${expectedOutcome.id} records the temporary restriction`);
+        } else if (effect.kind === 'BOARD_CHANGE') {
+          assert(resolved.hauntedBoard.changes.length > 0, `${expectedOutcome.id} updates the Living Board`);
+        }
+      }
+    }
+    Math.random = () => 0.99;
+    const shortcutDoor = advanceMatch(hauntedDoorFixture(), { type: 'STEP' });
+    const openedShortcut = advanceMatch(shortcutDoor, { type: 'CHOOSE_DOOR', doorId: 'LANTERN' });
+    assert(openedShortcut.hauntedBoard.changes.some(change => change.kind === 'OPEN_SHORTCUT'), 'a door can add a persistent shortcut to canonical match state');
+    assert.equal(getHauntedRouteEdgeMode(26, 30, openedShortcut.hauntedBoard, openedShortcut.turnCounter), 'SHORTCUT',
+      'the Living Board shortcut is available to movement and board rendering');
+    assert(getHauntedShortestDistance(26, HAUNTED_FINISH_SPACE, openedShortcut.hauntedBoard, openedShortcut.turnCounter)
+      < getHauntedShortestDistance(26, HAUNTED_FINISH_SPACE), 'shortcut reduces the remaining route distance');
+
+    const closedRouteDoor = advanceMatch(hauntedDoorFixture(), { type: 'STEP' });
+    const closedRoute = advanceMatch(closedRouteDoor, { type: 'CHOOSE_DOOR', doorId: 'MIRROR' });
+    const closure = closedRoute.hauntedBoard.changes.find(change => change.kind === 'CLOSE_ROUTE');
+    assert(closure, 'a door can temporarily seal a specific passage');
+    assert.equal(getHauntedRouteEdgeMode(closure.from, closure.to, closedRoute.hauntedBoard, closedRoute.turnCounter), 'CLOSED',
+      'a sealed passage is explicitly represented as closed');
+    assert.equal(getHauntedNextSpaces(closure.from, closedRoute.hauntedBoard, closedRoute.turnCounter).includes(closure.to), false,
+      'movement cannot use a sealed passage');
+    assert.deepEqual(validateHauntedRouteGraph(closedRoute.hauntedBoard, closedRoute.turnCounter), [],
+      'sealing a passage never disconnects the finish');
+    const expiredClosure = expireHauntedBoardChanges(closedRoute.hauntedBoard, closure.expiresAtTurn);
+    assert.equal(getHauntedRouteEdgeMode(closure.from, closure.to, expiredClosure, closure.expiresAtTurn), 'OPEN',
+      'temporary passage closures expire on schedule');
+
+    Math.random = () => 0.5;
+    const curseDoorPrompt = advanceMatch(hauntedDoorFixture(), { type: 'STEP' });
+    const cursedBoard = advanceMatch(curseDoorPrompt, { type: 'CHOOSE_DOOR', doorId: 'BONE' });
+    const cursedSpace = cursedBoard.hauntedBoard.changes.find(change => change.kind === 'CURSE_SPACE');
+    assert(cursedSpace, 'a door can curse a board space');
+    assert.equal(getHauntedSpaceChange(cursedBoard.hauntedBoard, cursedSpace.space, cursedBoard.turnCounter).kind, 'CURSE_SPACE',
+      'Living Board space changes are queryable by the board view and landing rules');
+  } finally {
+    Math.random = savedRandom;
+  }
 
   const assetTestEmptyEquipment = { car: null, lifestyle: null, companion: null, property: null };
   const slotForAsset = (asset) => (
@@ -943,6 +1059,7 @@ try {
   assert.deepEqual([...tokenCards.map(card => card.deck)].sort(), ['ai', 'fame', 'gamble', 'influence', 'lifestyle', 'wealth']);
   const expectedDeckCounts = { wealth: 36, ai: 36, fame: 36, lifestyle: 36, influence: 33, gamble: 34 };
   const expectedExpansionCounts = { wealth: 17, ai: 17, fame: 17, lifestyle: 17, influence: 16, gamble: 16 };
+  const expectedHauntedCounts = { wealth: 17, ai: 17, fame: 17, lifestyle: 17, influence: 16, gamble: 16 };
   assert.equal(cardExpansion.length, 100, 'the card expansion adds exactly 100 new cards');
   assert.equal(new Set(cardExpansion.map(card => card.id)).size, 100, 'the new card IDs are unique');
   assert.equal(new Set(cardExpansion.map(card => card.title)).size, 100, 'the new card names are unique');
@@ -950,7 +1067,7 @@ try {
   assert.equal(new Set(allCards.map(card => card.id)).size, allCards.length, 'all Standard, expansion, and Bio card IDs are unique');
   const originalCardTitles = new Set(allCards.filter(card => !cardExpansion.some(expanded => expanded.id === card.id)).map(card => card.title.trim().toLowerCase()));
   assert(cardExpansion.every(card => !originalCardTitles.has(card.title.trim().toLowerCase())), 'all 100 added names are distinct from existing Standard and Bio cards');
-  assert.equal(allCards.length, 293, 'the game catalog includes 211 Standard cards and 82 Bio cards');
+  assert.equal(allCards.length, 393, 'the catalog includes 211 Standard, 82 Bio, and 100 Haunted cards');
   assert(cardExpansion.every(card => card.rarity === 'STANDARD' && card.effects.length > 0), 'expansion cards use the existing rarity and effect model');
   assert(cardExpansion.every(card => card.artworkPath === `api/card-art/${card.id}`), 'each added card maps to its own stored illustration');
   for (const deck of decks) {
@@ -959,6 +1076,31 @@ try {
   for (const deck of decks) {
     assert.equal(cardsForDeck(deck.id).length, expectedDeckCounts[deck.id], `${deck.name} contains its updated cards`);
     assert.equal(deck.count, expectedDeckCounts[deck.id], `${deck.name} reports its updated card count`);
+  }
+  assert.equal(hauntedCards.length, 100, 'Haunted has exactly 100 original cards');
+  assert.equal(new Set(hauntedCards.map(card => card.id)).size, 100, 'Haunted card IDs are unique');
+  assert.equal(new Set(hauntedCards.map(card => card.title.trim().toLowerCase())).size, 100, 'Haunted card titles are unique');
+  assert.equal(new Set(hauntedCards.map(card => card.artCue)).size, 100, 'each Haunted card has a distinct illustration brief');
+  const hauntedEffectSignatures = hauntedCards.map(card => JSON.stringify({ effects: card.effects, choices: card.choices ?? [] }));
+  assert.equal(new Set(hauntedEffectSignatures).size, 100, 'Haunted cards have distinct mechanics');
+  assert(hauntedCards.every(card => card.boardId === 'HAUNTED_UPGRADE' && card.artworkPath === `api/card-art/${card.id}`), 'all Haunted cards are mode-specific and have their own image route');
+  assert(hauntedCards.every(card => card.choices?.length === 2 || card.effects.length > 0), 'every Haunted card has a resolving effect or an explicit player choice');
+  assert.equal(hauntedCards.filter(card => card.choices?.length).length, 15, 'all 15 Cursed Choice cards require a player decision');
+  const hauntedCategoryCounts = Object.fromEntries(
+    ['GHOST_ENCOUNTER', 'HAUNTED_CHALLENGE', 'CURSED_CHOICE', 'CHARACTER_ENCOUNTER', 'GROUP_EVENT', 'TRICK_BETRAYAL', 'LIVING_BOARD']
+      .map(category => [category, hauntedCards.filter(card => card.hauntedCategory === category).length]),
+  );
+  assert.deepEqual(hauntedCategoryCounts, {
+    GHOST_ENCOUNTER: 15, HAUNTED_CHALLENGE: 15, CURSED_CHOICE: 15, CHARACTER_ENCOUNTER: 15,
+    GROUP_EVENT: 15, TRICK_BETRAYAL: 15, LIVING_BOARD: 10,
+  }, 'Haunted card categories match the approved 100-card distribution');
+  const hauntedCardsFromOtherModes = decks.flatMap(deck => cardsForDeck(deck.id, 'HAUNTED_UPGRADE'));
+  assert.equal(hauntedCardsFromOtherModes.length, 100, 'Haunted deck lookup finds exactly its own card pool');
+  assert(hauntedCardsFromOtherModes.every(card => card.boardId === 'HAUNTED_UPGRADE'), 'Haunted cards do not leak into other modes');
+  assert(hauntedCards.every(card => !cardsForDeck(card.deck, 'REDLINE_UPGRADE').some(standard => standard.id === card.id)
+    && !cardsForDeck(card.deck, 'BIO_UPGRADE').some(bio => bio.id === card.id)), 'no Haunted card appears in Standard or Bio decks');
+  for (const deck of decks) {
+    assert.equal(cardsForDeck(deck.id, 'HAUNTED_UPGRADE').length, expectedHauntedCounts[deck.id], `Haunted ${deck.name} receives its intended card count`);
   }
   const bioDefinitionCounts = { wealth: 11, ai: 13, fame: 13, lifestyle: 17, influence: 15, gamble: 13 };
   const bioEntryCounts = { wealth: 11, ai: 13, fame: 13, lifestyle: 19, influence: 16, gamble: 14 };
@@ -1243,6 +1385,8 @@ try {
         for (const type of effect.blockedEffectTypes ?? []) assert(validEffectTypes.has(type), `${cardId} blocks a valid effect`);
       } else if (effect.kind === 'REWARD_MODIFIER') {
         assert(validStats.has(effect.stat) && Number.isFinite(effect.amount) && effect.amount !== 0, `${cardId} has a valid reward modifier`);
+      } else if (effect.kind === 'BOARD_CHANGE') {
+        assert(['CLOSE_ROUTE', 'OPEN_SHORTCUT', 'CURSE_SPACE', 'SAFE_SPACE'].includes(effect.change), `${cardId} has a valid Living Board change`);
       } else {
         assert.fail(`${cardId} uses an unsupported effect kind`);
       }
@@ -1262,6 +1406,81 @@ try {
     assert(resolved.eventLog.some(entry => entry.eventType === 'CARD_RESOLVED' && entry.detail.includes(card.title)), `${card.id} resolves through the event engine`);
     assert.equal(resolved.players[0].upgradeTokens, tokenCountBefore + (card.id.endsWith('upgrade-token') ? 1 : 0), `${card.id} applies any token reward through the event engine`);
   }
+
+  const hauntedEventBase = {
+    ...createMatch(id),
+    boardId: 'HAUNTED_UPGRADE',
+    hauntedBoard: createHauntedBoardState(),
+    cardPiles: createCardPiles('HAUNTED_UPGRADE'),
+  };
+  for (const card of hauntedCards) {
+    if (card.effects.length) validateCardEffects(card.effects, card.id);
+    for (const choice of card.choices ?? []) validateCardEffects(choice.effects, `${card.id}:${choice.id}`);
+    const choice = card.choices?.[0];
+    const resolved = resolveEventQueue(hauntedEventBase, [{
+      type: 'CARD_RESOLVED',
+      playerIndex: 0,
+      deck: card.deck,
+      cardId: card.id,
+      ...(choice ? { choiceId: choice.id } : {}),
+      spaceNumber: 1,
+    }]);
+    assert(resolved.eventLog.some(entry => entry.eventType === 'CARD_RESOLVED' && entry.detail.includes(card.title)), `${card.id} resolves through the Haunted event engine`);
+  }
+  const hauntedChoiceCard = hauntedCards.find(card => card.choices?.length);
+  assert(hauntedChoiceCard, 'Haunted Cursed Choice cards exist');
+  const hauntedChoiceMarkup = renderToStaticMarkup(React.createElement(CardTabletop, {
+    activeDeck: hauntedChoiceCard.deck,
+    activeCard: hauntedChoiceCard,
+    boardId: 'HAUNTED_UPGRADE',
+    cardStage: 'choice',
+    actorLabel: 'YOU',
+    onChooseCardOption: () => {},
+  }));
+  assert(hauntedChoiceMarkup.includes('HAUNTED / UPGRADE') && hauntedChoiceMarkup.includes('Choose your response.')
+    && hauntedChoiceCard.choices.every(choice => hauntedChoiceMarkup.includes(choice.label)), 'Haunted card prompt shows its own branding and both player options');
+  const hauntedCardPreview = renderToStaticMarkup(React.createElement(CardPreviewModal, { card: hauntedChoiceCard, onClose: () => {} }));
+  assert(hauntedCardPreview.includes('CURSED CHOICE') && hauntedCardPreview.includes('CHOOSE ONE'), 'Haunted card full preview explains its category and choices');
+  const hauntedChoicePile = createCardPiles('HAUNTED_UPGRADE');
+  const orderedChoicePile = {
+    ...hauntedChoicePile,
+    [hauntedChoiceCard.deck]: {
+      ...hauntedChoicePile[hauntedChoiceCard.deck],
+      drawPile: [hauntedChoiceCard.id, ...hauntedChoicePile[hauntedChoiceCard.deck].drawPile.filter(cardId => cardId !== hauntedChoiceCard.id)],
+    },
+  };
+  const hauntedChoiceDraw = drawCardFromPiles(orderedChoicePile, hauntedChoiceCard.deck);
+  const hauntedChoiceFixture = {
+    ...createMatch(id),
+    boardId: 'HAUNTED_UPGRADE',
+    hauntedBoard: createHauntedBoardState(),
+    phase: 'decision',
+    cardPiles: hauntedChoiceDraw.cardPiles,
+    pending: { kind: 'CARD', deck: hauntedChoiceCard.deck, space: 1, cardId: hauntedChoiceCard.id, stage: 'draw' },
+  };
+  const choicePrompt = advanceMatch(hauntedChoiceFixture, { type: 'RESOLVE_CARD' });
+  assert.equal(choicePrompt.pending?.kind, 'CARD');
+  assert.equal(choicePrompt.pending.stage, 'choice', 'Haunted Cursed Choices pause before resolving so the human can choose');
+  assert(!choicePrompt.eventLog.some(event => event.eventType === 'CARD_RESOLVED' && event.cardId === hauntedChoiceCard.id), 'choice effects do not resolve before the player picks');
+  const selectedOption = hauntedChoiceCard.choices[0];
+  const choiceResolution = advanceMatch(choicePrompt, { type: 'CHOOSE_CARD_OPTION', choiceId: selectedOption.id });
+  assert.equal(choiceResolution.pending?.stage, 'resolved', 'the selected Haunted choice resolves and remains visible');
+  assert(choiceResolution.eventLog.some(event => event.eventType === 'CARD_RESOLVED'
+    && event.cardId === hauntedChoiceCard.id && event.choiceId === selectedOption.id), 'the selected choice is included in the resolved event');
+  const duplicateChoiceResolution = advanceMatch(choiceResolution, { type: 'CHOOSE_CARD_OPTION', choiceId: selectedOption.id });
+  assert.equal(duplicateChoiceResolution.eventLog.length, choiceResolution.eventLog.length, 'replaying a resolved Haunted choice cannot apply its effect twice');
+  assert.deepEqual(toClientAction({ type: 'CHOOSE_CARD_OPTION', choiceId: selectedOption.id }), {
+    type: 'CHOOSE_CARD_OPTION', cardId: selectedOption.id,
+  }, 'Haunted card choice maps to the multiplayer client action');
+  const hauntedCpuChoiceFixture = {
+    ...hauntedChoiceFixture,
+    pending: { ...hauntedChoiceFixture.pending, stage: 'choice' },
+    players: hauntedChoiceFixture.players.map((player, index) => index === 0 ? { ...player, isCPU: true } : player),
+  };
+  const hauntedCpuChoiceResult = advanceMatch(hauntedCpuChoiceFixture, { type: 'AUTO_DECIDE' });
+  assert.equal(hauntedCpuChoiceResult.pending?.stage, 'resolved', 'CPU resolves Haunted card choices automatically');
+  assert(hauntedCpuChoiceResult.eventLog.some(event => event.eventType === 'CARD_RESOLVED'
+    && event.cardId === hauntedChoiceCard.id && event.choiceId), 'CPU records its selected Haunted card option');
 
   const degenDangerFixture = abilityFixture(['degen-trader']);
   degenDangerFixture.players[0].characterId = 'danger_zone';
@@ -2692,6 +2911,62 @@ try {
       { characterId: null, careerId: null, displayName: 'Bio B' },
     ], 'BIO_UPGRADE');
     assert.equal(bioMpMatch.boardId, 'BIO_UPGRADE', 'Bio can create a real two-player authoritative match');
+    const hauntedMpMatch = createMultiplayerMatch([
+      { characterId: null, careerId: null, displayName: 'Haunted A' },
+      { characterId: null, careerId: null, displayName: 'Haunted B' },
+    ], 'HAUNTED_UPGRADE');
+    assert.equal(hauntedMpMatch.boardId, 'HAUNTED_UPGRADE', 'Haunted can create a two-player authoritative match');
+    assert(hauntedMpMatch.hauntedBoard && Object.values(hauntedMpMatch.cardPiles).every(pile => pile.boardId === 'HAUNTED_UPGRADE'),
+      'Haunted route state and isolated card piles initialize in multiplayer');
+    const hauntedInitialState = confirmCareers(createMultiplayerState(hauntedMpMatch, ['haunted-human-a', 'haunted-human-b']), ['haunted-human-a', 'haunted-human-b']);
+    const hauntedForkState = {
+      ...hauntedInitialState,
+      match: {
+        ...hauntedInitialState.match,
+        phase: 'decision',
+        stepsRemaining: 1,
+        hauntedBoard: createHauntedBoardState(),
+        pending: { kind: 'ROUTE', space: 11, options: [12, 15] },
+        players: hauntedInitialState.match.players.map((player, index) => index === 0
+          ? { ...player, position: 11, hauntedPath: Array.from({ length: 12 }, (_, space) => space) }
+          : player),
+      },
+    };
+    const hauntedForkAction = applyPlayerAction(hauntedForkState, 'haunted-human-a', { type: 'CHOOSE_ROUTE', space: 12 });
+    assert.equal(hauntedForkAction.ok, true, 'multiplayer participants can submit their own Haunted route');
+    if (hauntedForkAction.ok) assert.equal(hauntedForkAction.state.match.players[0].position, 12, 'the server moves the selected multiplayer player along their branch');
+    const hauntedDoorState = {
+      ...hauntedInitialState,
+      match: {
+        ...hauntedInitialState.match,
+        boardId: 'HAUNTED_UPGRADE',
+        phase: 'decision',
+        hauntedBoard: createHauntedBoardState(),
+        pending: { kind: 'CURSED_DOOR', space: 5, stage: 'choice', choiceIds: ['LANTERN', 'MIRROR', 'BONE'] },
+      },
+    };
+    const hauntedDoorAction = applyPlayerAction(hauntedDoorState, 'haunted-human-a', { type: 'CHOOSE_DOOR', doorId: 'MIRROR' });
+    assert.equal(hauntedDoorAction.ok, true, 'each multiplayer player can make a Cursed Door choice');
+    if (hauntedDoorAction.ok) assert(hauntedDoorAction.state.match.pending?.stage === 'reveal'
+      && hauntedDoorAction.state.match.pending.outcomeSummary, 'the chosen door outcome and summary synchronize in authoritative match state');
+    const hauntedRemoteChoiceState = {
+      ...hauntedInitialState,
+      match: {
+        ...hauntedInitialState.match,
+        boardId: 'HAUNTED_UPGRADE',
+        phase: 'decision',
+        hauntedBoard: createHauntedBoardState(),
+        cardPiles: hauntedChoiceDraw.cardPiles,
+        pending: { kind: 'CARD', deck: hauntedChoiceCard.deck, space: 1, cardId: hauntedChoiceCard.id, stage: 'choice' },
+      },
+    };
+    const hauntedRemoteChoice = applyPlayerAction(hauntedRemoteChoiceState, 'haunted-human-a', {
+      type: 'CHOOSE_CARD_OPTION', cardId: hauntedChoiceCard.choices[0].id,
+    });
+    assert.equal(hauntedRemoteChoice.ok, true, 'multiplayer participants can resolve Haunted card choices');
+    if (hauntedRemoteChoice.ok) assert(hauntedRemoteChoice.state.match.eventLog.some(event =>
+      event.eventType === 'CARD_RESOLVED' && event.choiceId === hauntedChoiceCard.choices[0].id),
+    'the synchronized multiplayer log records the selected Haunted card effect');
     for (const boardId of ['REDLINE_UPGRADE', 'BIO_UPGRADE']) {
       const mixedMatch = createMultiplayerMatch([
         { characterId: null, careerId: null, displayName: 'Human A' },
@@ -2829,6 +3104,103 @@ try {
     }
     assert.equal(bioState.match.phase, 'complete', 'two players can complete a full Bio multiplayer match');
     assert(bioState.match.eventLog.some(event => event.eventType === 'CARD_RESOLVED' && event.cardId?.startsWith('bio-')), 'full Bio match resolves Bio party cards through the shared multiplayer event log');
+    let hauntedState = confirmCareers(createMultiplayerState(createMultiplayerMatch([
+      { characterId: null, careerId: null, displayName: 'Haunted A' },
+      { characterId: null, careerId: null, displayName: 'Haunted B' },
+    ], 'HAUNTED_UPGRADE'), ['haunted-a', 'haunted-b']), ['haunted-a', 'haunted-b']);
+    const oldRandom = Math.random;
+    Math.random = () => 0;
+    try {
+      for (let i = 0; i < 9000 && hauntedState.match.phase !== 'complete'; i += 1) {
+        const m = hauntedState.match;
+        const user = describeTurn(hauntedState).currentUserId;
+        let action;
+        if (m.phase === 'ready') action = { type: 'ROLL_DICE' };
+        else if (m.phase === 'rolling') action = { type: 'REVEAL' };
+        else if (m.phase === 'reveal') action = { type: 'MOVE' };
+        else if (m.phase === 'moving') action = { type: 'STEP' };
+        else if (m.phase === 'landed') action = { type: 'END_TURN' };
+        else if (m.phase === 'endgame') action = { type: 'GAMBLE', choice: 'CASH_OUT' };
+        else if (m.pending?.kind === 'ROUTE') action = { type: 'CHOOSE_ROUTE', space: m.pending.options[0] };
+        else if (m.pending?.kind === 'CURSED_DOOR') action = m.pending.stage === 'choice'
+          ? { type: 'CHOOSE_DOOR', doorId: m.pending.choiceIds[0] }
+          : { type: 'ACKNOWLEDGE_DOOR' };
+        else if (m.pending?.kind === 'CARD') {
+          const card = getCard(m.pending.cardId);
+          if (m.pending.stage === 'choice' && card?.choices?.length) action = { type: 'CHOOSE_CARD_OPTION', cardId: card.choices[0].id };
+          else if (m.pending.stage === 'choice') action = { type: 'CHOOSE_GAMBLE_CARD', cardId: m.pending.offeredCardIds[0] };
+          else if (m.pending.stage === 'draw') action = { type: 'DRAW_CARD' };
+          else if (card?.partyChallenge) {
+            const count = card.partyChallenge.target === 'SELECTED_PLAYER' || card.partyChallenge.target === 'SELF_AND_SELECTED' ? 1 : card.partyChallenge.target === 'TWO_SELECTED_PLAYERS' ? 2 : 0;
+            const eligible = m.players.filter((_, index) => index !== m.turnIndex);
+            const targets = eligible.slice(0, count).map(player => player.playerId);
+            action = { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: targets, passed: targets.length < count };
+          } else action = { type: 'ACKNOWLEDGE_CARD' };
+        } else if (m.pending?.kind === 'SALARY_GATE') action = { type: 'TAKE_PAYDAY' };
+        else if (m.pending?.kind === 'ASSET') action = { type: 'SKIP_ASSET' };
+        else if (m.pending?.kind === 'CAREER') action = { type: 'CHANGE_CAREER', step: m.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
+        else if (m.pending?.kind === 'ABILITY') {
+          const decision = m.pending.decision;
+          action = { type: 'USE_ABILITY', resolution: decision === 'STAT_DESTINATION' ? { kind: decision, stat: m.pending.sourceStat } : decision === 'ASSET_INTERACTION' ? { kind: decision, choice: 'DECLINE' } : { kind: 'CAREER_SWAP', accept: false } };
+        } else assert.fail(`stuck in Haunted multiplayer ${m.phase}`);
+        const result = applyPlayerAction(hauntedState, user, action);
+        assert.equal(result.ok, true, `Haunted ${JSON.stringify(action)} in ${m.phase}: ${result.message}`);
+        hauntedState = result.state;
+      }
+    } finally {
+      Math.random = oldRandom;
+    }
+    assert.equal(hauntedState.match.phase, 'complete', 'two players complete a full Haunted multiplayer game');
+    assert(hauntedState.match.eventLog.some(event => event.eventType === 'CARD_RESOLVED' && hauntedCards.some(card => card.id === event.cardId)),
+      'the full Haunted match resolves mode-specific cards through multiplayer');
+
+    const hauntedSoloRandom = Math.random;
+    Math.random = () => 0;
+    try {
+      const hauntedSoloStart = createMatch(characters[0].id, 'HAUNTED_UPGRADE');
+      let hauntedSolo = advanceMatch({
+        ...hauntedSoloStart,
+        phase: 'moving',
+        stepsRemaining: 1,
+        players: hauntedSoloStart.players.map((player, index) => index === 0
+          ? { ...player, position: 2, hauntedPath: [0, 1, 2] }
+          : player),
+      }, { type: 'STEP' });
+      assert.equal(hauntedSolo.pending?.kind, 'CARD', 'single-player Haunted landing draws from its dedicated deck');
+      for (let i = 0; i < 12000 && hauntedSolo.phase !== 'complete'; i += 1) {
+        const active = hauntedSolo.players[hauntedSolo.turnIndex];
+        let action;
+        if (hauntedSolo.phase === 'ready') action = { type: 'ROLL', result: { die1: 1, die2: 2, total: 3, doubles: false } };
+        else if (hauntedSolo.phase === 'rolling') action = { type: 'REVEAL' };
+        else if (hauntedSolo.phase === 'reveal') action = { type: 'MOVE' };
+        else if (hauntedSolo.phase === 'moving') action = { type: 'STEP' };
+        else if (hauntedSolo.phase === 'landed') action = { type: 'NEXT_TURN' };
+        else if (hauntedSolo.phase === 'endgame') action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'CHOOSE_ENDGAME', choice: 'CASH_OUT' };
+        else if (hauntedSolo.pending?.kind === 'ROUTE') action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'CHOOSE_ROUTE', space: hauntedSolo.pending.options[0] };
+        else if (hauntedSolo.pending?.kind === 'CURSED_DOOR') action = hauntedSolo.pending.stage === 'choice'
+          ? active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'CHOOSE_DOOR', doorId: hauntedSolo.pending.choiceIds[0] }
+          : { type: 'ACKNOWLEDGE_DOOR' };
+        else if (hauntedSolo.pending?.kind === 'CARD') {
+          const card = getCard(hauntedSolo.pending.cardId);
+          if (hauntedSolo.pending.stage === 'resolved') action = { type: 'ACKNOWLEDGE_CARD' };
+          else if (active.isCPU) action = { type: 'AUTO_DECIDE' };
+          else if (hauntedSolo.pending.stage === 'choice' && card?.choices?.length) action = { type: 'CHOOSE_CARD_OPTION', choiceId: card.choices[0].id };
+          else if (hauntedSolo.pending.stage === 'choice') action = { type: 'CHOOSE_GAMBLE_CARD', cardId: hauntedSolo.pending.offeredCardIds[0] };
+          else action = { type: 'RESOLVE_CARD' };
+        } else if (hauntedSolo.pending?.kind === 'SALARY_GATE') action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'TAKE_PAYDAY' };
+        else if (hauntedSolo.pending?.kind === 'ASSET') action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'SKIP_ASSET' };
+        else if (hauntedSolo.pending?.kind === 'CAREER') action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'CHANGE_CAREER', step: hauntedSolo.pending.stage === 'salary' ? 'ACKNOWLEDGE' : 'KEEP' };
+        else if (hauntedSolo.pending?.kind === 'ABILITY') {
+          const decision = hauntedSolo.pending.decision;
+          action = active.isCPU ? { type: 'AUTO_DECIDE' } : { type: 'USE_ABILITY', resolution: decision === 'STAT_DESTINATION' ? { kind: decision, stat: hauntedSolo.pending.sourceStat } : decision === 'ASSET_INTERACTION' ? { kind: decision, choice: 'DECLINE' } : { kind: 'CAREER_SWAP', accept: false } };
+        } else assert.fail(`stuck in Haunted single-player ${hauntedSolo.phase}`);
+        hauntedSolo = advanceMatch(hauntedSolo, action);
+      }
+      assert.equal(hauntedSolo.phase, 'complete', 'single-player Haunted and its CPU rivals complete the full game');
+      assert.equal(hauntedSolo.finishOrder.length, 4, 'all single-player Haunted players finish');
+    } finally {
+      Math.random = hauntedSoloRandom;
+    }
     // Connected idle players retain the legacy one-minute safety autoplay. Disconnected seats
     // transfer directly to the same CPU reducer after server recovery grants control.
     {

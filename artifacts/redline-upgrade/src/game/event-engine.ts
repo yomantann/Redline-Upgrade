@@ -11,6 +11,7 @@ import type { AbilityPendingDecision, Match, MatchPlayer, RewardModifierState } 
 import { applySalaryGate } from './movement-events';
 import type { PlayerStat } from './player';
 import { drawCardFromPiles, drawTwoDistinctCardsFromPiles } from './card-piles';
+import { applyHauntedBoardMutation } from './haunted-board';
 
 const MAX_EVENT_DEPTH = 6;
 const MAX_EVENT_CHAIN = 48;
@@ -58,6 +59,7 @@ export interface EventDraft {
   effectId?: string;
   deck?: 'wealth' | 'ai' | 'fame' | 'lifestyle' | 'influence' | 'gamble';
   cardId?: string;
+  choiceId?: string;
   assetId?: string;
   assetName?: string;
   assetLevel?: number;
@@ -252,6 +254,7 @@ function pushLog(match: Match, event: AnyGameEvent, label = eventLabel(event), d
     abilityId: event.abilityId,
     effectId: event.effectId,
     cardId: event.cardId,
+    choiceId: event.choiceId,
     deck: event.deck,
     assetId: event.assetId,
     label,
@@ -1461,6 +1464,37 @@ function applyCardEffects(
       return;
     }
 
+    if (effect.kind === 'BOARD_CHANGE') {
+      if (state.boardId !== 'HAUNTED_UPGRADE') {
+        throw new Error(`Haunted board effect ${effect.change} cannot resolve on ${state.boardId}.`);
+      }
+      const [hauntedBoard, description] = applyHauntedBoardMutation(
+        state.hauntedBoard,
+        effect.change,
+        state.turnCounter,
+        `${event.id}:${cardId}:${effectSalt}`,
+      );
+      state = { ...state, hauntedBoard };
+      const actor = state.players[event.playerIndex];
+      state = pushLog(state, {
+        ...event,
+        id: `${event.id}:living-board:${effectSalt}`,
+        type: 'PLAYER_AFFECTED',
+        sourceEventId: event.id,
+        description,
+      }, 'LIVING BOARD', description);
+      if (effect.reason && actor) {
+        state = pushLog(state, {
+          ...event,
+          id: `${event.id}:living-board-reason:${effectSalt}`,
+          type: 'PLAYER_AFFECTED',
+          sourceEventId: event.id,
+          description: `${actor.displayName}: ${effect.reason}`,
+        }, 'LIVING BOARD', `${actor.displayName}: ${effect.reason}`);
+      }
+      return;
+    }
+
     const target = effect.kind === 'TRANSFER_WEALTH' ? effect.target : 'target' in effect ? effect.target ?? 'SELF' : 'SELF';
     const careerTag = effect.kind === 'TRANSFER_WEALTH' || !('careerTag' in effect) ? undefined : effect.careerTag;
     const targets = cardTargetIndices(state, state.players[event.playerIndex], event, target, careerTag, effectSalt);
@@ -1677,7 +1711,9 @@ export function resolveEventQueue(match: Match, drafts: EventDraft[]): Match {
     if (event.type === 'CARD_RESOLVED' && event.cardId) {
       const card = getCard(event.cardId);
       if (!card || card.deck !== event.deck) throw new Error(`Invalid card resolution event ${event.cardId}`);
-      state = applyCardEffects(state, queue, event, card.id, card.effects);
+      const selectedChoice = event.choiceId ? card.choices?.find(choice => choice.id === event.choiceId) : undefined;
+      if (event.choiceId && !selectedChoice) throw new Error(`Invalid card choice ${event.choiceId} for ${card.id}`);
+      state = applyCardEffects(state, queue, event, card.id, selectedChoice?.effects ?? card.effects);
     }
     if (event.type === 'UPGRADE_TOKEN_GAINED' && Number.isInteger(event.delta) && (event.delta ?? 0) > 0) {
       state = updatePlayer(state, event.playerIndex, (player) => ({

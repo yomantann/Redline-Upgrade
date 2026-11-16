@@ -1228,7 +1228,7 @@ components:
           type: string
         mode:
           type: string
-          enum: [STANDARD, BIO]
+          enum: [STANDARD, BIO, HAUNTED]
         category:
           type: string
         recordValue:

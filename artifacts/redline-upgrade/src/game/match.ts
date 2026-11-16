@@ -1,7 +1,7 @@
 import { characters } from './characters';
 import { createPlayer, effectiveSalaryAmount, type PlayerStat } from './player';
 import { getSpace, type BoardSpace } from './board-data';
-import { careers, FINISH_ORDER_WEALTH_REWARDS, startingWealth, type SalaryTier } from './careers';
+import { careers, FINISH_ORDER_WEALTH_REWARDS, formatMoney, startingWealth, type SalaryTier } from './careers';
 import { assetOptions, getAsset, getAssetAttributeAwardTransition, ASSET_ATTRIBUTE_STATS, MAX_ASSET_LEVEL, type AssetCategory, type AssetLevel, type AssetSlot } from './assets';
 import { assetValueAtLevel, availableUpgradeTokens, chooseRecoveredMilestoneAsset, formatAssetValue, getEligibleRecoveryMilestones, getOwnedUpgradeableAssets } from './upgrade-tokens';
 import type { DeckId } from './decks';
@@ -9,7 +9,7 @@ import { addNativeStatChange, createPurchaseEvents, resolveEventQueue, type Abil
 import type { AssetEventLogEntry, EventLogEntry } from './events/types';
 import { applySalaryGate } from './movement-events';
 import { createCardPiles, discardCardToPiles, drawCardFromPiles, drawTwoDistinctCardsFromPiles, returnCardToBottom, type CardPileMap } from './card-piles';
-import { getCard } from './cards';
+import { getCard, type CardEffect } from './cards';
 import { getPartyParticipantIds } from './bio-party-targets';
 import {
   ENDGAME_BALANCE,
@@ -28,14 +28,13 @@ import { evaluateEndGameTitle } from './endgame-titles';
 import { careerAcquisitionTokenCount, swapCareerPackages } from './career-package';
 import { DEFAULT_BOARD_ID, getBoardDefinition, type BoardId, type GameMode } from './boards';
 import {
+  applyHauntedBoardMutation,
   createHauntedBoardState,
   expireHauntedBoardChanges,
   HAUNTED_FINISH_SPACE,
-  HAUNTED_FORKS,
   getHauntedNextSpaces,
   getHauntedShortestDistance,
   getHauntedSpaceChange,
-  validateHauntedRouteGraph,
   type HauntedBoardState,
 } from './haunted-board';
 import { CURSED_DOOR_CHOICES, getHauntedDoorOutcome, type HauntedDoorChange, type HauntedDoorId } from './haunted-encounters';
@@ -117,7 +116,7 @@ export interface WealthEvent { id: number; playerIndex: number; amount: number; 
 export interface RewardModifierState { stat: PlayerStat; amount: number }
 export type BoardPendingDecision =
   | { kind: 'ROUTE'; space: number; options: number[] }
-  | { kind: 'CURSED_DOOR'; space: number; stage: 'choice' | 'reveal'; choiceIds?: HauntedDoorId[]; chosenDoorId?: HauntedDoorId; outcomeId?: string; outcomeTitle?: string; reveal?: string }
+  | { kind: 'CURSED_DOOR'; space: number; stage: 'choice' | 'reveal'; choiceIds?: HauntedDoorId[]; chosenDoorId?: HauntedDoorId; outcomeId?: string; outcomeTitle?: string; reveal?: string; outcomeSummary?: string }
   | { kind: 'ASSET'; slot: AssetSlot; space: number; category?: 'pet' | 'investment'; offeredAssetIds?: string[] }
   | { kind: 'CARD'; deck: DeckId; space: number; cardId: string; stage: 'choice' | 'draw' | 'resolved'; offeredCardIds?: string[] }
   | { kind: 'SALARY_GATE'; space: number; previousPosition: number }
@@ -514,6 +513,7 @@ export type MatchAction =
   | { type: 'ACKNOWLEDGE_CAREER_REVEAL' }
   | { type: 'RESOLVE_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
+  | { type: 'CHOOSE_CARD_OPTION'; choiceId: string }
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
@@ -669,41 +669,13 @@ function land(match: Match, space: BoardSpace, previousPosition: number): Match 
 }
 
 function applyHauntedBoardChange(match: Match, change: HauntedDoorChange): [Match, string] {
-  const board = expireHauntedBoardChanges(match.hauntedBoard, match.turnCounter);
-  const expiresAtTurn = match.turnCounter + 3;
-  let boardChange: HauntedBoardState['changes'][number] | null = null;
-  if (change === 'OPEN_SHORTCUT') {
-    const alreadyOpen = board.changes.some(item => item.kind === 'OPEN_SHORTCUT' && item.from === 26 && item.to === 30);
-    if (alreadyOpen) return [{ ...match, hauntedBoard: board }, 'The hidden gallery passage is already open.'];
-    boardChange = { id: `haunted-${match.eventCursor + 1}-shortcut`, kind: 'OPEN_SHORTCUT', from: 26, to: 30, expiresAtTurn: null, label: 'THE WEST GALLERY SHORTCUT IS OPEN' };
-  } else if (change === 'CLOSE_ROUTE') {
-    const availableForks = HAUNTED_FORKS.filter(fork => getHauntedNextSpaces(fork.space, board, match.turnCounter).length > 1);
-    if (!availableForks.length) {
-      return applyHauntedBoardChange(match, 'OPEN_SHORTCUT');
-    }
-    const fork = availableForks[Math.floor(Math.random() * availableForks.length)];
-    const options = getHauntedNextSpaces(fork.space, board, match.turnCounter);
-    const to = options[Math.floor(Math.random() * options.length)];
-    boardChange = { id: `haunted-${match.eventCursor + 1}-closed-${fork.space}-${to}`, kind: 'CLOSE_ROUTE', from: fork.space, to, expiresAtTurn, label: `THE PASSAGE FROM ${fork.space} TO ${to} IS SEALED` };
-  } else if (change === 'CURSE_SPACE') {
-    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72]
-      .filter(space => !getHauntedSpaceChange(board, space, match.turnCounter));
-    const space = candidates[Math.floor(Math.random() * candidates.length)] ?? 24;
-    boardChange = { id: `haunted-${match.eventCursor + 1}-curse-${space}`, kind: 'CURSE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS CURSED` };
-  } else {
-    const currentCurse = board.changes.find(item => item.kind === 'CURSE_SPACE' && (item.expiresAtTurn === null || item.expiresAtTurn > match.turnCounter));
-    const candidates = [22, 23, 24, 25, 36, 37, 38, 46, 47, 48, 61, 62, 63, 71, 72];
-    const space = currentCurse?.kind === 'CURSE_SPACE'
-      ? currentCurse.space
-      : candidates.find(candidate => !getHauntedSpaceChange(board, candidate, match.turnCounter)) ?? 24;
-    boardChange = { id: `haunted-${match.eventCursor + 1}-safe-${space}`, kind: 'SAFE_SPACE', space, expiresAtTurn, label: `SPACE ${space} IS SAFE` };
-  }
-  const nextBoard: HauntedBoardState = { changes: [...board.changes, boardChange] };
-  if (validateHauntedRouteGraph(nextBoard, match.turnCounter).length
-    || getHauntedShortestDistance(0, HAUNTED_FINISH_SPACE, nextBoard, match.turnCounter) === null) {
-    return [{ ...match, hauntedBoard: board }, 'The estate rejects the change; every route to the finish remains open.'];
-  }
-  return [{ ...match, hauntedBoard: nextBoard }, boardChange.label];
+  const [board, message] = applyHauntedBoardMutation(
+    match.hauntedBoard,
+    change,
+    match.turnCounter,
+    `haunted-${match.eventCursor + 1}`,
+  );
+  return [{ ...match, hauntedBoard: board }, message];
 }
 
 function resolveHauntedDoor(match: Match, doorId: HauntedDoorId): Match {
@@ -712,53 +684,74 @@ function resolveHauntedDoor(match: Match, doorId: HauntedDoorId): Match {
   if (match.boardId !== 'HAUNTED_UPGRADE' || match.phase !== 'decision' || pending?.kind !== 'CURSED_DOOR'
     || pending.stage !== 'choice' || !pending.choiceIds?.includes(doorId) || !player) return match;
   const outcome = getHauntedDoorOutcome(doorId);
+  const effect = outcome.effect;
   let players = [...match.players];
   let hauntedBoard = match.hauntedBoard ?? createHauntedBoardState();
   const drafts: EventDraft[] = [];
-  const updateStat = (playerIndex: number, stat: PlayerStat, amount: number, reason: string) => {
+  let outcomeSummary = '';
+  const statLabel: Record<PlayerStat, string> = {
+    wealth: 'Wealth',
+    aiSkill: 'AI Skill',
+    fame: 'Fame',
+    lifestyle: 'Lifestyle',
+    influence: 'Influence',
+  };
+  const formatEffectAmount = (stat: PlayerStat, amount: number) =>
+    stat === 'wealth' ? formatMoney(Math.abs(amount)) : `${Math.abs(amount)} ${statLabel[stat]}`;
+  const updateStat = (playerIndex: number, stat: PlayerStat, amount: number, reason: string): number => {
     const current = players[playerIndex];
-    if (!current) return;
+    if (!current) return 0;
     const previousValue = current[stat];
     const newValue = Math.max(0, previousValue + amount);
     players[playerIndex] = { ...current, [stat]: newValue };
     addNativeStatChange(match, drafts, playerIndex, stat, previousValue, newValue, reason);
+    return newValue - previousValue;
   };
-  switch (outcome.effect.kind) {
+  switch (effect.kind) {
     case 'STAT':
-      updateStat(match.turnIndex, outcome.effect.stat, outcome.effect.amount, `Cursed Door / ${outcome.title}`);
+      {
+        const actualDelta = updateStat(match.turnIndex, effect.stat, effect.amount, `Cursed Door / ${outcome.title}`);
+        outcomeSummary = `You ${actualDelta >= 0 ? 'gain' : 'lose'} ${formatEffectAmount(effect.stat, actualDelta)}.`;
+      }
       break;
     case 'GROUP_STAT':
       players.forEach((candidate, index) => {
-        if (candidate.status === 'ACTIVE') updateStat(index, outcome.effect.stat, outcome.effect.amount, `Cursed Door / ${outcome.title}`);
+        if (candidate.status === 'ACTIVE') updateStat(index, effect.stat, effect.amount, `Cursed Door / ${outcome.title}`);
       });
+      outcomeSummary = `Every active player ${effect.amount >= 0 ? 'gains' : 'loses up to'} ${formatEffectAmount(effect.stat, effect.amount)}.`;
       break;
     case 'TRANSFER': {
       const eligible = players
         .map((candidate, index) => ({ candidate, index }))
         .filter(item => item.index !== match.turnIndex && item.candidate.status === 'ACTIVE')
-        .sort((a, b) => outcome.effect.target === 'WEALTH_LEADER'
+        .sort((a, b) => effect.target === 'WEALTH_LEADER'
           ? b.candidate.wealth - a.candidate.wealth || a.index - b.index
           : a.candidate.wealth - b.candidate.wealth || a.index - b.index);
       const target = eligible[0];
       if (target) {
-        const amount = Math.min(outcome.effect.amount, target.candidate.wealth);
+        const amount = Math.min(effect.amount, target.candidate.wealth);
         updateStat(target.index, 'wealth', -amount, `Cursed Door transfer to ${player.displayName}`);
         updateStat(match.turnIndex, 'wealth', amount, `Cursed Door transfer from ${target.candidate.displayName}`);
+        outcomeSummary = `${player.displayName} takes ${formatEffectAmount('wealth', amount)} from ${target.candidate.displayName}.`;
+      } else {
+        outcomeSummary = 'No eligible rival had Wealth to transfer.';
       }
       break;
     }
     case 'TOKEN':
-      players[match.turnIndex] = { ...players[match.turnIndex], upgradeTokens: players[match.turnIndex].upgradeTokens + 1 };
       drafts.push({ type: 'UPGRADE_TOKEN_GAINED', playerIndex: match.turnIndex, delta: 1, reason: 'Cursed Door reward', description: `${player.displayName} gained 1 Upgrade Token from the Cursed Door.` });
+      outcomeSummary = 'You gain 1 Upgrade Token.';
       break;
     case 'SKIP_TURN':
       players[match.turnIndex] = { ...players[match.turnIndex], skipTurns: players[match.turnIndex].skipTurns + 1 };
       drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, reason: 'Cursed Door / temporary restriction', description: `${player.displayName} must skip their next turn after opening ${outcome.title}.` });
+      outcomeSummary = 'You must skip your next turn.';
       break;
     case 'BOARD_CHANGE': {
-      const changed = applyHauntedBoardChange({ ...match, hauntedBoard }, outcome.effect.change);
+      const changed = applyHauntedBoardChange({ ...match, hauntedBoard }, effect.change);
       hauntedBoard = changed[0].hauntedBoard ?? hauntedBoard;
       drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, reason: 'Living Board', description: changed[1] });
+      outcomeSummary = changed[1];
       break;
     }
   }
@@ -771,6 +764,7 @@ function resolveHauntedDoor(match: Match, doorId: HauntedDoorId): Match {
     outcomeId: outcome.id,
     outcomeTitle: outcome.title,
     reveal: outcome.reveal,
+    outcomeSummary,
   };
   drafts.push({ type: 'PLAYER_AFFECTED', playerIndex: match.turnIndex, spaceNumber: pending.space, reason: outcome.title, description: `${player.displayName} opened ${doorId.toLowerCase()} door: ${outcome.reveal}` });
   return emit({
@@ -1218,11 +1212,20 @@ function autoUseUpgradeToken(match: Match): Match {
   return match;
 }
 
-function resolveCardDecision(match: Match): Match {
-  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD' || match.pending.stage !== 'draw') return match;
+function resolveCardDecision(match: Match, choiceId?: string): Match {
+  if (match.phase !== 'decision' || match.pending?.kind !== 'CARD'
+    || (match.pending.stage !== 'draw' && match.pending.stage !== 'choice')) return match;
   const { deck, space, cardId } = match.pending;
   const card = getCard(cardId);
   if (!card || card.deck !== deck) throw new Error(`Invalid pending card ${cardId} for ${deck}`);
+  if (card.choices?.length) {
+    if (!choiceId && match.pending.stage === 'draw') {
+      return { ...match, pending: { ...match.pending, stage: 'choice' } };
+    }
+    const cpuAutoChoice = Boolean(choiceId && match.pending.stage === 'draw' && match.players[match.turnIndex]?.isCPU);
+    if (!choiceId || (match.pending.stage !== 'choice' && !cpuAutoChoice) || !card.choices.some(choice => choice.id === choiceId)) return match;
+  } else if (choiceId || match.pending.stage !== 'draw') return match;
+  const selectedChoice = choiceId ? card.choices?.find(choice => choice.id === choiceId) : undefined;
   const resolved = {
     ...match,
     cardPiles: discardCardToPiles(match.cardPiles, deck, cardId),
@@ -1235,7 +1238,8 @@ function resolveCardDecision(match: Match): Match {
     deck,
     spaceNumber: space,
     cardId,
-    description: `${card.title}: ${card.effect}`,
+    ...(choiceId ? { choiceId } : {}),
+    description: `${card.title}${selectedChoice ? ` / ${selectedChoice.label}: ${selectedChoice.description}` : `: ${card.effect}`}`,
   }]);
 }
 
@@ -1560,6 +1564,28 @@ function autoDecide(match: Match): Match {
     }]);
   }
   if (pending.kind === 'CARD') {
+    const pendingCard = getCard(pending.cardId);
+    if (pendingCard?.choices?.length && (pending.stage === 'draw' || pending.stage === 'choice')) {
+      const scoreEffect = (effect: CardEffect): number => {
+        if (effect.kind === 'STAT') {
+          const weight = effect.stat === 'wealth' ? 0.00008 : 9;
+          const targetsOpponent = effect.target === 'ALL_OPPONENTS' || effect.target === 'RANDOM_OPPONENT'
+            || effect.target === 'WEALTH_LEADER' || effect.target === 'WEALTH_TRAILER';
+          return effect.amount * weight * (targetsOpponent ? -1 : 1);
+        }
+        if (effect.kind === 'TRANSFER_WEALTH') return effect.amount * 0.00008;
+        if (effect.kind === 'RISK') return effect.chance * effect.win.reduce((sum, item) => sum + scoreEffect(item), 0)
+          + (1 - effect.chance) * effect.loss.reduce((sum, item) => sum + scoreEffect(item), 0);
+        if (effect.kind === 'UPGRADE_TOKEN') return effect.amount * 15;
+        if (effect.kind === 'BOARD_CHANGE') return effect.change === 'OPEN_SHORTCUT' ? 18 : effect.change === 'SAFE_SPACE' ? 8 : -2;
+        return 0;
+      };
+      const best = [...pendingCard.choices].sort((a, b) =>
+        b.effects.reduce((sum, effect) => sum + scoreEffect(effect), 0)
+        - a.effects.reduce((sum, effect) => sum + scoreEffect(effect), 0),
+      )[0];
+      return best ? resolveCardDecision(match, best.id) : match;
+    }
     if (pending.stage === 'choice' && pending.offeredCardIds?.length) {
       const choices = pending.offeredCardIds.map(id => getCard(id)).filter((card): card is NonNullable<typeof card> => !!card);
       const averageOpponentPosition = match.players
@@ -1846,6 +1872,14 @@ export function advanceMatch(match: Match, action: MatchAction): Match {
       if (!unchosen) return match;
       const cardPiles = returnCardToBottom(match.cardPiles, 'gamble', unchosen);
       return resolveCardDecision({ ...match, cardPiles, pending: { ...pending, cardId: action.cardId, stage: 'draw' } });
+    }
+    case 'CHOOSE_CARD_OPTION': {
+      const pending = match.pending;
+      const card = pending?.kind === 'CARD' ? getCard(pending.cardId) : undefined;
+      if (match.phase !== 'decision' || pending?.kind !== 'CARD' || pending.stage !== 'choice'
+        || !card?.choices?.some(choice => choice.id === action.choiceId)
+        || (match.players[match.turnIndex]?.isCPU && match.mode !== 'SINGLE_PLAYER')) return match;
+      return resolveCardDecision(match, action.choiceId);
     }
     case 'RESOLVE_PARTY_CHALLENGE':
       if (match.players[match.turnIndex]?.isCPU && match.mode !== 'SINGLE_PLAYER') return match;

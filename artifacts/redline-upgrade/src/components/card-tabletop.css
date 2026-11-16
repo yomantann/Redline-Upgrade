@@ -69,6 +69,14 @@
 .redline-card { --deck-color:#d8e78b; position:relative; isolation:isolate; display:flex; flex-direction:column; min-width:0; aspect-ratio: .69; overflow:hidden; color:#e9e7dc; background:#17211f; border:1px solid var(--deck-color); border-radius:9px 9px 13px 13px; box-shadow:2px 3px 0 #0c1312,6px 9px 0 rgba(0,0,0,.35),10px 15px 24px rgba(0,0,0,.3); }
 .redline-card::before { content:''; position:absolute; inset:5px; border:1px solid color-mix(in srgb,var(--deck-color) 40%,transparent); border-radius:5px 5px 9px 9px; pointer-events:none; z-index:3; }
 .redline-card.back { background:repeating-linear-gradient(135deg,transparent 0 17px,color-mix(in srgb,var(--deck-color) 10%,transparent) 18px,transparent 19px),radial-gradient(circle at 50% 44%,color-mix(in srgb,var(--deck-color) 24%,#17211f),#14201e 68%); }
+.redline-card.haunted.back { border-color:#b49bd0; background:radial-gradient(ellipse at 50% 42%,#533b66 0,#231d2d 36%,#111318 78%); }
+.redline-card.haunted::before { border-color:#b49bd077; box-shadow:inset 0 0 20px #b49bd011; }
+.redline-card.haunted .redline-card-rail,
+.redline-card.haunted .redline-card-footer { color:#c9b5e1; }
+.redline-card.haunted .redline-card-footer { border-color:#b49bd066; }
+.redline-card.haunted .redline-card-back-ring { border-color:#d0b7eb; outline-color:#b49bd099; color:#ddc7f0; box-shadow:0 0 22px #b49bd044; }
+.redline-card.haunted .redline-card-back-core small { color:#c9b5e1; }
+.redline-card.haunted.front { background:linear-gradient(155deg,#292134,#17181d 55%); }
 .redline-card.front { background:linear-gradient(155deg,color-mix(in srgb,var(--deck-color) 13%,#19241f),#17211f 55%); }
 .redline-card-rail { display:flex; justify-content:space-between; gap:4px; padding:12px 13px; color:var(--deck-color); font:700 8px/1.2 'Space Mono',monospace; letter-spacing:.08em; }
 .redline-card-back-core { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:0; }
@@ -118,6 +126,12 @@
 .card-draw-stage .redline-card-content p { font-size:10px; }
 .card-draw-action .action { width:100%; }
 .card-draw-action p { color:#aebdaf; font:9px/1.6 'Space Mono',monospace; }
+.haunted-card-choice-list { display:grid; gap:8px; margin-top:12px; }
+.haunted-card-choice-option { display:grid; gap:5px; width:100%; padding:12px; color:#f0e8da; text-align:left; border:1px solid #6d5875; background:linear-gradient(135deg,#2b2630,#17181b); cursor:pointer; }
+.haunted-card-choice-option:hover:not(:disabled),.haunted-card-choice-option:focus-visible { border-color:#c3a2e2; background:#342b38; outline:2px solid #c3a2e244; }
+.haunted-card-choice-option:disabled { opacity:.58; cursor:wait; }
+.haunted-card-choice-option .mono { color:#d4b8ee; font-size:10px; }
+.haunted-card-choice-option small { color:#c6bdc5; font:12px/1.45 'Inter',sans-serif; }
 @keyframes card-reveal { from { opacity:.35; transform:rotateY(-90deg) translateY(13px); } to { opacity:1; transform:rotateY(0) translateY(0); } }
 @media(max-width:1000px) { .tabletop-decks-grid { gap:12px; } .tabletop-deck .redline-card-back-core b { font-size:17px; } }
 @media(max-width:650px) { .card-draw-action .action { padding:10px; } }

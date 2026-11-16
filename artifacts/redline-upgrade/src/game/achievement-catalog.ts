@@ -139,6 +139,7 @@ const winning: AchievementRow[] = [
   ['final-value-10m', 'Eight-Figure Finish', 'Reach a $10,000,000 final game value.', 'highestFinalValue', 10_000_000, 'LEGENDARY', 'award'],
   ['standard-win', 'Standard Winner', 'Win a Standard Redline game.', 'standardWins', 1, 'SILVER', 'flag'],
   ['bio-win', 'Bio Winner', 'Win a Bio Upgrade game.', 'bioWins', 1, 'SILVER', 'heart-handshake'],
+  ['haunted-win', 'House Favorite', 'Win a Haunted Upgrade game.', 'hauntedWins', 1, 'SILVER', 'ghost'],
   ['multiplayer-wins', 'Table Champion', 'Win five multiplayer games.', 'multiplayerWins', 5, 'LEGENDARY', 'users-round'],
 ];
 

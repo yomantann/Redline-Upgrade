@@ -64,6 +64,7 @@ const emptyMetrics = (): Record<string, number> => ({
   podiumFinishes: 0,
   standardWins: 0,
   bioWins: 0,
+  hauntedWins: 0,
   multiplayerWins: 0,
   completedGames: 0,
   purchases: 0,
@@ -413,7 +414,8 @@ export async function recordCompletedGame(
   const portfolioValue = calculateAssetValue(player);
   const finalValue = player.endgame?.finalGameValue ?? player.endgame?.baseValue ?? 0;
   const placement = getFinalPlacementOrder(match.players, match.finishOrder).indexOf(playerIndex) + 1;
-  const personalBestMode = match.boardId === "BIO_UPGRADE" ? "BIO" as const : "STANDARD" as const;
+  const personalBestMode = match.boardId === "BIO_UPGRADE" ? "BIO" as const
+    : match.boardId === "HAUNTED_UPGRADE" ? "HAUNTED" as const : "STANDARD" as const;
   const highestRetainedAsset = [...retainedAssets].sort((a, b) => b.level - a.level)[0];
   const personalBestCandidates: Array<{ category: string; label: string; value: number; relevantAssetId?: string }> = [
     { category: "FINAL_SCORE", label: "Final score", value: finalValue },
@@ -448,7 +450,8 @@ export async function recordCompletedGame(
     relevantAssetId: string | null;
   }>();
   for (const game of priorGames) {
-    const gameMode = game.boardId === "BIO_UPGRADE" ? "BIO" : "STANDARD";
+    const gameMode = game.boardId === "BIO_UPGRADE" ? "BIO"
+      : game.boardId === "HAUNTED_UPGRADE" ? "HAUNTED" : "STANDARD";
     if (gameMode !== personalBestMode) continue;
     const highestRetained = [...(game.retainedAssets ?? [])].sort((a, b) => b.level - a.level)[0];
     const historicalCandidates: Array<{ category: string; value: number | undefined; relevantAssetId?: string }> = [
@@ -662,6 +665,7 @@ export async function recordCompletedGame(
     podiumFinishes: previousMetrics.podiumFinishes + (placement <= 3 ? 1 : 0),
     standardWins: previousMetrics.standardWins + (isWin && match.boardId === "REDLINE_UPGRADE" ? 1 : 0),
     bioWins: previousMetrics.bioWins + (isWin && match.boardId === "BIO_UPGRADE" ? 1 : 0),
+    hauntedWins: previousMetrics.hauntedWins + (isWin && match.boardId === "HAUNTED_UPGRADE" ? 1 : 0),
     multiplayerWins: previousMetrics.multiplayerWins + (isWin && source === "MULTIPLAYER" ? 1 : 0),
     completedGames,
     purchases: previousMetrics.purchases + purchaseCount,

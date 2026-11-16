@@ -62,6 +62,7 @@ export const BOARD_SPACES: BoardSpace[] = Array.from({ length: 75 }, (_, index) 
     CAREER_CHANGE: ['career', 'Career Change', 'Pass through or land here to keep your career or choose between two new opportunities.', 'LAND_OR_PASS'],
     MILESTONE: ['milestone', 'Milestone', 'A milestone stop. Choose an asset to buy, or skip.', 'LAND'],
     UPGRADE_TOKEN: ['upgrade-token', 'Upgrade Token', 'Land here to gain 1 match-only Upgrade Token.', 'LAND'],
+    CURSED_DOOR: ['haunted-door', 'Cursed Door', 'Choose a sealed door and reveal the encounter inside.', 'LAND'],
   };
   const [defaultIcon, defaultLabel, defaultDescription, defaultTrigger] = details[type];
   const milestone: Partial<Record<number, [string, string, string, SpaceTrigger]>> = {
@@ -188,16 +189,34 @@ const HAUNTED_PAYDAY_SPACES = new Set([6, 18, 29, 41, 54, 66, 73]);
 const HAUNTED_MILESTONES = new Set([10, 30, 45, 60, 75]);
 const HAUNTED_TOKEN_SPACES = new Set([2, 14, 55]);
 export const HAUNTED_DOOR_SPACES = new Set([5, 19, 27, 43, 57, 68]);
+const HAUNTED_CARD_DECK_BY_SPACE: Readonly<Record<number, DeckId>> = {
+  3: 'wealth',
+  8: 'ai',
+  13: 'fame',
+  16: 'lifestyle',
+  22: 'influence',
+  25: 'gamble',
+  32: 'wealth',
+  37: 'ai',
+  39: 'fame',
+  47: 'lifestyle',
+  50: 'influence',
+  58: 'gamble',
+  62: 'wealth',
+  69: 'ai',
+  72: 'fame',
+};
 const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index) => {
   const number = index + 1;
   const payday = HAUNTED_PAYDAY_SPACES.has(number);
   const milestone = HAUNTED_MILESTONES.has(number);
   const token = HAUNTED_TOKEN_SPACES.has(number);
   const door = HAUNTED_DOOR_SPACES.has(number);
+  const deck = HAUNTED_CARD_DECK_BY_SPACE[number];
   const type: SpaceType = number === 35 ? 'CAREER_CHANGE'
     : payday ? 'SALARY_GATE'
       : milestone ? 'MILESTONE'
-        : token ? 'UPGRADE_TOKEN' : door ? 'CURSED_DOOR' : 'NORMAL';
+        : token ? 'UPGRADE_TOKEN' : door ? 'CURSED_DOOR' : deck ? 'CARD' : 'NORMAL';
   const milestoneInfo: Partial<Record<number, [string, string, string]>> = {
     10: ['car', 'Cursed Carriage', 'Choose a milestone vehicle, or skip.'],
     30: ['lifestyle', 'The Portrait Cloak', 'Choose a milestone lifestyle, or skip.'],
@@ -206,8 +225,16 @@ const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index)
     75: ['finish', 'The Black Door', 'Reach the estate finish to lock in your place and choose your ending.'],
   };
   const special = milestoneInfo[number];
-  const icon = special?.[0] ?? (payday ? 'salary' : token ? 'upgrade-token' : number === 35 ? 'career' : door ? 'haunted-door' : 'normal');
-  const label = special?.[1] ?? (payday ? 'HAUNTED PAYDAY' : token ? 'CURSED TOKEN' : number === 35 ? 'CAREER SWITCH' : door ? 'CURSED DOOR' : name.toUpperCase());
+  const deckLabel: Record<DeckId, string> = {
+    wealth: 'WEALTH',
+    ai: 'AI SKILL',
+    fame: 'FAME',
+    lifestyle: 'LIFESTYLE',
+    influence: 'INFLUENCE',
+    gamble: 'GAMBLE',
+  };
+  const icon = special?.[0] ?? (payday ? 'salary' : token ? 'upgrade-token' : number === 35 ? 'career' : door ? 'haunted-door' : deck ?? 'normal');
+  const label = special?.[1] ?? (payday ? 'HAUNTED PAYDAY' : token ? 'CURSED TOKEN' : number === 35 ? 'CAREER SWITCH' : door ? 'CURSED DOOR' : deck ? `${deckLabel[deck]} CARD` : name.toUpperCase());
   const description = special?.[2] ?? (payday
     ? 'Pass through or land here to receive your current salary once.'
     : token
@@ -216,6 +243,8 @@ const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index)
         ? 'Keep your current career or choose another opportunity.'
         : door
           ? 'Choose a sealed door and reveal the encounter inside.'
+          : deck
+            ? `Draw a Haunted ${deckLabel[deck]} card and resolve its effect.`
         : `${name}. The estate watches as you pass.`);
   return {
     number,
@@ -225,6 +254,7 @@ const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index)
     label,
     description,
     trigger: payday || number === 35 ? 'LAND_OR_PASS' : type === 'NORMAL' ? 'NONE' : 'LAND',
+    deck,
   };
 });
 

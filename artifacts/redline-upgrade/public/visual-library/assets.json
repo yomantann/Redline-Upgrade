@@ -37,7 +37,9 @@
         { "id": "corporate-executive", "label": "Corporate Executive", "symbol": "career-corporate-executive", "categoryId": "business-entrepreneur", "accent": "#dba77f" },
         { "id": "cybersecurity-specialist", "label": "Cybersecurity Specialist", "symbol": "career-cybersecurity-specialist", "categoryId": "digital-risk", "accent": "#8fcbd2" },
         { "id": "entertainer", "label": "Entertainer", "symbol": "career-entertainer", "categoryId": "media-fame", "accent": "#f0cf78" },
-        { "id": "real-estate-investor", "label": "Real Estate Investor", "symbol": "career-real-estate-investor", "categoryId": "business-entrepreneur", "accent": "#dba77f" }
+        { "id": "real-estate-investor", "label": "Real Estate Investor", "symbol": "career-real-estate-investor", "categoryId": "business-entrepreneur", "accent": "#dba77f" },
+        { "id": "thief", "label": "Thief", "symbol": "career-thief", "categoryId": "digital-risk", "accent": "#8fcbd2" },
+        { "id": "alien", "label": "Alien", "symbol": "career-alien", "categoryId": "digital-risk", "accent": "#8fcbd2" }
       ]
     },
     {

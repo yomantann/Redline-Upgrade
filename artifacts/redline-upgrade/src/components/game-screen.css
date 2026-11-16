@@ -1,4 +1,13 @@
 .game-screen { padding: 42px clamp(20px,4.2vw,72px) 80px; }
+.game-screen.haunted-mode { --haunted-accent:#c2a2e2; background:radial-gradient(ellipse at 50% 0,#221a2b 0,#111318 60%); }
+.game-screen.haunted-mode .turn-signal { border-color:#c2a2e2; }
+.game-screen.haunted-mode .turn-signal strong,
+.game-screen.haunted-mode .game-player-position,
+.game-screen.haunted-mode .readout-primary em { color:#c2a2e2; }
+.game-screen.haunted-mode .game-player.active { border-color:#c2a2e2; }
+.game-screen.haunted-mode .board-preview-banner { border-color:#a5cfbf; background:#1a1e20; }
+.haunted-action { border-color:#a98bc7!important; color:#f0e8f6!important; background:linear-gradient(135deg,#513e61,#30263b)!important; }
+.haunted-action:hover,.haunted-action:focus-visible { border-color:#d4b6f0!important; outline:2px solid #c2a2e255; }
 .game-screen:not(.game-screen-finish-line) { display:flex; flex-direction:column; }
 .game-screen:not(.game-screen-finish-line) > .game-tabletop { order:1; }
 .game-screen:not(.game-screen-finish-line) > .game-console { order:2; }
@@ -375,7 +384,7 @@
 .haunted-door-visual--mirror .haunted-door-glow { background:radial-gradient(ellipse at center,#a7c9e277,transparent 68%); opacity:.38; }
 .haunted-door-visual--bone .haunted-door-leaf { background:linear-gradient(135deg,#55443e,#241e1d); border-color:#b79a7b; }
 .haunted-door-visual--bone .haunted-door-glow { background:radial-gradient(ellipse at center,#b1776e88,transparent 68%); opacity:.32; }
-.haunted-door-visual[data-door-open='true'] .haunted-door-leaf { transform:rotateY(-68deg); }
+.haunted-door-visual[data-door-open='true'] .haunted-door-leaf { transform:rotateY(-68deg); animation:haunted-door-open .72s cubic-bezier(.2,.7,.15,1) both; }
 .haunted-door-visual[data-door-open='true'] .haunted-door-glow { opacity:.9; animation:haunted-door-reveal 1.4s ease-out both; }
 .haunted-door-reveal { grid-template-columns:minmax(120px,180px) minmax(0,1fr); align-items:center; gap:20px; min-height:205px; }
 .haunted-door-reveal .haunted-door-visual { width:122px; height:156px; }
@@ -383,7 +392,9 @@
 .haunted-door-reveal .haunted-door-leaf,
 .haunted-door-reveal .haunted-door-glow { inset:25px 19px 0; }
 .haunted-door-reveal .haunted-door-copy { min-width:0; }
+.haunted-door-outcome-summary { display:block; margin:0 0 15px; padding:10px 12px; border-left:3px solid #a5cfbf; color:#e8d9f3; background:#241f2b; font:700 12px/1.45 'Space Mono',monospace; }
 @keyframes haunted-door-reveal { from { opacity:.2; filter:blur(5px); } to { opacity:1; filter:blur(0); } }
+@keyframes haunted-door-open { from { transform:rotateY(0); } to { transform:rotateY(-68deg); } }
 .game-tabletop > .game-dice-panel--centered {
   grid-column:1;
   grid-row:1 / span 2;

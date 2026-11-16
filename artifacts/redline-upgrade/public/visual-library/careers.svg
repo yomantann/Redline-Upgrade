@@ -110,5 +110,20 @@
         <path d="m8 13 10-6 8 2 13-6m-6 0h6v6"/>
       </g>
     </symbol>
+    <symbol id="career-thief" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 24c4-6 9-9 15-9s11 3 15 9c-4 6-9 9-15 9S13 30 9 24z"/>
+        <circle cx="24" cy="24" r="5"/>
+        <path d="m15 34 5 5h9l5-5M17 10l7-4 7 4m-7-4v6"/>
+        <path d="m6 12 4 4m32-4-4 4M5 37l5-2m33 2-5-2"/>
+      </g>
+    </symbol>
+    <symbol id="career-alien" viewBox="0 0 48 48">
+      <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 6c-9 0-16 8-16 18 0 9 7 15 16 15s16-6 16-15C40 14 33 6 24 6z"/>
+        <path d="M14 21c2-4 6-6 10-6s8 2 10 6l-3 7c-2 3-4 4-7 4s-5-1-7-4z"/>
+        <path d="m18 23 4 2m8-2-4 2M19 39l-4 4m14-4 4 4M6 10l3 3m33-3-3 3"/>
+      </g>
+    </symbol>
   </defs>
 </svg>

@@ -88,13 +88,16 @@
 .red-personal-best-modes { display:grid; gap:18px; }
 .red-personal-best-mode { padding:16px; border:1px solid #4e5745; background:linear-gradient(110deg,#1b241b,#111715); }
 .red-personal-best-mode.mode-bio { border-color:#6b5078; background:linear-gradient(110deg,#241b2a,#111017); }
+.red-personal-best-mode.mode-haunted { border-color:#766151; background:linear-gradient(110deg,#261f1b,#111715); }
 .red-personal-best-mode h3 { margin:0 0 12px; color:#d4e981; font:700 22px 'Barlow Condensed',sans-serif; text-transform:uppercase; }
 .red-personal-best-mode.mode-bio h3 { color:#d4a0ff; }
+.red-personal-best-mode.mode-haunted h3 { color:#d9bd8d; }
 .red-personal-best-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); border-top:1px solid #35423b; border-left:1px solid #35423b; }
 .red-personal-best-card { min-height:94px; display:grid; align-content:space-between; gap:7px; padding:12px; border-right:1px solid #35423b; border-bottom:1px solid #35423b; }
 .red-personal-best-card .mono { color:#87948a; font-size:7px; text-transform:uppercase; }
 .red-personal-best-card strong { color:#d4e981; font:700 22px 'Barlow Condensed',sans-serif; }
 .red-personal-best-mode.mode-bio .red-personal-best-card strong { color:#d4a0ff; }
+.red-personal-best-mode.mode-haunted .red-personal-best-card strong { color:#e3c594; }
 .red-personal-best-card small { color:#a0aaa1; font-size:8px; line-height:1.5; }
 .red-section-heading h2,.red-section-bar h2 { margin: 15px 0 12px; color: #e9e7dc; font: 800 clamp(38px,5vw,63px)/.92 'Barlow Condensed',sans-serif; text-transform: uppercase; letter-spacing: -.02em; }
 .red-section-heading p,.red-section-copy { max-width: 400px; margin: 0; color: #94a198; font-size: 13px; line-height: 1.65; }

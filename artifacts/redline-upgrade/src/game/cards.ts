@@ -5,6 +5,7 @@ import type { PlayerStat } from './player';
 import type { BoardId } from './boards';
 import { bioPartyCards } from './bio-party-cards';
 import { cardExpansion } from './cards-expansion';
+import { hauntedCards } from './haunted-cards';
 
 export type CardTarget = 'SELF' | 'RANDOM_OPPONENT' | 'WEALTH_LEADER' | 'WEALTH_TRAILER' | 'ALL_OPPONENTS';
 export type PartyTarget = 'SELF' | 'SELECTED_PLAYER' | 'SELF_AND_SELECTED' | 'TWO_SELECTED_PLAYERS' | 'ALL_PLAYERS' | 'ALL_EXCEPT_SELF' | 'SELF_OR_ALL_PLAYERS';
@@ -24,7 +25,23 @@ export type CardEffect =
   | { kind: 'PROTECT'; amount?: number; target?: CardTarget; careerTag?: CareerCategoryTag; blockedEffectTypes?: EffectType[]; reason?: string }
   | { kind: 'REWARD_MODIFIER'; stat: PlayerStat; amount: number; target?: CardTarget; careerTag?: CareerCategoryTag; reason?: string }
   | { kind: 'DOUBLE_OR_NOTHING'; chance: number; reason?: string }
-  | { kind: 'RISK'; chance: number; win: readonly CardEffect[]; loss: readonly CardEffect[]; reason?: string };
+  | { kind: 'RISK'; chance: number; win: readonly CardEffect[]; loss: readonly CardEffect[]; reason?: string }
+  | { kind: 'BOARD_CHANGE'; change: 'CLOSE_ROUTE' | 'OPEN_SHORTCUT' | 'CURSE_SPACE' | 'SAFE_SPACE'; reason?: string };
+
+export type HauntedCardCategory =
+  | 'GHOST_ENCOUNTER'
+  | 'HAUNTED_CHALLENGE'
+  | 'CURSED_CHOICE'
+  | 'CHARACTER_ENCOUNTER'
+  | 'GROUP_EVENT'
+  | 'TRICK_BETRAYAL'
+  | 'LIVING_BOARD';
+export interface CardChoiceOption {
+  id: string;
+  label: string;
+  description: string;
+  effects: readonly CardEffect[];
+}
 
 export interface CardDefinition {
   id: string;
@@ -41,6 +58,8 @@ export interface CardDefinition {
   artCue: string;
   artworkPath: string;
   partyChallenge?: PartyChallenge;
+  hauntedCategory?: HauntedCardCategory;
+  choices?: readonly CardChoiceOption[];
 }
 
 const stat = (statName: PlayerStat, amount: number, target: CardTarget = 'SELF', careerTag?: CareerCategoryTag): CardEffect => ({
@@ -204,10 +223,12 @@ const baseCards: readonly CardDefinition[] = [
 
 export const cards: readonly CardDefinition[] = baseCards;
 
-export const allCards: readonly CardDefinition[] = [...cards, ...cardExpansion, ...bioPartyCards];
+export const allCards: readonly CardDefinition[] = [...cards, ...cardExpansion, ...bioPartyCards, ...hauntedCards];
 
 export function cardsForDeck(deck: DeckId, boardId: BoardId = 'REDLINE_UPGRADE'): readonly CardDefinition[] {
-  const boardCards = boardId === 'BIO_UPGRADE' ? bioPartyCards : boardId === 'REDLINE_UPGRADE' ? [...cards, ...cardExpansion] : [];
+  const boardCards = boardId === 'BIO_UPGRADE' ? bioPartyCards
+    : boardId === 'HAUNTED_UPGRADE' ? hauntedCards
+      : [...cards, ...cardExpansion];
   return boardCards.filter(card => card.deck === deck);
 }
 

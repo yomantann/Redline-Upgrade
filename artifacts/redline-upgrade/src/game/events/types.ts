@@ -94,6 +94,7 @@ export interface GameEvent {
   effectId?: string;
   deck?: DeckId;
   cardId?: string;
+  choiceId?: string;
   assetId?: string;
   assetName?: string;
   assetLevel?: number;
@@ -128,6 +129,7 @@ export interface EventLogEntry {
   abilityId?: string;
   effectId?: string;
   cardId?: string;
+  choiceId?: string;
   deck?: DeckId;
   assetId?: string;
   label: string;

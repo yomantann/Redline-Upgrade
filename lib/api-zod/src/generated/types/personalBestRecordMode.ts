@@ -12,4 +12,5 @@ export type PersonalBestRecordMode = typeof PersonalBestRecordMode[keyof typeof 
 export const PersonalBestRecordMode = {
   STANDARD: 'STANDARD',
   BIO: 'BIO',
+  HAUNTED: 'HAUNTED',
 } as const;

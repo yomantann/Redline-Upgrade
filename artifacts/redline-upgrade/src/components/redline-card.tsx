@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { getDeck, type DeckId } from '@/game/decks';
 import type { CardDefinition } from '@/game/cards';
+import type { BoardId } from '@/game/boards';
 import { getCardArtworkUrl } from '@/game/card-artwork';
 import { SpaceIcon } from './space-icon';
 import './card-tabletop.css';
@@ -12,18 +13,22 @@ type Props = {
   artwork?: ReactNode;
   action?: ReactNode;
   className?: string;
+  boardId?: BoardId;
 };
 
-export function RedlineCard({ deck, face = 'back', card, artwork, action, className = '' }: Props) {
+export function RedlineCard({ deck, face = 'back', card, artwork, action, className = '', boardId }: Props) {
   const config = getDeck(deck);
   const artworkUrl = card ? getCardArtworkUrl(card.id) : undefined;
+  const activeBoardId = card?.boardId ?? boardId ?? 'REDLINE_UPGRADE';
+  const boardLabel = activeBoardId === 'HAUNTED_UPGRADE' ? 'HAUNTED / UPGRADE'
+    : activeBoardId === 'BIO_UPGRADE' ? 'BIO / UPGRADE' : 'REDLINE / UPGRADE';
   return (
-    <article className={`redline-card ${face} ${className}`} style={{ '--deck-color': config.color } as CSSProperties} aria-label={face === 'back' ? `${config.name} deck card back` : `${card?.title ?? config.name} card`}>
-      <div className="redline-card-rail"><span>REDLINE / UPGRADE</span><span>{config.serial}</span></div>
+    <article className={`redline-card ${face} ${activeBoardId === 'HAUNTED_UPGRADE' ? 'haunted' : ''} ${className}`} style={{ '--deck-color': config.color } as CSSProperties} aria-label={face === 'back' ? `${config.name} deck card back` : `${card?.title ?? config.name} card`}>
+          <div className="redline-card-rail"><span>{boardLabel}</span><span>{config.serial}</span></div>
       {face === 'back' ? (
         <>
           <div className="redline-card-back-core"><div className="redline-card-back-ring"><SpaceIcon name={config.icon} size={34} /></div><b>{config.name}</b><small>DRAW / DISCOVER</small></div>
-          <div className="redline-card-footer"><span>RU / {config.id.toUpperCase()}</span><span>7A — 01</span></div>
+          <div className="redline-card-footer"><span>{activeBoardId === 'HAUNTED_UPGRADE' ? 'HU' : activeBoardId === 'BIO_UPGRADE' ? 'BU' : 'RU'} / {config.id.toUpperCase()}</span><span>7A — 01</span></div>
         </>
       ) : (
         <>

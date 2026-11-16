@@ -25,6 +25,8 @@ try {
   const { expansionAssetIds } = await vite.ssrLoadModule('/src/game/assets-expansion.ts');
   const { approvedLevelOneArtworkIds, getAssetArtworkFilePath, getAssetArtworkFilePathForLevel } = await vite.ssrLoadModule('/src/game/asset-artwork.ts');
   const { careers } = await vite.ssrLoadModule('/src/game/careers.ts');
+  const { cardExpansion } = await vite.ssrLoadModule('/src/game/cards-expansion.ts');
+  const { hauntedCards } = await vite.ssrLoadModule('/src/game/haunted-cards.ts');
   const manifestIds = visualAssets.map((asset) => asset.id);
   assert.equal(new Set(manifestIds).size, manifestIds.length, 'visual asset IDs are unique');
   assert.equal(assets.length, 200, 'milestone catalog has exactly 200 assets');
@@ -149,7 +151,11 @@ try {
       assert(existsSync(path.resolve(projectRoot, asset.filePath)), `asset path exists: ${asset.filePath}`);
     }
   }
-  const expansionCardAssets = visualAssets.filter((asset) => asset.id.startsWith('card_') && asset.filePath.startsWith('api/card-art/'));
+  const cardAssets = visualAssets.filter((asset) => asset.category === 'cards' && asset.filePath.startsWith('api/card-art/'));
+  const expansionCardIds = new Set(cardExpansion.map((card) => card.id));
+  const hauntedCardIds = new Set(hauntedCards.map((card) => card.id));
+  const expansionCardAssets = cardAssets.filter((asset) => expansionCardIds.has(asset.filePath.replace(/^api\/card-art\//, '')));
+  const hauntedCardAssets = cardAssets.filter((asset) => hauntedCardIds.has(asset.filePath.replace(/^api\/card-art\//, '')));
   assert.equal(expansionCardAssets.length, 100, 'all 100 added cards are included in the visual catalog with unique stored artwork');
   assert.equal(new Set(expansionCardAssets.map((asset) => asset.filePath)).size, 100, 'every added card maps to its own image route');
   const cardArtworkRoot = path.resolve(projectRoot, '../../attached_assets/generated_images/card-expansion/webp');
@@ -164,6 +170,20 @@ try {
     cardArtworkHashes.push(createHash('sha256').update(image).digest('hex'));
   }
   assert.equal(new Set(cardArtworkHashes).size, 100, 'all 100 added card images have unique image content');
+  assert.equal(hauntedCardAssets.length, 100, 'all 100 Haunted cards have unique stored artwork entries');
+  assert.equal(new Set(hauntedCardAssets.map((asset) => asset.filePath)).size, 100, 'every Haunted card maps to its own image route');
+  const hauntedArtworkRoot = path.resolve(projectRoot, '../../attached_assets/generated_images/haunted-card-expansion/webp');
+  const hauntedArtworkHashes = [];
+  for (const asset of hauntedCardAssets) {
+    const cardId = asset.filePath.replace(/^api\/card-art\//, '');
+    const artworkFile = path.join(hauntedArtworkRoot, `${cardId}.webp`);
+    assert(existsSync(artworkFile), `${cardId} generated Haunted illustration exists`);
+    const image = readFileSync(artworkFile);
+    assert.equal(image.toString('ascii', 0, 4), 'RIFF', `${cardId} Haunted illustration has a WebP RIFF header`);
+    assert.equal(image.toString('ascii', 8, 12), 'WEBP', `${cardId} Haunted illustration has a WebP signature`);
+    hauntedArtworkHashes.push(createHash('sha256').update(image).digest('hex'));
+  }
+  assert.equal(new Set(hauntedArtworkHashes).size, 100, 'all Haunted card images have unique image content');
 
   const allItemIds = [];
   const allSymbols = [];

@@ -4,6 +4,8 @@ import { getBoardSpaces } from '../game/board-data';
 import { SpaceIcon } from './space-icon';
 import type { MatchPlayer } from '../game/match';
 import type { BoardId } from '../game/boards';
+import type { HauntedBoardState } from '../game/haunted-board';
+import { getHauntedRouteEdgeMode, getHauntedSpaceChange } from '../game/haunted-board';
 import { ErrorBoundary } from './error-boundary';
 import { BoardScene, ROUTE } from './board-scene';
 import { BioBoardScene, BIO_ROUTE } from './bio-board-scene';
@@ -25,6 +27,8 @@ export interface GameBoardProps {
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
   routeOptions?: number[];
+  hauntedBoardState?: HauntedBoardState;
+  turnCounter?: number;
 }
 
 const redlineZones = ['THE GRIND', 'THE RISE', 'THE FLEX', 'THE CHAOS', 'THE ENDGAME'];
@@ -39,7 +43,11 @@ const clampZoom = (value: number) => Math.min(maximumBoardZoom(), Math.max(MIN_Z
 
 type CameraTarget = { kind: 'active' } | { kind: 'player'; playerId: string } | { kind: 'space'; space: number };
 type SceneProps = ComponentProps<typeof BoardScene>;
-type ScenePropsWithRoutes = SceneProps & { routeOptions?: number[] };
+type ScenePropsWithRoutes = SceneProps & {
+  routeOptions?: number[];
+  hauntedBoardState?: HauntedBoardState;
+  turnCounter?: number;
+};
 
 /**
  * Scenes only depend on what is drawn on the table. Wealth, stats and assets change
@@ -49,7 +57,9 @@ function sameSceneProps(a: ScenePropsWithRoutes, b: ScenePropsWithRoutes): boole
   if (a.activePlayerId !== b.activePlayerId || a.focusPosition !== b.focusPosition || a.landingPosition !== b.landingPosition
     || a.overview !== b.overview || a.reduceMotion !== b.reduceMotion || a.zoom !== b.zoom || a.pan !== b.pan
     || a.onSpaceSelect !== b.onSpaceSelect || a.onSpaceHover !== b.onSpaceHover
-    || (a.routeOptions ?? []).join(',') !== (b.routeOptions ?? []).join(',')) return false;
+    || (a.routeOptions ?? []).join(',') !== (b.routeOptions ?? []).join(',')
+    || a.turnCounter !== b.turnCounter
+    || JSON.stringify(a.hauntedBoardState?.changes ?? []) !== JSON.stringify(b.hauntedBoardState?.changes ?? [])) return false;
   if ((a.finishOrder ?? []).join(',') !== (b.finishOrder ?? []).join(',')) return false;
   if (a.players.length !== b.players.length) return false;
   return a.players.every((p, i) => {
@@ -62,7 +72,10 @@ const MemoBoardScene = memo(BoardScene, sameSceneProps as (a: ComponentProps<typ
 const MemoBioBoardScene = memo(BioBoardScene, sameSceneProps as (a: ComponentProps<typeof BioBoardScene>, b: ComponentProps<typeof BioBoardScene>) => boolean);
 const MemoHauntedBoardScene = memo(HauntedBoardScene, sameSceneProps as (a: ComponentProps<typeof HauntedBoardScene>, b: ComponentProps<typeof HauntedBoardScene>) => boolean);
 
-export function GameBoard({ players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE', preview = false, focusMode = false, onToggleFocusMode, routeOptions = [] }: GameBoardProps) {
+export function GameBoard({
+  players, activePlayerId, landingPosition, movingPlayerId, finishOrder = [], boardId = 'REDLINE_UPGRADE',
+  preview = false, focusMode = false, onToggleFocusMode, routeOptions = [], hauntedBoardState, turnCounter = 0,
+}: GameBoardProps) {
   const isBio = boardId === 'BIO_UPGRADE';
   const isHaunted = boardId === 'HAUNTED_UPGRADE';
   const boardSpaces = getBoardSpaces(boardId);
@@ -99,6 +112,7 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
   const activePosition = Math.max(0, Math.min(75, active?.position ?? 0));
   const lastActivePosition = useRef(activePosition);
   const info = boardSpaces[(hoveredSpace ?? selectedSpace ?? 0) - 1];
+  const infoBoardChange = isHaunted && info ? getHauntedSpaceChange(hauntedBoardState, info.number, turnCounter) : undefined;
   const activeZoneIndex = isBio
     ? activePosition <= 10 ? 0 : activePosition <= 20 ? 1 : activePosition <= 30 ? 2 : activePosition <= 40 ? 3 : activePosition <= 50 ? 4 : activePosition <= 62 ? 5 : 6
     : Math.min(4, Math.floor(Math.max(0, activePosition - 1) / 15));
@@ -224,8 +238,8 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
       drag.current = null;
     }
   };
-  const fallback = <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} focusPosition={focusPosition} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={onSpaceSelect} onSpaceHover={onSpaceHover} routeOptions={routeOptions} />;
-  const sceneProps = { players, activePlayerId, focusPosition, finishOrder, landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover };
+  const fallback = <BoardFallback boardId={boardId} players={players} activePlayerId={activePlayerId} focusPosition={focusPosition} landingPosition={landingPosition} finishOrder={finishOrder} overview={overview} zoom={zoom} pan={pan} onSpaceSelect={onSpaceSelect} onSpaceHover={onSpaceHover} routeOptions={routeOptions} hauntedBoardState={hauntedBoardState} turnCounter={turnCounter} />;
+  const sceneProps = { players, activePlayerId, focusPosition, finishOrder, landingPosition, overview, reduceMotion, zoom, pan, onSpaceSelect, onSpaceHover, hauntedBoardState, turnCounter };
 
   return <section className={`ru-board ru-tabletop ${isBio ? 'ru-board--bio' : ''} ${isHaunted ? 'ru-board--haunted' : ''} ${preview ? 'ru-board--preview' : ''} ${focusMode ? 'ru-board--focus' : ''}`} aria-label={`${isBio ? 'Bio Upgrade' : isHaunted ? 'Haunted Upgrade' : 'Redline Upgrade'} 75-space game board`} data-testid="game-board">
     <header className="ru-board__masthead">
@@ -283,7 +297,17 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
         <span className="ru-board__minimap-label">ROUTE / 00—75</span>
          <svg viewBox={isBio ? '-29 -19 58 38' : '-30 -21 60 42'} role="img" aria-label={`${isBio ? 'Bio Upgrade route' : isHaunted ? 'Haunted Upgrade branching route' : 'Circuit map'}, active pawn at ${activePosition === 0 ? 'start' : `space ${activePosition}`}`}>
            {isHaunted
-             ? Object.entries(HAUNTED_ROUTE_EDGES).flatMap(([from, destinations]) => destinations.map(to => <line key={`${from}-${to}`} x1={route[Number(from)].x} y1={route[Number(from)].z} x2={route[to].x} y2={route[to].z} stroke="#6b5e72" strokeWidth=".42" strokeLinecap="round" />))
+              ? <>
+                {Object.entries(HAUNTED_ROUTE_EDGES).flatMap(([from, destinations]) => destinations.map(to => {
+                  const mode = getHauntedRouteEdgeMode(Number(from), to, hauntedBoardState, turnCounter);
+                  return <line key={`${from}-${to}`} x1={route[Number(from)].x} y1={route[Number(from)].z} x2={route[to].x} y2={route[to].z}
+                    stroke={mode === 'CLOSED' ? '#cf6770' : '#6b5e72'} strokeWidth={mode === 'CLOSED' ? '.65' : '.42'}
+                    strokeDasharray={mode === 'CLOSED' ? '.5 .45' : undefined} strokeLinecap="round" />;
+                }))}
+                {(hauntedBoardState?.changes ?? []).filter(change => change.kind === 'OPEN_SHORTCUT' && (change.expiresAtTurn === null || change.expiresAtTurn > turnCounter))
+                  .map(change => change.kind === 'OPEN_SHORTCUT' ? <line key={change.id} x1={route[change.from].x} y1={route[change.from].z}
+                    x2={route[change.to].x} y2={route[change.to].z} stroke="#b29bd5" strokeWidth=".6" strokeDasharray=".65 .3" strokeLinecap="round" /> : null)}
+              </>
              : <polyline points={route.slice(1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#58d7d0' : '#516b58'} strokeWidth=".42" strokeLinejoin="round" strokeLinecap="round" />}
            {isHaunted
              ? players.map(player => {
@@ -294,13 +318,18 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
                })
              : <polyline points={route.slice(1, activePosition + 1).map(p => `${p.x},${p.z}`).join(' ')} fill="none" stroke={isBio ? '#f36b9d' : '#f96346'} strokeWidth=".54" strokeLinejoin="round" strokeLinecap="round" />}
            {(isBio ? [10, 20, 30, 40, 50, 62, 75] : isHaunted ? [10, 30, 45, 60, 75] : [10, 20, 30, 45, 60, 75]).map(n => <circle key={n} cx={route[n].x} cy={route[n].z} r=".52" fill={isBio ? '#f36b9d' : isHaunted ? '#c6a8fa' : '#f96346'} />)}
+            {isHaunted && boardSpaces.map(space => {
+              const change = getHauntedSpaceChange(hauntedBoardState, space.number, turnCounter);
+              return change ? <circle key={`change-${space.number}`} cx={route[space.number].x} cy={route[space.number].z}
+                r=".85" fill="none" stroke={change.kind === 'CURSE_SPACE' ? '#d66b73' : '#79c9ae'} strokeWidth=".38" /> : null;
+            })}
            <circle cx={route[activePosition].x} cy={route[activePosition].z} r=".92" fill="#d4e981" stroke="#14211c" strokeWidth=".3" />
         </svg>
         <span className="ru-board__minimap-endpoints"><span>START</span><span>FINISH</span></span>
       </div>
     </div>
     <div className="ru-board__information" role="status" aria-live="polite">
-      {info ? <><SpaceIcon name={info.icon} size={29} />{info.secondaryIcon && <SpaceIcon name={info.secondaryIcon} size={29} />}<div><span>SPACE {String(info.number).padStart(2, '0')} / {info.trigger === 'LAND_OR_PASS' ? 'PASS OR LAND' : info.trigger === 'LAND' ? 'LAND ONLY' : 'NO ACTIVE EFFECT'}</span><strong>{info.label}</strong><p>{info.description}</p></div><button type="button" className="ru-board__info-focus" data-testid="button-board-focus-space" onClick={() => focusSpace(info.number)}>CENTER</button><button type="button" onClick={() => { setSelectedSpace(null); setHoveredSpace(null); }} aria-label="Close space information">×</button></>
+      {info ? <><SpaceIcon name={info.icon} size={29} />{info.secondaryIcon && <SpaceIcon name={info.secondaryIcon} size={29} />}<div><span>SPACE {String(info.number).padStart(2, '0')} / {info.trigger === 'LAND_OR_PASS' ? 'PASS OR LAND' : info.trigger === 'LAND' ? 'LAND ONLY' : 'NO ACTIVE EFFECT'}</span><strong>{info.label}</strong><p>{info.description}{infoBoardChange ? ` ${infoBoardChange.label.replaceAll('_', ' ')}.` : ''}</p></div><button type="button" className="ru-board__info-focus" data-testid="button-board-focus-space" onClick={() => focusSpace(info.number)}>CENTER</button><button type="button" onClick={() => { setSelectedSpace(null); setHoveredSpace(null); }} aria-label="Close space information">×</button></>
         : <p>Select or hover over a board space to learn what happens there.</p>}
     </div>
     <footer className="ru-board__foot">
@@ -317,9 +346,10 @@ export function GameBoard({ players, activePlayerId, landingPosition, movingPlay
     {/* Persistent DOM semantics: canvas is a drawing surface, not the source of game state. */}
     <div className="ru-board__accessible" aria-label="Board spaces and occupants">
       <div data-testid="board-start-pad" aria-label={`Start pad, ${players.filter(p => p.position === 0).length} players`}>Start pad, position zero</div>
-      {boardSpaces.map(space => {
+       {boardSpaces.map(space => {
         const occupants = players.filter(p => p.position === space.number);
-        return <button type="button" key={space.number} data-testid={`board-space-${space.number}`} onClick={() => { setSelectedSpace(space.number); focusSpace(space.number); }} aria-label={`Space ${space.number}, ${space.label}. ${space.description}${occupants.length ? ` Occupied by ${occupants.map(p => p.displayName).join(' and ')}.` : ''}${landingPosition === space.number ? ' Landing space.' : ''}`}>
+        const boardChange = isHaunted ? getHauntedSpaceChange(hauntedBoardState, space.number, turnCounter) : undefined;
+        return <button type="button" key={space.number} data-testid={`board-space-${space.number}`} onClick={() => { setSelectedSpace(space.number); focusSpace(space.number); }} aria-label={`Space ${space.number}, ${space.label}. ${space.description}${boardChange ? ` Current board change: ${boardChange.label}.` : ''}${occupants.length ? ` Occupied by ${occupants.map(p => p.displayName).join(' and ')}.` : ''}${landingPosition === space.number ? ' Landing space.' : ''}`}>
           Space {space.number}: {space.payday ? 'PAYDAY + ' : ''}{space.type}; {occupants.length ? occupants.map(p => p.displayName).join(', ') : 'unoccupied'}
         </button>;
       })}

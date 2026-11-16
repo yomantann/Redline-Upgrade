@@ -100,6 +100,7 @@ export type ClientAction =
   | { type: 'ACKNOWLEDGE_DOOR' }
   | { type: 'DRAW_CARD' }
   | { type: 'CHOOSE_GAMBLE_CARD'; cardId: string }
+  | { type: 'CHOOSE_CARD_OPTION'; cardId: string }
   | { type: 'RESOLVE_PARTY_CHALLENGE'; participantIds: string[]; passed: boolean; resolution?: string }
   | { type: 'ACKNOWLEDGE_CARD' }
   | { type: 'TAKE_PAYDAY' }
@@ -164,6 +165,7 @@ export function toClientAction(action: MatchAction): ClientAction | null {
     case 'ACKNOWLEDGE_DOOR': return { type: 'ACKNOWLEDGE_DOOR' };
     case 'RESOLVE_CARD': return { type: 'DRAW_CARD' };
     case 'CHOOSE_GAMBLE_CARD': return { type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId };
+    case 'CHOOSE_CARD_OPTION': return { type: 'CHOOSE_CARD_OPTION', cardId: action.choiceId };
     case 'RESOLVE_PARTY_CHALLENGE': return { type: 'RESOLVE_PARTY_CHALLENGE', participantIds: action.participantIds, passed: action.passed, resolution: action.resolution };
     case 'ACKNOWLEDGE_CARD': return { type: 'ACKNOWLEDGE_CARD' };
     case 'TAKE_PAYDAY': return { type: 'TAKE_PAYDAY' };
@@ -210,6 +212,7 @@ function toMatchActions(action: ClientAction): MatchAction[] | null {
     case 'ACKNOWLEDGE_CAREER_REVEAL': return [];
     case 'DRAW_CARD': return [{ type: 'RESOLVE_CARD' }];
     case 'CHOOSE_GAMBLE_CARD': return isString(action.cardId) ? [{ type: 'CHOOSE_GAMBLE_CARD', cardId: action.cardId }] : null;
+    case 'CHOOSE_CARD_OPTION': return isString(action.cardId) ? [{ type: 'CHOOSE_CARD_OPTION', choiceId: action.cardId }] : null;
     case 'RESOLVE_PARTY_CHALLENGE':
       return Array.isArray(action.participantIds) && action.participantIds.length <= 2
         && action.participantIds.every(isString) && typeof action.passed === 'boolean'

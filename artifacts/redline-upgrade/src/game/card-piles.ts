@@ -12,7 +12,9 @@ export interface CardPile {
 export type CardPileMap = Record<DeckId, CardPile>;
 
 function matchesBoard(card: NonNullable<ReturnType<typeof getCard>>, boardId: BoardId): boolean {
-  return boardId === 'BIO_UPGRADE' ? card.boardId === 'BIO_UPGRADE' : card.boardId !== 'BIO_UPGRADE';
+  return boardId === 'REDLINE_UPGRADE'
+    ? card.boardId === undefined || card.boardId === 'REDLINE_UPGRADE'
+    : card.boardId === boardId;
 }
 
 function shuffle<T>(items: readonly T[]): T[] {
