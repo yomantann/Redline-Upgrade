@@ -298,7 +298,7 @@ function Relic({ kind, accent }: { kind: string; accent: string }) {
 export function HauntedPawnModel({ characterId, selected = false }: { characterId: string; selected?: boolean }) {
   const design = HAUNTED_PAWN_DESIGNS[characterId];
   if (!design) throw new Error(`Unknown Haunted pawn character: ${characterId}`);
-  return <group data-haunted-pawn={characterId}>
+  return <group name={`haunted-pawn-${characterId}`}>
     <HauntedBase accent={design.accent} selected={selected} />
     <Body kind={design.body} accent={design.accent} />
     <Face kind={design.face} accent={design.accent} />
