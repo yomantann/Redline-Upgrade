@@ -402,10 +402,10 @@ try {
     const hauntedPath = getCharacterImagePath(character.id, 'HAUNTED_UPGRADE');
     assert.equal(hauntedPath, hauntedPortraits[character.id] ? `characters/haunted/${hauntedPortraits[character.id]}` : character.imagePath);
     assert(existsSync(new URL(`../public/${hauntedPath}`, import.meta.url)), `character select portrait exists for ${character.id}`);
-    assert.equal(getCharacterImagePath(character.id, 'SOCIAL_BOARD'), `characters/SOCIAL/${character.id}.png`,
-      `${character.id} has a reserved Social portrait path`);
-    assert.equal(getCharacterImagePath(character.id, 'WAGER_BOARD'), `characters/WAGER/${character.id}.png`,
-      `${character.id} has a reserved Wager portrait path`);
+    const socialPath = getCharacterImagePath(character.id, 'SOCIAL_BOARD');
+    const wagerPath = getCharacterImagePath(character.id, 'WAGER_BOARD');
+    assert(existsSync(new URL(`../public/${socialPath}`, import.meta.url)), `Social portrait resolves for ${character.id}`);
+    assert(existsSync(new URL(`../public/${wagerPath}`, import.meta.url)), `Wager portrait or safe fallback resolves for ${character.id}`);
   }
   assert(existsSync(new URL('../public/characters/SOCIAL/README.md', import.meta.url)), 'Social character artwork folder is prepared');
   assert(existsSync(new URL('../public/characters/WAGER/README.md', import.meta.url)), 'Wager character artwork folder is prepared');

@@ -1,9 +1,7 @@
 Wager board character art
 =========================
 
-Add one portrait per roster character here, named by character ID:
-`guardian_h.png`, `click_click.png`, `frostbyte.png`, and so on.
-
-The Wager board portrait mapping resolves these files from `characters/WAGER/`.
-Until the Wager board is playable, its character art remains isolated from the
-other board modes.
+The selected Wager portraits live here and are mapped by character ID to their
+descriptive filenames in the character image registry. Alternate options are
+preserved under `attached_assets/board-character-options/WAGER/`. Characters
+without Wager art yet safely use their existing Standard portrait.

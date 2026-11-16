@@ -109,14 +109,50 @@ const hauntedImageFileById: Partial<Record<string, string>> = {
   wandering_eye: 'hnt_wander_1.png',
 };
 
-// Future board portraits use stable roster IDs as filenames so their artwork
-// stays isolated from Standard, Bio, and Haunted character imagery.
-const socialImageFileById: Record<string, string> = Object.fromEntries(
-  roster.map(([id]) => [id, `${id}.png`]),
-);
-const wagerImageFileById: Record<string, string> = Object.fromEntries(
-  roster.map(([id]) => [id, `${id}.png`]),
-);
+// Board-specific image filenames are explicit because the art files use
+// descriptive names rather than the roster IDs.
+const socialImageFileById: Partial<Record<string, string>> = {
+  accuser: 'social_accuser_pointing_v4.png',
+  alpha_prime: 'social_alpha.png',
+  anointed: 'social_anointed.png',
+  click_click: 'social_click.png',
+  danger_zone: 'social_danger_zone.png',
+  rainbow_dash: 'social_rainbow_dash_option3.png',
+  executive_p: 'social_executive_p_detailed_v4.png',
+  frostbyte: 'social_frostybyte_option1.png',
+  guardian_h: 'social_guardian_h_option1.png',
+  hotwired: 'social_hotwired.png',
+  idol_core: 'social_idol_core.png',
+  low_flame: 'social_lowflame.png',
+  pain_hider: 'social_pain_hider_life_support_v6.png',
+  panic_bot: 'social_panic_bot_toy_v2.png',
+  primate: 'social_primate.png',
+  prom_king: 'social_prom.png',
+  the_rind: 'social_rind.png',
+  roll_safe: 'social_roll.png',
+  sadman: 'social_sadman_option3.png',
+  the_tank: 'social_tank.png',
+  wandering_eye: 'social_wandering.png',
+};
+const wagerImageFileById: Partial<Record<string, string>> = {
+  accuser: 'wgr_accuser_1.png',
+  alpha_prime: 'wgr_alpha_1.png',
+  anointed: 'wgr_annointed_1.png',
+  click_click: 'wgr_click_1.png',
+  rainbow_dash: 'wgr_dash_1.png',
+  executive_p: 'wgr_exec_1.png',
+  frostbyte: 'wgr_frost_1.png',
+  guardian_h: 'wgr_guardian_1.png',
+  hotwired: 'wgr_hot_1.png',
+  low_flame: 'wgr_lowflame_1.png',
+  pain_hider: 'wgr_pain_1.png',
+  panic_bot: 'wgr_panic_1.png',
+  primate: 'wgr_primate_1.png',
+  the_rind: 'wgr_rind_1.png',
+  roll_safe: 'wgr_roll_1.png',
+  sadman: 'wgr_sad_1.png',
+  wandering_eye: 'wgr_wander_1.png',
+};
 
 export const characters: CharacterDefinition[] = roster.map(
   ([id, name, description]) => {
@@ -151,10 +187,12 @@ export function getCharacterImagePath(characterId: string, boardId: BoardId): st
     return hauntedImage ? `characters/haunted/${hauntedImage}` : character.imagePath;
   }
   if (boardId === 'SOCIAL_BOARD') {
-    return `characters/SOCIAL/${socialImageFileById[character.id]}`;
+    const socialImage = socialImageFileById[character.id];
+    return socialImage ? `characters/SOCIAL/${socialImage}` : character.imagePath;
   }
   if (boardId === 'WAGER_BOARD') {
-    return `characters/WAGER/${wagerImageFileById[character.id]}`;
+    const wagerImage = wagerImageFileById[character.id];
+    return wagerImage ? `characters/WAGER/${wagerImage}` : character.imagePath;
   }
   return character.imagePath;
 }
