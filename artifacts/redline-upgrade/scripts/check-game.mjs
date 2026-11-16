@@ -381,11 +381,10 @@ try {
   const hauntedPortraits = {
     accuser: 'hnt_accuser_1.png', alpha_prime: 'hnt_alpha_1.png', anointed: 'hnt_annointed_1.png',
     click_click: 'hnt_click_1.png', frostbyte: 'hnt_frost_1.png', rainbow_dash: 'hnt_dash_1.png',
-    danger_zone: 'hnt_danger.png', executive_p: 'hnt_exec_1.png', guardian_h: 'hnt_guardian_1.png', hotwired: 'hnt_hotwired_1.png',
-    idol_core: 'hnt_idol.png',
+    executive_p: 'hnt_exec_1.png', guardian_h: 'hnt_guardian_1.png', hotwired: 'hnt_hotwired_1.png',
     low_flame: 'hnt_lowflame_1.png', pain_hider: 'hnt_pain_1.png', panic_bot: 'hnt_panic_1.png',
-    primate: 'hnt_primate_1.png', the_rind: 'hnt_rind_1.png', prom_king: 'hnt_promking.png', roll_safe: 'hnt_roll_1.png',
-    sadman: 'hnt_sadman_1.png', the_tank: 'hnt_tank.png', wandering_eye: 'hnt_wander_1.png',
+    primate: 'hnt_primate_1.png', the_rind: 'hnt_rind_1.png', roll_safe: 'hnt_roll_1.png',
+    sadman: 'hnt_sadman_1.png', wandering_eye: 'hnt_wander_1.png',
   };
   for (const character of characters) {
     const hauntedPath = getCharacterImagePath(character.id, 'HAUNTED_UPGRADE');
