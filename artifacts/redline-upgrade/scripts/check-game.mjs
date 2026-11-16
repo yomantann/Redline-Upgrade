@@ -48,6 +48,7 @@ try {
   const { abilities, getAbility } = await vite.ssrLoadModule('/src/game/abilities.ts');
   const { characters, getCharacterImagePath } = await vite.ssrLoadModule('/src/game/characters.ts');
   const { BIO_PAWN_COLORS, BIO_PAWN_PALETTES, STANDARD_PAWN_COLORS } = await vite.ssrLoadModule('/src/components/pawns/pawn-palettes.ts');
+  const { HAUNTED_PAWN_DESIGNS } = await vite.ssrLoadModule('/src/components/pawns/haunted-pawn-designs.ts');
   const { PawnFallback } = await vite.ssrLoadModule('/src/components/pawns/pawn-fallback.tsx');
   const { careers, categories, formatMoney, getCareer, FINISH_ORDER_WEALTH_REWARDS, STARTING_ATTRIBUTE_POINTS } = await vite.ssrLoadModule('/src/game/careers.ts');
   for (const career of careers) {
@@ -118,10 +119,20 @@ try {
   assert.equal(hauntedSpaces.length, 75, 'Haunted has its own 75-space board');
   assert.equal(new Set(hauntedSpaces.map(space => space.number)).size, 75, 'every Haunted board position is unique');
   assert(hauntedSpaces.every(space => space.label && space.description), 'every Haunted space is named and described');
+  assert(hauntedSpaces.every(space => space.type !== 'NORMAL'), 'every Haunted board tile has a card, payday, milestone, token, career, or door action');
   const hauntedCardSpaces = hauntedSpaces.filter(space => space.type === 'CARD');
-  assert.equal(hauntedCardSpaces.length, 15, 'Haunted includes fifteen dedicated card-draw spaces');
+  assert.equal(hauntedCardSpaces.length, 53, 'all non-special Haunted spaces draw a card when landed on');
   assert.deepEqual(new Set(hauntedCardSpaces.map(space => space.deck)), new Set(['wealth', 'ai', 'fame', 'lifestyle', 'influence', 'gamble']),
     'all six Haunted decks are reachable through the board');
+  assert.equal(Object.keys(HAUNTED_PAWN_DESIGNS).length, characters.length, 'every Haunted character has an individually defined 3D pawn');
+  assert.deepEqual(Object.keys(HAUNTED_PAWN_DESIGNS).sort(), characters.map(character => character.id).sort(),
+    'Haunted pawn mappings cover the complete playable character roster');
+  assert.equal(new Set(Object.values(HAUNTED_PAWN_DESIGNS).map(({ body, face, relic, accent }) => `${body}:${face}:${relic}:${accent}`)).size,
+    characters.length, 'all Haunted pawn bodies, faces, relics, and colors form unique designs');
+  const hauntedFallbackModels = characters.map(character => renderToStaticMarkup(
+    React.createElement(PawnFallback, { characterId: character.id, boardId: 'HAUNTED_UPGRADE' }),
+  ));
+  assert.equal(new Set(hauntedFallbackModels).size, characters.length, 'every Haunted character also has a distinct no-WebGL fallback pawn');
   const enumerateHauntedRoutes = (space, path = [space]) => {
     if (space === HAUNTED_FINISH_SPACE) return [path];
     return getHauntedNextSpaces(space).flatMap(next => enumerateHauntedRoutes(next, [...path, next]));

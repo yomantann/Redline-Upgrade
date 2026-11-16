@@ -5,6 +5,7 @@
  */
 import type { BoardId } from '../../game/boards';
 import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
+import { HauntedPawnModel } from './HauntedPawnModel';
 import { createContext, Suspense, useContext, useMemo } from 'react';
 import { useLoader } from '@react-three/fiber';
 import { Color } from 'three';
@@ -425,6 +426,7 @@ const accents: Record<string, string> = {
 export function PawnModel({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnModelProps) {
   const bio = boardId === 'BIO_UPGRADE';
   if (bio) return <BioPawn characterId={characterId} selected={selected} />;
+  if (boardId === 'HAUNTED_UPGRADE') return <HauntedPawnModel characterId={characterId} selected={selected} />;
   const accent = accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
   return <group>

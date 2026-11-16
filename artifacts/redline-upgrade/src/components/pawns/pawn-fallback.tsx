@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { Color } from 'three';
 import type { BoardId } from '../../game/boards';
 import { BIO_PAWN_BASE, BIO_PAWN_PALETTES } from './pawn-palettes';
+import { HAUNTED_PAWN_DESIGNS } from './haunted-pawn-designs';
 
 export interface PawnFallbackProps {
   characterId: string;
@@ -124,16 +125,111 @@ function Signature({ id, accent }: { id: string; accent: string }) {
   }
 }
 
+function HauntedPawnFallback({ characterId, selected }: { characterId: string; selected: boolean }) {
+  const design = HAUNTED_PAWN_DESIGNS[characterId];
+  if (!design) throw new Error(`Unknown Haunted pawn character: ${characterId}`);
+  const accent = design.accent;
+  return <svg className="pawn-fallback" data-pawn-board="HAUNTED_UPGRADE" data-haunted-pawn={characterId}
+    viewBox="0 0 250 320" width="100%" height="100%" aria-hidden="true" preserveAspectRatio="xMidYMid meet"
+    xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="125" cy="292" rx="86" ry="18" fill="#121419" opacity=".45" />
+    <path d="M42 272h166v24q0 15-83 15t-83-15Z" fill="#15171a" stroke="#39353a" strokeWidth="4" />
+    <ellipse cx="125" cy="272" rx="83" ry="15" fill="#37333b" stroke={accent} strokeWidth="5" />
+    {selected && <ellipse cx="125" cy="273" rx="96" ry="20" fill="none" stroke={accent} strokeWidth="3" />}
+    {design.body === 'armor' && <path d="m68 248 9-91q10-22 48-26 39 4 48 26l10 91q-38 19-67 9-31 10-68-9Z" fill="#39363b" stroke="#17181c" strokeWidth="8" />}
+    {design.body === 'beast' && <path d="M64 242q-7-78 34-99l27-13 27 13q41 21 34 99l-31 13h-60Z" fill="#39343c" stroke="#17181c" strokeWidth="8" />}
+    {design.body === 'doll' && <path d="M80 247q8-45 17-78l-12-29q40-26 80 0l-12 29q9 33 17 78l-45 13Z" fill="#4a4143" stroke="#17181c" strokeWidth="7" />}
+    {design.body === 'machine' && <path d="M69 155h112l11 87-23 20H81l-23-20Z" fill="#35383c" stroke="#17181c" strokeWidth="8" />}
+    {design.body === 'winged' && <>
+      <path d="M83 242q4-72 42-93 39 21 42 93l-42 20Z" fill="#3c3740" stroke="#17181c" strokeWidth="7" />
+      <path d="M90 165 45 123l18 59 30 27m67-44 45-42-18 59-30 27" fill="#514651" stroke={accent} strokeWidth="5" />
+    </>}
+    {design.body === 'reliquary' && <path d="M65 238V153l60-38 60 38v85l-60 25Z" fill="#413b3a" stroke="#17181c" strokeWidth="8" />}
+    {design.body === 'wraith' && <path d="M72 250q14-47 17-90l36-44 36 44q3 43 17 90l-26-12-27 16-27-16Z" fill="#3a343b" stroke="#17181c" strokeWidth="8" />}
+    {design.face === 'cat' && <>
+      <path d="m87 92-7-49 39 25 10-3 10 3 39-25-7 49q-19 28-47 27-29 1-47-27Z" fill="#51474c" stroke="#19191d" strokeWidth="6" />
+      <path d="m101 92 14 4m20 0 14-4" stroke={accent} strokeWidth="6" strokeLinecap="round" />
+      <path d="m119 107 7 7 7-7" fill="none" stroke="#d2bcb1" strokeWidth="4" />
+    </>}
+    {design.face === 'ice' && <>
+      <path d="m80 112 13-51 22 29 11-63 20 62 24-28 10 53-23 34h-53Z" fill="#a9deea" stroke={accent} strokeWidth="5" />
+      <path d="m103 112 22-26 22 26-11 26h-22Z" fill="#16252d" stroke="#d7f4ed" strokeWidth="4" />
+    </>}
+    {design.face === 'hood' && <>
+      <path d="M76 119q1-78 49-87 50 9 49 87l-15 40h-68Z" fill="#29272e" stroke="#63565b" strokeWidth="7" />
+      <path d="M95 117q30-18 60 0v34q-30 18-60 0Z" fill="#101419" />
+      <path d="M107 128h9m18 0h9" stroke={accent} strokeWidth="6" strokeLinecap="round" />
+    </>}
+    {design.face === 'lantern' && <>
+      <path d="M87 79h76v81H87Z" fill="#1d2023" stroke="#8c7770" strokeWidth="6" />
+      <path d="M98 92h54v54H98Z" fill={accent} opacity=".75" />
+      <path d="M125 84V62m-21 23 21-35 21 35" fill="none" stroke="#9c856f" strokeWidth="5" />
+      <circle cx="125" cy="118" r="13" fill="#fff0c2" />
+    </>}
+    {design.face === 'eye' && <>
+      <ellipse cx="125" cy="109" rx="48" ry="36" fill="#555a5a" stroke="#1b2024" strokeWidth="6" />
+      <ellipse cx="125" cy="109" rx="28" ry="24" fill="#ded3be" />
+      <circle cx="128" cy="109" r="12" fill={accent} />
+    </>}
+    {design.face === 'gear' && <>
+      <path d="M86 74h78v70l-39 26-39-26Z" fill="#535054" stroke="#1b1d21" strokeWidth="6" />
+      <circle cx="125" cy="112" r="25" fill="none" stroke={accent} strokeWidth="6" />
+      <circle cx="125" cy="112" r="9" fill={accent} />
+      <path d="M92 69 83 49m75 20 9-20m-42 30V40" stroke="#8e8380" strokeWidth="7" />
+    </>}
+    {design.face === 'crown' && <>
+      <path d="M88 91q37-36 74 0v61q-37 27-74 0Z" fill="#b5a491" stroke="#312b2d" strokeWidth="6" />
+      <path d="m87 80-8-38 25 17 21-35 21 35 25-17-8 38Z" fill="#c8a964" stroke="#322a2b" strokeWidth="5" />
+      <circle cx="125" cy="69" r="7" fill={accent} />
+    </>}
+    {design.face === 'mask' && <>
+      <path d="M85 75q40-37 80 0v69q-40 33-80 0Z" fill="#c6bca9" stroke="#302b2f" strokeWidth="6" />
+      <path d="M89 108q36-22 72 0v18q-36 17-72 0Z" fill="#242329" />
+      <circle cx="105" cy="115" r="6" fill={accent} /><circle cx="145" cy="115" r="6" fill={accent} />
+      <path d="m125 129-8 12 8 7 8-7Z" fill="#685354" />
+    </>}
+    {design.face === 'skull' && <>
+      <path d="M86 75q39-36 78 0v61q-8 30-39 34-31-4-39-34Z" fill="#c5b9a6" stroke="#302b2d" strokeWidth="6" />
+      <circle cx="105" cy="111" r="10" fill="#18191d" /><circle cx="145" cy="111" r="10" fill="#18191d" />
+      <path d="M116 130 125 119l9 11-9 11Zm-12 18v13m12-13v15m12-15v13" fill="none" stroke="#40373a" strokeWidth="4" />
+      <circle cx="105" cy="111" r="3.5" fill={accent} /><circle cx="145" cy="111" r="3.5" fill={accent} />
+    </>}
+    {design.relic === 'shield' && <path d="m39 181 37-14 27 15-4 66-29 22-27-22Z" fill="#31343a" stroke={accent} strokeWidth="6" />}
+    {design.relic === 'bells' && <><circle cx="194" cy="179" r="18" fill="#d3b57a" stroke="#40363b" strokeWidth="5" /><circle cx="204" cy="218" r="14" fill={accent} stroke="#40363b" strokeWidth="5" /></>}
+    {design.relic === 'shard' && <path d="m190 246 14-119 23 65-21 44Z" fill="#ace4e8" stroke={accent} strokeWidth="5" />}
+    {design.relic === 'lantern' && <><path d="M188 158h39v57h-39Z" fill="#25282b" stroke="#ad9677" strokeWidth="5" /><circle cx="208" cy="186" r="11" fill={accent} /><path d="m194 158 14-23 14 23m-14 57v23" fill="none" stroke="#ad9677" strokeWidth="5" /></>}
+    {design.relic === 'feather' && <path d="M185 240q11-77 58-116-2 72-42 119m-2-9 34-68m-39 80 28-45" fill="none" stroke={accent} strokeWidth="7" strokeLinecap="round" />}
+    {design.relic === 'scales' && <><path d="M208 125v112m-35-82h70m-56 0-18 37h37Zm28 0-18 37h37Z" fill="none" stroke="#c0a77d" strokeWidth="5" /><circle cx="208" cy="119" r="8" fill={accent} /></>}
+    {design.relic === 'flame' && <path d="M185 238q-6-34 23-53 1 23 16 28 11 11 2 25-18 15-41 0Z" fill={accent} stroke="#744238" strokeWidth="5" />}
+    {design.relic === 'telescope' && <><path d="m184 208 47-75" stroke="#a6b2b4" strokeWidth="15" strokeLinecap="round" /><circle cx="230" cy="131" r="13" fill="none" stroke={accent} strokeWidth="5" /></>}
+    {design.relic === 'cleaver' && <><path d="m202 233-14-79 45-31 4 57-24 34Z" fill="#a4a09a" stroke="#484346" strokeWidth="5" /><path d="m199 169 25-17" stroke={accent} strokeWidth="5" /></>}
+    {design.relic === 'halo' && <ellipse cx="202" cy="71" rx="30" ry="11" fill="none" stroke={accent} strokeWidth="6" />}
+    {design.relic === 'ledger' && <><path d="M188 156h47v77h-47Z" fill="#6d4c4a" stroke="#c2ae91" strokeWidth="5" /><path d="M196 171h30m-30 14h30m-30 14h23" stroke="#d4c3a7" strokeWidth="4" /></>}
+    {design.relic === 'reactor' && <><circle cx="207" cy="188" r="28" fill="none" stroke={accent} strokeWidth="6" /><circle cx="207" cy="188" r="13" fill={accent} /><path d="M207 148v80m-40-40h80" stroke="#c4b9aa" strokeWidth="4" /></>}
+    {design.relic === 'dice' && <><rect x="190" y="172" width="43" height="43" rx="6" fill="#e2d4be" stroke="#393338" strokeWidth="5" /><circle cx="202" cy="184" r="4" fill="#393338" /><circle cx="221" cy="202" r="4" fill="#393338" /><circle cx="211" cy="193" r="4" fill="#393338" /></>}
+    {design.relic === 'wrench' && <><path d="m188 225 37-62m-13-19q22-9 31 12l-18 4 7 19-18-5-8 18Z" fill="none" stroke="#a9b4b1" strokeWidth="9" strokeLinejoin="round" /></>}
+    {design.relic === 'siren' && <><circle cx="208" cy="176" r="24" fill={accent} stroke="#e0c7d9" strokeWidth="5" /><circle cx="208" cy="176" r="34" fill="none" stroke="#e0c7d9" strokeWidth="4" /><path d="M208 135v-16m-39 57h-16m94 0h-16" stroke="#e0c7d9" strokeWidth="4" /></>}
+    {design.relic === 'chain' && <><ellipse cx="201" cy="174" rx="12" ry="24" fill="none" stroke="#aba49b" strokeWidth="7" /><ellipse cx="206" cy="210" rx="12" ry="23" fill="none" stroke={accent} strokeWidth="7" /><circle cx="208" cy="239" r="17" fill="#57504c" stroke="#29262b" strokeWidth="5" /></>}
+    {design.relic === 'vial' && <><path d="M195 154h28v13l9 12v49h-46v-49l9-12Z" fill="#47726c" stroke="#c5b79f" strokeWidth="5" /><path d="M190 203h42" stroke={accent} strokeWidth="8" /><path d="M198 153v-11h22v11" fill="none" stroke="#c5b79f" strokeWidth="5" /></>}
+    {design.relic === 'scepter' && <><path d="M207 235V145" stroke="#c2a565" strokeWidth="8" /><circle cx="207" cy="138" r="17" fill={accent} stroke="#d4bf8a" strokeWidth="5" /><path d="m195 129 12-24 12 24" fill="none" stroke="#c2a565" strokeWidth="5" /></>}
+    {design.relic === 'microphone' && <><path d="M204 178v61m-21-62a21 21 0 0 1 42 0v12a21 21 0 0 1-42 0Z" fill="#57535a" stroke={accent} strokeWidth="5" /><path d="M190 237h28" stroke="#aaa19a" strokeWidth="6" /></>}
+    {design.relic === 'spear' && <><path d="m205 247 8-132" stroke="#9a8068" strokeWidth="7" /><path d="m213 96 20 34-24 23-16-29Z" fill="#bbb4a7" stroke={accent} strokeWidth="5" /></>}
+    {design.relic === 'tombstone' && <><path d="M185 240v-52q0-30 25-30t25 30v52Z" fill="#79716a" stroke="#29272b" strokeWidth="5" /><path d="M196 194h28m-28 13h28" stroke={accent} strokeWidth="5" /></>}
+    <path d="M98 276h54" stroke={accent} strokeWidth="5" strokeLinecap="round" />
+  </svg>;
+}
+
 /**
  * Geometry-only fallback for non-WebGL environments. It uses the same
  * concept-first silhouettes as PawnModel and keeps the shared plinth.
  */
 export function PawnFallback({ characterId, selected = false, boardId = 'REDLINE_UPGRADE' }: PawnFallbackProps) {
+  const uid = useId().replace(/:/g, '');
+  if (boardId === 'HAUNTED_UPGRADE') return <HauntedPawnFallback characterId={characterId} selected={selected} />;
   const bio = boardId === 'BIO_UPGRADE';
   const palette = bio ? BIO_PAWN_PALETTES[characterId] : undefined;
   const accent = bio ? palette?.accent : accents[characterId];
   if (!accent) throw new Error(`Unknown pawn character: ${characterId}`);
-  const uid = useId().replace(/:/g, '');
   const hueRotation = bio && palette
     ? (new Color(palette.accent).getHSL({ h: 0, s: 0, l: 0 }).h - new Color('#55dce9').getHSL({ h: 0, s: 0, l: 0 }).h) * 360
     : 0;

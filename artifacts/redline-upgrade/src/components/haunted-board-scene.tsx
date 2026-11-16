@@ -41,6 +41,14 @@ const palette = {
   ember: '#dc9865',
   violet: '#9684a8',
 };
+const deckAccent: Partial<Record<NonNullable<BoardSpace['deck']>, string>> = {
+  wealth: '#d8bd82',
+  ai: '#87c5cf',
+  fame: '#cf8eac',
+  lifestyle: '#a8b88b',
+  influence: '#b49bd1',
+  gamble: '#d98473',
+};
 
 function labelTexture(space: BoardSpace, accent: string) {
   const canvas = document.createElement('canvas');
@@ -83,7 +91,9 @@ function Space({ space, active, landing, choice, boardChange, onSelect, onHover 
     : choice ? palette.teal
       : space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' ? palette.ember
         : space.type === 'UPGRADE_TOKEN' ? palette.violet
-          : space.payday ? '#c3b876' : '#8b9187');
+          : space.type === 'CURSED_DOOR' ? '#bc8795'
+            : space.payday ? '#c3b876'
+              : space.type === 'CARD' ? (space.deck ? deckAccent[space.deck] : undefined) ?? '#8b9187' : '#8b9187');
   const texture = useMemo(() => labelTexture(space, accent), [space, accent]);
   useEffect(() => () => texture.dispose(), [texture]);
   const special = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE' || space.number === 75;
@@ -124,6 +134,66 @@ function Space({ space, active, landing, choice, boardChange, onSelect, onHover 
   </group>;
 }
 
+function HauntedStart({ position }: { position: { x: number; z: number } }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 160;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#20292a';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.strokeStyle = '#9bc9bd';
+      context.lineWidth = 8;
+      context.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
+      context.fillStyle = '#e7e2d3';
+      context.font = '900 54px monospace';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('START', 256, 61);
+      context.fillStyle = '#9bc9bd';
+      context.font = '700 20px sans-serif';
+      context.fillText('THE IRON GATE', 256, 118);
+    }
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    return map;
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return <group position={[position.x, 0, position.z]}>
+    <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
+      <boxGeometry args={[2.45, 0.25, 1.9]} />
+      <meshStandardMaterial color="#22292a" metalness={0.4} roughness={0.68} />
+    </mesh>
+    <mesh position={[0, 0.275, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.64, 0.84, 12]} />
+      <meshBasicMaterial color={palette.teal} transparent opacity={0.94} />
+    </mesh>
+    {[-0.82, 0.82].map(x => <group key={x} position={[x, 0, 0]}>
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <boxGeometry args={[0.25, 1.85, 0.34]} />
+        <meshStandardMaterial color="#59645e" metalness={0.48} roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 2.0, 0]} castShadow>
+        <coneGeometry args={[0.24, 0.38, 4]} />
+        <meshStandardMaterial color="#b7a783" metalness={0.5} roughness={0.42} />
+      </mesh>
+      <mesh position={[0, 1.18, 0.2]}>
+        <sphereGeometry args={[0.12, 12, 8]} />
+        <meshStandardMaterial color={palette.teal} emissive={palette.teal} emissiveIntensity={0.6} />
+      </mesh>
+    </group>)}
+    <mesh position={[0, 1.94, 0]} castShadow>
+      <boxGeometry args={[1.95, 0.22, 0.25]} />
+      <meshStandardMaterial color="#777162" metalness={0.48} roughness={0.5} />
+    </mesh>
+    <mesh position={[0, 1.97, 0.17]}>
+      <planeGeometry args={[1.65, 0.52]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
+  </group>;
+}
+
 function RouteEdge({ from, to, highlighted, mode = 'OPEN' }: {
   from: number; to: number; highlighted: boolean; mode?: 'OPEN' | 'CLOSED' | 'SHORTCUT';
 }) {
@@ -154,11 +224,11 @@ function RouteEdge({ from, to, highlighted, mode = 'OPEN' }: {
 function Estate() {
   return <group>
     <mesh position={[0, -0.42, 0]} receiveShadow>
-      <boxGeometry args={[57, 0.62, 38]} />
+      <boxGeometry args={[57, 0.62, 40]} />
       <meshStandardMaterial color="#181a1b" metalness={0.34} roughness={0.86} />
     </mesh>
     <mesh position={[0, -0.08, 0]} receiveShadow>
-      <boxGeometry args={[55, 0.12, 36]} />
+      <boxGeometry args={[55, 0.12, 38]} />
       <meshStandardMaterial color="#343536" metalness={0.22} roughness={0.92} />
     </mesh>
     {/* The manor anchors the board as a place, while remaining outside playable routes. */}
@@ -300,6 +370,7 @@ export function HauntedBoardScene({
     <pointLight position={[18, 1.2, -7]} intensity={0.9} distance={10} color="#9582a3" />
     <CameraRig focus={focusPosition ?? activePosition} overview={overview} reduceMotion={reduceMotion} zoom={zoom} pan={pan} />
     <Estate />
+    <HauntedStart position={ROUTE[0]} />
     {edges.map(({ from, to, mode }) => <RouteEdge key={`${from}-${to}`} from={from} to={to}
       highlighted={activeChoices.has(to)} mode={mode} />)}
     {SPACES.map(space => <Space key={space.number} space={space} active={space.number === activePosition}

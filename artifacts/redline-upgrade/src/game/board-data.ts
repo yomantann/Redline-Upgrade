@@ -206,13 +206,20 @@ const HAUNTED_CARD_DECK_BY_SPACE: Readonly<Record<number, DeckId>> = {
   69: 'ai',
   72: 'fame',
 };
+const HAUNTED_DECK_ROTATION: readonly DeckId[] = ['wealth', 'ai', 'fame', 'lifestyle', 'influence', 'gamble'];
 const HAUNTED_BOARD_SPACES: BoardSpace[] = HAUNTED_SPACE_NAMES.map((name, index) => {
   const number = index + 1;
   const payday = HAUNTED_PAYDAY_SPACES.has(number);
   const milestone = HAUNTED_MILESTONES.has(number);
   const token = HAUNTED_TOKEN_SPACES.has(number);
   const door = HAUNTED_DOOR_SPACES.has(number);
-  const deck = HAUNTED_CARD_DECK_BY_SPACE[number];
+  // Every ordinary Haunted tile is an active card stop. Keep the already
+  // authored deck assignments, then rotate through all Haunted decks so no
+  // section of the route becomes a stretch of empty, flavor-only spaces.
+  const deck = HAUNTED_CARD_DECK_BY_SPACE[number]
+    ?? (!payday && !milestone && !token && !door && number !== 35
+      ? HAUNTED_DECK_ROTATION[(number - 1) % HAUNTED_DECK_ROTATION.length]
+      : undefined);
   const type: SpaceType = number === 35 ? 'CAREER_CHANGE'
     : payday ? 'SALARY_GATE'
       : milestone ? 'MILESTONE'

@@ -98,9 +98,16 @@ function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder =
         const milestone = space.type === 'MILESTONE' || space.type === 'CAREER_CHANGE';
         const choice = routeOptions.includes(space.number);
         const boardChange = getHauntedSpaceChange(hauntedBoardState, space.number, turnCounter);
+        const deckAccent: Partial<Record<NonNullable<typeof space.deck>, string>> = {
+          wealth: '#d8bd82', ai: '#87c5cf', fame: '#cf8eac',
+          lifestyle: '#a8b88b', influence: '#b49bd1', gamble: '#d98473',
+        };
         const accent = boardChange?.kind === 'CURSE_SPACE' ? '#d66b73'
           : boardChange?.kind === 'SAFE_SPACE' ? '#79c9ae'
-            : choice ? '#a8dac9' : milestone ? '#dc9865' : space.payday ? '#d5c77d' : fork ? '#b29bd5' : '#b3aaa0';
+            : choice ? '#a8dac9' : milestone ? '#dc9865' : space.payday ? '#d5c77d'
+              : space.type === 'CURSED_DOOR' ? '#bc8795'
+                : space.type === 'CARD' ? (space.deck ? deckAccent[space.deck] : undefined) ?? '#b3aaa0'
+                  : fork ? '#b29bd5' : '#b3aaa0';
         return <g key={space.number} role="button" tabIndex={0} aria-label={`Space ${space.number}: ${space.label}`}
           onPointerDown={() => onSpaceSelect?.(space.number)} onPointerEnter={() => onSpaceHover?.(space.number)}
           onPointerLeave={() => onSpaceHover?.(null)}
@@ -114,6 +121,17 @@ function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder =
           {boardChange && <circle cx={point.x + 10} cy={point.y - 10} r="4.5" fill={accent} stroke="#17191c" strokeWidth="1.5" />}
         </g>;
       })}
+      {(() => {
+        const start = p(route[0].x, route[0].z);
+        return <g aria-label="Haunted Upgrade start gate">
+          <path d={`M${start.x - 17} ${start.y + 5}v-29q0-18 17-18t17 18v29`} fill="none" stroke="#9bc9bd" strokeWidth="5" />
+          <path d={`M${start.x - 19} ${start.y + 6}h38`} stroke="#b8ab8d" strokeWidth="5" />
+          <circle cx={start.x - 17} cy={start.y - 23} r="4" fill="#9bc9bd" />
+          <circle cx={start.x + 17} cy={start.y - 23} r="4" fill="#9bc9bd" />
+          <text x={start.x} y={start.y + 25} fill="#b9e1d3" textAnchor="middle" fontFamily="monospace" fontSize="12" fontWeight="900">START</text>
+          <text x={start.x} y={start.y + 37} fill="#9bc9bd" textAnchor="middle" fontFamily="monospace" fontSize="8">IRON GATE</text>
+        </g>;
+      })()}
       {players.map((player, index) => {
         const point = p(route[player.position].x, route[player.position].z);
         const offset = players.filter(candidate => candidate.position === player.position).findIndex(candidate => candidate.playerId === player.playerId);
