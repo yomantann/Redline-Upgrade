@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getBoardSpaces, type BoardSpace } from '../game/board-data';
+import { getPublicAssetUrl } from '../lib/public-asset-url';
 import {
   HAUNTED_ROUTE_EDGES,
   HAUNTED_ROUTE_POINTS,
@@ -194,6 +195,28 @@ function HauntedStart({ position }: { position: { x: number; z: number } }) {
   </group>;
 }
 
+function HauntedCenterPortrait() {
+  const texture = useMemo(() => {
+    const image = new THREE.TextureLoader().load(getPublicAssetUrl(
+      'characters/haunted/more%20logos/redline-mark-danger-portrait.png',
+    ));
+    image.colorSpace = THREE.SRGBColorSpace;
+    image.anisotropy = 4;
+    return image;
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return <group position={[0, 6.15, 0]} rotation={[-Math.PI / 4, 0, 0]}>
+    <mesh position={[0, 0, -0.08]} castShadow receiveShadow>
+      <boxGeometry args={[2.5, 2.5, 0.18]} />
+      <meshStandardMaterial color="#9c8264" metalness={0.55} roughness={0.42} />
+    </mesh>
+    <mesh position={[0, 0, 0.02]}>
+      <planeGeometry args={[2.32, 2.32]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
+  </group>;
+}
+
 function RouteEdge({ from, to, highlighted, mode = 'OPEN' }: {
   from: number; to: number; highlighted: boolean; mode?: 'OPEN' | 'CLOSED' | 'SHORTCUT';
 }) {
@@ -241,10 +264,11 @@ function Estate() {
         <coneGeometry args={[7.3, 2.3, 4]} />
         <meshStandardMaterial color="#403434" roughness={0.9} />
       </mesh>
-      {[-3.2, 0, 3.2].map((x, i) => <group key={x} position={[x, 2.15, 3.25]}>
+      {[-3.2, 3.2].map((x, i) => <group key={x} position={[x, 2.15, 3.25]}>
         <mesh castShadow><boxGeometry args={[1.24, 2.4, 0.12]} /><meshStandardMaterial color="#151719" roughness={0.6} /></mesh>
         <mesh position={[0, 0.36, 0.08]}><boxGeometry args={[0.56, 0.14, 0.035]} /><meshStandardMaterial color={i === 1 ? palette.ember : '#a78d68'} emissive={i === 1 ? palette.ember : '#a78d68'} emissiveIntensity={0.38} /></mesh>
       </group>)}
+      <HauntedCenterPortrait />
       {[-1, 1].map(side => <group key={side} position={[side * 5.6, 0, 0]}>
         <mesh position={[0, 1.45, 0]} castShadow><boxGeometry args={[2.4, 2.9, 3.3]} /><meshStandardMaterial color="#252729" roughness={0.8} /></mesh>
         <mesh position={[0, 3.15, 0]} castShadow><coneGeometry args={[1.95, 1.3, 4]} /><meshStandardMaterial color="#393033" roughness={0.86} /></mesh>

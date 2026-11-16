@@ -2,6 +2,7 @@ import { getBoardSpaces } from '../game/board-data';
 import type { BoardId } from '../game/boards';
 import { ICON_PATHS } from '../game/icon-paths';
 import type { MatchPlayer } from '../game/match';
+import { getPublicAssetUrl } from '../lib/public-asset-url';
 import { PHASE_FLAG_FOOTPRINT, ROUTE, SPACE_TILE_FOOTPRINT, START_PAD_FOOTPRINT, TABLETOP_BUILDINGS, TABLETOP_DRESSING, TABLETOP_STRUCTURES, ZONE_ANCHORS } from './board-scene';
 import { BIO_ROUTE } from './bio-board-scene';
 import { getSpaceVisual } from './board-space-visuals';
@@ -80,6 +81,9 @@ function HauntedFallback({ players, activePlayerId, focusPosition, finishOrder =
       <ellipse cx="600" cy="390" rx="144" ry="90" fill="#101114" stroke="#645853" strokeWidth="3" />
       <path d="M520 395v-72l80-45 80 45v72z" fill="#292729" stroke="#88796b" strokeWidth="3" />
       <path d="M503 326l97-58 97 58M573 395v-48h54v48" fill="none" stroke="#aa8067" strokeWidth="4" />
+      <image href={getPublicAssetUrl('characters/haunted/more%20logos/redline-mark-danger-portrait.png')}
+        x="562" y="322" width="76" height="76" preserveAspectRatio="xMidYMid slice" />
+      <rect x="560" y="320" width="80" height="80" fill="none" stroke="#ba9c71" strokeWidth="3" />
       <text x="600" y="430" fill="#c2a68d" textAnchor="middle" fontFamily="monospace" fontWeight="900" fontSize="14">THE ESTATE REMEMBERS</text>
       {edges.map(({ from, to, mode }) => {
         const start = p(route[from].x, route[from].z);

@@ -392,6 +392,16 @@ try {
     assert.equal(hauntedPath, hauntedPortraits[character.id] ? `characters/haunted/${hauntedPortraits[character.id]}` : character.imagePath);
     assert(existsSync(new URL(`../public/${hauntedPath}`, import.meta.url)), `character select portrait exists for ${character.id}`);
   }
+  for (const mark of [
+    'redline-mark-crown-crest.png',
+    'redline-mark-speedometer.png',
+    'redline-mark-neon-fist.png',
+    'redline-mark-crown-chips.png',
+    'redline-mark-night-highway.png',
+    'redline-mark-danger-portrait.png',
+  ]) {
+    assert(existsSync(new URL(`../public/characters/haunted/more logos/${mark}`, import.meta.url)), `Haunted logo artwork exists: ${mark}`);
+  }
   for (const character of characters) {
     assert(existsSync(new URL(`../public/${character.imagePath}`, import.meta.url)), `${character.name} portrait exists at ${character.imagePath}`);
     const portraitMarkup = renderToStaticMarkup(React.createElement(CharacterPortrait, { character }));
